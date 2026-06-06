@@ -1,0 +1,100 @@
+<%
+  layout = 'main';
+  title = curriculum.subject;
+  subtitle = `Syllabus track list for Batch: ${curriculum.batch}`;
+  page = 'curriculum';
+%>
+
+<div class="grid-3" style="margin-bottom:1.25rem;">
+  <div class="stat-card gold">
+    <div class="stat-label">Total Modules</div>
+    <div class="stat-value"><%= curriculum.topics.length %></div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-label font-green">Completed Modules</div>
+    <div class="stat-value text-green"><%= curriculum.topics.filter(t => t.completed).length %></div>
+  </div>
+  <div class="stat-card blue">
+    <div class="stat-label">Syllabus Progress</div>
+    <% const pct = curriculum.completionPct; %>
+    <div class="stat-value"><%= pct %>%</div>
+    <div class="progress-bar" style="margin-top:8px;">
+      <div class="progress-fill <%= pct === 100 ? 'green' : pct > 50 ? 'orange' : 'red' %>" style="width: <%= pct %>%"></div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: 1.25rem;">
+  <div class="card-header">
+    <div class="card-title">Curriculum Scope & Info</div>
+  </div>
+  <p style="color:var(--text-sub); line-height:1.6;"><%= curriculum.description || 'No detailed scope outlined.' %></p>
+</div>
+
+<div class="grid-2">
+  <!-- Topics List Checklist -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Syllabus Topic checklist</div>
+    </div>
+    
+    <% if (curriculum.topics.length === 0) { %>
+      <div class="empty-state">
+        <p>No topics added to this curriculum yet. Add topics using the form on the right.</p>
+      </div>
+    <% } else { %>
+      <!-- Sort topics by order -->
+      <% const sortedTopics = curriculum.topics.sort((a,b) => a.order - b.order); %>
+      
+      <div style="display:flex; flex-direction:column;">
+        <% sortedTopics.forEach(topic => { %>
+          <div class="topic-item">
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+              <form action="/teacher/curriculum/<%= curriculum._id %>/topics/<%= topic._id %>/toggle" method="POST" style="margin: 0; display:flex;">
+                <input type="checkbox" onchange="this.form.submit()" <%= topic.completed ? 'checked' : '' %>>
+              </form>
+              <div>
+                <div class="topic-name <%= topic.completed ? 'done' : '' %>">
+                  <%= topic.name %>
+                </div>
+                <div class="topic-meta">
+                  <%= topic.description || 'No notes' %>
+                </div>
+              </div>
+            </div>
+            
+            <% if (topic.completed && topic.completedDate) { %>
+              <div class="badge badge-green" style="font-size:9px; padding:1px 6px;">
+                Done: <%= topic.completedDate %>
+              </div>
+            <% } %>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Add Topic Form -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Append Curriculum Topic</div>
+    </div>
+    <form action="/teacher/curriculum/<%= curriculum._id %>/topics" method="POST">
+      <div class="form-group">
+        <label class="form-label" for="name">Topic / Module Name</label>
+        <input type="text" id="name" name="name" class="form-control" placeholder="e.g. Introduction to Premiere Pro Panels" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="grid-column: span 2;">
+          <label class="form-label" for="topic_desc">Module Description / Details</label>
+          <input type="text" id="topic_desc" name="description" class="form-control" placeholder="Key highlights taught in this module">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="order">Sorting Order Index</label>
+          <input type="number" id="order" name="order" class="form-control" value="<%= curriculum.topics.length + 1 %>" required>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary mt-2">Append Topic Module</button>
+    </form>
+  </div>
+</div>

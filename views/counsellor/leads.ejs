@@ -1,0 +1,119 @@
+<%
+  layout = 'main';
+  title = 'All Leads';
+  subtitle = `${leads.length} total leads`;
+  page = 'leads';
+  topbarActions = `<a href="/counsellor/leads/new" class="btn btn-primary btn-sm">+ Add Lead</a>`;
+%>
+
+<!-- Filters -->
+<div class="card" style="padding:16px 20px; margin-bottom:20px;">
+  <form method="GET" action="/counsellor/leads" class="filter-bar" style="margin:0; gap:0.75rem;">
+    <div class="form-group" style="margin:0; flex:1; min-width:160px;">
+      <label class="form-label" style="font-size: 10px;">Search</label>
+      <input type="text" name="search" class="form-control" placeholder="Name or phone..." value="<%= filters.search || '' %>" style="padding: 0.45rem 0.75rem;">
+    </div>
+    <div class="form-group" style="margin:0; min-width:140px;">
+      <label class="form-label" style="font-size: 10px;">Status</label>
+      <select name="status" class="form-control" style="padding: 0.45rem 0.75rem;">
+        <option value="">All Statuses</option>
+        <% ['new','contacted','interested','converted','lost'].forEach(s => { %>
+          <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= s.charAt(0).toUpperCase() + s.slice(1) %></option>
+        <% }); %>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0; min-width:160px;">
+      <label class="form-label" style="font-size: 10px;">Course</label>
+      <select name="course" class="form-control" style="padding: 0.45rem 0.75rem;">
+        <option value="">All Courses</option>
+        <% ['Video Editing','Digital Marketing','Both','Undecided'].forEach(c => { %>
+          <option value="<%= c %>" <%= filters.course === c ? 'selected' : '' %>><%= c %></option>
+        <% }); %>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0; min-width:140px;">
+      <label class="form-label" style="font-size: 10px;">Source</label>
+      <select name="source" class="form-control" style="padding: 0.45rem 0.75rem;">
+        <option value="">All Sources</option>
+        <% ['Walk-in','Website','Referral','Social Media','Advertisement','WhatsApp','Other'].forEach(s => { %>
+          <option value="<%= s %>" <%= filters.source === s ? 'selected' : '' %>><%= s %></option>
+        <% }); %>
+      </select>
+    </div>
+    <div style="display:flex; gap:6px; align-items:center; align-self:flex-end;">
+      <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+      <a href="/counsellor/leads" class="btn btn-ghost btn-sm">Clear</a>
+    </div>
+  </form>
+</div>
+
+<!-- Leads Table -->
+<div id="results-container" class="card">
+  <% if (leads.length === 0) { %>
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      <p>No leads found matching your filters.</p>
+    </div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Course</th>
+            <th>Source</th>
+            <th>Status</th>
+            <th>Follow-up</th>
+            <th>Added</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% leads.forEach((lead, i) => { %>
+            <%
+              const statusBadge = {
+                new: 'badge-orange',
+                contacted: 'badge-blue',
+                interested: 'badge-gold',
+                converted: 'badge-green',
+                lost: 'badge-red'
+              }[lead.status] || 'badge-grey';
+
+              const isOverdue = lead.followUpDate && new Date(lead.followUpDate) < new Date() && lead.status !== 'converted' && lead.status !== 'lost';
+            %>
+            <tr>
+              <td class="td-mono text-muted"><%= i + 1 %></td>
+              <td><strong><%= lead.name %></strong></td>
+              <td class="td-mono"><%= lead.phone %></td>
+              <td><span class="badge badge-orange"><%= lead.course %></span></td>
+              <td class="td-muted"><%= lead.source %></td>
+              <td><span class="badge <%= statusBadge %>"><%= lead.status %></span></td>
+              <td class="td-mono" style="color: <%= isOverdue ? 'var(--red)' : 'inherit' %>; font-weight: <%= isOverdue ? 'bold' : 'normal' %>;">
+                <%= lead.followUpDate ? new Date(lead.followUpDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'}) : '—' %>
+                <% if (isOverdue) { %> ⚠️<% } %>
+              </td>
+              <td class="td-mono text-muted">
+                <%= new Date(lead.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %>
+              </td>
+              <td>
+                <div style="display:flex; gap:5px;">
+                  <a href="/counsellor/leads/<%= lead._id %>" class="btn btn-ghost btn-xs">View</a>
+                  <a href="/counsellor/leads/<%= lead._id %>/edit" class="btn btn-ghost btn-xs">Edit</a>
+                  <form action="/counsellor/leads/<%= lead._id %>?_method=DELETE" method="POST"
+                        onsubmit="return confirm('Delete this lead permanently? This cannot be undone.')" style="display:inline; margin:0;">
+                    <button type="submit" class="btn btn-danger btn-xs">✕</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<script src="/js/instant-filter.js"></script>
+

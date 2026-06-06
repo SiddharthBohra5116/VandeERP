@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> — Vande Digital Academy</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <meta name="csrf-token" content="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+</head>
+<body>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+      if (!tokenMeta) return;
+      const token = tokenMeta.getAttribute('content');
+      document.querySelectorAll('form').forEach(form => {
+        if (form.method.toUpperCase() === 'POST') {
+          if (form.enctype === 'multipart/form-data') {
+            const url = new URL(form.action, window.location.href);
+            url.searchParams.set('_csrf', token);
+            form.action = url.pathname + url.search;
+          } else {
+            if (!form.querySelector('input[name="_csrf"]')) {
+              const input = document.createElement('input');
+              input.type = 'hidden';
+              input.name = '_csrf';
+              input.value = token;
+              form.appendChild(input);
+            }
+          }
+        }
+      });
+    });
+  </script>
+  <div class="auth-layout">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="brand-name">Vande <span>Digital</span></div>
+        <div class="brand-sub">Academy Management</div>
+      </div>
+      
+      <% if (typeof error !== 'undefined' && error && error.length) { %>
+        <div class="alert alert-error">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <%= Array.isArray(error) ? error[0] : error %>
+        </div>
+      <% } %>
+      
+      <% if (typeof success !== 'undefined' && success && success.length) { %>
+        <div class="alert alert-success">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <%= Array.isArray(success) ? success[0] : success %>
+        </div>
+      <% } %>
+
+      <%- body %>
+    </div>
+  </div>
+</body>
+</html>

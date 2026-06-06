@@ -1,0 +1,10 @@
+<%
+  layout = (typeof user !== 'undefined' && user) ? 'main' : 'auth';
+  title = 'Access Denied';
+%>
+<div class="error-page">
+  <div class="error-code">4<span>0</span>3</div>
+  <h2>Restricted Access!</h2>
+  <p>You do not have the required permissions to view this resource.</p>
+  <a href="/" class="btn btn-primary">Go to Dashboard</a>
+</div>

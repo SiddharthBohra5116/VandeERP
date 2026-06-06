@@ -1,0 +1,114 @@
+<%
+  layout = 'main';
+  title = 'Fee Management';
+  subtitle = 'Overview of tuition fees and collection progress';
+  page = 'fees';
+%>
+
+<!-- Search & Filter Form -->
+<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+  <form method="GET" action="/admin/fees" class="filter-bar" style="margin: 0; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+    <input type="text" name="search" class="form-control" placeholder="Search by student name..." value="<%= (typeof filter !== 'undefined' && filter.search) ? filter.search : '' %>" style="flex: 2; min-width: 200px; padding: 0.45rem 0.75rem;">
+    
+    <select name="paymentStatus" class="form-control" style="flex: 1; min-width: 150px;">
+      <option value="">All Payment Statuses</option>
+      <option value="fully paid" <%= filter.paymentStatus === 'fully paid' ? 'selected' : '' %>>Fully Paid</option>
+      <option value="partially paid" <%= filter.paymentStatus === 'partially paid' ? 'selected' : '' %>>Partially Paid</option>
+      <option value="overdue" <%= filter.paymentStatus === 'overdue' ? 'selected' : '' %>>Overdue</option>
+      <option value="unpaid" <%= filter.paymentStatus === 'unpaid' ? 'selected' : '' %>>Unpaid (No Payment)</option>
+      <option value="no invoice" <%= filter.paymentStatus === 'no invoice' ? 'selected' : '' %>>No Invoice</option>
+    </select>
+
+    <select name="sortBy" class="form-control" style="flex: 1; min-width: 150px;">
+      <option value="">Default Sort</option>
+      <option value="outstanding" <%= filter.sortBy === 'outstanding' ? 'selected' : '' %>>Highest Outstanding Due</option>
+      <option value="longest_overdue" <%= filter.sortBy === 'longest_overdue' ? 'selected' : '' %>>Longest Overdue Date</option>
+    </select>
+
+    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+    <a href="/admin/fees" class="btn btn-ghost btn-sm">Clear</a>
+  </form>
+</div>
+
+<div id="results-container" class="card">
+  <% if (fees.length === 0) { %>
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      <p>No fee accounts open yet. Add a student to start tracking fees.</p>
+    </div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Batch & Course</th>
+            <th>Total Fees</th>
+            <th>Discount</th>
+            <th>Paid</th>
+            <th>Due</th>
+            <th>Collection %</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% fees.forEach(f => { %>
+            <% 
+              const student = f.student;
+              const actualTotal = f.totalAmount - (f.discount || 0);
+              const due = Math.max(0, actualTotal - f.paidAmount);
+              const pct = f.totalAmount > 0 ? Math.round((f.paidAmount / actualTotal) * 100) : 0;
+            %>
+            <tr>
+              <td class="td-name">
+                <% if (student) { %>
+                  <a href="/admin/fees/<%= student._id %>" style="color:var(--gold); font-weight:600;"><%= student.name %></a>
+                  <div class="td-muted text-sm"><%= student.phone || 'No phone' %></div>
+                <% } else { %>
+                  <span class="text-red">Deleted User</span>
+                <% } %>
+              </td>
+              <td>
+                <div><%= f.course %></div>
+                <div class="td-muted text-sm"><%= student ? student.batch : '—' %></div>
+              </td>
+              <td class="mono">₹<%= f.totalAmount.toLocaleString('en-IN') %></td>
+              <td class="mono text-muted">₹<%= (f.discount || 0).toLocaleString('en-IN') %></td>
+              <td class="mono text-green">₹<%= f.paidAmount.toLocaleString('en-IN') %></td>
+              <td class="mono" style="font-weight:600;">
+                <span class="<%= due > 0 ? 'text-red' : 'text-green' %>">₹<%= due.toLocaleString('en-IN') %></span>
+                <% if (f.isOverdue) { %>
+                  <div style="font-size: 9px; color: var(--red); margin-top: 2px;" class="mono">
+                    ⚠️ Overdue (<%= new Date(f.dueDate).toLocaleDateString('en-IN') %>)
+                  </div>
+                <% } else if (due > 0 && f.dueDate) { %>
+                  <div style="font-size: 9px; color: var(--text-muted); margin-top: 2px;" class="mono">
+                    Due: <%= new Date(f.dueDate).toLocaleDateString('en-IN') %>
+                  </div>
+                <% } %>
+              </td>
+              <td>
+                <div style="min-width: 100px;">
+                  <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom: 2px;">
+                    <span><%= pct %>%</span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-fill <%= pct === 100 ? 'green' : pct > 50 ? 'orange' : 'red' %>" style="width: <%= pct %>%"></div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <% if (student) { %>
+                  <a href="/admin/fees/<%= student._id %>" class="btn btn-ghost btn-xs">Ledger / Add Payment</a>
+                <% } else { %>
+                  —
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+<script src="/js/instant-filter.js"></script>

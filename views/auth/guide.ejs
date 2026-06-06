@@ -1,0 +1,438 @@
+<%
+  layout = 'main';
+  title = 'Platform Guide & Policy Manual';
+  subtitle = 'Official workflows, rules, and dashboard metrics definition book';
+  page = 'guide';
+%>
+
+<style>
+  .guide-container {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 20px;
+    margin-top: 10px;
+  }
+  
+  .guide-sidebar {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: fit-content;
+  }
+  
+  .guide-tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 10px 16px;
+    text-align: left;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s ease;
+  }
+  
+  .guide-tab-btn:hover {
+    background: var(--bg-input);
+    color: var(--text);
+  }
+  
+  .guide-tab-btn.active {
+    background: var(--gold-dim);
+    color: var(--gold);
+    border: 1px solid var(--gold-border);
+  }
+
+  .guide-content-panel {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .guide-content-panel.active {
+    display: block;
+  }
+
+  .guide-section {
+    margin-bottom: 25px;
+  }
+
+  .guide-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .guide-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+    margin-top: 12px;
+  }
+
+  .guide-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  .guide-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--gold-border);
+  }
+
+  .guide-card-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .guide-card-body {
+    font-size: 12px;
+    color: var(--text-sub);
+    line-height: 1.5;
+  }
+
+  .rule-badge {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--red);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .info-badge {
+    background: var(--gold-dim);
+    color: var(--gold);
+    border: 1px solid var(--gold-border);
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 768px) {
+    .guide-container {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="guide-container">
+  <!-- Sidebar Navigation Tabs -->
+  <div class="guide-sidebar">
+    <button class="guide-tab-btn active" onclick="switchGuideTab('admin')">
+      <span>👑</span> Admin Guide
+    </button>
+    <button class="guide-tab-btn" onclick="switchGuideTab('counsellor')">
+      <span>💼</span> Counsellor Guide
+    </button>
+    <button class="guide-tab-btn" onclick="switchGuideTab('teacher')">
+      <span>👨‍🏫</span> Teacher Guide
+    </button>
+    <button class="guide-tab-btn" onclick="switchGuideTab('student')">
+      <span>🎓</span> Student Guide
+    </button>
+    <button class="guide-tab-btn" onclick="switchGuideTab('fees-policy')">
+      <span>💵</span> Fees & Fine Policy
+    </button>
+  </div>
+
+  <!-- Main Content Area -->
+  <div class="card" style="padding: 24px 30px;">
+    
+    <!-- 👑 ADMIN PANEL GUIDE -->
+    <div id="panel-admin" class="guide-content-panel active">
+      <div class="guide-section">
+        <div class="guide-title">👑 Admin Control & God-View Dashboard</div>
+        <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">
+          As an Administrator, you possess absolute authority over the database registers. Your main operations involve supervising financial health, classrooms templates schedules, managing staff profiles, and approving profile update queues.
+        </p>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-title">📊 Key Metrics & Statistics Defined</div>
+        <div class="guide-grid">
+          <div class="guide-card">
+            <div class="guide-card-title">💵 Total Revenue Collections</div>
+            <div class="guide-card-body">
+              The gross sum of cash, bank, or UPI receipts logged in the collection transaction ledgers. Excludes raw unpaid invoice values.
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">📉 Total Due & Outstanding</div>
+            <div class="guide-card-body">
+              Net invoice dues (Total Fees - Discounts) plus accrued late-fee fines, minus payments collected. Tracks outstanding capital.
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">🔒 Account Reset Requests</div>
+            <div class="guide-card-body">
+              Flags staff or students requesting password overrides. Administrators must update the credentials and dismiss the request flag.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-title">🛡️ Critical Operating Rules</div>
+        <ul style="font-size:13px; color:var(--text-sub); line-height:1.8; padding-left:20px;">
+          <li><span class="rule-badge">Clash Prevention</span>: You cannot allocate a classroom or a teacher to two overlapping slots. The scheduler drawer will check and reject booking conflicts.</li>
+          <li><span class="rule-badge">Profile Updates</span>: Student name/phone/DOB edits are held in a pending queue comparison box until you click "Approve Update".</li>
+          <li><span class="rule-badge">Weekly Templates</span>: The templates engine auto-propagates schedule calendars and skips active holiday listings automatically.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 💼 COUNSELLOR PANEL GUIDE -->
+    <div id="panel-counsellor" class="guide-content-panel">
+      <div class="guide-section">
+        <div class="guide-title">💼 Counsellor CRM Pipeline Operations</div>
+        <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">
+          Counsellors drive enrollment targets and lead followups. You are responsible for outbound logging, maintaining high touchpoint frequencies, and executing student conversions.
+        </p>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-title">📊 CRM Metrics & Dashboards</div>
+        <div class="guide-grid">
+          <div class="guide-card">
+            <div class="guide-card-title">📈 Conversion Velocity (Days)</div>
+            <div class="guide-card-body">
+              Tracks the average duration between lead registration date and student portal conversion date. Shorter durations mean higher efficiency.
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">📞 Outbound Touchpoint Gaps</div>
+            <div class="guide-card-body">
+              Tracks intervals between contacts. Gaps > 3 days highlight in orange; gaps > 7 days turn red, flagging lead stagnation.
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">⚠️ Student Risk Alarm</div>
+            <div class="guide-card-body">
+              Scans your converted roster. Automatically sounds warnings for attendance falling below 75%, unpaid fees, or missed assignments.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-title">🛡️ Critical Operating Rules</div>
+        <ul style="font-size:13px; color:var(--text-sub); line-height:1.8; padding-left:20px;">
+          <li><span class="rule-badge">Joining Down Payment</span>: On converting any lead, you must register a down payment of at least 50% of the total tuition fee invoice.</li>
+          <li><span class="rule-badge">Crown Instruction</span>: Comments posted by the Administrator onto your prospects will appear with a gold high-visibility outline. You must respond to these comments immediately.</li>
+          <li><span class="rule-badge">Contact Channels</span>: Always tag outbound calls, WhatsApp pings, or in-person visits accurately to maintain visual history lanes.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 👨‍🏫 TEACHER PANEL GUIDE -->
+    <div id="panel-teacher" class="guide-content-panel">
+      <div class="guide-section">
+        <div class="guide-title">👨‍🏫 Academic & Classroom Operations</div>
+        <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">
+          Teachers log daily lesson updates, track curriculum syllabus coverage, check schedule timetables, and evaluate submissions.
+        </p>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-title">📊 Roster & Syllabus Trackers</div>
+        <div class="guide-grid">
+          <div class="guide-card">
+            <div class="guide-card-title">🎯 Syllabus Completion %</div>
+            <div class="guide-card-body">
+              Calculates target topic coverages based on your marked curriculum checkboxes. Displays the active pace of teaching.
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">📝 Daily Update Logbook</div>
+            <div class="guide-card-body">
+              A chronological log of your daily classroom accomplishments, homework instructions, and remarks visible to students.
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">🔔 Admin Notification alerts</div>
+            <div class="guide-card-body">
+              Announcements sent directly by the Admin appear instantly at the top of your workspace screen with gradient backgrounds.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-title">🛡️ Critical Operating Rules</div>
+        <ul style="font-size:13px; color:var(--text-sub); line-height:1.8; padding-left:20px;">
+          <li><span class="rule-badge">Daily Attendance</span>: Attendance must be logged on every scheduled class day before leaving. Unmarked days flag as warnings to the Admin.</li>
+          <li><span class="rule-badge">Grading Turnarounds</span>: Assignments submitted by students should be graded with marks and remarks within 48 hours.</li>
+          <li><span class="rule-badge">Schedules Modification</span>: Re-scheduling or deleting class blocks automatically notifies the entire student roster via in-platform notifications.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 🎓 STUDENT PANEL GUIDE -->
+    <div id="panel-student" class="guide-content-panel">
+      <div class="guide-section">
+        <div class="guide-title">🎓 Student Portal & Academic Record</div>
+        <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">
+          The student portal logs your weekly timetable, assignment deadlines, tuition installments due dates, and academic grading reports.
+        </p>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-title">📊 Portal Items Defined</div>
+        <div class="guide-grid">
+          <div class="guide-card">
+            <div class="guide-card-title">📅 Weekly Timetable Block</div>
+            <div class="guide-card-body">
+              Visual hourly calendar showing the lecture rooms, times, subjects, and teachers assigned for the current week.
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">💯 Grade Sheet Logs</div>
+            <div class="guide-card-body">
+              Records tests scores, percentages, and teachers' remarks. High scores contribute to your graduation certificate evaluation.
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">⚠️ Dashboard Warning Banners</div>
+            <div class="guide-card-body">
+              Alerts displayed for missing information, unverified Identity cards, or outstanding dues. Must be resolved promptly.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-title">🛡️ Critical Student Rules</div>
+        <ul style="font-size:13px; color:var(--text-sub); line-height:1.8; padding-left:20px;">
+          <li><span class="rule-badge">75% Attendance Limit</span>: You must maintain a minimum of 75% attendance. Dropping below this limit triggers automated warning alerts.</li>
+          <li><span class="rule-badge">ID Verification</span>: You must upload a clear PAN/Aadhaar card document for verification to get certified.</li>
+          <li><span class="rule-badge">Course Completion Survey</span>: Upon graduation, you must submit a feedback survey rating teaching, content, and facilities. Access is locked until submitted.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 💵 FEES & FINE POLICY -->
+    <div id="panel-fees-policy" class="guide-content-panel">
+      <div class="guide-section">
+        <div class="guide-title">💵 Tuition Fees Installments & Fines Policy</div>
+        <p style="font-size:13px; color:var(--text-sub); line-height:1.6;">
+          Tuition invoices are divided into three-part installment schedules to structure payment collections smoothly. Late payments automatically accrue fines based on the delay.
+        </p>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-title">📊 Three-Part Installment Structure</div>
+        <div class="guide-grid">
+          <div class="guide-card">
+            <div class="guide-card-title">💰 Down Payment (50%)</div>
+            <div class="guide-card-body">
+              <span class="info-badge">Due immediately</span><br><br>
+              Must be paid at registration/admission. Enforced during conversion.
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">💰 First Installment (25%)</div>
+            <div class="guide-card-body">
+              <span class="info-badge">Due midway</span><br><br>
+              Due at the midpoint of the course (Day 45 for standard courses, Day 90 for combined).
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">💰 Second Installment (25%)</div>
+            <div class="guide-card-body">
+              <span class="info-badge">Due 1 month before end</span><br><br>
+              Due exactly 30 days before the course completion end date.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-title">⚠️ Missed Deadlines Late Fees Fine Ratios</div>
+        <p style="font-size:13px; color:var(--text-sub); margin-bottom: 10px;">
+          Fines accrue automatically on the day following the installment's due date if it is not fully paid.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Delay Duration</th>
+                <th>Accrued Fine (₹)</th>
+                <th>Impact</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge badge-orange">1 to 30 days late</span></td>
+                <td class="mono fw-600 text-red">₹250</td>
+                <td>Added to due balance. Warnings shown on profile.</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-red">31 to 60 days late</span></td>
+                <td class="mono fw-600 text-red">₹500</td>
+                <td>Upgraded fine. Counsellor follow-up list alert triggered.</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-red">More than 60 days late</span></td>
+                <td class="mono fw-600 text-red">₹1,000</td>
+                <td>Maximum late-fee penalty added to installment card.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function switchGuideTab(role) {
+    // Remove active from all sidebar buttons
+    const buttons = document.querySelectorAll('.guide-tab-btn');
+    buttons.forEach(btn => btn.classList.remove('active'));
+
+    // Add active to selected button
+    event.currentTarget.classList.add('active');
+
+    // Hide all panels
+    const panels = document.querySelectorAll('.guide-content-panel');
+    panels.forEach(p => p.classList.remove('active'));
+
+    // Show selected panel
+    const targetPanel = document.getElementById('panel-' + role);
+    if (targetPanel) {
+      targetPanel.classList.add('active');
+    }
+  }
+</script>

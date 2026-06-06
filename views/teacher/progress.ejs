@@ -1,0 +1,231 @@
+<%
+  layout = 'main';
+  title = 'Student Progress';
+  subtitle = 'Log test reports, grading points, and general feedback comments';
+  page = 'progress';
+%>
+
+<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+  <form method="GET" action="/teacher/progress" class="filter-bar" style="margin:0;">
+    <div class="form-group" style="margin:0; min-width:140px;">
+      <label class="form-label" style="margin-bottom:0.25rem;">Batch</label>
+      <select name="batch" class="form-control" style="padding:0.45rem 0.75rem;" required>
+        <option value="" disabled selected>Select Batch</option>
+        <% batches.forEach(b => { %>
+          <option value="<%= b %>" <%= filter.batch === b ? 'selected' : '' %>><%= b %></option>
+        <% }) %>
+      </select>
+    </div>
+    
+    <div class="form-group" style="margin:0; min-width:160px;">
+      <label class="form-label" style="margin-bottom:0.25rem;">Subject Name</label>
+      <input type="text" name="subject" class="form-control" style="padding:0.45rem 0.75rem;" placeholder="e.g. Video Editing Basics" value="<%= filter.subject || '' %>" required>
+    </div>
+
+    <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+      <button type="submit" class="btn btn-primary btn-sm">Load Progress Board</button>
+      <a href="/teacher/progress" class="btn btn-ghost btn-sm">Reset</a>
+    </div>
+  </form>
+</div>
+
+<% if (filter.batch && filter.subject) { %>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        Progress Board: Batch <span style="color:var(--gold);"><%= filter.batch %></span> &nbsp;·&nbsp; Subject <span style="color:var(--gold);"><%= filter.subject %></span>
+      </div>
+    </div>
+    
+    <% if (students.length === 0) { %>
+      <div class="empty-state">
+        <p>No active students found in Batch: <strong><%= filter.batch %></strong>.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Student Name</th>
+              <th>Overall Score</th>
+              <th>Test Results History</th>
+              <th>Teacher's Remarks</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% students.forEach(student => { %>
+              <% 
+                const record = progressRecords.find(pr => pr.student && pr.student._id.toString() === student._id.toString());
+                const overall = record ? record.overallScore : 0;
+                const remarks = record ? record.teacherRemark : '';
+                const tests = record ? record.testResults : [];
+              %>
+              <tr>
+                <td class="td-name"><%= student.name %></td>
+                <td>
+                  <div style="min-width: 80px;">
+                    <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:600; margin-bottom: 2px;">
+                      <span class="<%= overall >= 75 ? 'text-green' : overall >= 40 ? 'text-gold' : 'text-red' %>">
+                        <%= overall %>%
+                      </span>
+                    </div>
+                    <div class="progress-bar">
+                      <div class="progress-fill <%= overall >= 75 ? 'green' : 'gold' %>" style="width: <%= overall %>%"></div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <% if (tests.length === 0) { %>
+                    <span class="td-muted text-sm">No tests recorded yet</span>
+                  <% } else { %>
+                    <div style="display:flex; flex-direction:column; gap:4px; max-height:100px; overflow-y:auto; padding-right:5px;">
+                      <% tests.forEach(t => { %>
+                        <div class="text-xs" style="background:var(--bg-hover); padding:3px 6px; border-radius:4px; border:1px solid var(--border);">
+                          <strong><%= t.testName %></strong>: <span class="text-gold"><%= t.score %>/<%= t.totalMarks %></span>
+                          <span class="td-muted" style="float:right;"><%= t.date %></span>
+                        </div>
+                      <% }) %>
+                    </div>
+                  <% } %>
+                </td>
+                <td class="text-sm" style="max-width: 200px; white-space: normal; line-height: 1.4;">
+                  <%= remarks || '—' %>
+                </td>
+                <td>
+                  <div class="d-flex gap-1">
+                    <button class="btn btn-primary btn-xs" 
+                            onclick="openTestModal('<%= student._id %>', '<%= student.name %>', '<%= filter.subject %>', '<%= filter.batch %>')">
+                      + Test
+                    </button>
+                    <button class="btn btn-ghost btn-xs" 
+                            onclick="openRemarkModal('<%= student._id %>', '<%= student.name %>', '<%= filter.subject %>', '<%= filter.batch %>', '<%= remarks %>')">
+                      Remark
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+<% } else { %>
+  <div class="card">
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <p>Select a Batch and specify the Subject above to query student gradeboards.</p>
+    </div>
+  </div>
+<% } %>
+
+<!-- Add Test Result Modal -->
+<div id="testModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Log Test Score</div>
+      <button class="modal-close" onclick="closeTestModal()">&times;</button>
+    </div>
+    <form action="/teacher/progress/test" method="POST">
+      <input type="hidden" id="testStudentId" name="studentId">
+      <input type="hidden" id="testSubject" name="subject">
+      <input type="hidden" id="testBatch" name="batch">
+      
+      <p style="font-size:13px; color:var(--text-sub); margin-bottom:1.25rem;">
+        Add test report metrics for student: <strong id="testStudentName">Student</strong>.
+      </p>
+
+      <div class="form-group">
+        <label class="form-label" for="testName">Test / Exam Title</label>
+        <input type="text" id="testName" name="testName" class="form-control" placeholder="e.g. Photoshop Selection Basics" required>
+      </div>
+
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label" for="score">Marks Obtained</label>
+          <input type="number" id="score" name="score" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="totalMarks">Total Marks</label>
+          <input type="number" id="totalMarks" name="totalMarks" class="form-control" value="50" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="testDate">Date of Exam</label>
+          <% const todayStr = new Date().toISOString().split('T')[0]; %>
+          <input type="date" id="testDate" name="date" class="form-control" value="<%= todayStr %>" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="testRemarks">Grade Remarks</label>
+        <input type="text" id="testRemarks" name="remarks" class="form-control" placeholder="Optional comments on student performance">
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeTestModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Log Test Score</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Remark Modal -->
+<div id="remarkModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Teacher's Remark</div>
+      <button class="modal-close" onclick="closeRemarkModal()">&times;</button>
+    </div>
+    <form id="remarkForm" method="POST">
+      <input type="hidden" id="remarkSubject" name="subject">
+      <input type="hidden" id="remarkBatch" name="batch">
+      
+      <p style="font-size:13px; color:var(--text-sub); margin-bottom:1.25rem;">
+        Update performance remarks for student: <strong id="remarkStudentName">Student</strong>.
+      </p>
+
+      <div class="form-group">
+        <label class="form-label" for="remark">Remark Comment</label>
+        <textarea id="remark" name="remark" class="form-control" placeholder="Summarize overall student focus, behaviour, and learning speed..." required></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeRemarkModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Save Remarks</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openTestModal(studentId, studentName, subject, batch) {
+    document.getElementById('testStudentId').value = studentId;
+    document.getElementById('testSubject').value = subject;
+    document.getElementById('testBatch').value = batch;
+    document.getElementById('testStudentName').innerText = studentName;
+    document.getElementById('testModal').classList.add('open');
+  }
+  function closeTestModal() {
+    document.getElementById('testModal').classList.remove('open');
+  }
+
+  function openRemarkModal(studentId, studentName, subject, batch, currentRemark) {
+    const form = document.getElementById('remarkForm');
+    form.action = '/teacher/progress/' + studentId + '/remark';
+    
+    document.getElementById('remarkSubject').value = subject;
+    document.getElementById('remarkBatch').value = batch;
+    document.getElementById('remarkStudentName').innerText = studentName;
+    document.getElementById('remark').value = currentRemark;
+    
+    document.getElementById('remarkModal').classList.add('open');
+  }
+  function closeRemarkModal() {
+    document.getElementById('remarkModal').classList.remove('open');
+  }
+
+  // Close modals on overlay clicks
+  document.getElementById('testModal').addEventListener('click', function(e) { if (e.target === this) closeTestModal(); });
+  document.getElementById('remarkModal').addEventListener('click', function(e) { if (e.target === this) closeRemarkModal(); });
+</script>

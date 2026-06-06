@@ -1,0 +1,81 @@
+<%
+  const isEdit = typeof lead !== 'undefined' && lead;
+  layout = 'main';
+  title = isEdit ? `Edit: ${lead.name}` : 'Add New Lead';
+  subtitle = isEdit ? 'Update prospect lead details' : 'Enter new candidate inquiry details';
+  page = isEdit ? 'leads' : 'leads-new';
+  topbarActions = `<a href="/counsellor/leads" class="btn btn-ghost btn-sm">&larr; Back</a>`;
+%>
+
+<div style="max-width:640px;">
+  <div class="card">
+    <form action="<%= isEdit ? `/counsellor/leads/${lead._id}/edit` : '/counsellor/leads/create' %>" method="POST">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">Full Name *</label>
+          <input type="text" name="name" class="form-control" placeholder="Prospect name" required
+            value="<%= isEdit ? lead.name : '' %>">
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">Phone *</label>
+          <input type="tel" name="phone" class="form-control" placeholder="9876543210" required
+            value="<%= isEdit ? lead.phone : '' %>">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" style="font-size: 10px;">Email Address</label>
+        <input type="email" name="email" class="form-control" placeholder="name@email.com"
+          value="<%= isEdit ? lead.email : '' %>">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">Course Interest *</label>
+          <select name="course" class="form-control" required>
+            <% ['Video Editing','Digital Marketing','Both','Undecided'].forEach(c => { %>
+              <option value="<%= c %>" <%= isEdit && lead.course === c ? 'selected' : '' %>><%= c %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">Lead Source *</label>
+          <select name="source" class="form-control" required>
+            <% ['Walk-in','Website','Referral','Social Media','Advertisement','WhatsApp','Other'].forEach(s => { %>
+              <option value="<%= s %>" <%= isEdit && lead.source === s ? 'selected' : '' %>><%= s %></option>
+            <% }); %>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">Status</label>
+          <select name="status" class="form-control">
+            <% ['new','contacted','interested','converted','lost'].forEach(s => { %>
+              <option value="<%= s %>" <%= isEdit && lead.status === s ? 'selected' : (!isEdit && s === 'new' ? 'selected' : '') %>><%= s.charAt(0).toUpperCase() + s.slice(1) %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">Next Follow-up Date</label>
+          <input type="date" name="followUpDate" class="form-control"
+            value="<%= isEdit && lead.followUpDate ? new Date(lead.followUpDate).toISOString().split('T')[0] : '' %>">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" style="font-size: 10px;">Interaction Notes / Remarks</label>
+        <textarea name="notes" class="form-control" placeholder="Any additional context or summary notes..."><%= isEdit ? lead.notes : '' %></textarea>
+      </div>
+
+      <div style="display:flex; gap:10px; justify-content:flex-end; padding-top:12px; border-top:1px solid var(--border); margin-top:16px;">
+        <a href="/counsellor/leads" class="btn btn-ghost">Cancel</a>
+        <button type="submit" class="btn btn-primary">
+          <%= isEdit ? 'Update Lead File' : 'Save New Lead' %>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

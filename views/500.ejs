@@ -1,0 +1,15 @@
+<%
+  layout = (typeof user !== 'undefined' && user) ? 'main' : 'auth';
+  title = 'Server Error';
+%>
+<div class="error-page">
+  <div class="error-code">5<span>0</span>0</div>
+  <h2>Internal Server Error</h2>
+  <p>Something went wrong on our server. We are looking into it.</p>
+  <% if (typeof errorDetail !== 'undefined' && errorDetail) { %>
+    <div class="alert alert-error" style="max-width: 500px; text-align: left; font-family: monospace; font-size: 11px;">
+      <%= errorDetail %>
+    </div>
+  <% } %>
+  <a href="/" class="btn btn-primary">Go to Dashboard</a>
+</div>

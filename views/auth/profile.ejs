@@ -1,0 +1,100 @@
+<%
+  layout = 'main';
+  title = 'My Profile';
+  page = 'profile';
+%>
+
+<div class="profile-header">
+  <div class="avatar-lg">
+    <% if (user.profilePic) { %>
+      <img src="<%= user.profilePic %>" alt="<%= user.name %>">
+    <% } else { %>
+      <%= user.initials %>
+    <% } %>
+  </div>
+  <div>
+    <div class="profile-name"><%= user.name %></div>
+    <div class="profile-meta"><%= user.role.toUpperCase() %> &nbsp;·&nbsp; <%= user.email %></div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- Update Info Form -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Update Info</div>
+    </div>
+    <% if (user.role === 'student') { %>
+      <div class="alert alert-info" style="font-size: 0.8rem; line-height: 1.4; padding: 0.6rem 0.85rem; margin-bottom: 1rem; border-color: rgba(59, 130, 246, 0.2); background: rgba(59, 130, 246, 0.05); color: var(--text);">
+        ℹ️ <strong>Profile Notice:</strong> Changing your profile details requires verification. Submitting the changes below will log a profile update request for admin approval.
+      </div>
+      <% if (user.pendingProfileUpdate && user.pendingProfileUpdate.requestedAt) { %>
+        <div class="alert alert-warning" style="font-size: 0.8rem; line-height: 1.4; padding: 0.6rem 0.85rem; margin-bottom: 1rem; color: var(--text); border-color: var(--gold-border); background: var(--gold-dim);">
+          ⚠️ <strong>Pending Request:</strong> You already have a pending change request:<br>
+          &middot; Name: <em>"<%= user.pendingProfileUpdate.name %>"</em><br>
+          &middot; Phone: <em>"<%= user.pendingProfileUpdate.phone || '—' %>"</em><br>
+          &middot; Father's Name: <em>"<%= user.pendingProfileUpdate.fatherName || '—' %>"</em><br>
+          &middot; Mother's Name: <em>"<%= user.pendingProfileUpdate.motherName || '—' %>"</em><br>
+          &middot; Date of Birth: <em>"<%= user.pendingProfileUpdate.dob ? new Date(user.pendingProfileUpdate.dob).toLocaleDateString() : '—' %>"</em><br>
+          &middot; Address: <em>"<%= user.pendingProfileUpdate.address || '—' %>"</em><br>
+          &middot; City: <em>"<%= user.pendingProfileUpdate.city || '—' %>"</em><br>
+          Waiting for admin review. Re-submitting will overwrite this pending request.
+        </div>
+      <% } %>
+    <% } %>
+    <form action="/auth/profile" method="POST" enctype="multipart/form-data">
+      <div class="form-group">
+        <label class="form-label" for="name">Full Name</label>
+        <input type="text" id="name" name="name" class="form-control" value="<%= user.name %>" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="phone">Phone Number</label>
+        <input type="text" id="phone" name="phone" class="form-control" value="<%= user.phone || '' %>">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="fatherName">Father's Name</label>
+        <input type="text" id="fatherName" name="fatherName" class="form-control" value="<%= user.fatherName || '' %>">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="motherName">Mother's Name</label>
+        <input type="text" id="motherName" name="motherName" class="form-control" value="<%= user.motherName || '' %>">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="dob">Date of Birth</label>
+        <input type="date" id="dob" name="dob" class="form-control" value="<%= user.dob ? new Date(user.dob).toISOString().split('T')[0] : '' %>">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="address">Address</label>
+        <input type="text" id="address" name="address" class="form-control" value="<%= user.address || '' %>">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="city">City</label>
+        <input type="text" id="city" name="city" class="form-control" value="<%= user.city || '' %>">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="profilePic">Profile Picture</label>
+        <input type="file" id="profilePic" name="profilePic" class="form-control" accept="image/*">
+        <div class="form-hint">Upload a JPG, PNG, or GIF file.</div>
+      </div>
+      <button type="submit" class="btn btn-primary mt-2">Save Changes</button>
+    </form>
+  </div>
+
+  <!-- Change Password Form -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Change Password</div>
+    </div>
+    <form action="/auth/change-password" method="POST">
+      <div class="form-group">
+        <label class="form-label" for="currentPassword">Current Password</label>
+        <input type="password" id="currentPassword" name="currentPassword" class="form-control" placeholder="••••••••" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="newPassword">New Password</label>
+        <input type="password" id="newPassword" name="newPassword" class="form-control" placeholder="•••••••• (Min. 6 chars)" minlength="6" required>
+      </div>
+      <button type="submit" class="btn btn-ghost mt-2">Change Password</button>
+    </form>
+  </div>
+</div>

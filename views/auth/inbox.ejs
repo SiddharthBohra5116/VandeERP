@@ -1,0 +1,633 @@
+<%
+  layout = 'main';
+  title = 'Inbox & Chat';
+  subtitle = 'Exchange personal queries, guidance notes, and alerts with other academy members';
+  page = 'inbox';
+%>
+
+<div class="inbox-container">
+  <!-- Contacts Panel (Left) -->
+  <div class="inbox-contacts-panel">
+    <div class="contacts-search-box">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" id="contactSearchInput" placeholder="Search contacts by name or role...">
+    </div>
+    <div class="contacts-list" id="contactsList">
+      <% if (contacts.length === 0) { %>
+        <div class="empty-contacts">
+          <p>No contacts available.</p>
+        </div>
+      <% } else { %>
+        <% contacts.forEach(c => { %>
+          <% 
+            const isSelected = selectedContact && selectedContact._id.toString() === c._id.toString(); 
+            const unreadCount = unreadMap[c._id.toString()] || 0;
+            const lastMsg = lastMessageMap[c._id.toString()];
+            
+            // Format time dynamically: e.g. "10:30 AM" or "Yesterday" or date
+            let lastMsgTime = '';
+            if (lastMsg) {
+              const msgDate = new Date(lastMsg.createdAt);
+              const today = new Date();
+              if (msgDate.toDateString() === today.toDateString()) {
+                lastMsgTime = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              } else {
+                lastMsgTime = msgDate.toLocaleDateString([], { day: 'numeric', month: 'short' });
+              }
+            }
+
+            let roleColor = 'var(--gold)';
+            if (c.role === 'admin') roleColor = '#3b82f6';
+            else if (c.role === 'teacher') roleColor = '#10b981';
+            else if (c.role === 'counsellor') roleColor = '#f59e0b';
+            else if (c.role === 'student') roleColor = '#8b5cf6';
+          %>
+          <a href="/auth/inbox?chat=<%= c._id %>" class="contact-item <%= isSelected ? 'active' : '' %>" data-name="<%= c.name.toLowerCase() %>" data-role="<%= c.role.toLowerCase() %>">
+            <div class="contact-avatar-wrapper">
+              <% if (c.profilePic) { %>
+                <img src="<%= c.profilePic %>" alt="<%= c.name %>" class="contact-avatar">
+              <% } else { %>
+                <%
+                  const initials = c.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                %>
+                <div class="contact-avatar-fallback" style="background-color: <%= roleColor %>15; color: <%= roleColor %>;">
+                  <%= initials %>
+                </div>
+              <% } %>
+              <% if (unreadCount > 0) { %>
+                <span class="unread-dot"></span>
+              <% } %>
+            </div>
+            <div class="contact-info">
+              <div class="contact-header">
+                <span class="contact-name"><%= c.name %></span>
+                <% if (lastMsg) { %>
+                  <span class="contact-time"><%= lastMsgTime %></span>
+                <% } %>
+              </div>
+              <div class="contact-meta-row">
+                <div class="contact-last-preview">
+                  <% if (lastMsg) { %>
+                    <%= lastMsg.senderMe ? 'You: ' : '' %><%= lastMsg.content %>
+                  <% } else { %>
+                    <span style="opacity: 0.5; font-style: italic;">No messages exchanged</span>
+                  <% } %>
+                </div>
+                <% if (unreadCount > 0) { %>
+                  <span class="unread-badge"><%= unreadCount %></span>
+                <% } %>
+              </div>
+            </div>
+          </a>
+        <% }) %>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Chat History Panel (Right) -->
+  <div class="inbox-chat-panel">
+    <% if (!selectedContact) { %>
+      <div class="chat-empty-state">
+        <div class="empty-icon">💬</div>
+        <h3>Select a conversation</h3>
+        <p>Choose a contact from the list on the left to start exchanging messages.</p>
+      </div>
+    <% } else { %>
+      <!-- Chat Header -->
+      <div class="chat-header-bar">
+        <div class="chat-header-info">
+          <% 
+            let roleColor = 'var(--gold)';
+            if (selectedContact.role === 'admin') roleColor = '#3b82f6';
+            else if (selectedContact.role === 'teacher') roleColor = '#10b981';
+            else if (selectedContact.role === 'counsellor') roleColor = '#f59e0b';
+            else if (selectedContact.role === 'student') roleColor = '#8b5cf6';
+          %>
+          <% if (selectedContact.profilePic) { %>
+            <img src="<%= selectedContact.profilePic %>" alt="<%= selectedContact.name %>" class="chat-header-avatar">
+          <% } else { %>
+            <%
+              const initials = selectedContact.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+            %>
+            <div class="chat-header-avatar-fallback" style="background-color: <%= roleColor %>15; color: <%= roleColor %>;">
+              <%= initials %>
+            </div>
+          <% } %>
+          <div>
+            <div class="chat-header-name"><%= selectedContact.name %></div>
+            <div class="chat-header-meta">
+              <span class="contact-role-badge" style="border-color: <%= roleColor %>20; color: <%= roleColor %>; background-color: <%= roleColor %>08; font-size: 10px; padding: 1px 6px;"><%= selectedContact.role %></span>
+              <% if (selectedContact.rollNumber) { %>
+                <span class="chat-header-roll"><%= selectedContact.rollNumber %></span>
+              <% } %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Go to Profile Redirection Button -->
+        <%
+          let profileUrl = null;
+          if (user.role === 'admin') {
+            if (selectedContact.role === 'student') profileUrl = `/admin/students/${selectedContact._id}`;
+            else if (selectedContact.role === 'teacher') profileUrl = `/admin/teachers/${selectedContact._id}`;
+            else if (selectedContact.role === 'counsellor') profileUrl = `/admin/counsellors/${selectedContact._id}`;
+          } else if (user.role === 'teacher' && selectedContact.role === 'student') {
+            profileUrl = `/teacher/students?search=${encodeURIComponent(selectedContact.name)}`;
+          } else if (user.role === 'counsellor' && selectedContact.role === 'student') {
+            profileUrl = `/counsellor/admissions?search=${encodeURIComponent(selectedContact.name)}`;
+          }
+        %>
+        <% if (profileUrl) { %>
+          <a href="<%= profileUrl %>" class="btn btn-ghost btn-sm header-profile-link" style="display: flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; text-decoration: none; font-size: 0.78rem; font-weight: 600; color: var(--text-sub); transition: background 0.2s;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>View Profile</span>
+          </a>
+        <% } %>
+      </div>
+
+      <!-- Messages Window -->
+      <div class="chat-messages-window" id="chatMessagesWindow">
+        <% if (chatHistory.length === 0) { %>
+          <div class="chat-history-empty">
+            <p>No messages exchanged yet. Send a message to start the conversation!</p>
+          </div>
+        <% } else { %>
+          <% chatHistory.forEach(msg => { %>
+            <% 
+              const isMe = msg.sender._id.toString() === user._id.toString();
+              const formattedTime = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const formattedDate = new Date(msg.createdAt).toLocaleDateString([], { day: 'numeric', month: 'short' });
+            %>
+            <div class="message-row <%= isMe ? 'me' : 'them' %>">
+              <div class="message-bubble">
+                <div class="message-content"><%= msg.content %></div>
+                <div class="message-time">
+                  <%= formattedDate %> &middot; <%= formattedTime %>
+                  <% if (isMe) { %>
+                    <span class="read-status <%= msg.read ? 'read' : '' %>">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </span>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+
+      <!-- Message Form -->
+      <form action="/auth/inbox/send" method="POST" class="chat-input-bar">
+        <input type="hidden" name="recipientId" value="<%= selectedContact._id %>">
+        <textarea name="content" id="chatMessageInput" placeholder="Type a message here... (Press Enter to send)" required></textarea>
+        <button type="submit" class="btn btn-primary send-btn" aria-label="Send Message">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          <span>Send</span>
+        </button>
+      </form>
+    <% } %>
+  </div>
+</div>
+
+<style>
+.inbox-container {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: calc(100vh - 130px);
+  min-height: 520px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 12px);
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Contacts Panel */
+.inbox-contacts-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-right: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.01);
+  overflow: hidden;
+}
+
+.contacts-search-box {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.contacts-search-box input {
+  width: 100%;
+  padding: 0.5rem 0.75rem 0.5rem 2.2rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 6px);
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.contacts-search-box input:focus {
+  border-color: var(--gold);
+}
+
+.contacts-search-box .search-icon {
+  position: absolute;
+  left: 1.6rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.contacts-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+/* Custom Scrollbar for premium feel */
+.contacts-list::-webkit-scrollbar, .chat-messages-window::-webkit-scrollbar {
+  width: 6px;
+}
+.contacts-list::-webkit-scrollbar-thumb, .chat-messages-window::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+.contacts-list::-webkit-scrollbar-track, .chat-messages-window::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--radius, 6px);
+  text-decoration: none;
+  color: var(--text);
+  transition: background 0.2s;
+  margin-bottom: 0.25rem;
+}
+
+.contact-item:hover {
+  background: var(--bg-input);
+}
+
+.contact-item.active {
+  background: var(--bg-input);
+  border-left: 3px solid var(--gold);
+}
+
+.contact-avatar-wrapper {
+  position: relative;
+}
+
+.contact-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.contact-avatar-fallback {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.unread-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  background: var(--error, #ef4444);
+  border: 2px solid var(--bg-card);
+  border-radius: 50%;
+}
+
+.contact-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.contact-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.15rem;
+}
+
+.contact-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contact-time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.contact-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.contact-last-preview {
+  flex: 1;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.unread-badge {
+  background: var(--gold);
+  color: #000;
+  font-weight: 700;
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* Chat Panel */
+.inbox-chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-card);
+  overflow: hidden;
+}
+
+.chat-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.chat-empty-state .empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.3;
+}
+
+.chat-header-bar {
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.chat-header-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.chat-header-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.chat-header-avatar-fallback {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.chat-header-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.chat-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+
+.chat-header-roll {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.chat-messages-window {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  background: rgba(0, 0, 0, 0.015);
+}
+
+.chat-history-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 2rem;
+  margin: auto;
+}
+
+.message-row {
+  display: flex;
+  width: 100%;
+}
+
+.message-row.me {
+  justify-content: flex-end;
+}
+
+.message-row.them {
+  justify-content: flex-start;
+}
+
+.message-bubble {
+  max-width: 65%;
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  position: relative;
+  line-height: 1.4;
+  font-size: 0.85rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.message-row.me .message-bubble {
+  background: var(--gold);
+  color: #000;
+  border-bottom-right-radius: 2px;
+}
+
+.message-row.them .message-bubble {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 2px;
+}
+
+.message-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.message-time {
+  font-size: 0.65rem;
+  margin-top: 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.message-row.me .message-time {
+  color: rgba(0,0,0,0.45);
+}
+
+.message-row.them .message-time {
+  color: var(--text-muted);
+}
+
+.read-status {
+  display: inline-flex;
+  color: rgba(0,0,0,0.3);
+}
+
+.read-status.read {
+  color: #1d4ed8;
+}
+
+/* Chat Input */
+.chat-input-bar {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 0.75rem;
+  background: var(--bg-card);
+  align-items: center;
+}
+
+.chat-input-bar textarea {
+  flex: 1;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 6px);
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 0.88rem;
+  resize: none;
+  height: 42px;
+  outline: none;
+  line-height: 1.35;
+  transition: border-color 0.2s;
+  font-family: inherit;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.chat-input-bar textarea:focus {
+  border-color: var(--gold);
+}
+
+.send-btn {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 1.25rem;
+}
+
+.header-profile-link:hover {
+  background: var(--bg-input);
+  color: var(--text) !important;
+}
+
+@media (max-width: 900px) {
+  .inbox-container {
+    grid-template-columns: 1fr;
+    height: calc(100vh - 120px);
+  }
+  .inbox-contacts-panel {
+    display: <%= selectedContact ? 'none' : 'flex' %>;
+  }
+  .inbox-chat-panel {
+    display: <%= selectedContact ? 'flex' : 'none' %>;
+  }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // 1. Search Contacts Filter
+  const searchInput = document.getElementById('contactSearchInput');
+  const contactItems = document.querySelectorAll('.contact-item');
+
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase().trim();
+      contactItems.forEach(item => {
+        const name = item.getAttribute('data-name');
+        const role = item.getAttribute('data-role');
+        if (name.includes(term) || role.includes(term)) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    });
+  }
+
+  // 2. Scroll Chat Window to Bottom
+  const chatWindow = document.getElementById('chatMessagesWindow');
+  if (chatWindow) {
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  // 3. Submit Textarea on Enter Key (Shift+Enter for new line)
+  const chatInput = document.getElementById('chatMessageInput');
+  if (chatInput) {
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (chatInput.value.trim()) {
+          chatInput.form.submit();
+        }
+      }
+    });
+  }
+});
+</script>

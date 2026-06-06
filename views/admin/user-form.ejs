@@ -1,0 +1,213 @@
+<%
+  layout = 'main';
+  const isEdit = !!target;
+  const activeRole = typeof defaultRole !== 'undefined' ? defaultRole : (isEdit ? target.role : '');
+  const roleLabel = activeRole ? activeRole.charAt(0).toUpperCase() + activeRole.slice(1) : 'User';
+  title = isEdit ? `Edit ${roleLabel}` : `Add ${roleLabel}`;
+  subtitle = isEdit ? `Modify profile details for ${target.name}` : `Create new credentials for academy ${roleLabel ? roleLabel.toLowerCase() + 's' : 'students or staff'}`;
+  page = activeRole === 'student' ? 'students' : activeRole === 'teacher' ? 'teachers' : activeRole === 'counsellor' ? 'counsellors' : 'users';
+%>
+
+<div class="card" style="max-width: 700px; margin: 0 auto;">
+  <form action="<%= isEdit ? '/admin/users/' + target._id + '/edit' : '/admin/users/create' %>" method="POST" enctype="multipart/form-data">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="name">Full Name</label>
+        <input type="text" id="name" name="name" class="form-control" value="<%= isEdit ? target.name : '' %>" placeholder="e.g. John Doe" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="email">Email Address</label>
+        <input type="email" id="email" name="email" class="form-control" value="<%= isEdit ? target.email : '' %>" placeholder="e.g. john@example.com" required>
+      </div>
+    </div>
+
+    <% if (!isEdit) { %>
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input type="password" id="password" name="password" class="form-control" placeholder="Minimum 6 characters" minlength="6" required>
+      </div>
+    <% } %>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="role">User Role</label>
+        <select id="role" name="role" class="form-control" required <%= isEdit ? 'disabled' : '' %>>
+          <option value="" disabled <%= !activeRole ? 'selected' : '' %>>Select Role</option>
+          <option value="student" <%= activeRole === 'student' ? 'selected' : '' %>>Student</option>
+          <option value="teacher" <%= activeRole === 'teacher' ? 'selected' : '' %>>Teacher</option>
+          <option value="counsellor" <%= activeRole === 'counsellor' ? 'selected' : '' %>>Counsellor</option>
+          <option value="admin" <%= activeRole === 'admin' ? 'selected' : '' %>>Admin</option>
+        </select>
+        <% if (isEdit) { %>
+          <!-- Include hidden input to submit role because select is disabled -->
+          <input type="hidden" name="role" value="<%= target.role %>">
+        <% } %>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="phone">Phone Number</label>
+        <input type="tel" id="phone" name="phone" class="form-control" value="<%= isEdit ? target.phone : '' %>" placeholder="10-digit mobile number">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="status">Account Status</label>
+      <select id="status" name="status" class="form-control" required>
+        <option value="active" <%= (isEdit && target.status === 'active') || !isEdit ? 'selected' : '' %>>Active</option>
+        <option value="inactive" <%= (isEdit && target.status === 'inactive') ? 'selected' : '' %>>Inactive</option>
+        <option value="drop" <%= (isEdit && target.status === 'drop') ? 'selected' : '' %>>Drop</option>
+        <option value="complete" <%= (isEdit && target.status === 'complete') ? 'selected' : '' %>>Complete</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="profilePic">Profile Picture</label>
+      <input type="file" id="profilePic" name="profilePic" class="form-control" accept="image/*">
+      <% if (isEdit && target.profilePic) { %>
+        <div class="form-hint">Current: <a href="<%= target.profilePic %>" target="_blank">View Uploaded Image</a></div>
+      <% } %>
+    </div>
+
+    <!-- STUDENT SPECIFIC FIELDS -->
+    <div id="student-fields" style="display: none; border-top: 1px solid var(--border); padding-top: 1.25rem; margin-top: 1.25rem;">
+      <div class="section-title">Student Specific Information</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="course">Course</label>
+          <select id="course" name="course" class="form-control">
+            <option value="" disabled selected>Select Course</option>
+            <option value="Video Editing" <%= (isEdit && target.course === 'Video Editing') ? 'selected' : '' %>>Video Editing</option>
+            <option value="Digital Marketing" <%= (isEdit && target.course === 'Digital Marketing') ? 'selected' : '' %>>Digital Marketing</option>
+            <option value="Both" <%= (isEdit && target.course === 'Both') ? 'selected' : '' %>>Both (Video Editing & Digital Marketing)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="batch">Batch Title</label>
+          <input type="text" id="batch" name="batch" class="form-control" value="<%= isEdit ? target.batch : '' %>" placeholder="e.g. Morning 10AM">
+        </div>
+      </div>
+      
+      <% if (!isEdit) { %>
+        <div class="form-group">
+          <label class="form-label" for="fees_total">Total Fees (INR)</label>
+          <input type="number" id="fees_total" name="fees_total" class="form-control" placeholder="e.g. 25000">
+          <div class="form-hint">This will automatically open a fee collection account for the student.</div>
+        </div>
+      <% } %>
+
+      <!-- Parent/Guardian Details -->
+      <div style="border-top: 1px dashed var(--border); margin-top: 1rem; padding-top: 1rem;">
+        <div style="font-size: 0.75rem; color: var(--gold); text-transform: uppercase; font-weight: 700; margin-bottom: 0.75rem;">Parent / Guardian Information</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="fatherName">Father's Name</label>
+            <input type="text" id="fatherName" name="fatherName" class="form-control" value="<%= isEdit ? target.fatherName : '' %>" placeholder="Father's full name">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="motherName">Mother's Name</label>
+            <input type="text" id="motherName" name="motherName" class="form-control" value="<%= isEdit ? target.motherName : '' %>" placeholder="Mother's full name">
+          </div>
+        </div>
+        <div class="form-row" style="margin-top: 0.75rem;">
+          <div class="form-group">
+            <label class="form-label" for="guardianPhone">Guardian's Phone</label>
+            <input type="tel" id="guardianPhone" name="guardianPhone" class="form-control" value="<%= isEdit ? target.guardianPhone : '' %>" placeholder="Guardian contact number">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="guardianRelation">Relationship</label>
+            <input type="text" id="guardianRelation" name="guardianRelation" class="form-control" value="<%= isEdit ? target.guardianRelation : '' %>" placeholder="e.g. Father, Mother, Uncle">
+          </div>
+        </div>
+      </div>
+
+      <!-- Extended Profile Fields -->
+      <div style="border-top: 1px dashed var(--border); margin-top: 1rem; padding-top: 1rem;">
+        <div style="font-size: 0.75rem; color: var(--gold); text-transform: uppercase; font-weight: 700; margin-bottom: 0.75rem;">Extended Profile Information</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="dob">Date of Birth</label>
+            <input type="date" id="dob" name="dob" class="form-control" value="<%= isEdit && target.dob ? new Date(target.dob).toISOString().split('T')[0] : '' %>">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="highestQualification">Highest Qualification</label>
+            <input type="text" id="highestQualification" name="highestQualification" class="form-control" value="<%= isEdit ? target.highestQualification : '' %>" placeholder="e.g. Higher Secondary, BCA Graduate">
+          </div>
+        </div>
+        <div class="form-row" style="margin-top: 0.75rem;">
+          <div class="form-group">
+            <label class="form-label" for="referralSource">Referral / Lead Source</label>
+            <input type="text" id="referralSource" name="referralSource" class="form-control" value="<%= isEdit ? target.referralSource : '' %>" placeholder="e.g. Google Ads, Instagram, Walk-in">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="socialHandle">Social Handle / Portfolio Link</label>
+            <input type="text" id="socialHandle" name="socialHandle" class="form-control" value="<%= isEdit ? target.socialHandle : '' %>" placeholder="e.g. behance.net/username or @username">
+          </div>
+        </div>
+        <div class="form-row" style="margin-top: 0.75rem;">
+          <div class="form-group" style="flex: 2;">
+            <label class="form-label" for="address">Permanent Address</label>
+            <input type="text" id="address" name="address" class="form-control" value="<%= isEdit ? target.address : '' %>" placeholder="Permanent home address">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="city">City</label>
+            <input type="text" id="city" name="city" class="form-control" value="<%= isEdit ? target.city : '' %>" placeholder="e.g. New Delhi">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEACHER SPECIFIC FIELDS -->
+    <div id="teacher-fields" style="display: none; border-top: 1px solid var(--border); padding-top: 1.25rem; margin-top: 1.25rem;">
+      <div class="section-title">Teacher Specific Information</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="subject">Teaching Subject</label>
+          <input type="text" id="subject" name="subject" class="form-control" value="<%= isEdit ? target.subject : '' %>" placeholder="e.g. Video Production">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="qualification">Qualifications</label>
+          <input type="text" id="qualification" name="qualification" class="form-control" value="<%= isEdit ? target.qualification : '' %>" placeholder="e.g. B.Voc in Film Editing, 5+ Yrs Exp">
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary"><%= isEdit ? 'Update User' : 'Create User' %></button>
+      <a href="<%= activeRole ? '/admin/' + activeRole + 's' : '/admin/dashboard' %>" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  const roleSelect = document.getElementById('role');
+  const studentFields = document.getElementById('student-fields');
+  const teacherFields = document.getElementById('teacher-fields');
+  
+  const courseInput = document.getElementById('course');
+  const batchInput = document.getElementById('batch');
+  const subjectInput = document.getElementById('subject');
+  const qualificationInput = document.getElementById('qualification');
+
+  function toggleRoleFields() {
+    const role = roleSelect.value;
+    if (role === 'student') {
+      studentFields.style.display = 'block';
+      teacherFields.style.display = 'none';
+      courseInput.setAttribute('required', 'required');
+    } else if (role === 'teacher') {
+      studentFields.style.display = 'none';
+      teacherFields.style.display = 'block';
+      courseInput.removeAttribute('required');
+    } else {
+      studentFields.style.display = 'none';
+      teacherFields.style.display = 'none';
+      courseInput.removeAttribute('required');
+    }
+  }
+
+  roleSelect.addEventListener('change', toggleRoleFields);
+  
+  // Call once on page load to initialize
+  toggleRoleFields();
+</script>

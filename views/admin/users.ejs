@@ -1,0 +1,209 @@
+<%
+  layout = 'main';
+  const roleName = typeof roleActive !== 'undefined' ? roleActive.charAt(0).toUpperCase() + roleActive.slice(1) : 'User';
+  title = typeof roleActive !== 'undefined' ? `Manage ${roleName}s` : 'Manage Users';
+  subtitle = typeof roleActive !== 'undefined' ? `Create and manage credentials for academy ${roleActive}s` : 'Create and manage credentials for students, teachers, and counsellors';
+  page = typeof page !== 'undefined' ? page : 'users';
+%>
+
+<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+  <form method="GET" action="<%= typeof roleActive !== 'undefined' ? '/admin/' + roleActive + 's' : '/admin/users' %>" class="filter-bar" style="margin: 0;">
+    <input type="text" name="search" class="form-control" placeholder="Search..." value="<%= filter.search || '' %>">
+    
+    <% if (typeof roleActive === 'undefined') { %>
+      <select name="role" class="form-control">
+        <option value="">All Roles</option>
+        <option value="student" <%= filter.role === 'student' ? 'selected' : '' %>>Student</option>
+        <option value="teacher" <%= filter.role === 'teacher' ? 'selected' : '' %>>Teacher</option>
+        <option value="counsellor" <%= filter.role === 'counsellor' ? 'selected' : '' %>>Counsellor</option>
+        <option value="admin" <%= filter.role === 'admin' ? 'selected' : '' %>>Admin</option>
+      </select>
+    <% } %>
+
+    <% if (typeof roleActive !== 'undefined' && roleActive === 'student') { %>
+      <select name="attendance" class="form-control">
+        <option value="">All Attendance Tiers</option>
+        <option value="low" <%= filter.attendance === 'low' ? 'selected' : '' %>>Low (< 75%)</option>
+        <option value="medium" <%= filter.attendance === 'medium' ? 'selected' : '' %>>Medium (75% - 85%)</option>
+        <option value="high" <%= filter.attendance === 'high' ? 'selected' : '' %>>High (> 85%)</option>
+        <option value="not_marked_today" <%= filter.attendance === 'not_marked_today' ? 'selected' : '' %>>Not Marked Today</option>
+      </select>
+    <% } %>
+    
+    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+    <a href="<%= typeof roleActive !== 'undefined' ? '/admin/' + roleActive + 's' : '/admin/users' %>" class="btn btn-ghost btn-sm">Clear</a>
+    
+    <a href="/admin/users/create<%= typeof roleActive !== 'undefined' ? '?role=' + roleActive : '' %>" class="btn btn-primary btn-sm" style="margin-left: auto;">+ Add <%= roleName %></a>
+  </form>
+</div>
+
+<div id="results-container" class="card">
+  <% if (users.length === 0) { %>
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      <p>No users found matching the filter criteria.</p>
+    </div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Role</th>
+            <th>Phone</th>
+            <th>Role Specifics</th>
+            <% if (typeof roleActive !== 'undefined' && roleActive === 'student') { %>
+              <th>Attendance</th>
+            <% } %>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% users.forEach(u => { %>
+            <tr>
+              <td>
+                <div class="d-flex align-center gap-2">
+                  <div class="avatar" style="width:34px; height:34px; border-radius:8px;">
+                    <% if (u.profilePic) { %>
+                      <img src="<%= u.profilePic %>" alt="<%= u.name %>">
+                    <% } else { %>
+                      <%= u.initials %>
+                    <% } %>
+                  </div>
+                  <div>
+                    <div class="td-name">
+                      <% if (u.role === 'student') { %>
+                        <a href="/admin/students/<%= u._id %>" style="color:var(--gold);"><%= u.name %></a>
+                      <% } else if (u.role === 'teacher') { %>
+                        <a href="/admin/teachers/<%= u._id %>" style="color:var(--gold);"><%= u.name %></a>
+                      <% } else if (u.role === 'counsellor') { %>
+                        <a href="/admin/counsellors/<%= u._id %>" style="color:var(--gold);"><%= u.name %></a>
+                      <% } else { %>
+                        <%= u.name %>
+                      <% } %>
+                    </div>
+                    <div class="td-muted text-sm"><%= u.email %></div>
+                    <% if (u.lastLoginAt) { %>
+                      <% 
+                        const timeDiff = new Date() - new Date(u.lastLoginAt);
+                        const mins = Math.floor(timeDiff / (1000 * 60));
+                        const hrs = Math.floor(mins / 60);
+                        const days = Math.floor(hrs / 24);
+                        let timeStr = 'Just now';
+                        if (days > 0) timeStr = `${days} day${days > 1 ? 's' : ''} ago`;
+                        else if (hrs > 0) timeStr = `${hrs} hr${hrs > 1 ? 's' : ''} ago`;
+                        else if (mins > 0) timeStr = `${mins} min${mins > 1 ? 's' : ''} ago`;
+                      %>
+                      <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 2px;">Active: <%= timeStr %></div>
+                    <% } else { %>
+                      <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 2px;">Active: Never</div>
+                    <% } %>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="badge <%= u.role === 'admin' ? 'badge-gold' : u.role === 'teacher' ? 'badge-blue' : u.role === 'counsellor' ? 'badge-orange' : 'badge-grey' %>">
+                  <%= u.role %>
+                </span>
+              </td>
+              <td class="mono text-sm"><%= u.phone || '—' %></td>
+              <td>
+                <% if (u.role === 'student') { %>
+                  <div class="text-sm">Course: <strong><%= u.course %></strong></div>
+                  <div class="td-muted text-xs">Batch: <%= u.batch || '—' %></div>
+                <% } else if (u.role === 'teacher') { %>
+                  <div class="text-sm">Subject: <strong><%= u.subject || '—' %></strong></div>
+                  <div class="td-muted text-xs">Qual: <%= u.qualification || '—' %></div>
+                <% } else { %>
+                  <span class="td-muted">—</span>
+                <% } %>
+              </td>
+              <% if (typeof roleActive !== 'undefined' && roleActive === 'student') { %>
+                <td>
+                  <% 
+                    const pct = typeof u.attendancePct !== 'undefined' ? u.attendancePct : 100;
+                    const pctBadge = pct < 75 ? 'badge-red' : pct >= 85 ? 'badge-green' : 'badge-gold';
+                  %>
+                  <span class="badge <%= pctBadge %>" style="font-family: var(--mono);"><%= pct %>%</span>
+                  <% if (!u.isMarkedToday) { %>
+                    <span class="badge badge-grey" style="font-size: 8px; padding: 1px 3px; display: block; margin-top: 4px; width: max-content;">Unmarked today</span>
+                  <% } %>
+                </td>
+              <% } %>
+              <td>
+                <% 
+                  const statusVal = u.status || (u.isActive ? 'active' : 'inactive');
+                  const statusBadgeClass = {
+                    active: 'badge-green',
+                    inactive: 'badge-grey',
+                    drop: 'badge-red',
+                    complete: 'badge-gold'
+                  }[statusVal];
+                %>
+                <form action="/admin/users/<%= u._id %>/toggle" method="POST" style="margin:0; padding:0;">
+                  <button type="submit" class="badge <%= statusBadgeClass %>" style="border: none; cursor: pointer; padding: 0.25rem 0.55rem; font-family: inherit;" title="Click to toggle status">
+                    <%= statusVal %>
+                  </button>
+                </form>
+              </td>
+              <td>
+                <div class="d-flex gap-1">
+                  <a href="/admin/users/<%= u._id %>/edit" class="btn btn-ghost btn-xs">Edit</a>
+                  <button class="btn btn-ghost btn-xs" onclick="triggerPasswordReset('<%= u._id %>', '<%= u.name %>')">
+                    Reset Password
+                  </button>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<!-- Modal Overlay for Password Reset -->
+<div id="resetModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Reset Password</div>
+      <button class="modal-close" onclick="closeResetModal()">&times;</button>
+    </div>
+    <form id="resetForm" method="POST">
+      <p style="font-size:13px; color:var(--text-sub); margin-bottom:1.25rem;">
+        Set a new password for <strong id="resetUserName">User</strong>:
+      </p>
+      <div class="form-group">
+        <label class="form-label" for="password">New Password</label>
+        <input type="password" id="password" name="password" class="form-control" placeholder="Min. 6 characters" minlength="6" required>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeResetModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Save New Password</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function triggerPasswordReset(userId, userName) {
+    const form = document.getElementById('resetForm');
+    form.action = '/admin/users/' + userId + '/reset-password';
+    document.getElementById('resetUserName').innerText = userName;
+    document.getElementById('resetModal').classList.add('open');
+  }
+
+  function closeResetModal() {
+    document.getElementById('resetModal').classList.remove('open');
+    document.getElementById('password').value = '';
+  }
+
+  // Close modal when clicking on layout background
+  document.getElementById('resetModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeResetModal();
+    }
+  });
+</script>
+<script src="/js/instant-filter.js"></script>

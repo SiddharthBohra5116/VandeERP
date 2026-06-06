@@ -1,0 +1,49 @@
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Course</th>
+        <th>Current Status</th>
+        <th>Follow-up Date</th>
+        <th>Last Note</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% leads.forEach(lead => { %>
+        <%
+          const statusBadge = {
+            new: 'badge-orange',
+            contacted: 'badge-blue',
+            interested: 'badge-gold',
+            converted: 'badge-green',
+            lost: 'badge-red'
+          }[lead.status] || 'badge-grey';
+
+          const lastNote = lead.followUpHistory.length > 0
+            ? lead.followUpHistory[lead.followUpHistory.length - 1].note
+            : null;
+        %>
+        <tr>
+          <td><strong><%= lead.name %></strong></td>
+          <td class="td-mono">
+            <a href="tel:<%= lead.phone %>" style="color:var(--gold); font-weight:600;"><%= lead.phone %></a>
+          </td>
+          <td><span class="badge badge-orange"><%= lead.course %></span></td>
+          <td><span class="badge <%= statusBadge %>"><%= lead.status %></span></td>
+          <td class="td-mono" style="color:var(--red); font-weight:600;">
+            <%= new Date(lead.followUpDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'}) %>
+          </td>
+          <td class="td-muted text-sm" style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            <%= lastNote ? lastNote : '—' %>
+          </td>
+          <td>
+            <a href="/counsellor/leads/<%= lead._id %>" class="btn btn-primary btn-xs">Follow Up</a>
+          </td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,73 @@
+<%
+  layout = 'main';
+  title = 'My Reports';
+  subtitle = 'Overview of your grade sheets, test scores, and instructor feedback';
+  page = 'progress';
+%>
+
+<div style="display:flex; flex-direction:column; gap:1.25rem;">
+  <% if (progressRecords.length === 0) { %>
+    <div class="card">
+      <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <p>No academic progress reports or test scores have been published for your profile yet.</p>
+      </div>
+    </div>
+  <% } else { %>
+    <% progressRecords.forEach(record => { %>
+      <div class="card">
+        <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+          <div>
+            <h3 style="font-family:var(--font-display); font-size:1.15rem; font-weight:700;"><%= record.subject %></h3>
+            <div class="td-muted text-sm">Instructor: <%= record.teacher ? record.teacher.name : 'Faculty' %></div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted); margin-bottom:2px;">Overall Average Score</div>
+            <div style="font-family:var(--font-display); font-size:1.5rem; font-weight:800; color:var(--gold); line-height:1;"><%= record.overallScore %>%</div>
+          </div>
+        </div>
+
+        <div class="two-col" style="grid-template-columns: 3fr 2fr; gap:1.25rem;">
+          <!-- Test results details -->
+          <div>
+            <div class="section-title">Log of Test Results</div>
+            <% if (record.testResults.length === 0) { %>
+              <p class="td-muted text-sm" style="padding:10px 0;">No exams registered for this subject.</p>
+            <% } else { %>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Exam Name</th>
+                      <th>Marks</th>
+                      <th>Exam Date</th>
+                      <th>Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% record.testResults.forEach(test => { %>
+                      <tr>
+                        <td><strong><%= test.testName %></strong></td>
+                        <td class="mono fw-600 text-gold"><%= test.score %> / <%= test.totalMarks %></td>
+                        <td class="mono text-xs"><%= test.date %></td>
+                        <td class="text-sm"><%= test.remarks || '—' %></td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              </div>
+            <% } %>
+          </div>
+
+          <!-- Remarks card -->
+          <div style="background:var(--bg-hover); border:1px solid var(--border); padding:1rem; border-radius:var(--radius);">
+            <div class="section-title" style="margin-bottom:0.5rem;">Instructor's Remarks</div>
+            <p style="font-style:italic; font-size:13px; line-height:1.5; color:var(--text-sub);">
+              "<%= record.teacherRemark || 'No general comments or feedback posted yet.' %>"
+            </p>
+          </div>
+        </div>
+      </div>
+    <% }) %>
+  <% } %>
+</div>

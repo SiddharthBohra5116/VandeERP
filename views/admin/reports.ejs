@@ -1,0 +1,1151 @@
+<%
+  layout = 'main';
+  title = 'Reports & Analytics';
+  subtitle = 'Executive insights and operational analytics for cohorts, collections, conversion pipelines, and attendance';
+  page = 'reports';
+%>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Tabs Header -->
+<div class="card" style="padding: 0.5rem; margin-bottom: 1.5rem; border-color: var(--border);">
+  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; width: 100%;">
+    <a href="/admin/reports?tab=general" class="btn btn-sm <%= tab === 'general' ? 'btn-primary' : 'btn-ghost' %>">📊 General & Leads</a>
+    <a href="/admin/reports?tab=revenue" class="btn btn-sm <%= tab === 'revenue' ? 'btn-primary' : 'btn-ghost' %>">💰 Revenue Trends</a>
+    <a href="/admin/reports?tab=counsellors" class="btn btn-sm <%= tab === 'counsellors' ? 'btn-primary' : 'btn-ghost' %>">🎯 Counsellor KPIs</a>
+    <a href="/admin/reports?tab=attendance" class="btn btn-sm <%= tab === 'attendance' ? 'btn-primary' : 'btn-ghost' %>">👥 Batch Attendance</a>
+    <a href="/admin/reports?tab=batch_health" class="btn btn-sm <%= tab === 'batch_health' ? 'btn-primary' : 'btn-ghost' %>">🏥 Batch Health</a>
+    <a href="/admin/reports?tab=funnel_velocity" class="btn btn-sm <%= tab === 'funnel_velocity' ? 'btn-primary' : 'btn-ghost' %>">⚡ Funnel Velocity</a>
+    <a href="/admin/reports?tab=aging" class="btn btn-sm <%= tab === 'aging' ? 'btn-primary' : 'btn-ghost' %>">⏳ Fee Aging</a>
+    <a href="/admin/reports?tab=at_risk" class="btn btn-sm <%= tab === 'at_risk' ? 'btn-primary' : 'btn-ghost' %>">🚨 At-Risk Students</a>
+    <a href="/admin/reports?tab=teacher_load" class="btn btn-sm <%= tab === 'teacher_load' ? 'btn-primary' : 'btn-ghost' %>">👩‍🏫 Teacher Load</a>
+    
+    <a href="/admin/reports?tab=<%= tab %>&export=csv<%= batch ? '&batch=' + encodeURIComponent(batch) : '' %>" class="btn btn-sm btn-ghost" style="margin-left: auto; color: var(--gold); border: 1px solid var(--gold-border);">📥 Export CSV</a>
+  </div>
+</div>
+
+<!-- ==================== TAB: GENERAL & LEADS ==================== -->
+<% if (tab === 'general') { %>
+  <!-- Financial Highlights -->
+  <div class="stats-grid" style="margin-bottom: 1.5rem;">
+    <div class="stat-card gold">
+      <div class="stat-label">Total Fee Accounts</div>
+      <div class="stat-value"><%= feeStats.count %></div>
+      <div class="stat-sub">Registered student accounts</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Total Collection</div>
+      <div class="stat-value">₹<%= feeStats.totalRevenue.toLocaleString('en-IN') %></div>
+      <div class="stat-sub">Net revenue logged</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Total Outstandings</div>
+      <div class="stat-value">₹<%= feeStats.totalDue.toLocaleString('en-IN') %></div>
+      <div class="stat-sub">Accounts receivable due</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Leads Status Chart Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Leads Pipeline Status</div>
+      </div>
+      <div style="padding: 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 220px;">
+        <canvas id="leadStatusChart" style="max-height: 200px; max-width: 100%;"></canvas>
+      </div>
+      <% 
+        const statuses = ['new', 'contacted', 'interested', 'converted', 'lost'];
+        let totalLeadsCount = 0;
+        statuses.forEach(s => { totalLeadsCount += (leadsByStatus[s] || 0); });
+      %>
+      <div class="table-wrap" style="border-top: 1px solid var(--border);">
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th class="text-right">Queries Count</th>
+              <th class="text-right">Ratio %</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% statuses.forEach(s => { %>
+              <% 
+                const count = leadsByStatus[s] || 0;
+                const ratio = totalLeadsCount > 0 ? Math.round((count / totalLeadsCount) * 100) : 0;
+                const badgeClass = {
+                  new: 'badge-orange',
+                  contacted: 'badge-blue',
+                  interested: 'badge-yellow',
+                  converted: 'badge-green',
+                  lost: 'badge-red'
+                }[s] || 'badge-grey';
+              %>
+              <tr>
+                <td><span class="badge <%= badgeClass %>"><%= s %></span></td>
+                <td class="mono text-right fw-600"><%= count %></td>
+                <td class="mono text-right"><%= ratio %>%</td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Leads Traffic Channels Chart Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Leads Traffic Channels</div>
+      </div>
+      <div style="padding: 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 220px;">
+        <canvas id="leadSourceChart" style="max-height: 200px; max-width: 100%;"></canvas>
+      </div>
+      <% const sources = Object.entries(leadsBySource).sort((a, b) => b[1] - a[1]); %>
+      <% if (sources.length === 0) { %>
+        <div class="empty-state">
+          <p>No lead source details available.</p>
+        </div>
+      <% } else { %>
+        <div class="table-wrap" style="border-top: 1px solid var(--border);">
+          <table>
+            <thead>
+              <tr>
+                <th>Channel</th>
+                <th class="text-right">Volume</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% sources.forEach(([src, count]) => { %>
+                <tr>
+                  <td><strong><%= src %></strong></td>
+                  <td class="mono text-right text-gold fw-600"><%= count %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Cohorts Directory -->
+  <div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+      <div class="card-title">Enrolled Students Cohort Directory</div>
+    </div>
+    <% if (students.length === 0) { %>
+      <div class="empty-state">
+        <p>No active student registrations found.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Student Name</th>
+              <th>Batch Name</th>
+              <th>Course Program</th>
+              <th>Enrollment Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% students.forEach(s => { %>
+              <tr>
+                <td class="td-name"><%= s.name %></td>
+                <td><%= s.batch || '—' %></td>
+                <td><span class="badge badge-orange"><%= s.course %></span></td>
+                <td class="mono text-sm">
+                  <%= s.enrollmentDate ? new Date(s.enrollmentDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '—' %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+<!-- ==================== TAB: REVENUE TRENDS ==================== -->
+<% if (tab === 'revenue') { %>
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+      <div class="card-title">Revenue Target vs Actual Collections Chart</div>
+      <p class="td-muted text-sm">Visual analysis comparing Monthly Target Invoice totals (expected) against Actual Payments collected (received).</p>
+    </div>
+    <div style="padding: 1.5rem; min-height: 320px;">
+      <canvas id="revenueTrendsChart" style="max-height: 300px; width: 100%;"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Monthly Target vs Actual Collections Breakdown</div>
+    </div>
+    <% if (revenueData.length === 0) { %>
+      <div class="empty-state" style="padding: 3rem 1rem;">
+        <p>No billing or transaction records found to report.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Month (YYYY-MM)</th>
+              <th class="text-right">Target Collections (Invoice Net)</th>
+              <th class="text-right">Actual Collections (Payments)</th>
+              <th class="text-right">Collection Rate %</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% revenueData.forEach(r => { %>
+              <% 
+                const rate = r.target > 0 ? Math.round((r.actual / r.target) * 100) : 0;
+                let rateColor = 'var(--red)';
+                if (rate >= 90) rateColor = 'var(--green)';
+                else if (rate >= 50) rateColor = 'var(--gold)';
+              %>
+              <tr>
+                <td><strong class="mono"><%= r.month %></strong></td>
+                <td class="mono text-right fw-600">₹<%= r.target.toLocaleString('en-IN') %></td>
+                <td class="mono text-right text-gold fw-600">₹<%= r.actual.toLocaleString('en-IN') %></td>
+                <td class="mono text-right fw-700" style="color: <%= rateColor %>;"><%= rate %>%</td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+<!-- ==================== TAB: COUNSELLOR PERFORMANCE ==================== -->
+<% if (tab === 'counsellors') { %>
+  <div class="grid-2" style="margin-bottom: 1.5rem;">
+    <!-- Counsellor Conversion Volumes -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Counsellor Conversion Ratios</div>
+      </div>
+      <div style="padding: 1.25rem; min-height: 250px;">
+        <canvas id="counsellorConversionsChart" style="max-height: 230px; width: 100%;"></canvas>
+      </div>
+    </div>
+
+    <!-- Counsellor Speed -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Average Lead Conversion Time (Speed in Days)</div>
+      </div>
+      <div style="padding: 1.25rem; min-height: 250px;">
+        <canvas id="counsellorSpeedChart" style="max-height: 230px; width: 100%;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Counsellor Performance Analytics</div>
+      <p class="td-muted text-sm">Overview of team conversions, follow-ups logged, and conversion speed.</p>
+    </div>
+    <% if (counsellorPerformance.length === 0) { %>
+      <div class="empty-state" style="padding: 3rem 1rem;">
+        <p>No active counsellors found.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Counsellor</th>
+              <th class="text-right">Leads Assigned</th>
+              <th class="text-right">Follow-ups Logged</th>
+              <th class="text-right">Converted</th>
+              <th class="text-right">Lost</th>
+              <th class="text-right">Conversion Rate</th>
+              <th class="text-right">Avg Conversion Days</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% counsellorPerformance.forEach(c => { %>
+              <tr>
+                <td class="td-name">
+                  <%= c.counsellor.name %>
+                  <div class="td-muted text-xs"><%= c.counsellor.rollNumber %></div>
+                </td>
+                <td class="mono text-right"><%= c.total %></td>
+                <td class="mono text-right text-gold"><%= c.followUps %></td>
+                <td class="mono text-right text-green fw-600"><%= c.converted %></td>
+                <td class="mono text-right text-red"><%= c.lost %></td>
+                <td class="mono text-right fw-700 text-gold"><%= c.conversionRate %>%</td>
+                <td class="mono text-right"><%= c.avgDays %> days</td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+<!-- ==================== TAB: BATCH ATTENDANCE SUMMARY ==================== -->
+<% if (tab === 'attendance') { %>
+  <style>
+  .calendar-container {
+    margin-top: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  .calendar-header-day {
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--gold);
+    padding: 0.5rem 0;
+    text-transform: uppercase;
+    background: rgba(212, 175, 55, 0.05);
+    border-radius: 4px;
+    border: 1px solid rgba(212, 175, 55, 0.15);
+  }
+  .calendar-day-card {
+    min-height: 95px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.01);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  .calendar-day-card:hover {
+    border-color: var(--gold-border);
+    background: rgba(212, 175, 55, 0.05);
+    transform: translateY(-2px);
+  }
+  .calendar-day-card.active {
+    border-color: var(--gold);
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.3);
+    background: rgba(212, 175, 55, 0.08);
+  }
+  .calendar-day-card.holiday {
+    background: rgba(239, 68, 68, 0.06);
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+  .calendar-day-card.empty {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .day-num-lbl {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .day-pct-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    align-self: flex-end;
+  }
+  .pct-high {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--green);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .pct-low {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--red);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+  .pct-none {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .holiday-tag {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--red);
+    background: rgba(239, 68, 68, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 100%;
+    margin-top: 0.25rem;
+  }
+  .student-matrix-table th {
+    font-size: 0.75rem;
+    padding: 0.5rem 0.25rem;
+    text-align: center;
+    min-width: 30px;
+  }
+  .student-matrix-table td {
+    padding: 0.5rem 0.25rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+  }
+  .cell-status-p {
+    color: var(--green);
+    background: rgba(16, 185, 129, 0.15);
+    border-radius: 3px;
+    padding: 2px;
+    display: block;
+  }
+  .cell-status-a {
+    color: var(--red);
+    background: rgba(239, 68, 68, 0.15);
+    border-radius: 3px;
+    padding: 2px;
+    display: block;
+  }
+  .cell-status-none {
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+  </style>
+
+  <!-- Filter Bar -->
+  <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+    <form method="GET" action="/admin/reports" class="filter-bar" style="margin:0; display: flex; gap: 1rem; flex-wrap: wrap;">
+      <input type="hidden" name="tab" value="attendance">
+      
+      <div class="form-group" style="margin: 0; min-width: 200px; flex: 1;">
+        <label class="form-label" style="margin-bottom: 0.25rem;">Select Batch</label>
+        <select name="batch" class="form-control" style="padding: 0.45rem 0.75rem;">
+          <option value="">Choose Batch (Show Academy Overall in Calendar)...</option>
+          <% batches.forEach(b => { %>
+            <option value="<%= b %>" <%= batch === b ? 'selected' : '' %>><%= b %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin: 0; min-width: 150px;">
+        <label class="form-label" style="margin-bottom: 0.25rem;">Select Month</label>
+        <input type="month" name="month" class="form-control" style="padding: 0.45rem 0.75rem;" value="<%= selectedMonth %>" required>
+      </div>
+
+      <div style="display:flex; align-items:flex-end;">
+        <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.55rem 1.5rem;">Apply Filters</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Calendar Card -->
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <div class="card-title">Attendance Calendar: <%= batch ? batch : 'Academy Overall' %></div>
+        <p class="td-muted text-sm">Interactive monthly log. Percentage displays average student attendance rates per class session. Click any day block to view details.</p>
+      </div>
+      <div class="mono fw-600 text-gold" style="font-size: 1.1rem; text-transform: uppercase;">
+        <%= new Date(selectedMonth + '-02').toLocaleDateString('en-IN', {month: 'long', year: 'numeric'}) %>
+      </div>
+    </div>
+    <div style="padding: 1.25rem;">
+      <div class="calendar-grid">
+        <div class="calendar-header-day">Sun</div>
+        <div class="calendar-header-day">Mon</div>
+        <div class="calendar-header-day">Tue</div>
+        <div class="calendar-header-day">Wed</div>
+        <div class="calendar-header-day">Thu</div>
+        <div class="calendar-header-day">Fri</div>
+        <div class="calendar-header-day">Sat</div>
+
+        <!-- Preceding Blank Days -->
+        <% const firstDayOfWeek = calendarDays[0].dayOfWeek; %>
+        <% for(let i = 0; i < firstDayOfWeek; i++) { %>
+          <div class="calendar-day-card empty"></div>
+        <% } %>
+
+        <!-- Calendar Day Blocks -->
+        <% calendarDays.forEach(day => { %>
+          <div class="calendar-day-card <%= day.isHoliday ? 'holiday' : '' %>" 
+               data-date="<%= day.dateStr %>"
+               data-holiday="<%= day.isHoliday %>"
+               data-holiday-name="<%= day.holidayName %>">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
+              <span class="day-num-lbl"><%= day.dayNum %></span>
+              <% if (day.attendancePct !== null) { %>
+                <span class="day-pct-badge <%= day.attendancePct >= 75 ? 'pct-high' : 'pct-low' %>">
+                  <%= day.attendancePct %>%
+                </span>
+              <% } else { %>
+                <span class="day-pct-badge pct-none">—</span>
+              <% } %>
+            </div>
+            <% if (day.isHoliday) { %>
+              <div class="holiday-tag" title="Holiday: <%= day.holidayName %>">🎉 <%= day.holidayName %></div>
+            <% } %>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row of Grid Matrix + Click Details -->
+  <div class="grid-2" style="align-items: start; gap: 1.5rem; margin-bottom: 1.5rem;">
+    <!-- Click Details Panel -->
+    <div class="card" id="daily-attendance-detail">
+      <div class="card-header">
+        <div class="card-title" id="detail-date-header">Daily Attendance Log</div>
+        <p class="td-muted text-sm">Roster audit detail for the selected calendar date.</p>
+      </div>
+      <div style="padding: 1rem;">
+        <div id="detail-no-records" class="empty-state" style="padding: 3rem 1rem;">
+          Select a marked date block on the calendar above to view student roster details.
+        </div>
+        <div class="table-wrap" id="detail-table-wrap" style="display: none;">
+          <table>
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Status</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody id="detail-table-body">
+              <!-- Dynamically populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Student Grid matrix -->
+    <% if (batch) { %>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Cohort Student Attendance Matrix: <%= batch %></div>
+          <p class="td-muted text-sm">Monthly grid (skipping holidays). Showing Present/Late (<span class="text-green fw-700">P</span>), Absent (<span class="text-red fw-700">A</span>), or Not Marked (<span class="text-muted">—</span>).</p>
+        </div>
+        <% if (studentGrid.length === 0) { %>
+          <div class="empty-state" style="padding: 3rem 1rem;">
+            No student enrollments found in batch <%= batch %>.
+          </div>
+        <% } else { %>
+          <div class="table-wrap" style="max-height: 450px; overflow: auto;">
+            <table class="student-matrix-table">
+              <thead>
+                <tr>
+                  <th style="text-align: left; position: sticky; left: 0; background: var(--card-bg); z-index: 2; min-width: 120px;">Student</th>
+                  <% gridDates.forEach(dateStr => { %>
+                    <th><%= Number(dateStr.slice(8)) %></th>
+                  <% }) %>
+                </tr>
+              </thead>
+              <tbody>
+                <% studentGrid.forEach(row => { %>
+                  <tr>
+                    <td style="text-align: left; position: sticky; left: 0; background: var(--card-bg); z-index: 2; font-weight: 600;" class="td-name">
+                      <%= row.name %>
+                    </td>
+                    <% gridDates.forEach(dateStr => { %>
+                      <% 
+                        const status = row.attendanceByDate[dateStr];
+                      %>
+                      <td>
+                        <% if (status === 'present' || status === 'late') { %>
+                          <span class="cell-status-p" title="<%= dateStr %>: <%= status.toUpperCase() %>">P</span>
+                        <% } else if (status === 'absent') { %>
+                          <span class="cell-status-a" title="<%= dateStr %>: ABSENT">A</span>
+                        <% } else { %>
+                          <span class="cell-status-none">—</span>
+                        <% } %>
+                      </td>
+                    <% }) %>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
+    <% } else { %>
+      <div class="card">
+        <div class="empty-state" style="padding: 4rem 1rem;">
+          Select a batch from the filter dropdown to unlock student-level daily matrix grids.
+        </div>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Attendance Rate Chart (only if batch is selected) -->
+  <% if (batch && attendanceSummary && attendanceSummary.length > 0) { %>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Batch Student Attendance Overview Comparison: <%= batch %></div>
+        <p class="td-muted text-sm">Historical cohort overall attendance rate vs min 75% standard.</p>
+      </div>
+      <div style="padding: 1.5rem; min-height: 320px;">
+        <canvas id="attendanceChart" style="max-height: 300px; width: 100%;"></canvas>
+      </div>
+    </div>
+  <% } %>
+
+  <!-- JSON Data Store for client-side calendar interactions -->
+  <script id="monthly-attendance-data" type="application/json"><%- JSON.stringify(monthlyAttendanceRecords || []) %></script>
+  
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const dayCards = document.querySelectorAll('.calendar-day-card:not(.empty)');
+    const detailSection = document.getElementById('daily-attendance-detail');
+    const detailDateHeader = document.getElementById('detail-date-header');
+    const detailTableBody = document.getElementById('detail-table-body');
+    const noRecordsMsg = document.getElementById('detail-no-records');
+    const tableWrap = document.getElementById('detail-table-wrap');
+
+    let attendanceRecords = [];
+    try {
+      const rawData = document.getElementById('monthly-attendance-data').textContent;
+      attendanceRecords = JSON.parse(rawData);
+    } catch(e) {
+      console.error("Failed to parse attendance records:", e);
+    }
+
+    dayCards.forEach(card => {
+      card.addEventListener('click', () => {
+        dayCards.forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+
+        const dateStr = card.getAttribute('data-date');
+        const isHoliday = card.getAttribute('data-holiday') === 'true';
+        const holidayName = card.getAttribute('data-holiday-name');
+
+        const dateObj = new Date(dateStr);
+        const formattedDate = dateObj.toLocaleDateString('en-IN', {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        });
+        detailDateHeader.textContent = `Daily Log: ${formattedDate}` + (isHoliday ? ` (Holiday: ${holidayName})` : '');
+
+        const filtered = attendanceRecords.filter(r => r.date === dateStr);
+
+        if (filtered.length === 0) {
+          tableWrap.style.display = 'none';
+          noRecordsMsg.style.display = 'block';
+          noRecordsMsg.textContent = isHoliday 
+            ? `This day was a scheduled holiday (${holidayName}). No classes conducted.`
+            : 'No attendance records logged for this calendar date.';
+        } else {
+          noRecordsMsg.style.display = 'none';
+          tableWrap.style.display = 'block';
+          detailTableBody.innerHTML = '';
+
+          filtered.forEach(rec => {
+            const studentName = rec.student?.name || 'Unknown Student';
+            const status = rec.status.toUpperCase();
+            const badgeClass = status === 'PRESENT' || status === 'LATE' ? 'badge-green' : 'badge-red';
+            const note = rec.note || '—';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td class="td-name">${studentName}</td>
+              <td><span class="badge ${badgeClass}">${status}</span></td>
+              <td>${note}</td>
+            `;
+            detailTableBody.appendChild(tr);
+          });
+        }
+      });
+    });
+
+    // Auto-select latest day card with marked attendance or first day card
+    if (dayCards.length > 0) {
+      let initialCard = null;
+      // Try to find today
+      const todayStr = new Date().toLocaleDateString('en-CA', {timeZone: 'Asia/Kolkata'});
+      initialCard = Array.from(dayCards).find(c => c.getAttribute('data-date') === todayStr);
+
+      if (!initialCard) {
+        // Find latest day card with attendance rate badge
+        initialCard = Array.from(dayCards).reverse().find(c => c.querySelector('.day-pct-badge:not(.pct-none)'));
+      }
+      if (!initialCard) {
+        initialCard = dayCards[0];
+      }
+      if (initialCard) {
+        initialCard.click();
+      }
+    }
+  });
+  </script>
+<% } %>
+
+<!-- ==================== TAB: BATCH HEALTH SCORE ==================== -->
+<% if (tab === 'batch_health') { %>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Batch Health Scores</div>
+      <p class="td-muted text-sm">Composite health index measuring student engagement, attendance consistency, and financial compliance.</p>
+    </div>
+    <% if (batchHealthScores.length === 0) { %>
+      <div class="empty-state">
+        <p>No active student batches found.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Batch Name</th>
+              <th class="text-right">Students Count</th>
+              <th class="text-right">Avg Attendance</th>
+              <th class="text-right">Homework Submission Rate</th>
+              <th class="text-right">Fee Collection Rate</th>
+              <th class="text-right">Health Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% batchHealthScores.forEach(bh => { %>
+              <%
+                let healthBadge = 'badge-green';
+                if (bh.healthScore < 60) healthBadge = 'badge-red';
+                else if (bh.healthScore < 80) healthBadge = 'badge-gold';
+              %>
+              <tr>
+                <td><strong><%= bh.batchName %></strong></td>
+                <td class="mono text-right"><%= bh.studentCount %></td>
+                <td class="mono text-right"><%= bh.avgAttendance %>%</td>
+                <td class="mono text-right"><%= bh.submissionRate %>%</td>
+                <td class="mono text-right"><%= bh.collectionRate %>%</td>
+                <td class="mono text-right">
+                  <span class="badge <%= healthBadge %>" style="font-weight:700;"><%= bh.healthScore %>%</span>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+<!-- ==================== TAB: LEAD FUNNEL VELOCITY ==================== -->
+<% if (tab === 'funnel_velocity') { %>
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+      <div class="card-title">Funnel Velocity (Average Transition Days)</div>
+      <p class="td-muted text-sm">Measures the speed in days at which inquiries progress through stages to final conversion.</p>
+    </div>
+    <div class="stats-grid" style="padding: 1.25rem; margin-bottom: 0;">
+      <div class="stat-card gold">
+        <div class="stat-label">New ➔ Contacted</div>
+        <div class="stat-value"><%= funnelVelocity.newToContacted %> days</div>
+        <div class="stat-sub">Initial outbound outreach</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-label">Contacted ➔ Interested</div>
+        <div class="stat-value"><%= funnelVelocity.contactedToInterested %> days</div>
+        <div class="stat-sub">Nurturing response delay</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">Interested ➔ Converted</div>
+        <div class="stat-value"><%= funnelVelocity.interestedToConverted %> days</div>
+        <div class="stat-sub">Closing and enrollment finalize</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Overall Cycle Duration</div>
+        <div class="stat-value"><%= funnelVelocity.overall %> days</div>
+        <div class="stat-sub">Total time to convert (<%= funnelVelocity.count %> converted)</div>
+      </div>
+    </div>
+  </div>
+<% } %>
+
+<!-- ==================== TAB: FEE COLLECTION AGING ==================== -->
+<% if (tab === 'aging') { %>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Outstanding Invoice Aging</div>
+      <p class="td-muted text-sm">Receivables categorized by overdue duration buckets based on installment due dates.</p>
+    </div>
+    <div class="stats-grid" style="padding: 1.25rem; margin-bottom: 0;">
+      <div class="stat-card green">
+        <div class="stat-label">Current (Not Overdue)</div>
+        <div class="stat-value">₹<%= agingBuckets.current.toLocaleString('en-IN') %></div>
+        <div class="stat-sub">Not yet due</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="stat-label">1 - 30 Days Overdue</div>
+        <div class="stat-value">₹<%= agingBuckets.days_1_30.toLocaleString('en-IN') %></div>
+        <div class="stat-sub">Bucket 1</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-label">31 - 60 Days Overdue</div>
+        <div class="stat-value">₹<%= agingBuckets.days_31_60.toLocaleString('en-IN') %></div>
+        <div class="stat-sub">Bucket 2</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">61 - 90 Days Overdue</div>
+        <div class="stat-value">₹<%= agingBuckets.days_61_90.toLocaleString('en-IN') %></div>
+        <div class="stat-sub">Bucket 3</div>
+      </div>
+      <div class="stat-card red" style="background: rgba(220,53,69,0.12); border-color: rgba(220,53,69,0.35);">
+        <div class="stat-label" style="color: var(--red);">90+ Days Overdue</div>
+        <div class="stat-value" style="color: var(--red);">₹<%= agingBuckets.days_91_plus.toLocaleString('en-IN') %></div>
+        <div class="stat-sub">Critical receivables</div>
+      </div>
+    </div>
+  </div>
+<% } %>
+
+<!-- ==================== TAB: AT-RISK STUDENT ALERTS ==================== -->
+<% if (tab === 'at_risk') { %>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">At-Risk Student Alerts</div>
+      <p class="td-muted text-sm">Students flagged due to low attendance (&lt; 75%), outstanding overdue fees, or &gt;= 3 pending assignments.</p>
+    </div>
+    <% if (atRiskStudents.length === 0) { %>
+      <div class="empty-state">
+        <p>No students flagged at risk currently. Faculty operations are performing beautifully!</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Student Name</th>
+              <th>Batch</th>
+              <th class="text-right">Attendance</th>
+              <th class="text-right">Overdue Fees</th>
+              <th class="text-right">Pending Tasks</th>
+              <th>Flag Reasons</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% atRiskStudents.forEach(ar => { %>
+              <tr style="background: rgba(220, 53, 69, 0.05); border-left: 3px solid var(--red);">
+                <td class="td-name"><strong><%= ar.student.name %></strong></td>
+                <td><%= ar.student.batch %></td>
+                <td class="mono text-right <%= ar.attendance < 75 ? 'text-red fw-700' : '' %>"><%= ar.attendance %>%</td>
+                <td class="mono text-right <%= ar.overdueFees > 0 ? 'text-red fw-700' : '' %>">₹<%= ar.overdueFees.toLocaleString('en-IN') %></td>
+                <td class="mono text-right <%= ar.pendingAssignments >= 3 ? 'text-red fw-700' : '' %>"><%= ar.pendingAssignments %></td>
+                <td style="color: var(--red); font-size: 13px;"><%= ar.reasons %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+<!-- ==================== TAB: TEACHER LOAD & OUTPUT ==================== -->
+<% if (tab === 'teacher_load') { %>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Teacher Load & Productivity Metrics</div>
+      <p class="td-muted text-sm">Monitors sessions conducted, daily logs update rates, and grading delays per faculty member.</p>
+    </div>
+    <% if (teacherLoad.length === 0) { %>
+      <div class="empty-state">
+        <p>No active teachers found.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Teacher Name</th>
+              <th class="text-right">Lessons Conducted</th>
+              <th class="text-right">Daily Updates Posted</th>
+              <th class="text-right">Pending Grading Submissions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% teacherLoad.forEach(tl => { %>
+              <tr>
+                <td class="td-name"><strong><%= tl.teacher.name %></strong></td>
+                <td class="mono text-right"><%= tl.classesConducted %></td>
+                <td class="mono text-right text-gold"><%= tl.updatesCount %></td>
+                <td class="mono text-right <%= tl.pendingGradingCount > 0 ? 'text-orange fw-700' : '' %>"><%= tl.pendingGradingCount %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+
+<!-- ==================== CHART LOGIC SCRIPTS ==================== -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Common visual config based on site light/dark mode
+  const getThemeTextAndBorderColor = () => {
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    return {
+      textColor: isDark ? '#a3a3a3' : '#4b5563',
+      gridColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'
+    };
+  };
+
+  const { textColor, gridColor } = getThemeTextAndBorderColor();
+
+  // Chart.js Default Configs
+  Chart.defaults.color = textColor;
+  Chart.defaults.font.family = 'Inter, sans-serif';
+
+  // 1. GENERAL TAB CHARTS
+  <% if (tab === 'general') { %>
+    // Lead Pipeline Status Doughnut
+    const statusData = <%- JSON.stringify(leadsByStatus) %>;
+    const statusLabels = ['new', 'contacted', 'interested', 'converted', 'lost'];
+    const statusCounts = statusLabels.map(s => statusData[s] || 0);
+
+    new Chart(document.getElementById('leadStatusChart').getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: statusLabels.map(s => s.toUpperCase()),
+        datasets: [{
+          data: statusCounts,
+          backgroundColor: [
+            'rgba(249, 115, 22, 0.85)', // new (orange)
+            'rgba(59, 130, 246, 0.85)',  // contacted (blue)
+            'rgba(234, 179, 8, 0.85)',   // interested (yellow)
+            'rgba(16, 185, 129, 0.85)',  // converted (green)
+            'rgba(239, 68, 68, 0.85)'    // lost (red)
+          ],
+          borderColor: 'transparent',
+          hoverOffset: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 12, padding: 10 }
+          }
+        }
+      }
+    });
+
+    // Lead Traffic Channels Horizontal Bar
+    const sourceData = <%- JSON.stringify(leadsBySource) %>;
+    const sourceLabels = Object.keys(sourceData);
+    const sourceCounts = Object.values(sourceData);
+
+    new Chart(document.getElementById('leadSourceChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: sourceLabels,
+        datasets: [{
+          label: 'Leads Count',
+          data: sourceCounts,
+          backgroundColor: 'rgba(212, 175, 55, 0.8)', // Gold
+          borderColor: 'transparent',
+          borderRadius: 4
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { precision: 0 } },
+          y: { grid: { display: false } }
+        }
+      }
+    });
+  <% } %>
+
+  // 2. REVENUE TRENDS TAB CHARTS
+  <% if (tab === 'revenue') { %>
+    const revenueData = <%- JSON.stringify(revenueData) %>;
+    const months = revenueData.map(r => r.month);
+    const targets = revenueData.map(r => r.target);
+    const collections = revenueData.map(r => r.actual);
+
+    new Chart(document.getElementById('revenueTrendsChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: months,
+        datasets: [
+          {
+            label: 'Actual Collections',
+            data: collections,
+            backgroundColor: 'rgba(16, 185, 129, 0.8)', // Green
+            borderRadius: 4,
+            order: 2
+          },
+          {
+            label: 'Target Collections',
+            data: targets,
+            type: 'line',
+            borderColor: 'rgba(212, 175, 55, 1)', // Gold
+            borderWidth: 3,
+            backgroundColor: 'transparent',
+            tension: 0.2,
+            pointBackgroundColor: 'rgba(212, 175, 55, 1)',
+            order: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom' }
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: { 
+            grid: { color: gridColor },
+            ticks: {
+              callback: function(value) {
+                return '₹' + (value >= 1000 ? (value / 1000) + 'k' : value);
+              }
+            }
+          }
+        }
+      }
+    });
+  <% } %>
+
+  // 3. COUNSELLOR PERFORMANCE TAB CHARTS
+  <% if (tab === 'counsellors') { %>
+    const cPerf = <%- JSON.stringify(counsellorPerformance) %>;
+    const cNames = cPerf.map(c => c.counsellor.name);
+    const cAssigned = cPerf.map(c => c.total);
+    const cConverted = cPerf.map(c => c.converted);
+    const cRates = cPerf.map(c => c.conversionRate);
+    const cSpeeds = cPerf.map(c => c.avgDays);
+
+    // Conversions Chart (Assigned vs Converted stacked or grouped)
+    new Chart(document.getElementById('counsellorConversionsChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: cNames,
+        datasets: [
+          {
+            label: 'Assigned Leads',
+            data: cAssigned,
+            backgroundColor: 'rgba(59, 130, 246, 0.35)', // Light Blue
+            borderColor: 'rgba(59, 130, 246, 0.8)',
+            borderWidth: 1,
+            borderRadius: 4
+          },
+          {
+            label: 'Converted Students',
+            data: cConverted,
+            backgroundColor: 'rgba(16, 185, 129, 0.8)', // Green
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { grid: { color: gridColor }, ticks: { precision: 0 } }
+        }
+      }
+    });
+
+    // Speed Chart (Bar representing speed in days)
+    new Chart(document.getElementById('counsellorSpeedChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: cNames,
+        datasets: [{
+          label: 'Avg Conversion (Days)',
+          data: cSpeeds,
+          backgroundColor: 'rgba(234, 179, 8, 0.85)', // Yellow
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { 
+            grid: { color: gridColor }, 
+            title: { display: true, text: 'Days' },
+            ticks: { precision: 0 }
+          }
+        }
+      }
+    });
+  <% } %>
+
+  // 4. BATCH ATTENDANCE TAB CHARTS
+  <% if (tab === 'attendance' && batch && attendanceSummary.length > 0) { %>
+    const attData = <%- JSON.stringify(attendanceSummary) %>;
+    const studentNames = attData.map(s => s.name);
+    const attRates = attData.map(s => s.attendancePct);
+
+    new Chart(document.getElementById('attendanceChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: studentNames,
+        datasets: [{
+          label: 'Attendance Rate %',
+          data: attRates,
+          backgroundColor: attRates.map(r => r < 75 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(16, 185, 129, 0.85)'),
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          // Draw a custom red threshold line at 75%
+          annotation: {
+            annotations: {
+              line1: {
+                type: 'line',
+                yMin: 75,
+                yMax: 75,
+                borderColor: 'red',
+                borderWidth: 2,
+                borderDash: [6, 6],
+                label: {
+                  content: 'Min 75% Requirement',
+                  enabled: true,
+                  position: 'end',
+                  backgroundColor: 'rgba(239, 68, 68, 0.9)'
+                }
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: { 
+            grid: { color: gridColor },
+            min: 0,
+            max: 100,
+            ticks: {
+              callback: function(value) { return value + '%'; }
+            }
+          }
+        }
+      }
+    });
+  <% } %>
+});
+</script>

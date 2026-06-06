@@ -1,0 +1,45 @@
+<%
+  layout = 'main';
+  title = 'Follow-ups Timeline';
+  subtitle = `${leads.length} follow-ups due today or overdue`;
+  page = 'followups';
+%>
+
+<% if (leads.length === 0) { %>
+  <div class="card">
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <p>You're all caught up. No follow-ups pending today.</p>
+    </div>
+  </div>
+<% } else { %>
+
+  <!-- Overdue -->
+  <% const overdue = leads.filter(l => new Date(l.followUpDate) < new Date(new Date().setHours(0,0,0,0))); %>
+  <% const today   = leads.filter(l => new Date(l.followUpDate) >= new Date(new Date().setHours(0,0,0,0))); %>
+
+  <% if (overdue.length > 0) { %>
+    <div class="card" style="border-color:rgba(239,68,68,0.25); margin-bottom:20px;">
+      <div class="card-header" style="border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:14px;">
+        <div>
+          <div class="card-title" style="color:var(--red);">⚠️ Overdue Actions (<%= overdue.length %>)</div>
+          <div class="card-sub">Urgent contact required</div>
+        </div>
+      </div>
+      <%- include('_followup-table', { leads: overdue, badgeClass: 'badge-red', labelText: 'Overdue' }) %>
+    </div>
+  <% } %>
+
+  <% if (today.length > 0) { %>
+    <div class="card">
+      <div class="card-header" style="border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:14px;">
+        <div>
+          <div class="card-title">Due Today (<%= today.length %>)</div>
+          <div class="card-sub">Scheduled follow-up interactions</div>
+        </div>
+      </div>
+      <%- include('_followup-table', { leads: today, badgeClass: 'badge-gold', labelText: 'Today' }) %>
+    </div>
+  <% } %>
+
+<% } %>

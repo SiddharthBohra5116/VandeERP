@@ -1,0 +1,134 @@
+<%
+  layout = 'main';
+  const isEdit = !!target;
+  title = isEdit ? 'Edit Class Schedule' : 'Add Class Schedule';
+  subtitle = isEdit ? 'Update time slots, batch allocation, or status for this class session' : 'Schedule a new class session and assign it to a batch and instructor';
+  page = 'schedules';
+
+  let startVal = '';
+  let endVal = '';
+  
+  if (isEdit) {
+    if (target.startTime) {
+      const parts = target.startTime.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+      if (parts) {
+        let hrs = parseInt(parts[1], 10);
+        const mins = parts[2];
+        const ampm = parts[3].toUpperCase();
+        if (ampm === 'PM' && hrs < 12) hrs += 12;
+        if (ampm === 'AM' && hrs === 12) hrs = 0;
+        startVal = `${hrs.toString().padStart(2, '0')}:${mins}`;
+      } else {
+        startVal = target.startTime;
+      }
+    }
+    if (target.endTime) {
+      const parts = target.endTime.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+      if (parts) {
+        let hrs = parseInt(parts[1], 10);
+        const mins = parts[2];
+        const ampm = parts[3].toUpperCase();
+        if (ampm === 'PM' && hrs < 12) hrs += 12;
+        if (ampm === 'AM' && hrs === 12) hrs = 0;
+        endVal = `${hrs.toString().padStart(2, '0')}:${mins}`;
+      } else {
+        endVal = target.endTime;
+      }
+    }
+  }
+%>
+
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert alert-error" style="margin-bottom: 1.25rem; display: flex; align-items: center; gap: 8px;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span><%= error %></span>
+    </div>
+  <% } %>
+
+  <form action="<%= isEdit ? '/admin/schedules/' + target._id + '/edit' : '/admin/schedules/create' %>" method="POST">
+    
+    <div class="form-group">
+      <label class="form-label" for="subject">Subject / Class Title *</label>
+      <input type="text" id="subject" name="subject" class="form-control" list="subject-list" value="<%= isEdit ? target.subject : '' %>" placeholder="e.g. Video Editing Basics - Premiere Pro" required>
+      <datalist id="subject-list">
+        <option value="Video Editing Basics"></option>
+        <option value="Digital Marketing Mastery"></option>
+        <option value="Advanced Premiere & DaVinci Resolve"></option>
+        <option value="SEO & Copywriting Fundamentals"></option>
+        <option value="Social Media Strategy & Ad Campaigns"></option>
+      </datalist>
+    </div>
+ 
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="batch">Target Batch *</label>
+        <input type="text" id="batch" name="batch" class="form-control" list="batch-list" value="<%= isEdit ? target.batch : '' %>" placeholder="e.g. Batch Video Editing Morning" required>
+        <datalist id="batch-list">
+          <% batches.forEach(b => { %>
+            <option value="<%= b %>"></option>
+          <% }) %>
+        </datalist>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="teacher">Assigned Instructor *</label>
+        <select id="teacher" name="teacher" class="form-control" required>
+          <option value="" disabled <%= !isEdit ? 'selected' : '' %>>Select Teacher</option>
+          <% teachers.forEach(t => { %>
+            <option value="<%= t._id %>" <%= isEdit && target.teacher && target.teacher.toString() === t._id.toString() ? 'selected' : '' %>><%= t.name %> (<%= t.subject || 'Faculty' %>)</option>
+          <% }) %>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="classroom">Classroom / Lecture Room *</label>
+      <select id="classroom" name="classroom" class="form-control" required>
+        <option value="" disabled <%= !isEdit ? 'selected' : '' %>>Select Classroom</option>
+        <% classrooms.forEach(c => { %>
+          <option value="<%= c._id %>" <%= isEdit && target.classroom && target.classroom.toString() === c._id.toString() ? 'selected' : '' %>><%= c.name %> (<%= c.location || 'Main' %>)</option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="date">Class Date *</label>
+        <input type="date" id="date" name="date" class="form-control" value="<%= isEdit ? target.date : '' %>" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="status">Session Status</label>
+        <select id="status" name="status" class="form-control" <%= !isEdit ? 'disabled' : '' %>>
+          <option value="scheduled" <%= !isEdit || target.status === 'scheduled' ? 'selected' : '' %>>Scheduled</option>
+          <option value="completed" <%= isEdit && target.status === 'completed' ? 'selected' : '' %>>Completed</option>
+          <option value="cancelled" <%= isEdit && target.status === 'cancelled' ? 'selected' : '' %>>Cancelled</option>
+        </select>
+        <% if (!isEdit) { %>
+          <input type="hidden" name="status" value="scheduled">
+        <% } %>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="startTime">Start Time *</label>
+        <input type="time" id="startTime" name="startTime" class="form-control" value="<%= startVal %>" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="endTime">End Time *</label>
+        <input type="time" id="endTime" name="endTime" class="form-control" value="<%= endVal %>" required>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary"><%= isEdit ? 'Update Schedule' : 'Schedule Class' %></button>
+      <a href="/admin/schedules" class="btn btn-ghost">Cancel</a>
+    </div>
+
+  </form>
+</div>
