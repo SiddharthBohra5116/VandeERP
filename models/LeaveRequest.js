@@ -1,12 +1,18 @@
 const mongoose = require('mongoose');
+const { LEAVE_REQUEST_STATUSES } = require('../config/constants');
 
 const leaveRequestSchema = new mongoose.Schema({
-  teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  startDate: { type: String, required: true }, // YYYY-MM-DD
-  endDate: { type: String, required: true }, // YYYY-MM-DD
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  startDate: { type: String, required: true },
+  endDate: { type: String, required: true },
   reason: { type: String, required: true },
-  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-  appliedAt: { type: Date, default: Date.now },
+  status: { type: String, enum: LEAVE_REQUEST_STATUSES, default: 'pending' },
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  approvedAt: { type: Date, default: null },
+  rejectionReason: { type: String, default: '' },
+  appliedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
+
+leaveRequestSchema.index({ user: 1, status: 1 });
 
 module.exports = mongoose.model('LeaveRequest', leaveRequestSchema);
