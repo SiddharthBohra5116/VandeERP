@@ -1,0 +1,87 @@
+<%
+  layout = 'main';
+  title = 'Curriculum Tracker';
+  subtitle = 'Define courses, track topics, and monitor syllabus completion';
+  page = 'curriculum';
+%>
+
+<div class="grid-2">
+  <!-- List Curriculums -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Existing Curriculum Schedules</div>
+    </div>
+    
+    <% if (curricula.length === 0) { %>
+      <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5v-15z"/></svg>
+        <p>No curriculums published yet. Set up one on the right.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Subject & Batch</th>
+              <th>Topics</th>
+              <th>Completion</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% curricula.forEach(curr => { %>
+              <% const pct = curr.completionPct; %>
+              <tr>
+                <td class="td-name">
+                  <a href="/teacher/curriculum/<%= curr._id %>" style="color:var(--gold); font-weight:600;"><%= curr.subject %></a>
+                  <div class="td-muted text-xs">Batch: <%= curr.batch %></div>
+                </td>
+                <td class="mono text-sm"><%= curr.topics.length %> topics</td>
+                <td>
+                  <div style="min-width: 90px;">
+                    <div style="display:flex; justify-content:space-between; font-size:10px; margin-bottom: 2px;">
+                      <span><%= pct %>%</span>
+                    </div>
+                    <div class="progress-bar">
+                      <div class="progress-fill <%= pct === 100 ? 'green' : pct > 50 ? 'orange' : 'red' %>" style="width: <%= pct %>%"></div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <a href="/teacher/curriculum/<%= curr._id %>" class="btn btn-ghost btn-xs">Edit / Toggle Topics</a>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Create Curriculum Form -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Setup New Curriculum</div>
+    </div>
+    <form action="/teacher/curriculum" method="POST">
+      <div class="form-group">
+        <label class="form-label" for="subject">Subject Name</label>
+        <input type="text" id="subject" name="subject" class="form-control" placeholder="e.g. Adobe Premiere Advanced" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="batch">Target Batch</label>
+        <select id="batch" name="batch" class="form-control" required>
+          <option value="" disabled selected>Select Batch</option>
+          <% batches.forEach(b => { %>
+            <option value="<%= b %>"><%= b %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="description">Course Description</label>
+        <textarea id="description" name="description" class="form-control" placeholder="Describe the syllabus goals, course topics, duration, etc..."></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Initialize Syllabus Track</button>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,2287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Academy ERP — Final Audit Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+/* ─── ROOT ────────────────────────────────────────────── */
+:root {
+  --bg:       #0d0d0e;
+  --surface:  #131315;
+  --surface2: #1a1a1d;
+  --surface3: #222226;
+  --border:   rgba(255,255,255,0.07);
+  --border2:  rgba(255,255,255,0.12);
+  --border3:  rgba(255,255,255,0.18);
+  --text:     #e8e6df;
+  --muted:    #8a8880;
+  --hint:     #55534e;
+
+  --red:    #e05252; --red-bg:    rgba(224,82,82,.1);  --red-bd:   rgba(224,82,82,.25);
+  --orange: #d97b36; --orange-bg: rgba(217,123,54,.1); --orange-bd:rgba(217,123,54,.25);
+  --yellow: #c8a800; --yellow-bg: rgba(200,168,0,.1);  --yellow-bd:rgba(200,168,0,.25);
+  --blue:   #4e90d4; --blue-bg:   rgba(78,144,212,.1); --blue-bd:  rgba(78,144,212,.25);
+  --green:  #4da668; --green-bg:  rgba(77,166,104,.1); --green-bd: rgba(77,166,104,.25);
+  --purple: #9278e0; --purple-bg: rgba(146,120,224,.1);--purple-bd:rgba(146,120,224,.25);
+  --teal:   #3daa80; --teal-bg:   rgba(61,170,128,.1); --teal-bd:  rgba(61,170,128,.25);
+
+  --ff-head: 'Syne', sans-serif;
+  --ff-body: 'DM Sans', sans-serif;
+  --ff-mono: 'IBM Plex Mono', monospace;
+  --r: 10px;
+  --rs: 6px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--ff-body);
+  font-size: 14.5px;
+  line-height: 1.7;
+}
+a { color: inherit; text-decoration: none; }
+code { font-family: var(--ff-mono); font-size: 12px; background: var(--surface3); padding: 1px 5px; border-radius: 3px; }
+
+/* ─── LAYOUT ──────────────────────────────────────────── */
+.wrap { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 248px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding-bottom: 2rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface3) transparent;
+}
+.main {
+  flex: 1;
+  padding: 3rem 2.5rem 6rem;
+  max-width: 900px;
+  min-width: 0;
+}
+@media (max-width: 860px) {
+  .sidebar { display: none; }
+  .main { padding: 1.5rem 1rem 4rem; max-width: 100%; }
+}
+
+/* ─── SIDEBAR ─────────────────────────────────────────── */
+.sidebar-logo {
+  padding: 1.5rem 1.25rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.5rem;
+}
+.sidebar-logo .name {
+  font-family: var(--ff-head);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.sidebar-logo .sub {
+  font-size: 11px;
+  color: var(--hint);
+  margin-top: 2px;
+  font-family: var(--ff-mono);
+}
+.sidebar-logo .tag-line {
+  margin-top: 10px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.severity-pill {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--ff-mono);
+  padding: 2px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.05em;
+}
+.sp-c { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bd); }
+.sp-h { background: var(--orange-bg); color: var(--orange); border: 1px solid var(--orange-bd); }
+.sp-m { background: var(--yellow-bg); color: var(--yellow); border: 1px solid var(--yellow-bd); }
+.sp-l { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-bd); }
+
+.nav-group { padding: 0.75rem 0 0; }
+.nav-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hint);
+  padding: 0 1.25rem 0.4rem;
+  font-family: var(--ff-mono);
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 1.25rem;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  border-left: 2px solid transparent;
+}
+.nav-item:hover {
+  background: var(--surface2);
+  color: var(--text);
+  border-left-color: var(--surface3);
+}
+.nav-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.nd-c { background: var(--red); }
+.nd-h { background: var(--orange); }
+.nd-m { background: var(--yellow); }
+.nd-l { background: var(--blue); }
+.nd-ok{ background: var(--green); }
+.nav-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-family: var(--ff-mono);
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 20px;
+  background: var(--surface3);
+  color: var(--muted);
+}
+
+/* ─── PAGE HEADER ─────────────────────────────────────── */
+.page-header {
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border2);
+}
+.header-eyebrow {
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  color: var(--hint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+.page-header h1 {
+  font-family: var(--ff-head);
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+  margin-bottom: 0.75rem;
+  color: var(--text);
+}
+.page-header .desc {
+  color: var(--muted);
+  font-size: 14px;
+  max-width: 580px;
+  line-height: 1.65;
+}
+.meta-strip {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 1.25rem;
+}
+.meta-chip {
+  font-size: 11.5px;
+  font-family: var(--ff-mono);
+  color: var(--hint);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: var(--rs);
+}
+
+/* ─── STAT GRID ───────────────────────────────────────── */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 3rem;
+}
+@media (max-width: 600px) { .stat-row { grid-template-columns: repeat(3, 1fr); } }
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 1.1rem 0.75rem;
+  text-align: center;
+}
+.stat-card .sv {
+  font-family: var(--ff-head);
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.stat-card .sl {
+  font-size: 10px;
+  font-family: var(--ff-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.sv-c { color: var(--red); }
+.sv-h { color: var(--orange); }
+.sv-m { color: var(--yellow); }
+.sv-l { color: var(--blue); }
+.sv-t { color: var(--text); }
+
+/* ─── SNAPSHOT GRID ───────────────────────────────────── */
+.snap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: 8px;
+  margin-bottom: 3rem;
+}
+.snap-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.snap-num {
+  font-family: var(--ff-head);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.snap-label {
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* ─── SECTION ─────────────────────────────────────────── */
+section {
+  margin-bottom: 4rem;
+  scroll-margin-top: 1.5rem;
+}
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 1.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border2);
+}
+.section-head h2 {
+  font-family: var(--ff-head);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+.section-count {
+  font-size: 11px;
+  font-family: var(--ff-mono);
+  color: var(--hint);
+}
+
+/* ─── BADGE ───────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: var(--ff-mono);
+  padding: 3px 9px;
+  border-radius: var(--rs);
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.b-c { background: var(--red-bg);    color: var(--red);    border: 1px solid var(--red-bd); }
+.b-h { background: var(--orange-bg); color: var(--orange); border: 1px solid var(--orange-bd); }
+.b-m { background: var(--yellow-bg); color: var(--yellow); border: 1px solid var(--yellow-bd); }
+.b-l { background: var(--blue-bg);   color: var(--blue);   border: 1px solid var(--blue-bd); }
+
+/* ─── ISSUE CARD ──────────────────────────────────────── */
+.issue {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.issue:hover { border-color: var(--border2); }
+.issue.open  { border-color: var(--border3); }
+
+.issue-hd {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  user-select: none;
+}
+.issue-hd:hover { background: var(--surface2); }
+.issue.open .issue-hd { background: var(--surface2); }
+
+.issue-meta { flex: 1; min-width: 0; }
+.issue-meta h3 {
+  font-size: 13.5px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  line-height: 1.4;
+  color: var(--text);
+}
+.issue-loc {
+  font-size: 11px;
+  color: var(--hint);
+  font-family: var(--ff-mono);
+}
+.tag-row { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+.tag {
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: var(--surface3);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  font-family: var(--ff-mono);
+}
+.chevron {
+  color: var(--hint);
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: transform 0.2s;
+  line-height: 1;
+}
+.issue.open .chevron { transform: rotate(180deg); }
+
+.issue-body {
+  display: none;
+  padding: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+.issue.open .issue-body { display: block; }
+.issue-body p {
+  color: var(--muted);
+  font-size: 13.5px;
+  margin-bottom: 0.85rem;
+  line-height: 1.7;
+}
+
+/* ─── CODE BLOCK ──────────────────────────────────────── */
+.code-block {
+  background: #0a0a0b;
+  border: 1px solid var(--border2);
+  border-radius: var(--rs);
+  padding: 0.9rem 1.1rem;
+  font-family: var(--ff-mono);
+  font-size: 11.5px;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+  white-space: pre;
+  line-height: 1.7;
+  color: var(--text);
+}
+.bad  { color: #d46c6c; }
+.good { color: #6db88e; }
+.comment { color: var(--hint); }
+
+/* ─── FIX LIST ────────────────────────────────────────── */
+.fix-list { list-style: none; padding: 0; margin: 0.75rem 0 0; }
+.fix-list li {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  padding: 6px 0;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  line-height: 1.55;
+}
+.fix-list li:last-child { border-bottom: none; }
+.fix-list li::before {
+  content: attr(data-n);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px; height: 20px; min-width: 20px;
+  background: var(--surface3);
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--ff-mono);
+  color: var(--muted);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ─── CALLOUT ─────────────────────────────────────────── */
+.callout {
+  background: var(--red-bg);
+  border: 1px solid var(--red-bd);
+  border-radius: var(--rs);
+  padding: 0.85rem 1.1rem;
+  margin: 0.75rem 0;
+  font-size: 13px;
+  color: #e0a0a0;
+  line-height: 1.6;
+}
+.callout.orange { background: var(--orange-bg); border-color: var(--orange-bd); color: #e8c090; }
+.callout.blue   { background: var(--blue-bg);   border-color: var(--blue-bd);   color: #9dc4e8; }
+.callout.green  { background: var(--green-bg);  border-color: var(--green-bd);  color: #90c8a4; }
+
+/* ─── MATRIX TABLE ────────────────────────────────────── */
+.matrix-wrap { overflow-x: auto; margin: 1rem 0; }
+.matrix-table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.matrix-table th,
+.matrix-table td {
+  border: 1px solid var(--border);
+  padding: 7px 10px;
+  text-align: center;
+  white-space: nowrap;
+}
+.matrix-table th {
+  background: var(--surface2);
+  font-family: var(--ff-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.matrix-table td:first-child {
+  text-align: left;
+  font-size: 12.5px;
+  white-space: normal;
+  min-width: 170px;
+}
+.matrix-table th:first-child { text-align: left; }
+.matrix-table tr:hover td { background: var(--surface2); }
+.ck  { color: var(--green); font-size: 15px; }
+.cx  { color: var(--hint);  font-size: 15px; }
+.cpo { color: var(--orange); font-size: 13px; }
+
+/* ─── ROADMAP ─────────────────────────────────────────── */
+.phases {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  margin-top: 1rem;
+}
+.phase {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 1.1rem 1.25rem;
+}
+.phase-num {
+  font-size: 10px;
+  font-family: var(--ff-mono);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--hint);
+  margin-bottom: 4px;
+}
+.phase-title {
+  font-family: var(--ff-head);
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 2px;
+  color: var(--text);
+}
+.phase-period {
+  font-size: 11px;
+  font-family: var(--ff-mono);
+  color: var(--muted);
+  margin-bottom: 0.85rem;
+}
+.phase-items { font-size: 12.5px; color: var(--muted); line-height: 1.75; }
+
+/* ─── FILE TABLE ──────────────────────────────────────── */
+.file-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.file-table th,
+.file-table td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+}
+.file-table th {
+  background: var(--surface2);
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--hint);
+  text-align: left;
+}
+.file-table td:first-child {
+  font-family: var(--ff-mono);
+  font-size: 11.5px;
+  color: var(--text);
+}
+.file-table td:nth-child(2) { color: var(--muted); font-size: 12px; }
+.file-table td:last-child { text-align: center; }
+.file-table tr:hover td { background: var(--surface2); }
+
+/* ─── PRINT ───────────────────────────────────────────── */
+@media print {
+  .sidebar { display: none; }
+  .main { padding: 1rem; }
+  .issue-body { display: block !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ══════════════════ SIDEBAR ══════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="name">Academy ERP</div>
+    <div class="sub">Final Audit — v2.0</div>
+    <div class="tag-line">
+      <span class="severity-pill sp-c">7 Critical</span>
+      <span class="severity-pill sp-h">18 High</span>
+      <span class="severity-pill sp-m">21 Med</span>
+      <span class="severity-pill sp-l">15 Low</span>
+    </div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Overview</div>
+    <a class="nav-item" href="#snapshot"><span class="nav-dot nd-ok"></span>System snapshot</a>
+    <a class="nav-item" href="#totals"><span class="nav-dot nd-ok"></span>Issue totals</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Security</div>
+    <a class="nav-item" href="#sec-pwd-reset"><span class="nav-dot nd-c"></span>Password reset blank<span class="nav-badge">CRIT</span></a>
+    <a class="nav-item" href="#sec-regex"><span class="nav-dot nd-c"></span>ReDoS regex<span class="nav-badge">CRIT</span></a>
+    <a class="nav-item" href="#sec-csrf"><span class="nav-dot nd-c"></span>No CSRF protection<span class="nav-badge">CRIT</span></a>
+    <a class="nav-item" href="#sec-open-redirect"><span class="nav-dot nd-h"></span>Open redirect<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#sec-upload"><span class="nav-dot nd-h"></span>File upload MIME<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#sec-jwt"><span class="nav-dot nd-h"></span>JWT secret exposed<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#sec-msg"><span class="nav-dot nd-h"></span>Message no validation<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#sec-pwd123"><span class="nav-dot nd-h"></span>Default password123<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#sec-chgpwd"><span class="nav-dot nd-h"></span>Change pwd no min<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#sec-ratelimit"><span class="nav-dot nd-m"></span>No rate limiting<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#sec-headers"><span class="nav-dot nd-m"></span>No security headers<span class="nav-badge">MED</span></a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Production Bugs</div>
+    <a class="nav-item" href="#bug-fee-double"><span class="nav-dot nd-c"></span>Fee double-write<span class="nav-badge">CRIT</span></a>
+    <a class="nav-item" href="#bug-rollnum"><span class="nav-dot nd-c"></span>Roll no. race cond.<span class="nav-badge">CRIT</span></a>
+    <a class="nav-item" href="#bug-paidat"><span class="nav-dot nd-c"></span>p.date → Invalid Date<span class="nav-badge">CRIT</span></a>
+    <a class="nav-item" href="#bug-cert"><span class="nav-dot nd-h"></span>getCertificate crash<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#bug-email"><span class="nav-dot nd-h"></span>Fake email fallback<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#bug-staleleads"><span class="nav-dot nd-h"></span>Stale lead field name<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#bug-duperoute"><span class="nav-dot nd-h"></span>Duplicate route<span class="nav-badge">HIGH</span></a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Logic / Permissions</div>
+    <a class="nav-item" href="#logic-teacher-att"><span class="nav-dot nd-h"></span>Teacher any batch att.<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#logic-teacher-upd"><span class="nav-dot nd-h"></span>Teacher any batch upd.<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#logic-lead-own"><span class="nav-dot nd-h"></span>Lead ownership<span class="nav-badge">HIGH</span></a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Data Integrity</div>
+    <a class="nav-item" href="#data-email-dup"><span class="nav-dot nd-h"></span>Duplicate email 500<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#data-fee-negative"><span class="nav-dot nd-h"></span>Negative fee amount<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#data-downpayment"><span class="nav-dot nd-m"></span>Admin bypasses 50%<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#data-timezone"><span class="nav-dot nd-m"></span>Timezone attendance<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#data-convertdat"><span class="nav-dot nd-m"></span>avgDays uses updatedAt<span class="nav-badge">MED</span></a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">UI / UX</div>
+    <a class="nav-item" href="#ux-feedback-block"><span class="nav-dot nd-h"></span>Feedback blocks dash<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#ux-no-delete"><span class="nav-dot nd-h"></span>No delete user<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#ux-query-params"><span class="nav-dot nd-m"></span>URL param messages<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#ux-timetable"><span class="nav-dot nd-m"></span>Empty timetable days<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#ux-feedback-dup"><span class="nav-dot nd-m"></span>Re-submit feedback<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#ux-att-filter"><span class="nav-dot nd-m"></span>Attendance inconsist.<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#ux-fee-summary"><span class="nav-dot nd-m"></span>Fee no summary card<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#ux-profile-confirm"><span class="nav-dot nd-l"></span>Profile update silent<span class="nav-badge">LOW</span></a>
+    <a class="nav-item" href="#ux-bulk"><span class="nav-dot nd-m"></span>No bulk actions<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#ux-clash"><span class="nav-dot nd-m"></span>Batch clash missing<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#ux-capacity"><span class="nav-dot nd-m"></span>No room capacity<span class="nav-badge">MED</span></a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Missing Features</div>
+    <a class="nav-item" href="#feat-coun-fee"><span class="nav-dot nd-h"></span>Counsellor fee view<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#feat-coun-leads"><span class="nav-dot nd-h"></span>Counsellor lead create<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#feat-coun-convert"><span class="nav-dot nd-m"></span>Ready-to-convert<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#feat-teacher-progress"><span class="nav-dot nd-m"></span>Teacher progress view<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#feat-teacher-sched"><span class="nav-dot nd-m"></span>Teacher complete class<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#feat-reports"><span class="nav-dot nd-m"></span>7 new report tabs<span class="nav-badge">MED</span></a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Performance</div>
+    <a class="nav-item" href="#perf-notif"><span class="nav-dot nd-h"></span>Notification heavy<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#perf-n1"><span class="nav-dot nd-h"></span>N+1 counsellor KPIs<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#perf-fee-find"><span class="nav-dot nd-l"></span>Fee.find() no limit<span class="nav-badge">LOW</span></a>
+    <a class="nav-item" href="#perf-coun-seq"><span class="nav-dot nd-l"></span>Counsellor seq queries<span class="nav-badge">LOW</span></a>
+    <a class="nav-item" href="#perf-inmem"><span class="nav-dot nd-l"></span>In-memory search<span class="nav-badge">LOW</span></a>
+    <a class="nav-item" href="#perf-virtual"><span class="nav-dot nd-l"></span>Virtual uncached<span class="nav-badge">LOW</span></a>
+    <a class="nav-item" href="#perf-indexes"><span class="nav-dot nd-m"></span>Missing DB indexes<span class="nav-badge">MED</span></a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Architecture / DX</div>
+    <a class="nav-item" href="#arch-monolith"><span class="nav-dot nd-m"></span>1000-line monolith<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#arch-errors"><span class="nav-dot nd-h"></span>Inconsistent errors<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#arch-validation"><span class="nav-dot nd-h"></span>No validation layer<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#arch-revfcst"><span class="nav-dot nd-h"></span>Revenue forecast bug<span class="nav-badge">HIGH</span></a>
+    <a class="nav-item" href="#arch-duplicate-logic"><span class="nav-dot nd-m"></span>Source stats DRY<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#arch-logging"><span class="nav-dot nd-m"></span>Structured logging<span class="nav-badge">MED</span></a>
+    <a class="nav-item" href="#arch-jsdoc"><span class="nav-dot nd-l"></span>Zero JSDoc<span class="nav-badge">LOW</span></a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Reference</div>
+    <a class="nav-item" href="#matrix">Permission matrix</a>
+    <a class="nav-item" href="#roadmap">Roadmap</a>
+    <a class="nav-item" href="#filesummary">File summary</a>
+  </div>
+</nav>
+
+<!-- ══════════════════ MAIN ══════════════════ -->
+<main class="main">
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div class="header-eyebrow">Consolidated · Master + Extended Code Review</div>
+    <h1>Academy ERP<br>Final Audit Report</h1>
+    <p class="desc">Combined master audit and extended code-review findings. Every issue is documented with exact file location, current code, recommended fix, and an implementation roadmap.</p>
+    <div class="meta-strip">
+      <span class="meta-chip">Express · MongoDB · EJS</span>
+      <span class="meta-chip">5 controllers · 14 models · 120+ functions</span>
+      <span class="meta-chip">4 roles: admin · teacher · counsellor · student</span>
+    </div>
+  </div>
+
+  <!-- SYSTEM SNAPSHOT -->
+  <section id="snapshot">
+    <div class="section-head"><h2>System Snapshot</h2></div>
+    <div class="snap-grid">
+      <div class="snap-card"><span class="snap-num">4</span><span class="snap-label">User roles</span></div>
+      <div class="snap-card"><span class="snap-num">14</span><span class="snap-label">MongoDB models</span></div>
+      <div class="snap-card"><span class="snap-num">120+</span><span class="snap-label">Controller functions</span></div>
+      <div class="snap-card"><span class="snap-num" style="color:var(--red)">0</span><span class="snap-label">Input validation middleware</span></div>
+      <div class="snap-card"><span class="snap-num" style="color:var(--red)">0</span><span class="snap-label">CSRF protection anywhere</span></div>
+      <div class="snap-card"><span class="snap-num" style="color:var(--red)">0</span><span class="snap-label">JSDoc comments</span></div>
+      <div class="snap-card"><span class="snap-num" style="color:var(--red)">0</span><span class="snap-label">Structured log format</span></div>
+      <div class="snap-card"><span class="snap-num">∞</span><span class="snap-label">DB queries / page (no cache)</span></div>
+    </div>
+  </section>
+
+  <!-- ISSUE TOTALS -->
+  <section id="totals">
+    <div class="section-head"><h2>Total Issues Found</h2><span class="section-count">61 across all audits</span></div>
+    <div class="stat-row">
+      <div class="stat-card"><div class="sv sv-c">7</div><div class="sl">Critical</div></div>
+      <div class="stat-card"><div class="sv sv-h">18</div><div class="sl">High</div></div>
+      <div class="stat-card"><div class="sv sv-m">21</div><div class="sl">Medium</div></div>
+      <div class="stat-card"><div class="sv sv-l">15</div><div class="sl">Low</div></div>
+      <div class="stat-card"><div class="sv sv-t">61</div><div class="sl">Total</div></div>
+    </div>
+    <div class="callout orange">Phase 1 & 2 of the roadmap are mandatory before any new feature work resumes. The security issues documented below represent live, exploitable risks on the current deployment.</div>
+  </section>
+
+  <!-- ═══════════════ SECURITY ═══════════════ -->
+  <section id="security">
+    <div class="section-head"><h2>🔐 Security</h2><span class="section-count">11 issues — 3 critical, 6 high, 2 medium</span></div>
+
+    <div class="issue" id="sec-pwd-reset">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-c">CRITICAL</span>
+        <div class="issue-meta">
+          <h3>Password reset accepts empty or blank passwords — admin can lock out any user</h3>
+          <div class="issue-loc">adminController.js → resetPassword</div>
+          <div class="tag-row"><span class="tag">Auth</span><span class="tag">Input validation</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The <code>resetPassword</code> handler assigns <code>req.body.password</code> directly with zero validation. An admin can submit a blank form and it will hash an empty string, locking the user out. There is also no null-check on the user lookup — the function crashes with a TypeError if the user was deleted between the request being made and the admin approving it.</p>
+        <div class="code-block"><span class="bad">// CURRENT — no guards at all
+exports.resetPassword = async (req, res) => {
+  const u = await User.findById(req.params.id); // crashes if user deleted
+  u.password = req.body.password;               // could be "", undefined, or "a"
+  u.resetRequested = false;
+  await u.save();
+};</span>
+
+<span class="good">// FIX
+exports.resetPassword = async (req, res) => {
+  const { password } = req.body;
+  if (!password || password.trim().length < 8)
+    return res.redirect('/admin/dashboard?error=Password+must+be+at+least+8+characters');
+  const u = await User.findById(req.params.id);
+  if (!u) return res.redirect('/admin/dashboard?error=User+not+found');
+  u.password = password.trim();
+  u.resetRequested = false;
+  await u.save();
+};</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Add minimum 8-character check with <code>.trim()</code> on the password input</li>
+          <li data-n="2">Add a null-check on the user lookup before accessing any property</li>
+          <li data-n="3">Log the reset action with a timestamp and the admin's user ID for the audit trail</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="sec-regex">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-c">CRITICAL</span>
+        <div class="issue-meta">
+          <h3>Unescaped MongoDB $regex on user input — ReDoS risk and data probing</h3>
+          <div class="issue-loc">adminController.js · counsellorController.js — 6 locations</div>
+          <div class="tag-row"><span class="tag">ReDoS</span><span class="tag">Data exposure</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>Every search field passes raw user input directly into <code>{ $regex: search, $options: 'i' }</code>. A crafted input such as <code>(a+)+b</code> causes catastrophic backtracking and can exhaust CPU (ReDoS). Users can also probe exact data by treating the search string as a regex pattern.</p>
+        <div class="code-block"><span class="bad">filter.name = { $regex: search, $options: 'i' }; // raw, unescaped user input</span>
+
+<span class="good">// utils/sanitize.js
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+module.exports = { escapeRegex };
+
+// Usage in controllers:
+filter.name = { $regex: escapeRegex(search), $options: 'i' };</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Create <code>utils/sanitize.js</code> with an <code>escapeRegex()</code> helper</li>
+          <li data-n="2">Import and apply it in all 6 places that currently use raw <code>$regex</code></li>
+          <li data-n="3">Add a max-length guard (50 characters) on all search query parameters</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="sec-csrf">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-c">CRITICAL</span>
+        <div class="issue-meta">
+          <h3>No CSRF protection on any form — every POST route is cross-site forgeable</h3>
+          <div class="issue-loc">All route files — no csurf or equivalent middleware installed</div>
+          <div class="tag-row"><span class="tag">CSRF</span><span class="tag">All roles</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>Zero CSRF token middleware exists anywhere in the codebase. Every POST route — password reset, payment recording, user creation, lead conversion, status changes — can be triggered by a cross-site request if the target user is logged in. An attacker embeds a hidden form on any page they control and it fires silently when an admin or teacher visits it.</p>
+        <div class="code-block"><span class="good">// app.js — add after cookie-parser
+const csurf = require('csurf');
+app.use(csurf({ cookie: true }));
+app.use((req, res, next) => {
+  res.locals.csrfToken = req.csrfToken();
+  next();
+});
+
+// Every EJS form — add inside &lt;form&gt;:
+&lt;input type="hidden" name="_csrf" value="&lt;%= csrfToken %&gt;"&gt;</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Install <code>csurf</code> middleware and register it globally after <code>cookie-parser</code></li>
+          <li data-n="2">Expose <code>csrfToken</code> via <code>res.locals</code> so it is available in every EJS template</li>
+          <li data-n="3">Add the hidden CSRF input to every <code>&lt;form&gt;</code> in every EJS template</li>
+          <li data-n="4">Send an <code>X-CSRF-Token</code> header for any AJAX calls that mutate state</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="sec-open-redirect">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Open redirect via req.body.redirect — attacker-controlled post-action redirect</h3>
+          <div class="issue-loc">adminController.js → resetPassword, dismissResetRequest + 4 other handlers</div>
+          <div class="tag-row"><span class="tag">Open redirect</span><span class="tag">Phishing risk</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>Both password-reset handlers accept a <code>redirect</code> field from the POST body and pass it directly to <code>res.redirect()</code> without validation. A crafted request can send the admin to an arbitrary external URL after a legitimate action — a classic open redirect enabling phishing: "password was reset successfully" → lands on attacker's site.</p>
+        <div class="code-block"><span class="bad">const redirectUrl = req.body.redirect || '/admin/dashboard?pwd_reset=1';
+res.redirect(redirectUrl); // can be https://evil.com</span>
+
+<span class="good">// utils/safeRedirect.js
+function safeRedirect(url, fallback) {
+  if (!url || url.startsWith('http') || url.startsWith('//')) return fallback;
+  return url;
+}
+module.exports = safeRedirect;
+
+// Usage:
+res.redirect(safeRedirect(req.body.redirect, '/admin/dashboard?pwd_reset=1'));</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Create a <code>safeRedirect</code> helper that rejects any URL starting with <code>http</code> or <code>//</code></li>
+          <li data-n="2">Apply it to all 5+ uses of <code>req.body.redirect</code> across all controllers</li>
+          <li data-n="3">Consider removing the redirect param entirely for security-sensitive actions like password reset</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="sec-upload">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>File uploads have no MIME type filter — .php, .exe, .js files can be uploaded</h3>
+          <div class="issue-loc">routes/admin.js · routes/teacher.js · routes/student.js · routes/auth.js</div>
+          <div class="tag-row"><span class="tag">File upload</span><span class="tag">All roles</span><span class="tag">Potential RCE</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>All four route files use <code>multer({ dest: '...' })</code> with no <code>fileFilter</code> or <code>limits</code> configuration. A student can upload a PHP web-shell as their ID proof document. If the uploads directory is ever within the web root and the server executes files from it, this is remote code execution.</p>
+        <div class="code-block"><span class="bad">const upload = multer({ dest: path.join(__dirname, '../public/uploads/') });</span>
+
+<span class="good">const ALLOWED = [
+  'image/jpeg', 'image/png', 'image/webp',
+  'application/pdf', 'video/mp4', 'application/zip'
+];
+const upload = multer({
+  dest: path.join(__dirname, '../public/uploads/'),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  fileFilter: (req, file, cb) =>
+    ALLOWED.includes(file.mimetype) ? cb(null, true) : cb(new Error('File type not allowed'))
+});</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Add a <code>fileFilter</code> with an explicit MIME type allowlist to all four <code>multer</code> instances</li>
+          <li data-n="2">Add a <code>limits.fileSize</code> of 10 MB to prevent disk exhaustion</li>
+          <li data-n="3">Ensure the uploads directory is outside the web root, or configure the server to never execute files stored there</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="sec-jwt">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>JWT secret committed to .env in version control — anyone with the repo can forge tokens</h3>
+          <div class="issue-loc">.env — JWT_SECRET=vande_digital_academy_secret_2024</div>
+          <div class="tag-row"><span class="tag">Secret exposure</span><span class="tag">JWT</span><span class="tag">Auth bypass</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The <code>.env</code> file is included in the provided codebase and is likely committed to version control. The JWT secret is permanently leaked — anyone with it can forge valid session tokens for any user including admin, bypassing all authentication entirely.</p>
+        <ul class="fix-list">
+          <li data-n="1">Rotate the JWT secret immediately in production — change it now, not after reading this</li>
+          <li data-n="2">Add <code>.env</code> to <code>.gitignore</code>; commit only a <code>.env.example</code> with placeholder values</li>
+          <li data-n="3">Use a secrets manager or environment variables injected at deploy time (Doppler, Railway, etc.)</li>
+          <li data-n="4">Rotating the secret invalidates all existing sessions — this is intentional and necessary</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="sec-msg">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Message system has no recipient validation — any userId can be messaged via forged form</h3>
+          <div class="issue-loc">adminController.js → postSendMessage</div>
+          <div class="tag-row"><span class="tag">Messages</span><span class="tag">Input validation</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p><code>postSendMessage</code> takes <code>recipientId</code> directly from the form with no verification that the recipient exists or that the sender has the right to contact them. Students also have no restriction on whom they can message — a student can send messages to any userId in the system.</p>
+        <ul class="fix-list">
+          <li data-n="1">Verify <code>recipientId</code> resolves to a real <code>User</code> document before creating the Message</li>
+          <li data-n="2">Restrict student messaging: students may only message their assigned teacher, counsellor, or admin</li>
+          <li data-n="3">Add a content length limit (max 2000 characters) and strip HTML from the <code>content</code> field</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="sec-pwd123">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Lead conversion creates student with hardcoded "password123" fallback</h3>
+          <div class="issue-loc">adminController.js → postConvertLead · counsellorController.js → postConvertLead</div>
+          <div class="tag-row"><span class="tag">Default credentials</span><span class="tag">Auth</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>Both conversion handlers fall back to the literal string <code>'password123'</code> when no password is supplied. This is one of the first defaults any attacker tries. Every student converted without explicitly setting a password gets this credential.</p>
+        <div class="code-block"><span class="bad">password: req.body.password || 'password123', // ← known default credential</span>
+
+<span class="good">// Option A: Require it explicitly
+if (!req.body.password || req.body.password.trim().length < 8)
+  return res.render('convert', { error: 'Password (min 8 chars) is required.' });
+
+// Option B: Auto-generate a secure temp password
+const tempPwd = require('crypto').randomBytes(8).toString('hex');
+// Show it ONCE on the confirmation screen, set mustChangePassword: true</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Remove the hardcoded fallback from both conversion handlers immediately</li>
+          <li data-n="2">Require the password field server-side with a minimum of 8 characters</li>
+          <li data-n="3">Alternatively: auto-generate a secure temporary password shown once on the confirmation screen</li>
+          <li data-n="4">Set a <code>mustChangePassword</code> flag that forces a password change on first login</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="sec-chgpwd">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Change-password endpoint has no minimum length check — 1-character password accepted</h3>
+          <div class="issue-loc">authController.js → changePassword</div>
+          <div class="tag-row"><span class="tag">Password policy</span><span class="tag">Auth</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The handler verifies the current password is correct, then assigns <code>newPassword</code> directly with no length check. Mongoose's <code>minlength: 6</code> on the schema only fires on <code>.create()</code> by default — the pre-save hook hashes whatever string is given, so a 1-character password passes completely unchecked.</p>
+        <div class="code-block"><span class="bad">user.password = newPassword; // no length check whatsoever
+await user.save();</span>
+
+<span class="good">if (!newPassword || newPassword.trim().length < 8)
+  return res.redirect('/auth/profile?error=password_too_short');
+user.password = newPassword.trim();
+await user.save();</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Add an 8-character minimum check before assigning the new password</li>
+          <li data-n="2">Apply the same policy consistently across <code>resetPassword</code> and <code>changePassword</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="sec-ratelimit">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>No rate limiting on login or forgot-password — brute force and user enumeration are trivial</h3>
+          <div class="issue-loc">routes/auth.js · authController.js</div>
+          <div class="tag-row"><span class="tag">Rate limiting</span><span class="tag">Brute force</span><span class="tag">Enumeration</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>There are unlimited password attempts on the login endpoint. The forgot-password endpoint also returns different error messages for "user not found" vs "wrong phone number", enabling user enumeration — an attacker can determine which email addresses are registered.</p>
+        <ul class="fix-list">
+          <li data-n="1">Install <code>express-rate-limit</code> and apply a limiter of 5 requests / 15 minutes on <code>POST /auth/login</code></li>
+          <li data-n="2">Apply a stricter limiter of 3 requests / hour on <code>POST /auth/forgot-password</code></li>
+          <li data-n="3">Return the same generic message for both "user not found" and "wrong phone" to prevent enumeration</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="sec-headers">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>No security headers — XSS, clickjacking, and MIME sniffing all unmitigated</h3>
+          <div class="issue-loc">app.js — helmet not installed</div>
+          <div class="tag-row"><span class="tag">HTTP headers</span><span class="tag">XSS</span><span class="tag">Clickjacking</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The app sets no security-related HTTP headers. Missing headers include <code>X-Frame-Options</code>, <code>X-Content-Type-Options</code>, <code>Content-Security-Policy</code>, <code>Strict-Transport-Security</code>, and <code>Referrer-Policy</code>. These are a single <code>app.use(helmet())</code> call away.</p>
+        <div class="code-block"><span class="good">const helmet = require('helmet');
+app.use(helmet());
+// If CSP breaks inline EJS scripts, tune it:
+app.use(helmet.contentSecurityPolicy({
+  directives: { scriptSrc: ["'self'", "'unsafe-inline'"] }
+}));</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Install and apply <code>helmet</code> at the top of the middleware stack</li>
+          <li data-n="2">Test that inline EJS scripts still function; add a nonce-based CSP if needed</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ PRODUCTION BUGS ═══════════════ -->
+  <section id="bugs">
+    <div class="section-head"><h2>🐛 Production & Runtime Bugs</h2><span class="section-count">7 issues — 3 critical, 4 high</span></div>
+
+    <div class="issue" id="bug-fee-double">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-c">CRITICAL</span>
+        <div class="issue-meta">
+          <h3>Fee payment double-writes paidAmount — pre-save hook + manual increment = corrupted ledger</h3>
+          <div class="issue-loc">adminController.js → postAddPayment · Fee model pre-save hook</div>
+          <div class="tag-row"><span class="tag">Data integrity</span><span class="tag">Fee model</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p><code>postAddPayment</code> manually increments <code>fee.paidAmount += Number(amount)</code> and then calls <code>fee.save()</code>. The Fee model's pre-save hook runs <code>allocatePayments()</code>, which recomputes <code>paidAmount</code> from the payment array sum — overwriting the manual value. The sync to <code>User.fees_paid</code> runs <em>before</em> the hook corrects things, meaning it captures the inflated pre-hook value and writes incorrect data to the User document.</p>
+        <div class="code-block"><span class="bad">fee.payments.push({ amount: Number(amount), ... });
+fee.paidAmount += Number(amount);  // ← redundant and incorrect
+await fee.save();                  // hook recalculates from scratch (overwrites above)
+await User.findByIdAndUpdate(..., { fees_paid: fee.paidAmount }); // stale value!</span>
+
+<span class="good">fee.payments.push({ amount: Number(amount), ... });
+await fee.save();                  // hook sets paidAmount correctly
+await User.findByIdAndUpdate(..., { fees_paid: fee.paidAmount }); // now accurate</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Remove the <code>fee.paidAmount += Number(amount)</code> line entirely</li>
+          <li data-n="2">Move the <code>User.findByIdAndUpdate</code> sync to after <code>await fee.save()</code> to read the hook-corrected value</li>
+          <li data-n="3">Add a unit test for the <code>allocatePayments</code> hook to prevent future regression</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="bug-rollnum">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-c">CRITICAL</span>
+        <div class="issue-meta">
+          <h3>Race condition in roll number generation — concurrent creations produce duplicate roll numbers</h3>
+          <div class="issue-loc">models/User.js — pre-save hook rollNumber generator</div>
+          <div class="tag-row"><span class="tag">Race condition</span><span class="tag">Concurrency</span><span class="tag">E11000</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The roll number generator reads the current count of users with that role, computes a serial, then checks uniqueness in a while loop. Between <code>countDocuments</code> and <code>findOne</code>, two concurrent requests — e.g. admin creating a student while a counsellor converts a lead — get the same count and both generate the same serial. One hits the unique index and throws an unhandled E11000 crash, producing a raw 500 error page.</p>
+        <div class="code-block"><span class="bad">// Non-atomic — window for collision between count and insert
+let count = await User.countDocuments({ role: this.role });
+rollNum = `VD-${roleCode}-${courseCode}-${year}-${serial}`;</span>
+
+<span class="good">// Atomic counter document — no window for collision
+const counter = await Counter.findByIdAndUpdate(
+  `rollNumber_${roleCode}_${year}`,
+  { $inc: { seq: 1 } },
+  { new: true, upsert: true }
+);
+this.rollNumber =
+  `VD-${roleCode}-${courseCode}-${year}-${String(counter.seq).padStart(3, '0')}`;</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Create a <code>Counter</code> model and use an atomic <code>findByIdAndUpdate + $inc</code> to generate serials</li>
+          <li data-n="2">Wrap user creation in a try/catch that returns a friendly, user-facing error on E11000</li>
+          <li data-n="3">Keep the existing <code>unique: true, sparse: true</code> index on <code>rollNumber</code> as a safety net</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="bug-paidat">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-c">CRITICAL</span>
+        <div class="issue-meta">
+          <h3>Student fee view uses p.date — field doesn't exist, all payment dates show "Invalid Date"</h3>
+          <div class="issue-loc">views/student/fees.ejs:66 vs models/Fee.js paymentSchema</div>
+          <div class="tag-row"><span class="tag">UI bug</span><span class="tag">Data display</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The Fee model's payment schema defines the timestamp field as <code>paidAt</code>. The student fee template accesses <code>p.date</code>, which is <code>undefined</code> — causing every payment row to render as "Invalid Date". Students see no payment date for any transaction, producing a broken and untrustworthy ledger view.</p>
+        <div class="code-block"><span class="bad">&lt;td&gt;&lt;%= new Date(p.date).toLocaleDateString('en-IN') %&gt;&lt;/td&gt;
+<span class="comment">         ↑ undefined — "Invalid Date" on every row</span></span>
+
+<span class="good">&lt;td&gt;&lt;%= new Date(p.paidAt).toLocaleDateString('en-IN') %&gt;&lt;/td&gt;</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Change <code>p.date</code> to <code>p.paidAt</code> in the student fee template</li>
+          <li data-n="2">Audit all other EJS templates for similar field-name mismatches (admin fee-detail.ejs, counsellor admissions)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="bug-cert">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>getCertificate crashes on students with no feedback object — TypeError on null</h3>
+          <div class="issue-loc">studentController.js → getCertificate</div>
+          <div class="tag-row"><span class="tag">Runtime crash</span><span class="tag">Student</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>For older student records where the <code>feedback</code> embedded document was never initialised (students created before the feedback field was added to the schema), <code>student.feedback.submitted</code> throws <code>TypeError: Cannot read properties of null</code> — a 500 crash instead of a graceful redirect.</p>
+        <div class="code-block"><span class="bad">if (!student || student.status !== 'complete' || !student.feedback.submitted) {
+<span class="comment">// ↑ throws if student.feedback is null</span></span>
+
+<span class="good">if (!student || student.status !== 'complete' || !student.feedback?.submitted) {
+<span class="comment">// optional chaining handles null safely</span></span></div>
+        <ul class="fix-list">
+          <li data-n="1">Use optional chaining: <code>student.feedback?.submitted</code></li>
+          <li data-n="2">Run a one-time migration to initialise the <code>feedback</code> subdoc on all existing users where it is null</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="bug-email">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Lead conversion uses phone-derived fake email as fallback — creates unusable student account</h3>
+          <div class="issue-loc">counsellorController.js → postConvertLead · adminController.js → postConvertLead</div>
+          <div class="tag-row"><span class="tag">Data integrity</span><span class="tag">Auth</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>Both conversion handlers fall back to <code>`${lead.phone}@gmail.com`</code> when no email is supplied. The student can't use forgot-password (the email goes nowhere). If two leads share the same phone number, the second conversion crashes with a unique-key E11000 error on the email field.</p>
+        <div class="code-block"><span class="bad">const email = req.body.email || `${lead.phone}@gmail.com`;</span>
+
+<span class="good">const email = req.body.email?.trim().toLowerCase();
+if (!email || !email.includes('@'))
+  return res.render('convert', { error: 'A valid student email address is required.' });</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Remove the phone-based email fallback from both conversion handlers</li>
+          <li data-n="2">Mark email as required in the conversion form HTML and validate server-side</li>
+          <li data-n="3">Check for an existing email before <code>User.create()</code> to surface a friendly duplicate message</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="bug-staleleads">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Stale lead detection reads undefined field name — every active lead floods notifications</h3>
+          <div class="issue-loc">middleware/notificationMiddleware.js → calculateNotifications & calculateSidebarBadges</div>
+          <div class="tag-row"><span class="tag">Notification bug</span><span class="tag">Counsellor</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The stale-lead check reads <code>lastFollowup.dateAt</code> in one function and <code>lastFollowup.doneAt</code> in another. Neither matches the actual schema field name. Both always fall back to <code>l.createdAt</code>, causing every active lead to appear stale from day one.</p>
+        <div class="code-block"><span class="bad">// calculateNotifications — wrong field:
+lastDate = lastFollowup.dateAt   || lastFollowup.createdAt || lastDate;
+// calculateSidebarBadges — different wrong field:
+lastDate = lastFollowup.doneAt   || lastFollowup.createdAt || lastDate;</span>
+
+<span class="good">// Confirm actual field name in Lead schema, then use consistently:
+lastDate = lastFollowup.createdAt || lastDate;</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Confirm the follow-up subdocument's actual timestamp field name in the Lead model schema</li>
+          <li data-n="2">Align both functions in <code>notificationMiddleware.js</code> to use the same field name</li>
+          <li data-n="3">Add a schema-level comment on the field to prevent future drift between usages</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="bug-duperoute">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Duplicate route registration — POST /admin/messages/:id/read registered twice, second is dead code</h3>
+          <div class="issue-loc">routes/admin.js</div>
+          <div class="tag-row"><span class="tag">Dead code</span><span class="tag">Routes</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>Express always matches the first registration; the second inline handler is unreachable. If the two handlers have different logic, the intended behaviour is silently broken with no error. This signals that the route file has no review process.</p>
+        <ul class="fix-list">
+          <li data-n="1">Remove the duplicate inline route handler from <code>routes/admin.js</code></li>
+          <li data-n="2">Add a CI lint step or grep to catch duplicate route definitions</li>
+          <li data-n="3">Move all inline route logic to named controller functions</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ LOGIC / PERMISSIONS ═══════════════ -->
+  <section id="logic">
+    <div class="section-head"><h2>🔒 Logic & Permission Bugs</h2><span class="section-count">3 issues — all high</span></div>
+
+    <div class="issue" id="logic-teacher-att">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Teacher can mark attendance for any batch — no batch ownership check</h3>
+          <div class="issue-loc">teacherController.js → postMarkAttendance</div>
+          <div class="tag-row"><span class="tag">Logic bug</span><span class="tag">Teacher</span><span class="tag">Permissions</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The attendance POST handler accepts <code>batch</code> from the form body and does not verify that the authenticated teacher is assigned to that batch via the Schedule model. Any teacher can mark any batch present or absent.</p>
+        <div class="code-block"><span class="good">// Add at the start of the handler:
+const validBatch = await Schedule.findOne({
+  teacher: req.user._id,
+  batch: req.body.batch
+});
+if (!validBatch)
+  return res.status(403).render('403', { title: 'Access Denied', user: req.user });</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Check the Schedule collection for the teacher + batch combination before processing any attendance</li>
+          <li data-n="2">Log unauthorised access attempts with the teacher's ID and the attempted batch ID</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="logic-teacher-upd">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Teacher can post daily updates for any batch — same pattern as the attendance bug</h3>
+          <div class="issue-loc">teacherController.js → postCreateUpdate</div>
+          <div class="tag-row"><span class="tag">Logic bug</span><span class="tag">Teacher</span><span class="tag">Permissions</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>Daily updates accept <code>batch</code> from the form body with no check that the teacher actually teaches that batch. The fix follows the same pattern as the attendance bug above.</p>
+        <ul class="fix-list">
+          <li data-n="1">Retrieve the teacher's batches via <code>Schedule.distinct('batch', { teacher: req.user._id })</code></li>
+          <li data-n="2">Verify the submitted batch is in that list before saving the update</li>
+          <li data-n="3">Pre-populate the batch dropdown from the teacher's actual batches, not all batches in the system</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="logic-lead-own">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Counsellor can view and comment on leads assigned to other counsellors</h3>
+          <div class="issue-loc">counsellorController.js → getLeadDetail · postAddFollowUp</div>
+          <div class="tag-row"><span class="tag">Logic bug</span><span class="tag">Counsellor</span><span class="tag">Permissions</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p><code>getLeads</code> correctly filters by <code>assignedTo: req.user._id</code>, but <code>getLeadDetail</code> and <code>postAddFollowUp</code> only check that the lead exists — not that it belongs to the requesting counsellor.</p>
+        <ul class="fix-list">
+          <li data-n="1">In all counsellor lead handlers that take <code>:id</code>, scope the lookup: <code>{ _id: req.params.id, assignedTo: req.user._id }</code></li>
+          <li data-n="2">Return 403 if the ownership check fails — not a silent redirect to <code>/leads</code></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ DATA INTEGRITY ═══════════════ -->
+  <section id="dataint">
+    <div class="section-head"><h2>📊 Data Integrity</h2><span class="section-count">5 issues — 2 high, 3 medium</span></div>
+
+    <div class="issue" id="data-email-dup">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Duplicate email during user creation gives a cryptic 500 — no friendly error</h3>
+          <div class="issue-loc">adminController.js → postCreateUser · counsellorController.js → postConvertLead</div>
+          <div class="tag-row"><span class="tag">User creation</span><span class="tag">Error handling</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>MongoDB throws E11000 on a duplicate email. The generic <code>catch</code> block redirects with <code>?error=1</code> — no message explaining why it failed. The admin or counsellor has no idea the email address was already registered.</p>
+        <ul class="fix-list">
+          <li data-n="1">Before <code>User.create()</code>, check <code>await User.findOne({ email: data.email })</code></li>
+          <li data-n="2">Return a specific message: "This email address is already registered"</li>
+          <li data-n="3">Alternatively, catch E11000 specifically: <code>if (err.code === 11000) { /* friendly message */ }</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="data-fee-negative">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Fee payment accepts negative amounts — NaN input silently corrupts the ledger</h3>
+          <div class="issue-loc">adminController.js → postAddPayment</div>
+          <div class="tag-row"><span class="tag">Validation</span><span class="tag">Fee ledger</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>There is no validation on the payment amount field. A negative value will reduce <code>paidAmount</code>. A NaN value will silently corrupt the ledger with no visible error.</p>
+        <div class="code-block"><span class="good">const amt = Number(amount);
+if (!Number.isFinite(amt) || amt <= 0)
+  return res.redirect(`/admin/fees/${req.params.studentId}?error=Invalid+amount`);
+if (amt > (fee.totalAmount - fee.paidAmount + 1))
+  return res.redirect(`/admin/fees/${req.params.studentId}?error=Amount+exceeds+balance`);</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Add NaN, negative, and zero guards on the amount before processing</li>
+          <li data-n="2">Optionally warn (not block) if the amount exceeds the outstanding balance</li>
+          <li data-n="3">Add a payment reversal / refund flow for admin corrections</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="data-downpayment">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>Admin lead conversion bypasses 50% down payment check — counsellor path enforces it, admin doesn't</h3>
+          <div class="issue-loc">adminController.js → postConvertLead</div>
+          <div class="tag-row"><span class="tag">Business logic</span><span class="tag">Fee</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The counsellor conversion form enforces a minimum 50% down payment. The admin path has no such check — admin can create a student with ₹0 fees paid, starting the fee ledger with zero allocation which confuses the counsellor's overdue-fee callbacks.</p>
+        <ul class="fix-list">
+          <li data-n="1">Add a visual warning (not a hard block) on the admin form when <code>paidAmount</code> is below 50% of total</li>
+          <li data-n="2">If admin skips the down payment, record a note in <code>fee.discountReason</code> for the audit trail</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="data-timezone">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>Attendance uses UTC date string — timezone mismatch will mark wrong-day attendance</h3>
+          <div class="issue-loc">teacherController.js → postMarkAttendance · notificationMiddleware.js</div>
+          <div class="tag-row"><span class="tag">Timezone</span><span class="tag">Attendance</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p><code>new Date().toISOString().split('T')[0]</code> returns the UTC date. The academy operates in IST (+5:30). Marking attendance after certain times (e.g., 11 PM IST = next UTC day) records attendance to the wrong calendar date.</p>
+        <div class="code-block"><span class="good">// utils/dateHelper.js
+function todayIST() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  // Returns 'YYYY-MM-DD' in IST
+}
+module.exports = { todayIST };</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Create <code>utils/dateHelper.js</code> with a <code>todayIST()</code> helper function</li>
+          <li data-n="2">Replace all <code>new Date().toISOString().split('T')[0]</code> calls with <code>todayIST()</code></li>
+          <li data-n="3">Apply the same fix to holiday checks and any schedule queries that use a <code>todayStr</code> variable</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="data-convertdat">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>Lead avgDays analytics uses updatedAt as conversion date — any edit resets the clock</h3>
+          <div class="issue-loc">counsellorController.js → getDashboard · adminController.js → getReports</div>
+          <div class="tag-row"><span class="tag">Analytics accuracy</span><span class="tag">Lead model</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>Conversion time is computed as <code>lead.updatedAt - lead.createdAt</code>. But <code>updatedAt</code> resets whenever the lead is edited — adding a follow-up note, changing the course, or updating the phone number all reset it. A lead converted after 30 days but edited on day 35 shows 35, not 30, inflating counsellor performance metrics.</p>
+        <ul class="fix-list">
+          <li data-n="1">Add a <code>convertedAt: { type: Date }</code> field to the Lead model</li>
+          <li data-n="2">Set <code>lead.convertedAt = new Date()</code> in both conversion handlers</li>
+          <li data-n="3">Use <code>convertedAt - createdAt</code> for analytics calculations instead of <code>updatedAt</code></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ UI / UX ═══════════════ -->
+  <section id="ux">
+    <div class="section-head"><h2>🎨 UI / UX Gaps</h2><span class="section-count">11 issues — 2 high, 8 medium, 1 low</span></div>
+
+    <div class="issue" id="ux-feedback-block">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Completed student feedback blocks the entire dashboard — even on repeat visits</h3>
+          <div class="issue-loc">studentController.js → getDashboard</div>
+          <div class="tag-row"><span class="tag">Student UX</span><span class="tag">UX bug</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>If status is "complete" and feedback has not been submitted, the entire dashboard is replaced with the feedback form. The student cannot see attendance, grades, or fees until feedback is submitted — this feels punitive and confusing, especially on a second visit.</p>
+        <ul class="fix-list">
+          <li data-n="1">Show the feedback form as a prominent banner or modal overlay — not a full page replacement</li>
+          <li data-n="2">Allow a "remind me later" dismissal; hard-block only after 3 visits without submission</li>
+          <li data-n="3">Always load and render the full dashboard data behind the feedback prompt</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="ux-no-delete">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>No "Delete User" — only active/inactive toggle, orphan data accumulates indefinitely</h3>
+          <div class="issue-loc">Admin panel — no DELETE /admin/users/:id route exists</div>
+          <div class="tag-row"><span class="tag">Admin UX</span><span class="tag">Data hygiene</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>Toggling a student inactive still leaves Fee, Attendance, Message, Progress, and Assignment records with dangling references. Over time this pollutes all queries with ghost data.</p>
+        <ul class="fix-list">
+          <li data-n="1">Add a <code>DELETE /admin/users/:id</code> route with a confirmation modal</li>
+          <li data-n="2">Cascade delete or archive all associated Fee, Attendance, Progress, Messages, and Submissions</li>
+          <li data-n="3">Restrict hard delete to students with status "drop" or "complete" only</li>
+          <li data-n="4">Log every deletion with reason in an admin audit trail collection</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="ux-query-params">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>All error/success feedback uses URL query params — navigating back replays stale messages</h3>
+          <div class="issue-loc">All controllers — pattern used ~80+ times across the codebase</div>
+          <div class="tag-row"><span class="tag">Flash messages</span><span class="tag">All roles</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>Every success or error communicates via redirect with <code>?updated=1</code>, <code>?error=1</code>, <code>?paid=1</code>, etc. If a user bookmarks the URL or presses the back button, the stale message re-appears for an action that completed long ago. The correct pattern is single-use flash messages.</p>
+        <ul class="fix-list">
+          <li data-n="1">Install <code>connect-flash</code> for single-use flash messages</li>
+          <li data-n="2">Replace <code>res.redirect('/path?updated=1')</code> with <code>req.flash('success', 'Saved'); res.redirect('/path')</code></li>
+          <li data-n="3">Render flash messages in the layout partial so every page shows them without per-template code</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="ux-timetable">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>Student timetable always renders all 7 days — empty days clutter the view</h3>
+          <div class="issue-loc">studentController.js → getDashboard · views/student/dashboard.ejs</div>
+          <div class="tag-row"><span class="tag">Student dashboard</span><span class="tag">Timetable</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The timetable always initialises all 7 days and renders them unconditionally. For a batch with classes only Monday–Saturday, Sunday shows as an empty row. With no schedule at all, every day is empty with no empty-state message.</p>
+        <ul class="fix-list">
+          <li data-n="1">In the EJS template, skip rendering a day row if <code>daysTimetable[day].length === 0</code></li>
+          <li data-n="2">Show an empty-state message such as "No classes scheduled this week" if all days are empty</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="ux-feedback-dup">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>Student can re-submit feedback by pressing back — no idempotency guard</h3>
+          <div class="issue-loc">studentController.js → postSubmitFeedback</div>
+          <div class="tag-row"><span class="tag">Student</span><span class="tag">Data integrity</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The feedback POST handler overwrites the subdoc every time it is called. A student can navigate back and resubmit, overwriting their original ratings — a data integrity issue for teacher evaluation records.</p>
+        <ul class="fix-list">
+          <li data-n="1">Add a guard at the top: <code>if (student.feedback?.submitted) return res.redirect('/student/dashboard?already=1');</code></li>
+          <li data-n="2">Use the PRG (Post-Redirect-Get) pattern so the back button cannot replay the form submission</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="ux-att-filter">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>Attendance detail page doesn't apply filterValidAttendance — inconsistent stats vs dashboard</h3>
+          <div class="issue-loc">studentController.js → getAttendance</div>
+          <div class="tag-row"><span class="tag">Attendance</span><span class="tag">Inconsistency</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The dashboard calls <code>filterValidAttendance</code> to exclude holidays from the count; <code>getAttendance</code> does not. The attendance percentage on the detail page therefore differs from the widget on the dashboard — confusing for students.</p>
+        <ul class="fix-list">
+          <li data-n="1">Apply <code>filterValidAttendance</code> in <code>getAttendance</code> exactly as the dashboard does</li>
+          <li data-n="2">Use the filtered records for both <code>presentCount</code> and <code>total</code> to ensure identical results</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="ux-fee-summary">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>Student fee view shows raw installments but no "what I still owe" summary card</h3>
+          <div class="issue-loc">views/student/fees.ejs</div>
+          <div class="tag-row"><span class="tag">Student UX</span><span class="tag">Fee</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The fees page renders the installment breakdown table but does not display the computed <code>dueAmount</code> or the next instalment date prominently. Students frequently don't know what to pay next. The data already exists — it is a view-layer issue only.</p>
+        <ul class="fix-list">
+          <li data-n="1">Add a "Next Payment Due" summary card at the top of the page with amount, date, and days remaining</li>
+          <li data-n="2">Show total paid vs total due visually (a progress bar)</li>
+          <li data-n="3">Format the existing payment receipt / transaction history table more clearly</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="ux-profile-confirm">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-l">LOW</span>
+        <div class="issue-meta">
+          <h3>No confirmation on profile update request — silent submission, no pending-review indicator</h3>
+          <div class="issue-loc">authController.js → updateProfile (student path)</div>
+          <div class="tag-row"><span class="tag">Student UX</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <ul class="fix-list">
+          <li data-n="1">Show a "Pending review" banner on the student profile page when <code>pendingProfileUpdate.requestedAt</code> is set</li>
+          <li data-n="2">Prevent submitting a second request while one is already pending (disable the form)</li>
+          <li data-n="3">Send an inbox notification when admin approves or rejects the request</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="ux-bulk">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>No bulk actions — admin must update each user one at a time</h3>
+          <div class="issue-loc">Admin users list — no multi-select</div>
+          <div class="tag-row"><span class="tag">Admin UX</span><span class="tag">Efficiency</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>Marking 20 students "complete" at the end of a batch requires 20 individual page navigations.</p>
+        <ul class="fix-list">
+          <li data-n="1">Add checkboxes to the users table with a "select all" header checkbox</li>
+          <li data-n="2">Add a bulk actions dropdown: Change Status, Send Message, Export CSV</li>
+          <li data-n="3">Add a <code>POST /admin/users/bulk</code> route that processes an array of user IDs atomically</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="ux-clash">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>Schedule clash check doesn't cover batch double-booking — students get conflicting schedules silently</h3>
+          <div class="issue-loc">utils/clashDetector.js</div>
+          <div class="tag-row"><span class="tag">Schedule</span><span class="tag">Admin</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The clash detector checks teacher and classroom double-booking but not batch. The same batch can be scheduled for two different classes at the same time with no warning — students receive conflicting timetables.</p>
+        <ul class="fix-list">
+          <li data-n="1">Add a third clash check: <code>batch</code> + overlapping time window on the same date</li>
+          <li data-n="2">Return all three clash reasons in one pass — currently the function returns on the first hit it finds</li>
+          <li data-n="3">Surface all clash details in the error banner, not just a generic failure message</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="ux-capacity">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>No classroom capacity enforcement — over-booking is completely silent</h3>
+          <div class="issue-loc">adminController.js → postCreateSchedule</div>
+          <div class="tag-row"><span class="tag">Schedule</span><span class="tag">Admin</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>Classrooms have a <code>capacity</code> field that is stored but never checked against batch size when creating a schedule. Admin can book 50 students into a room with capacity 10 with zero warning.</p>
+        <ul class="fix-list">
+          <li data-n="1">During schedule creation, count the students in the batch and compare to classroom capacity</li>
+          <li data-n="2">Show a warning (not a hard block) if the batch count exceeds capacity</li>
+          <li data-n="3">Display batch size vs capacity in the classroom dropdown on the schedule creation form</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ MISSING FEATURES ═══════════════ -->
+  <section id="features">
+    <div class="section-head"><h2>🔧 Missing Connections & Features</h2><span class="section-count">6 issues — 2 high, 4 medium</span></div>
+
+    <div class="issue" id="feat-coun-fee">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Counsellor cannot see fee status of their converted students — data exists but is not wired</h3>
+          <div class="issue-loc">counsellorController.js → getAdmissions</div>
+          <div class="tag-row"><span class="tag">Counsellor</span><span class="tag">Disconnected feature</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The admissions view shows converted students but does not fetch or display their fee payment status. Counsellors are responsible for fee follow-up but are flying blind — the data exists, the view just isn't wired to it.</p>
+        <ul class="fix-list">
+          <li data-n="1">In <code>counsellorController.getAdmissions</code>, add <code>Fee.find({ student: { $in: studentIds } })</code> and join to the student list</li>
+          <li data-n="2">Show a fee status badge (Paid / Partial / Overdue) in the admissions table</li>
+          <li data-n="3">Link to a read-only fee detail view (not the admin edit-capable version)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="feat-coun-leads">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Counsellor cannot create leads directly — the form exists but the routes are not wired</h3>
+          <div class="issue-loc">counsellorController.js — GET/POST /counsellor/leads/create missing</div>
+          <div class="tag-row"><span class="tag">Counsellor</span><span class="tag">Missing feature</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p><code>lead-form.ejs</code> exists but the create routes are not registered in the counsellor router. Counsellors must go to the admin to create a lead, blocking a basic daily workflow.</p>
+        <ul class="fix-list">
+          <li data-n="1">Wire <code>GET /counsellor/leads/create</code> and <code>POST /counsellor/leads/create</code> in the router</li>
+          <li data-n="2">Auto-set <code>assignedTo: req.user._id</code> on creation — counsellors own the leads they create</li>
+          <li data-n="3">Prevent counsellors from setting <code>assignedTo</code> to a different counsellor (admin-only action)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="feat-coun-convert">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>No "ready to convert" status — counsellor can't flag a lead for admin to finalise</h3>
+          <div class="issue-loc">Lead model · counsellorController.js</div>
+          <div class="tag-row"><span class="tag">Counsellor</span><span class="tag">Workflow gap</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The real-world flow is: counsellor closes the deal → flags the lead as ready → admin finalises conversion (assigns batch, sets fees, generates roll number). Currently counsellors cannot initiate this handoff at all.</p>
+        <ul class="fix-list">
+          <li data-n="1">Add a "Mark as Ready to Convert" action that sets <code>lead.status = 'ready_to_convert'</code></li>
+          <li data-n="2">Show this status on the admin leads list as a priority highlight</li>
+          <li data-n="3">Admin still performs the actual conversion (fee, batch, roll number assignment)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="feat-teacher-progress">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>Teacher has no aggregated progress or grades view for their students</h3>
+          <div class="issue-loc">teacherController.js → getMyStudents</div>
+          <div class="tag-row"><span class="tag">Teacher</span><span class="tag">Missing feature</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The "My Students" view shows a list but has no aggregated grade data, assignment submission rates, or at-a-glance progress. The Progress model contains this data — it is just not fetched or surfaced.</p>
+        <ul class="fix-list">
+          <li data-n="1">Enrich <code>teacherController.getStudents</code> with Progress data, attendance %, and ungraded submission count per student</li>
+          <li data-n="2">Add a visual progress bar using the existing <code>attendancePct</code> calculation logic</li>
+          <li data-n="3">Add a quick-action "Grade" link per student directly from the list view</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="feat-teacher-sched">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>Teacher can't mark a class as completed — all schedule management is admin-only</h3>
+          <div class="issue-loc">routes/teacher.js — no POST /teacher/schedules/:id/complete route</div>
+          <div class="tag-row"><span class="tag">Teacher</span><span class="tag">Workflow gap</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <ul class="fix-list">
+          <li data-n="1">Add <code>POST /teacher/schedules/:id/complete</code> — marks status to "completed" without deleting the record</li>
+          <li data-n="2">Teacher cannot change the date, time, or classroom — only mark complete or add a class note</li>
+          <li data-n="3">Optionally: add a "request reschedule" feature that creates a notification for admin approval</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="feat-reports">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>Reports have only 4 tabs — 7 additional analytics surfaces are needed for operational decisions</h3>
+          <div class="issue-loc">adminController.js → getReports</div>
+          <div class="tag-row"><span class="tag">Analytics</span><span class="tag">Admin</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The current 4-tab system (General, Revenue, Counsellors, Attendance) is solid groundwork but misses the operational intelligence a director needs daily. The Revenue tab also uses <code>f.createdAt</code> as the forecast anchor — it should use installment <code>dueDate</code>.</p>
+        <ul class="fix-list">
+          <li data-n="1"><strong>Batch Health Score</strong> — composite of attendance %, assignment completion rate, and fee collection rate per batch</li>
+          <li data-n="2"><strong>Lead Funnel Velocity</strong> — average days at each stage: new → contacted → interested → converted</li>
+          <li data-n="3"><strong>Fee Collection Aging</strong> — outstanding amounts bucketed by overdue duration: 0–30d, 30–60d, 60–90d, 90d+</li>
+          <li data-n="4"><strong>At-Risk Student Alerts</strong> — students with attendance &lt;75%, overdue fees, or 3+ unsubmitted assignments</li>
+          <li data-n="5"><strong>Teacher Load vs Output</strong> — classes conducted, grading speed, daily update frequency per teacher</li>
+          <li data-n="6">Fix revenue forecast: switch the target series to installment-level <code>dueDate</code> instead of <code>fee.createdAt</code></li>
+          <li data-n="7">Add CSV/PDF export to every report tab — all data is currently view-only with no download path</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ PERFORMANCE ═══════════════ -->
+  <section id="perf">
+    <div class="section-head"><h2>⚡ Performance</h2><span class="section-count">7 issues — 2 high, 1 medium, 4 low</span></div>
+
+    <div class="issue" id="perf-notif">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Notification middleware runs 5–12 heavy DB queries on every page load — hidden latency tax</h3>
+          <div class="issue-loc">middleware/notificationMiddleware.js → populateNotifications</div>
+          <div class="tag-row"><span class="tag">Performance</span><span class="tag">All roles</span><span class="tag">Every request</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The <code>populateNotifications</code> middleware fires on every request and runs 5–12 separate DB queries (messages, fees, schedules, assignments, leads). On a slow connection this adds hundreds of milliseconds of latency to every page load in the system.</p>
+        <ul class="fix-list">
+          <li data-n="1">Move notification calculation to a client-side AJAX call (<code>GET /api/notifications</code>) polled every 60 seconds</li>
+          <li data-n="2">Or cache the result in the user's session object with a 30-second TTL</li>
+          <li data-n="3">At minimum, wrap all independent notification queries in a single <code>Promise.all</code> — currently some run sequentially</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="perf-n1">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Counsellor KPI report runs 3 DB queries per counsellor — N+1 problem</h3>
+          <div class="issue-loc">adminController.js → getReports counsellors tab</div>
+          <div class="tag-row"><span class="tag">N+1 query</span><span class="tag">Performance</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The counsellors KPI tab loops over each counsellor and runs 3 separate <code>Lead.find()</code> calls per iteration. With 10 counsellors that is 30+ sequential DB queries for a single page render.</p>
+        <div class="code-block"><span class="good">// Replace the loop with a single aggregation pipeline:
+const stats = await Lead.aggregate([
+  { $group: {
+    _id:       '$assignedTo',
+    total:     { $sum: 1 },
+    converted: { $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] } },
+    lost:      { $sum: { $cond: [{ $eq: ['$status', 'lost'] },     1, 0] } },
+    followUps: { $sum: { $size: '$followUpHistory' } }
+  }},
+  { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'counsellor' } }
+]);</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Replace the counsellor loop with a single <code>Lead.aggregate()</code> using <code>$group</code></li>
+          <li data-n="2">Use <code>$lookup</code> to join counsellor user details in the same pipeline</li>
+          <li data-n="3">Apply the same aggregation pattern to the attendance report batch loop</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="perf-fee-find">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-l">LOW</span>
+        <div class="issue-meta">
+          <h3>Admin notification loads ALL fee records with no limit — will timeout at scale</h3>
+          <div class="issue-loc">notificationMiddleware.js — admin overdue fees check</div>
+          <div class="tag-row"><span class="tag">Performance</span><span class="tag">Admin</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <div class="code-block"><span class="bad">const fees = await Fee.find().populate('student'); // every fee record, every page load</span>
+
+<span class="good">const fees = await Fee.find({ dueDate: { $lt: new Date() } })
+  .limit(20)
+  .populate('student', 'name');</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Add a <code>dueDate &lt; now</code> filter and <code>.limit(20)</code> to the overdue fees query</li>
+          <li data-n="2">Only populate the student <code>name</code> field — not the entire document</li>
+          <li data-n="3">Add a partial index on <code>Fee.dueDate</code> for fast overdue queries</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="perf-coun-seq">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-l">LOW</span>
+        <div class="issue-meta">
+          <h3>Counsellor dashboard runs ~12 sequential DB queries — most are independent and could be parallelised</h3>
+          <div class="issue-loc">counsellorController.js → getDashboard</div>
+          <div class="tag-row"><span class="tag">Performance</span><span class="tag">Counsellor</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <div class="code-block"><span class="bad">const recentLeads    = await Lead.find(...);
+const followupLeads  = await Lead.find(...);
+const overdueCallbacks = await Lead.find(...);</span>
+
+<span class="good">const [recentLeads, followupLeads, overdueCallbacks, ...] = await Promise.all([
+  Lead.find(...),
+  Lead.find(...),
+  Lead.find(...),
+  // ...all independent queries
+]);</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Wrap all independent queries in a single <code>Promise.all</code> — the same pattern the student dashboard already uses</li>
+          <li data-n="2">The <code>studentFees</code> query depends on <code>enrolledStudents</code> — group it in a second <code>Promise.all</code> after the first resolves</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="perf-inmem">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-l">LOW</span>
+        <div class="issue-meta">
+          <h3>Counsellor admissions search uses in-memory JS filter — bypasses DB index, won't scale</h3>
+          <div class="issue-loc">counsellorController.js → getAdmissions</div>
+          <div class="tag-row"><span class="tag">Performance</span><span class="tag">Search</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <div class="code-block"><span class="bad">let leads = await Lead.find(query).populate('convertedStudent');
+if (search) leads = leads.filter(l =>
+  l.convertedStudent?.name.toLowerCase().includes(search.toLowerCase())
+); // fetches ALL, filters in JS</span>
+
+<span class="good">if (search) {
+  const ids = (await User.find({
+    role: 'student',
+    name: { $regex: escapeRegex(search), $options: 'i' }
+  }).select('_id')).map(u => u._id);
+  query.convertedStudent = { $in: ids };
+}
+const leads = await Lead.find(query).populate('convertedStudent');</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Move the search filter into the MongoDB query rather than JavaScript application code</li>
+          <li data-n="2">Apply the <code>escapeRegex</code> helper from the Security section here too</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="perf-virtual">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-l">LOW</span>
+        <div class="issue-meta">
+          <h3>Fee virtuals (totalFine, dueAmount) recalculate on every access — no caching</h3>
+          <div class="issue-loc">models/Fee.js — virtual getters</div>
+          <div class="tag-row"><span class="tag">Performance</span><span class="tag">Fee model</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The fine and due-amount virtuals iterate all installments and compare against <code>new Date()</code> on every property access. In the notification middleware, this runs for every student on every page load — pure CPU waste at scale.</p>
+        <ul class="fix-list">
+          <li data-n="1">Store a computed <code>lastCalculatedDueAmount</code> and <code>fineLastCalculatedAt</code> timestamp on the Fee document</li>
+          <li data-n="2">Recalculate only when more than 24 hours have passed or when a payment is added</li>
+          <li data-n="3">In the short term: add a daily cron job that persists <code>currentDueAmount</code> for all fees</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="perf-indexes">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>Missing database indexes on high-frequency query fields</h3>
+          <div class="issue-loc">models/Attendance.js · models/Lead.js · models/Schedule.js</div>
+          <div class="tag-row"><span class="tag">Index</span><span class="tag">Query performance</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>Fields used in frequent queries with no index: <code>Attendance.date</code>, <code>Attendance.student</code>, <code>Lead.assignedTo</code>, <code>Lead.status</code>, <code>Schedule.date</code>, <code>Schedule.teacher</code>, <code>Schedule.batch</code>. These will slow significantly as data grows and will eventually cause user-facing timeouts.</p>
+        <div class="code-block"><span class="good">attendanceSchema.index({ student: 1, date: -1 });
+attendanceSchema.index({ date: 1, batch: 1 });
+leadSchema.index({ assignedTo: 1, status: 1 });
+scheduleSchema.index({ teacher: 1, date: 1 });
+scheduleSchema.index({ batch: 1, date: 1 });</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Add the compound indexes above to each model schema definition — this is a low-effort, high-impact change</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ARCHITECTURE ═══════════════ -->
+  <section id="arch">
+    <div class="section-head"><h2>🏗 Architecture & Code Quality</h2><span class="section-count">7 issues — 4 high, 2 medium, 1 low</span></div>
+
+    <div class="issue" id="arch-monolith">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>adminController.js is a 1000+ line monolith handling 12 different domains</h3>
+          <div class="issue-loc">controllers/adminController.js</div>
+          <div class="tag-row"><span class="tag">Architecture</span><span class="tag">Maintainability</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <div class="code-block"><span class="good">// Proposed split — exports stay identical, routes don't change
+controllers/admin/
+  userController.js       // users CRUD, status, profile approvals
+  feeController.js        // payments, ledger, installments
+  leadController.js       // pipeline, assign, convert
+  scheduleController.js   // schedules, timetables, classrooms
+  reportController.js     // all analytics tabs
+  holidayController.js    // holidays + leave approvals</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Create a <code>controllers/admin/</code> directory</li>
+          <li data-n="2">Move functions into domain-specific files — keep exports identical so route files require no changes</li>
+          <li data-n="3">Update <code>routes/admin.js</code> to import from the new sub-paths</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="arch-errors">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Error handling is inconsistent — some functions crash on null, others silently redirect</h3>
+          <div class="issue-loc">Multiple controllers</div>
+          <div class="tag-row"><span class="tag">Reliability</span><span class="tag">Error handling</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>Some handlers check <code>if (!u) return res.redirect()</code>; others access <code>u.isActive</code> without null-checking, crashing to the generic 500 page. No consistent null-check pattern exists across the codebase.</p>
+        <ul class="fix-list">
+          <li data-n="1">Add a <code>middleware/asyncHandler.js</code> wrapper that catches async errors and calls <code>next(err)</code></li>
+          <li data-n="2">Create a centralised <code>errorHandler.js</code> Express middleware (404 for missing resources, 403 for permission failures, 500 for server errors)</li>
+          <li data-n="3">Audit all <code>findById</code> calls — every one needs a null-check before accessing any property on the result</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="arch-validation">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>No input validation layer — all sanitisation happens ad hoc inside individual controllers</h3>
+          <div class="issue-loc">All controllers — req.body trusted entirely</div>
+          <div class="tag-row"><span class="tag">Architecture</span><span class="tag">Input validation</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>There is zero shared validation middleware. Numbers may arrive as strings, required fields may be missing, and date strings are unparsed. Each controller trusts <code>req.body</code> entirely and validates (or doesn't) ad hoc.</p>
+        <ul class="fix-list">
+          <li data-n="1">Install <code>express-validator</code></li>
+          <li data-n="2">Create a <code>middleware/validators/</code> directory with validation schemas per route group</li>
+          <li data-n="3">Cover at minimum: user creation (name, email, role required), fee payment (amount &gt; 0, valid method), lead creation (name, phone required), schedule creation (valid date, startTime &lt; endTime)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="arch-revfcst">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-h">HIGH</span>
+        <div class="issue-meta">
+          <h3>Revenue forecast uses fee.createdAt as target anchor — should use installment dueDate</h3>
+          <div class="issue-loc">adminController.js → getReports revenue tab</div>
+          <div class="tag-row"><span class="tag">Analytics accuracy</span><span class="tag">Finance</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The "Target" chart series groups by <code>f.createdAt</code>. A student who enrolled in January with instalments due in March and June shows the full fee target in January — a false spike followed by zero activity in subsequent months.</p>
+        <div class="code-block"><span class="good">// Fix — iterate per-installment dueDate instead
+fees.forEach(f => {
+  f.installments.forEach(inst => {
+    const month = inst.dueDate
+      ? inst.dueDate.toISOString().slice(0, 7)
+      : f.createdAt.toISOString().slice(0, 7); // fallback for no-installment fees
+    if (!monthlyStats[month]) monthlyStats[month] = { month, target: 0, actual: 0 };
+    monthlyStats[month].target += inst.amount;
+  });
+});</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Switch the target series to iterate per-installment <code>dueDate</code> instead of top-level <code>fee.createdAt</code></li>
+          <li data-n="2">Handle fees with no installments gracefully (fall back to <code>createdAt</code>)</li>
+          <li data-n="3">Add a forecast line extending beyond today using future installment due dates</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="arch-duplicate-logic">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>Source quality stats are computed twice in two controllers — duplicated 30-line logic</h3>
+          <div class="issue-loc">adminController.js → getLeads · counsellorController.js → getDashboard</div>
+          <div class="tag-row"><span class="tag">DRY violation</span><span class="tag">Maintainability</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <p>The identical ~30-line loop that computes <code>sourceStatsMap</code> exists in two controllers. Any bug fix or formula change must be applied in both places.</p>
+        <ul class="fix-list">
+          <li data-n="1">Extract to <code>utils/leadAnalytics.js</code> as a <code>computeSourceStats(leads)</code> function</li>
+          <li data-n="2">Import and call it in both controllers</li>
+          <li data-n="3">Add a JSDoc comment explaining what "conversion time" means and how <code>avgDays</code> is computed</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="arch-logging">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-m">MEDIUM</span>
+        <div class="issue-meta">
+          <h3>Logging uses emoji + console.log — unqueryable in production log systems</h3>
+          <div class="issue-loc">All controllers</div>
+          <div class="tag-row"><span class="tag">DX</span><span class="tag">Observability</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <div class="code-block"><span class="good">// utils/logger.js
+const logger = {
+  info:  (msg, meta = {}) => console.log(JSON.stringify(
+    { level: 'info',  msg, ...meta, ts: new Date() })),
+  warn:  (msg, meta = {}) => console.warn(JSON.stringify(
+    { level: 'warn',  msg, ...meta, ts: new Date() })),
+  error: (msg, meta = {}) => console.error(JSON.stringify(
+    { level: 'error', msg, ...meta, ts: new Date() })),
+};
+module.exports = logger;
+
+// Usage:
+logger.error('Create User failed', {
+  adminId: req.user._id, role: data.role, err: err.message
+});</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Create <code>utils/logger.js</code> with the above structure, or install <code>pino</code> / <code>winston</code></li>
+          <li data-n="2">Replace all <code>console.log</code> and <code>console.error</code> calls in controllers with <code>logger.info/error</code></li>
+          <li data-n="3">Always include action name, relevant IDs, user role/ID, and error message in the meta object</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="issue" id="arch-jsdoc">
+      <div class="issue-hd" onclick="toggle(this)">
+        <span class="badge b-l">LOW</span>
+        <div class="issue-meta">
+          <h3>Zero JSDoc on controller functions — 80+ functions with no documentation headers</h3>
+          <div class="issue-loc">All controllers</div>
+          <div class="tag-row"><span class="tag">DX</span><span class="tag">Documentation</span></div>
+        </div>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="issue-body">
+        <div class="code-block"><span class="good">/**
+ * GET /admin/fees/:studentId
+ * Admin only. Renders the full fee ledger for a student.
+ * Populates: student user document, payment receivers.
+ *
+ * @param {string} req.params.studentId — MongoDB student _id
+ * @renders admin/fee-detail with { fee, title, user }
+ */
+exports.getStudentFee = async (req, res) => { ... };</span></div>
+        <ul class="fix-list">
+          <li data-n="1">Add a JSDoc block to every exported controller function (80+ to cover in total)</li>
+          <li data-n="2">Document: HTTP method + path, roles allowed, what it renders, and key parameters</li>
+          <li data-n="3">Generate an API reference with the <code>jsdoc</code> CLI as part of the project README</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ROLE PERMISSION MATRIX ═══════════════ -->
+  <section id="matrix">
+    <div class="section-head"><h2>👤 Role Permission Matrix</h2><span class="section-count">Desired boundaries — current code over-permits in several areas</span></div>
+    <div class="matrix-wrap">
+      <table class="matrix-table">
+        <thead>
+          <tr><th>Feature / Action</th><th>Admin</th><th>Counsellor</th><th>Teacher</th><th>Student</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Create / delete users</td><td><span class="ck">✓</span> Full</td><td><span class="cx">✗</span></td><td><span class="cx">✗</span></td><td><span class="cx">✗</span></td></tr>
+          <tr><td>Reset any password</td><td><span class="ck">✓</span> Full</td><td><span class="cx">✗</span></td><td><span class="cx">✗</span></td><td><span class="cpo">◑</span> Own (request)</td></tr>
+          <tr><td>View all students</td><td><span class="ck">✓</span> Full</td><td><span class="cpo">◑</span> Own converted</td><td><span class="cpo">◑</span> Own batch</td><td><span class="cx">✗</span></td></tr>
+          <tr><td>Create leads</td><td><span class="ck">✓</span> Full</td><td><span class="cpo">◑</span> Own + reassign</td><td><span class="cx">✗</span></td><td><span class="cx">✗</span></td></tr>
+          <tr><td>View all leads</td><td><span class="ck">✓</span> All</td><td><span class="cpo">◑</span> Assigned only</td><td><span class="cx">✗</span></td><td><span class="cx">✗</span></td></tr>
+          <tr><td>Convert lead → student</td><td><span class="ck">✓</span> Full</td><td><span class="cpo">◑</span> Initiate only</td><td><span class="cx">✗</span></td><td><span class="cx">✗</span></td></tr>
+          <tr><td>Add fee payment</td><td><span class="ck">✓</span> Full</td><td><span class="cx">✗</span></td><td><span class="cx">✗</span></td><td><span class="cx">✗</span></td></tr>
+          <tr><td>View student fee ledger</td><td><span class="ck">✓</span> All</td><td><span class="cpo">◑</span> Own students</td><td><span class="cx">✗</span></td><td><span class="cpo">◑</span> Own only</td></tr>
+          <tr><td>Mark attendance</td><td><span class="cpo">◑</span> View / override</td><td><span class="cx">✗</span></td><td><span class="cpo">◑</span> Own batch only</td><td><span class="cx">✗</span></td></tr>
+          <tr><td>Post assignments</td><td><span class="cpo">◑</span> View all</td><td><span class="cx">✗</span></td><td><span class="cpo">◑</span> Own batch only</td><td><span class="cx">✗</span></td></tr>
+          <tr><td>Grade submissions</td><td><span class="cx">✗</span></td><td><span class="cx">✗</span></td><td><span class="cpo">◑</span> Own assignments</td><td><span class="cx">✗</span></td></tr>
+          <tr><td>Create schedules</td><td><span class="ck">✓</span> Full</td><td><span class="cx">✗</span></td><td><span class="cx">✗</span></td><td><span class="cx">✗</span></td></tr>
+          <tr><td>Approve leave</td><td><span class="ck">✓</span> Full</td><td><span class="cx">✗</span></td><td><span class="cpo">◑</span> Request only</td><td><span class="cx">✗</span></td></tr>
+          <tr><td>View all reports</td><td><span class="ck">✓</span> Full</td><td><span class="cpo">◑</span> Own pipeline</td><td><span class="cpo">◑</span> Own class stats</td><td><span class="cpo">◑</span> Own progress</td></tr>
+          <tr><td>Send messages</td><td><span class="ck">✓</span> Any user</td><td><span class="cpo">◑</span> Own students + admin</td><td><span class="cpo">◑</span> Own batch + admin</td><td><span class="cpo">◑</span> Teacher + counsellor + admin</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout orange" style="margin-top:1rem">
+      <strong>Broken connections currently in production:</strong> Counsellors cannot see the fee status of their converted students (the Fee data exists; the admissions view is simply not wired to it). Teachers cannot see an aggregated progress summary for their own batch. Both should be implemented as scoped read-only views — not elevated to admin-level access.
+    </div>
+  </section>
+
+  <!-- ═══════════════ ROADMAP ═══════════════ -->
+  <section id="roadmap">
+    <div class="section-head"><h2>🗺 Implementation Roadmap</h2><span class="section-count">Estimated 6–8 weeks solo part-time · 3 weeks pair-programming</span></div>
+    <div class="callout" style="margin-bottom:1.25rem">
+      <strong>Phases 1 and 2 are mandatory prerequisites.</strong> No new feature work should begin until the security issues and architecture foundations are in place. The security bugs listed in Phase 1 are live, exploitable risks on the current deployment.
+    </div>
+    <div class="phases">
+      <div class="phase">
+        <div class="phase-num">Phase 1</div>
+        <div class="phase-title">Security & Critical Bugs</div>
+        <div class="phase-period">Week 1–2</div>
+        <div class="phase-items">
+          Password reset validation · CSRF protection on all forms · Regex input escaping · JWT secret rotation · File upload MIME filter · Open redirect fix · Lead ownership enforcement (counsellor) · Message recipient validation · Remove default "password123" · Teacher batch scope check (attendance + updates) · Fee payment amount validation · Fake email fallback removal · Duplicate route cleanup · Roll number race condition fix · Fee double-write removal · p.date → p.paidAt template fix
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">Phase 2</div>
+        <div class="phase-title">Architecture Foundation</div>
+        <div class="phase-period">Week 2–3</div>
+        <div class="phase-items">
+          Split adminController.js into domain modules · Add asyncHandler middleware · Centralised errorHandler · escapeRegex util · safeRedirect helper · Structured logger (utils/logger.js) · MongoDB compound indexes · Security headers (helmet) · Rate limiting on auth routes · express-validator layer · todayIST() date helper
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">Phase 3</div>
+        <div class="phase-title">Disconnected Features</div>
+        <div class="phase-period">Week 3–4</div>
+        <div class="phase-items">
+          Counsellor fee visibility · Student pending-update banner · Teacher student progress summary · Batch clash detection · Classroom capacity warning · filterValidAttendance consistency · Stale lead field name fix · getCertificate optional chaining · Feedback idempotency guard · convertedAt field on Lead model
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">Phase 4</div>
+        <div class="phase-title">New Features</div>
+        <div class="phase-period">Week 4–6</div>
+        <div class="phase-items">
+          Counsellor lead creation flow · Ready-to-convert status + admin notification · Bulk user actions · Teacher schedule completion marking · User deletion with cascade archive · Student fee summary card · Flash message system (connect-flash) · Feedback modal overlay (non-blocking) · Change password min-length enforcement
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">Phase 5</div>
+        <div class="phase-title">Analytics Overhaul</div>
+        <div class="phase-period">Week 6–8</div>
+        <div class="phase-items">
+          Fix revenue forecast to installment dueDate · Batch health score tab · Lead funnel velocity tab · Fee collection aging buckets · At-risk student digest · Teacher load report · N+1 counsellor loop → aggregate pipeline · Fee virtual caching / daily cron · CSV and PDF export on all tabs
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">Phase 6</div>
+        <div class="phase-title">DX & Documentation</div>
+        <div class="phase-period">Ongoing</div>
+        <div class="phase-items">
+          JSDoc on all 80+ controller functions · Move notifications to AJAX polling · Extract leadAnalytics utility · Request logging middleware · CONTRIBUTING.md with code patterns and naming conventions
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ FILE SUMMARY ═══════════════ -->
+  <section id="filesummary">
+    <div class="section-head"><h2>📁 Quick Reference by File</h2></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+      <table class="file-table">
+        <thead>
+          <tr><th>File</th><th>Key Issues</th><th>Highest</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>adminController.js</td>
+            <td>Fee double-write, open redirect, duplicate email 500, negative fee amount, revenue forecast anchor, N+1 counsellor loop, 1000-line monolith</td>
+            <td><span class="badge b-c">CRITICAL</span></td>
+          </tr>
+          <tr>
+            <td>models/User.js</td>
+            <td>Race condition in roll number pre-save hook</td>
+            <td><span class="badge b-c">CRITICAL</span></td>
+          </tr>
+          <tr>
+            <td>views/student/fees.ejs</td>
+            <td>p.date → p.paidAt field mismatch: every payment row shows "Invalid Date"</td>
+            <td><span class="badge b-c">CRITICAL</span></td>
+          </tr>
+          <tr>
+            <td>routes/* (all four)</td>
+            <td>No CSRF protection, no file upload MIME filter, no rate limiting on auth</td>
+            <td><span class="badge b-c">CRITICAL</span></td>
+          </tr>
+          <tr>
+            <td>authController.js</td>
+            <td>No min-length on changePassword, open redirect in reset flow</td>
+            <td><span class="badge b-h">HIGH</span></td>
+          </tr>
+          <tr>
+            <td>teacherController.js</td>
+            <td>Any-batch attendance marking, any-batch daily updates, no schedule complete action</td>
+            <td><span class="badge b-h">HIGH</span></td>
+          </tr>
+          <tr>
+            <td>counsellorController.js</td>
+            <td>Lead ownership not enforced on detail/followup, fake email fallback, in-memory search, ~12 sequential dashboard queries</td>
+            <td><span class="badge b-h">HIGH</span></td>
+          </tr>
+          <tr>
+            <td>studentController.js</td>
+            <td>getCertificate null crash, feedback blocks dashboard, re-submit feedback, attendance filter inconsistency</td>
+            <td><span class="badge b-h">HIGH</span></td>
+          </tr>
+          <tr>
+            <td>notificationMiddleware.js</td>
+            <td>Fee.find() with no limit or filter, stale-lead field name mismatch, runs on every single request</td>
+            <td><span class="badge b-h">HIGH</span></td>
+          </tr>
+          <tr>
+            <td>models/Fee.js</td>
+            <td>Virtual dueAmount and totalFine recomputed on every property access — no caching</td>
+            <td><span class="badge b-m">MEDIUM</span></td>
+          </tr>
+          <tr>
+            <td>utils/clashDetector.js</td>
+            <td>Batch double-booking not checked; returns on first clash only instead of collecting all</td>
+            <td><span class="badge b-m">MEDIUM</span></td>
+          </tr>
+          <tr>
+            <td>.env</td>
+            <td>JWT_SECRET committed to version control — rotate immediately</td>
+            <td><span class="badge b-h">HIGH</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+function toggle(hd) {
+  hd.closest('.issue').classList.toggle('open');
+}
+window.addEventListener('DOMContentLoaded', () => {
+  const id = location.hash.slice(1);
+  if (id) {
+    const el = document.getElementById(id);
+    if (el?.classList.contains('issue')) el.classList.add('open');
+  }
+});
+</script>
+</body>
+</html>

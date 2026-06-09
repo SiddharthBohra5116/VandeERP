@@ -1,0 +1,88 @@
+<%
+  layout = 'main';
+  title = 'Batch Management';
+  subtitle = 'Manage course cohorts, student roster capacities, and assigned teachers';
+  page = 'batches';
+%>
+
+<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+  <form method="GET" action="/admin/batches" class="filter-bar" style="margin: 0;">
+    <input type="text" name="search" class="form-control" placeholder="Search batches by name..." value="<%= filter.search || '' %>">
+    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+    <a href="/admin/batches" class="btn btn-ghost btn-sm">Clear</a>
+    
+    <a href="/admin/batches/create" class="btn btn-primary btn-sm" style="margin-left: auto;">+ Create Batch</a>
+  </form>
+</div>
+
+<div class="card">
+  <% if (batches.length === 0) { %>
+    <div class="empty-state" style="padding: 3rem 1.5rem; text-align: center;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); margin-bottom: 1rem;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <p style="color: var(--text-muted);">No batches found. Click "Create Batch" to add one.</p>
+    </div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Batch Details</th>
+            <th>Course</th>
+            <th>Capacity</th>
+            <th>Assigned Teachers</th>
+            <th>Duration</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% batches.forEach(b => { %>
+            <tr>
+              <td>
+                <div style="font-weight: 600; color: var(--gold);"><%= b.name %></div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Created: <%= new Date(b.createdAt).toLocaleDateString() %></div>
+              </td>
+              <td>
+                <span class="badge badge-blue"><%= b.course %></span>
+              </td>
+              <td class="mono" style="font-size: 0.9rem;">
+                <%= b.capacity %> students
+              </td>
+              <td>
+                <% if (b.teachers && b.teachers.length > 0) { %>
+                  <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <% b.teachers.forEach(t => { %>
+                      <span style="font-size: 0.8rem; font-weight: 500;">👤 <%= t.name %></span>
+                    <% }) %>
+                  </div>
+                <% } else { %>
+                  <span class="badge badge-grey">Unassigned</span>
+                <% } %>
+              </td>
+              <td>
+                <div style="font-size: 0.8rem; font-weight: 500;">
+                  <%= b.startDate ? new Date(b.startDate).toLocaleDateString() : '—' %>
+                  to
+                  <%= b.endDate ? new Date(b.endDate).toLocaleDateString() : '—' %>
+                </div>
+              </td>
+              <td>
+                <span class="badge <%= b.isActive ? 'badge-green' : 'badge-grey' %>">
+                  <%= b.isActive ? 'Active' : 'Inactive' %>
+                </span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 6px;">
+                  <a href="/admin/batches/<%= b._id %>/edit" class="btn btn-ghost btn-xs">Edit</a>
+                  <form action="/admin/batches/<%= b._id %>/delete" method="POST" style="margin: 0;" onsubmit="return confirm('Are you sure you want to delete this batch? All assigned students will revert to General Batch.');">
+                    <button type="submit" class="btn btn-ghost btn-xs" style="color: var(--red);">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>

@@ -1,0 +1,133 @@
+<%
+  layout = 'main';
+  title = `Convert Lead: ${lead.name}`;
+  subtitle = 'Establish student portal account & fee ledger ledger';
+  page = 'leads';
+  topbarActions = `<a href="/counsellor/leads/${lead._id}" class="btn btn-ghost btn-sm">&larr; Back</a>`;
+%>
+
+<div style="max-width:640px;">
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="card" style="border-color:var(--red); background:rgba(239,68,68,0.05); margin-bottom:20px; padding:12px 16px; color:var(--red); font-size:13px; font-weight:500; border-left:4px solid var(--red);">
+      ❌ <%= error %>
+    </div>
+  <% } %>
+
+  <div class="card" style="border-color:rgba(34,197,94,0.25); background: linear-gradient(180deg, rgba(34,197,94,0.02) 0%, rgba(0,0,0,0) 100%); margin-bottom:20px; padding:16px 20px;">
+    <div style="display:flex; gap:12px; align-items:center;">
+      <div style="font-size:24px;">🎓</div>
+      <div>
+        <div style="font-size:14px; font-weight:600; color:var(--green);">Converting Lead to Student Profile</div>
+        <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+          This will generate an active student account in the registry and initialize their financial record.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <form action="/counsellor/leads/<%= lead._id %>/convert" method="POST">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">Student Name *</label>
+          <input type="text" name="name" class="form-control" value="<%= lead.name %>" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">Phone Contact *</label>
+          <input type="tel" name="phone" class="form-control" value="<%= lead.phone %>" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">Portal Login Email *</label>
+          <input type="email" name="email" class="form-control" value="<%= lead.email || '' %>" placeholder="student@email.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">Portal Password *</label>
+          <input type="text" name="password" class="form-control" placeholder="Minimum 8 characters" required>
+          <div class="form-hint">Student can reset this on first login.</div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">Selected Course *</label>
+          <select name="course" class="form-control" required>
+            <% ['Video Editing','Digital Marketing','Both'].forEach(c => { %>
+              <option value="<%= c %>" <%= lead.course === c ? 'selected' : '' %>><%= c %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">Assign Roster Batch *</label>
+          <select id="batch_select" name="batch" class="form-control" onchange="toggleCustomBatch()">
+            <% if (batches && batches.length > 0) { %>
+              <% batches.forEach(b => { %>
+                <option value="<%= b %>"><%= b %></option>
+              <% }); %>
+            <% } %>
+            <option value="">-- Create New Batch --</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row" id="custom_batch_container" style="display: <%= (batches && batches.length > 0) ? 'none' : 'block' %>;">
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">New Batch Name *</label>
+          <input type="text" id="customBatch" name="customBatch" class="form-control" placeholder="e.g. DM-03PM-A2" <%= (batches && batches.length > 0) ? '' : 'required' %>>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">Assign Teacher</label>
+          <select name="teacherId" class="form-control">
+            <option value="">— No teacher assigned yet —</option>
+            <% teachers.forEach(t => { %>
+              <option value="<%= t._id %>"><%= t.name %></option>
+            <% }); %>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">Total Invoice Fees (₹) *</label>
+          <input type="number" name="fees_total" class="form-control" placeholder="30000" required min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size: 10px;">Initial Down Payment (₹)</label>
+          <input type="number" name="fees_paid" class="form-control" placeholder="0" value="0" min="0">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" style="font-size: 10px;">Registration/Enrollment Date</label>
+        <input type="date" name="enrollmentDate" class="form-control"
+          value="<%= new Date().toISOString().split('T')[0] %>">
+      </div>
+
+      <div style="display:flex; gap:10px; justify-content:flex-end; padding-top:12px; border-top:1px solid var(--border); margin-top:16px;">
+        <a href="/counsellor/leads/<%= lead._id %>" class="btn btn-ghost">Cancel</a>
+        <button type="submit" class="btn btn-success">Confirm & Enroll Student</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function toggleCustomBatch() {
+    const select = document.getElementById('batch_select');
+    const container = document.getElementById('custom_batch_container');
+    const input = document.getElementById('customBatch');
+    if (select.value === '') {
+      container.style.display = 'block';
+      input.setAttribute('required', 'required');
+    } else {
+      container.style.display = 'none';
+      input.removeAttribute('required');
+    }
+  }
+</script>

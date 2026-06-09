@@ -1,0 +1,114 @@
+<%
+  // Reusable timetable grid block component
+  // Expects:
+  //   - daysTimetable: { Monday: [], Tuesday: [], ... }
+  //   - weekDates: Array of Date objects for Mon-Sun
+  //   - weekOffset: Number representing page offset
+  //   - viewType: 'classroom' | 'teacher' | 'student'
+  
+  const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+%>
+
+<div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+  <!-- Timetable Header & Navigation -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 10px;">
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <div style="background: var(--gold-dim); border: 1px solid var(--gold-border); border-radius: var(--radius); padding: 0.4rem; display: flex; align-items: center; justify-content: center; color: var(--gold);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </div>
+      <div>
+        <h3 style="font-family: var(--font-display); font-size: 0.95rem; font-weight: 800; color: var(--text); margin: 0;">Weekly Timetable Schedule</h3>
+        <p style="font-size: 0.72rem; color: var(--text-muted); margin: 0;">
+          Week of <%= weekDates[0].toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) %> &ndash; <%= weekDates[6].toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) %>
+        </p>
+      </div>
+    </div>
+    
+    <div style="display: flex; gap: 0.35rem;">
+      <a href="?weekOffset=<%= weekOffset - 1 %>" class="btn btn-ghost btn-xs" style="padding: 0.35rem 0.65rem;">&larr; Previous Week</a>
+      <% if (weekOffset !== 0) { %>
+        <a href="?weekOffset=0" class="btn btn-ghost btn-xs" style="padding: 0.35rem 0.65rem; color: var(--gold);">Current Week</a>
+      <% } %>
+      <a href="?weekOffset=<%= weekOffset + 1 %>" class="btn btn-ghost btn-xs" style="padding: 0.35rem 0.65rem;">Next Week &rarr;</a>
+    </div>
+  </div>
+
+  <!-- Timetable Columns Grid -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem;">
+    <% weekdays.forEach((day, index) => { 
+        const dateObj = weekDates[index];
+        const isToday = new Date().toDateString() === dateObj.toDateString();
+        const dayClasses = daysTimetable[day] || [];
+    %>
+      <div style="background: <%= isToday ? 'rgba(255,204,0,0.03)' : 'var(--bg-hover)' %>; border: 1px solid <%= isToday ? 'var(--gold-border)' : 'var(--border)' %>; border-radius: var(--radius); min-height: 250px; display: flex; flex-direction: column;">
+        
+        <!-- Day Title Header -->
+        <div style="padding: 0.6rem 0.75rem; border-bottom: 1px solid <%= isToday ? 'var(--gold-border)' : 'var(--border)' %>; text-align: center; background: <%= isToday ? 'var(--gold-dim)' : 'rgba(0,0,0,0.1)' %>;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: <%= isToday ? 'var(--gold)' : 'var(--text-sub)' %>; text-transform: uppercase; letter-spacing: 0.05em;"><%= day.slice(0, 3) %></div>
+          <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.1rem;"><%= dateObj.getDate() %> <%= dateObj.toLocaleDateString('en-IN', {month:'short'}) %></div>
+        </div>
+
+        <!-- Day Classes List -->
+        <div style="padding: 0.5rem; flex: 1; display: flex; flex-direction: column; gap: 0.5rem;">
+          <% if (dayClasses.length === 0) { %>
+            <div style="flex: 1; display: flex; align-items: center; justify-content: center; font-size: 0.68rem; color: var(--text-muted); text-align: center; padding: 1rem 0; opacity: 0.6; font-style: italic;">
+              No classes
+            </div>
+          <% } else { %>
+            <% dayClasses.forEach(sched => { 
+                const isCancelled = sched.status === 'cancelled';
+                const isCompleted = sched.status === 'completed';
+                
+                let timeColor = 'var(--gold)';
+                if (isCancelled) timeColor = 'var(--text-muted)';
+                else if (isCompleted) timeColor = 'var(--blue)';
+            %>
+              <div style="background: var(--bg-card); border: 1px solid <%= isCancelled ? 'var(--border-light)' : 'var(--border)' %>; border-left: 3px solid <%= isCancelled ? 'var(--red)' : (isCompleted ? 'var(--blue)' : 'var(--gold)') %>; border-radius: 4px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem; transition: transform 0.15s, border-color 0.15s; position: relative;" 
+                   onmouseover="this.style.transform='translateY(-1px)'; this.style.borderColor='var(--gold-border)'"
+                   onmouseout="this.style.transform='none'; this.style.borderColor='var(--border)'">
+                
+                <!-- Time Slot -->
+                <div style="font-family: var(--font-body); font-weight: 700; font-size: 0.68rem; color: <%= timeColor %>; display: flex; align-items: center; gap: 3px;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <%= sched.startTime %>
+                </div>
+
+                <!-- Subject Title -->
+                <div style="font-weight: 600; font-size: 0.72rem; color: var(--text); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-top: 2px;" title="<%= sched.subject %>">
+                  <%= sched.subject %>
+                </div>
+
+                <!-- Batch Code Badge -->
+                <div style="font-size: 0.6rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 1px; margin-top: auto; padding-top: 4px; border-top: 1px dashed var(--border-light);">
+                  <span style="font-weight: 600; color: var(--text-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= sched.batch %></span>
+                  
+                  <% if (viewType === 'classroom' && sched.teacher) { %>
+                    <span style="font-size: 0.58rem; color: var(--gold-light);">👨‍🏫 <%= sched.teacher.name %></span>
+                  <% } else if (viewType === 'teacher' && sched.classroom) { %>
+                    <span style="font-size: 0.58rem; color: var(--gold-light);">🏫 <%= sched.classroom.name.split(' ')[0] %></span>
+                    <% if (sched.status === 'scheduled') { %>
+                      <form action="/teacher/schedules/<%= sched._id %>/complete" method="POST" style="margin-top: 4px; display: flex; flex-direction: column; gap: 4px;">
+                        <input type="text" name="note" placeholder="Add lesson note..." style="font-size: 9px; padding: 2px 4px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; color: var(--text);">
+                        <button type="submit" class="btn btn-primary btn-xs" style="font-size: 9px; padding: 2px; text-align: center; color:#fff;">Done ✓</button>
+                      </form>
+                    <% } else if (sched.status === 'completed' && sched.note) { %>
+                      <div style="font-size: 9px; color: var(--text-muted); font-style: italic; border-top: 1px dotted var(--border); margin-top: 4px; padding-top: 2px;">
+                        Note: <%= sched.note %>
+                      </div>
+                    <% } %>
+                  <% } else if (viewType === 'student' && sched.teacher) { %>
+                    <span style="font-size: 0.58rem; color: var(--gold-light);">👨‍🏫 <%= sched.teacher.name %></span>
+                  <% } %>
+                </div>
+
+                <!-- Session Status Dot indicator -->
+                <div style="position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: <%= isCancelled ? 'var(--red)' : (isCompleted ? 'var(--blue)' : 'var(--green)') %>;" title="Status: <%= sched.status %>"></div>
+              </div>
+            <% }) %>
+          <% } %>
+        </div>
+
+      </div>
+    <% }) %>
+  </div>
+</div>

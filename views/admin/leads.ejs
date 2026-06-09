@@ -1,0 +1,221 @@
+<%
+  layout = 'main';
+  title = 'Lead Pipeline';
+  subtitle = 'Manage Academy queries and registrations';
+  page = 'leads';
+%>
+
+<% if (typeof filter !== 'undefined' && filter.error) { %>
+  <div class="card" style="border-color:var(--red); background:rgba(239,68,68,0.05); margin-bottom:20px; padding:12px 16px; color:var(--red); font-size:13px; font-weight:500; border-left:4px solid var(--red);">
+    ❌ <%= filter.error %>
+  </div>
+<% } %>
+
+<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+  <form method="GET" action="/admin/leads" class="filter-bar" style="margin:0; gap:0.75rem;">
+    <input type="text" name="search" class="form-control" placeholder="Search by name / phone..." value="<%= filter.search || '' %>" style="min-width: 200px;">
+    
+    <select name="status" class="form-control">
+      <option value="">All Statuses</option>
+      <option value="new" <%= filter.status === 'new' ? 'selected' : '' %>>New</option>
+      <option value="contacted" <%= filter.status === 'contacted' ? 'selected' : '' %>>Contacted</option>
+      <option value="interested" <%= filter.status === 'interested' ? 'selected' : '' %>>Interested</option>
+      <option value="ready_to_convert" <%= filter.status === 'ready_to_convert' ? 'selected' : '' %>>Ready to Convert</option>
+      <option value="converted" <%= filter.status === 'converted' ? 'selected' : '' %>>Converted</option>
+      <option value="lost" <%= filter.status === 'lost' ? 'selected' : '' %>>Lost</option>
+    </select>
+
+    <select name="course" class="form-control">
+      <option value="">All Courses</option>
+      <option value="Video Editing" <%= filter.course === 'Video Editing' ? 'selected' : '' %>>Video Editing</option>
+      <option value="Digital Marketing" <%= filter.course === 'Digital Marketing' ? 'selected' : '' %>>Digital Marketing</option>
+      <option value="Both" <%= filter.course === 'Both' ? 'selected' : '' %>>Both</option>
+      <option value="Undecided" <%= filter.course === 'Undecided' ? 'selected' : '' %>>Undecided</option>
+    </select>
+
+    <select name="source" class="form-control">
+      <option value="">All Sources</option>
+      <option value="Walk-in" <%= filter.source === 'Walk-in' ? 'selected' : '' %>>Walk-in</option>
+      <option value="Website" <%= filter.source === 'Website' ? 'selected' : '' %>>Website</option>
+      <option value="Referral" <%= filter.source === 'Referral' ? 'selected' : '' %>>Referral</option>
+      <option value="Social Media" <%= filter.source === 'Social Media' ? 'selected' : '' %>>Social Media</option>
+      <option value="Advertisement" <%= filter.source === 'Advertisement' ? 'selected' : '' %>>Advertisement</option>
+      <option value="WhatsApp" <%= filter.source === 'WhatsApp' ? 'selected' : '' %>>WhatsApp</option>
+      <option value="Other" <%= filter.source === 'Other' ? 'selected' : '' %>>Other</option>
+    </select>
+
+    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+    <a href="/admin/leads" class="btn btn-ghost btn-sm">Clear</a>
+  </form>
+</div>
+
+<div id="results-container" class="card">
+  <% if (leads.length === 0) { %>
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+      <p>No leads found in the system.</p>
+    </div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Lead Info</th>
+            <th>Course</th>
+            <th>Source</th>
+            <th>Counsellor Assignment</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% leads.forEach(l => { %>
+            <% 
+              const isOverdue = l.followUpDate && new Date(l.followUpDate) < new Date() && l.status !== 'converted' && l.status !== 'lost';
+            %>
+            <tr style="<%= l.status === 'ready_to_convert' ? 'background: linear-gradient(90deg, rgba(212,175,55,0.08) 0%, rgba(0,0,0,0) 100%); border-left: 3px solid var(--gold);' : '' %>">
+              <td class="td-name">
+                <a href="/admin/leads/<%= l._id %>" style="color:var(--gold); font-weight:600;"><%= l.name %></a>
+                <% if (l.status === 'ready_to_convert') { %>
+                  <span class="badge badge-gold" style="font-size: 9px; margin-left: 6px; vertical-align: middle; background: var(--gold-dim); border: 1px solid var(--gold-border); color: var(--gold); padding: 2px 6px; border-radius: 4px; font-weight: bold;">👑 Ready</span>
+                <% } %>
+                <div class="td-muted text-sm"><%= l.phone %> &nbsp;·&nbsp; <%= l.email || 'No email' %></div>
+              </td>
+              <td>
+                <span class="badge badge-orange"><%= l.course %></span>
+              </td>
+              <td><%= l.source %></td>
+              <td>
+                <form action="/admin/leads/<%= l._id %>/assign" method="POST" style="margin:0; display:flex; gap:0.5rem; align-items:center;">
+                  <select name="counsellorId" class="form-control" style="padding: 0.35rem 0.5rem; font-size: 12px;" onchange="this.form.submit()">
+                    <option value="">Unassigned</option>
+                    <% counsellors.forEach(c => { %>
+                      <option value="<%= c._id %>" <%= (l.assignedTo && l.assignedTo._id.toString() === c._id.toString()) ? 'selected' : '' %>><%= c.name %></option>
+                    <% }) %>
+                  </select>
+                </form>
+              </td>
+              <td>
+                <% 
+                  const badgeClass = {
+                    new: 'badge-orange',
+                    contacted: 'badge-blue',
+                    interested: 'badge-yellow',
+                    ready_to_convert: 'badge-gold',
+                    converted: 'badge-green',
+                    lost: 'badge-red'
+                  }[l.status] || 'badge-grey';
+                %>
+                <span class="badge <%= badgeClass %>"><%= l.status %></span>
+                <% if (isOverdue) { %>
+                  <div style="font-size:10px; color:var(--red); margin-top:2px;">⚠️ Follow-up Overdue</div>
+                <% } %>
+              </td>
+              <td>
+                <% if (l.status !== 'converted' && l.status !== 'lost') { %>
+                  <a href="/admin/leads/<%= l._id %>/convert" class="btn btn-success btn-xs">
+                    Convert to Student
+                  </a>
+                <% } else if (l.status === 'converted') { %>
+                  <span class="text-green text-sm" style="font-weight:600;">✓ Converted</span>
+                <% } else { %>
+                  <span class="text-red text-sm" style="font-weight:600;">Lost</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<!-- Convert Lead Modal -->
+<div id="convertModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Convert Lead to Student</div>
+      <button class="modal-close" onclick="closeConvertModal()">&times;</button>
+    </div>
+    <form id="convertForm" method="POST">
+      <p style="font-size:13px; color:var(--text-sub); margin-bottom:1.25rem;">
+        Converting lead <strong id="convertLeadName">Prospect</strong>. This will create an active student account and initialize their fee structure.
+      </p>
+      
+      <div class="form-group">
+        <label class="form-label" for="student_email">Student Login Email</label>
+        <input type="email" id="student_email" name="email" class="form-control" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="student_password">Initial Login Password</label>
+        <input type="text" id="student_password" name="password" class="form-control" required>
+        <div class="form-hint">By default, the student's mobile number will be set. You can override it here.</div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="student_batch">Assign Batch</label>
+          <input type="text" id="student_batch" name="batch" class="form-control" placeholder="e.g. Morning 10AM" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="student_fees">Total Invoice Fees (INR)</label>
+          <input type="number" id="student_fees" name="fees_total" class="form-control" placeholder="e.g. 30000" required min="0" oninput="checkAdminDownpayment()">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="student_paid">Fees Paid (INR)</label>
+        <input type="number" id="student_paid" name="fees_paid" class="form-control" placeholder="e.g. 15000" value="0" min="0" oninput="checkAdminDownpayment()">
+      </div>
+
+      <div id="downpayment_warning" style="display:none; color:var(--orange); font-size:12px; font-weight:500; margin-bottom:12px; border-left:2px solid var(--orange); padding-left:8px;">
+        ⚠️ Warning: Paid amount is less than the standard 50% down payment requirement. Admin authorization will bypass this check.
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeConvertModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Confirm Admission</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function triggerConvertLead(leadId, leadName, phone) {
+    const form = document.getElementById('convertForm');
+    form.action = '/admin/leads/' + leadId + '/convert';
+    document.getElementById('convertLeadName').innerText = leadName;
+    
+    // Auto populate defaults (removed fake/insecure defaults)
+    document.getElementById('convertModal').classList.add('open');
+  }
+
+  function closeConvertModal() {
+    document.getElementById('convertModal').classList.remove('open');
+    document.getElementById('student_email').value = '';
+    document.getElementById('student_password').value = '';
+    document.getElementById('student_batch').value = '';
+    document.getElementById('student_fees').value = '';
+    document.getElementById('student_paid').value = '0';
+    document.getElementById('downpayment_warning').style.display = 'none';
+  }
+
+  function checkAdminDownpayment() {
+    const total = Number(document.getElementById('student_fees').value) || 0;
+    const paid = Number(document.getElementById('student_paid').value) || 0;
+    const warning = document.getElementById('downpayment_warning');
+    if (total > 0 && paid < total * 0.5) {
+      warning.style.display = 'block';
+    } else {
+      warning.style.display = 'none';
+    }
+  }
+
+  document.getElementById('convertModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeConvertModal();
+    }
+  });
+</script>
+<script src="/js/instant-filter.js"></script>

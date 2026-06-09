@@ -1,0 +1,145 @@
+<%
+  layout = 'main';
+  title = 'Fee Details';
+  subtitle = `Tuition fee account ledger for ${fee.student.name}`;
+  page = 'admissions';
+%>
+
+<div class="profile-header">
+  <div class="avatar-lg">
+    <%= fee.student.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2) %>
+  </div>
+  <div>
+    <div class="profile-name"><%= fee.student.name %></div>
+    <div class="profile-meta">
+      Course: <strong><%= fee.course %></strong> &nbsp;·&nbsp; 
+      Batch: <strong><%= fee.student.batch || '—' %></strong> &nbsp;·&nbsp; 
+      Phone: <strong><%= fee.student.phone || '—' %></strong>
+    </div>
+  </div>
+</div>
+
+<!-- Ledger Calculation -->
+<% 
+  const netFees = fee.totalAmount - (fee.discount || 0);
+  const balanceDue = fee.dueAmount;
+  const paidPct = netFees > 0 ? Math.round((fee.paidAmount / netFees) * 100) : 0;
+%>
+
+<div class="fee-summary">
+  <div class="stat-card gold">
+    <div class="stat-label">Net Total Invoice</div>
+    <div class="stat-value">₹<%= netFees.toLocaleString('en-IN') %></div>
+    <div class="stat-sub">Base: ₹<%= fee.totalAmount.toLocaleString('en-IN') %> (Disc: ₹<%= (fee.discount || 0).toLocaleString('en-IN') %>)</div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-label">Total Collected</div>
+    <div class="stat-value">₹<%= fee.paidAmount.toLocaleString('en-IN') %></div>
+    <div class="stat-sub">Receipts logged (<%= paidPct %>%)</div>
+  </div>
+  <div class="stat-card red">
+    <div class="stat-label">Balance Due</div>
+    <div class="stat-value">₹<%= balanceDue.toLocaleString('en-IN') %></div>
+    <div class="stat-sub">Includes ₹<%= (fee.totalFine || 0).toLocaleString('en-IN') %> Late Fines</div>
+  </div>
+</div>
+
+<!-- Installments Schedule -->
+<div class="card" style="margin-bottom: 1.25rem;">
+  <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div class="card-title">Installments Payment Schedule</div>
+    <% if (fee.totalFine > 0) { %>
+      <span class="badge badge-red" style="font-size: 11px;">⚠️ Total Late Fines: +₹<%= fee.totalFine.toLocaleString('en-IN') %></span>
+    <% } %>
+  </div>
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; padding-top: 0.5rem;">
+    <% fee.installments.forEach(inst => { %>
+      <% 
+        const isPaid = inst.paidAmount >= inst.amount;
+        const isLate = !isPaid && inst.dueDate && new Date(inst.dueDate) < new Date();
+        
+        let fine = 0;
+        if (isLate) {
+          const diffDays = Math.ceil(Math.abs(new Date() - new Date(inst.dueDate)) / (1000 * 60 * 60 * 24));
+          if (diffDays > 60) fine = 1000;
+          else if (diffDays > 30) fine = 500;
+          else fine = 250;
+        }
+
+        const statusLabel = isPaid ? 'Paid' : isLate ? 'Overdue' : 'Pending';
+        const statusBadgeClass = isPaid ? 'badge-green' : isLate ? 'badge-red' : 'badge-orange';
+        const instPct = inst.amount > 0 ? Math.round((inst.paidAmount / inst.amount) * 100) : 0;
+      %>
+      <div style="background:var(--bg-input); border: 1px solid <%= isLate ? 'rgba(239,68,68,0.2)' : 'var(--border)' %>; border-radius:var(--radius); padding: 1rem; display:flex; flex-direction:column; gap:0.5rem; position:relative;">
+        <div style="display:flex; justify-content:space-between; align-items:start;">
+          <div style="font-size:13px; font-weight:700; color:var(--text);"><%= inst.name %></div>
+          <span class="badge <%= statusBadgeClass %>" style="font-size:9px; padding:1px 5px;"><%= statusLabel %></span>
+        </div>
+        
+        <div style="font-size:18px; font-weight:800; color:var(--gold); font-family:var(--mono);">
+          ₹<%= inst.amount.toLocaleString('en-IN') %>
+        </div>
+
+        <div style="font-size:11px; color:var(--text-muted);">
+          Due Date: <span class="mono"><%= new Date(inst.dueDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) %></span>
+        </div>
+
+        <% if (fine > 0) { %>
+          <div style="font-size:11px; color:var(--red); font-weight:700;">
+            ⚠️ Late Fine: +₹<%= fine %>
+          </div>
+        <% } %>
+
+        <div style="margin-top:auto; padding-top:0.5rem;">
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted); margin-bottom:2px;">
+            <span>Paid: ₹<%= inst.paidAmount.toLocaleString('en-IN') %></span>
+            <span><%= instPct %>%</span>
+          </div>
+          <div class="progress-bar" style="height:4px; background:rgba(255,255,255,0.05); border-radius: 4px;">
+            <div class="progress-fill <%= isPaid ? 'green' : instPct > 0 ? 'orange' : 'red' %>" style="width: <%= instPct %>%"></div>
+          </div>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+</div>
+
+<!-- Receipt Ledger -->
+<div class="card" style="margin-top: 1.25rem;">
+  <div class="card-header">
+    <div class="card-title">Collection Transaction Ledger (Read-Only)</div>
+  </div>
+  <% if (fee.payments.length === 0) { %>
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      <p>No transactions registered for this account.</p>
+    </div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Amount Collected</th>
+            <th>Method</th>
+            <th>Reference ID</th>
+            <th>Received By</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% fee.payments.forEach(p => { %>
+            <tr>
+              <td class="mono text-sm"><%= new Date(p.date).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %></td>
+              <td class="mono text-green fw-600">₹<%= p.amount.toLocaleString('en-IN') %></td>
+              <td><span class="badge badge-grey"><%= p.method %></span></td>
+              <td class="mono text-xs"><%= p.transactionId || '—' %></td>
+              <td><%= p.receivedBy ? p.receivedBy.name : '—' %></td>
+              <td class="text-sm"><%= p.note || '—' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>

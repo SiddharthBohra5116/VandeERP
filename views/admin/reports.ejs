@@ -1,0 +1,1840 @@
+<%
+  layout = 'main';
+  title = 'Reports & Analytics';
+  subtitle = 'Executive insights and operational analytics for cohorts, collections, conversion pipelines, and attendance';
+  page = 'reports';
+%>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Filter & Tab Styles -->
+<style>
+  .analytics-filter-bar {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    padding: 1.25rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+  }
+
+  .analytics-filter-bar .form-group {
+    margin: 0;
+    flex: 1;
+    min-width: 160px;
+  }
+
+  .analytics-filter-bar .form-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .analytics-filter-bar .form-control {
+    width: 100%;
+    background: var(--body-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+    color: var(--text);
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+
+  .analytics-filter-bar .form-control:focus {
+    border-color: var(--gold);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.15);
+  }
+
+  .form-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted) !important;
+    margin-bottom: 0.4rem;
+    display: inline-block;
+  }
+
+  .form-control {
+    background: var(--bg-input, rgba(255, 255, 255, 0.05)) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+  }
+
+  select.form-control option {
+    background-color: var(--bg-card, #1a1a1a) !important;
+    color: var(--text, #ffffff) !important;
+  }
+
+  .analytics-tab-container {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    padding: 0.5rem;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+  }
+
+  .analytics-tab-btn {
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .analytics-tab-btn:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .analytics-tab-btn.active {
+    color: var(--gold);
+    background: rgba(212, 175, 55, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.2);
+  }
+
+  /* Refined Premium Cards */
+  .card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-left: 3px solid transparent;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.04);
+    border-left-color: var(--gold);
+  }
+
+  .stat-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-top: 3px solid var(--border);
+  }
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+  }
+
+  .insight-box {
+    background: rgba(212, 175, 55, 0.06);
+    border-left: 4px solid var(--gold);
+    padding: 1.25rem;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .insight-title {
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .funnel-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    padding: 1rem;
+  }
+
+  .funnel-stage {
+    display: flex;
+    align-items: center;
+    position: relative;
+    height: 36px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+  }
+
+  .funnel-fill {
+    height: 100%;
+    position: absolute;
+    left: 0;
+    top: 0;
+    transition: width 0.8s ease;
+  }
+
+  .funnel-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0 1rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text);
+  }
+</style>
+
+<!-- Top Global Filters -->
+<form method="GET" action="/admin/reports" class="analytics-filter-bar">
+  <input type="hidden" name="tab" value="<%= tab %>">
+
+  <div class="form-group">
+    <label class="form-label">Start Date</label>
+    <input type="date" name="startDate" class="form-control" value="<%= startDate %>" onchange="this.form.submit()">
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">End Date</label>
+    <input type="date" name="endDate" class="form-control" value="<%= endDate %>" onchange="this.form.submit()">
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Batch</label>
+    <select name="batch" class="form-control" onchange="this.form.submit()">
+      <option value="all" <%= batch === 'all' ? 'selected' : '' %>>All Batches</option>
+      <% batches.forEach(b => { %>
+        <option value="<%= b %>" <%= batch === b ? 'selected' : '' %>><%= b %></option>
+      <% }) %>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Course</label>
+    <select name="course" class="form-control" onchange="this.form.submit()">
+      <option value="all" <%= course === 'all' ? 'selected' : '' %>>All Courses</option>
+      <% courses.forEach(c => { %>
+        <option value="<%= c %>" <%= course === c ? 'selected' : '' %>><%= c %></option>
+      <% }) %>
+    </select>
+  </div>
+
+  <div style="margin-left: auto;">
+    <a href="/admin/reports?tab=<%= tab %>&export=csv&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="btn btn-sm btn-ghost" style="color: var(--gold); border: 1px solid var(--gold-border); height: 38px; display: inline-flex; align-items: center; border-radius: 8px;">📥 Export CSV</a>
+  </div>
+</form>
+
+<!-- Navigation Tab List -->
+<div class="analytics-tab-container">
+  <a href="/admin/reports?tab=overview&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'overview' ? 'active' : '' %>">📊 Overview</a>
+  <a href="/admin/reports?tab=financial&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'financial' ? 'active' : '' %>">💰 Financial</a>
+  <a href="/admin/reports?tab=enrollment&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'enrollment' ? 'active' : '' %>">📈 Enrollment</a>
+  <a href="/admin/reports?tab=attendance&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'attendance' ? 'active' : '' %>">👥 Attendance</a>
+  <a href="/admin/reports?tab=academic&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'academic' ? 'active' : '' %>">🎓 Academic</a>
+  <a href="/admin/reports?tab=staff&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'staff' ? 'active' : '' %>">👩‍🏫 Staff</a>
+</div>
+
+<!-- ==================== TAB: OVERVIEW ==================== -->
+<% if (tab === 'overview') { %>
+  <!-- Stats Grid -->
+  <div class="stats-grid" style="margin-bottom: 1.5rem;">
+    <div class="stat-card" style="border-top-color: var(--blue);">
+      <div class="stat-label">Active students</div>
+      <div class="stat-value"><%= overviewStats.activeStudents.value %></div>
+      <div class="stat-sub text-green"><%= overviewStats.activeStudents.trend %></div>
+    </div>
+    <div class="stat-card" style="border-top-color: var(--green);">
+      <div class="stat-label">Collection</div>
+      <div class="stat-value"><%= overviewStats.collection.value %></div>
+      <div class="stat-sub text-green"><%= overviewStats.collection.trend %></div>
+    </div>
+    <div class="stat-card" style="border-top-color: var(--red);">
+      <div class="stat-label">Outstanding</div>
+      <div class="stat-value"><%= overviewStats.outstanding.value %></div>
+      <div class="stat-sub text-red"><%= overviewStats.outstanding.trend %></div>
+    </div>
+    <div class="stat-card" style="border-top-color: var(--orange);">
+      <div class="stat-label">Avg attendance</div>
+      <div class="stat-value"><%= overviewStats.avgAttendance.value %></div>
+      <div class="stat-sub text-red"><%= overviewStats.avgAttendance.trend %></div>
+    </div>
+    <div class="stat-card" style="border-top-color: var(--yellow);">
+      <div class="stat-label">Open leads</div>
+      <div class="stat-value"><%= overviewStats.openLeads.value %></div>
+      <div class="stat-sub text-green"><%= overviewStats.openLeads.trend %></div>
+    </div>
+    <div class="stat-card" style="border-top-color: var(--gold);">
+      <div class="stat-label">Conv. rate</div>
+      <div class="stat-value"><%= overviewStats.convRate.value %></div>
+      <div class="stat-sub text-green"><%= overviewStats.convRate.trend %></div>
+    </div>
+  </div>
+
+  <!-- Key Insight Box -->
+  <div class="insight-box">
+    <div class="insight-title">💡 Key Executive Insights</div>
+    <%= overviewStats.keyInsight %>
+  </div>
+
+  <!-- Overview Charts Grid -->
+  <div class="grid-2" style="margin-bottom: 1.5rem;">
+    <!-- Revenue vs Collection -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Revenue vs Collection</div>
+        <p class="td-muted text-xs">Monthly billed vs received</p>
+      </div>
+      <div style="padding: 1rem; min-height: 250px;">
+        <canvas id="overviewRevenueChart" style="max-height: 230px; width: 100%;"></canvas>
+      </div>
+    </div>
+
+    <!-- Enrollment Trend -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Enrollment Trend</div>
+        <p class="td-muted text-xs">New students per month</p>
+      </div>
+      <div style="padding: 1rem; min-height: 250px;">
+        <canvas id="overviewEnrollmentChart" style="max-height: 230px; width: 100%;"></canvas>
+      </div>
+    </div>
+
+    <!-- Attendance Trend -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Attendance (7-day avg)</div>
+        <p class="td-muted text-xs">Institution-wide daily %</p>
+      </div>
+      <div style="padding: 1rem; min-height: 250px;">
+        <canvas id="overviewAttendanceChart" style="max-height: 230px; width: 100%;"></canvas>
+      </div>
+    </div>
+
+    <!-- Lead Funnel -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Lead Funnel</div>
+        <p class="td-muted text-xs">This quarter conversion funnel</p>
+      </div>
+      <%
+        const funnel = charts.leadFunnel;
+        const leadsCount = funnel.Leads;
+        const contactedCount = funnel.Contacted;
+        const interestedCount = funnel.Interested;
+        const enrolledCount = funnel.Enrolled;
+
+        const contactedPct = leadsCount > 0 ? Math.round((contactedCount / leadsCount) * 100) : 0;
+        const interestedPct = leadsCount > 0 ? Math.round((interestedCount / leadsCount) * 100) : 0;
+        const enrolledPct = leadsCount > 0 ? Math.round((enrolledCount / leadsCount) * 100) : 0;
+      %>
+      <div class="funnel-wrapper">
+        <div class="funnel-stage">
+          <div class="funnel-fill" style="width: 100%; background: rgba(59, 130, 246, 0.2);"></div>
+          <div class="funnel-content">
+            <span>Leads</span>
+            <span><%= leadsCount %> (100%)</span>
+          </div>
+        </div>
+        <div class="funnel-stage">
+          <div class="funnel-fill" style="width: <%= contactedPct %>%; background: rgba(234, 179, 8, 0.2);"></div>
+          <div class="funnel-content">
+            <span>Contacted</span>
+            <span><%= contactedCount %> (<%= contactedPct %>%)</span>
+          </div>
+        </div>
+        <div class="funnel-stage">
+          <div class="funnel-fill" style="width: <%= interestedPct %>%; background: rgba(249, 115, 22, 0.2);"></div>
+          <div class="funnel-content">
+            <span>Interested</span>
+            <span><%= interestedCount %> (<%= interestedPct %>%)</span>
+          </div>
+        </div>
+        <div class="funnel-stage">
+          <div class="funnel-fill" style="width: <%= enrolledPct %>%; background: rgba(16, 185, 129, 0.2);"></div>
+          <div class="funnel-content">
+            <span>Enrolled</span>
+            <span><%= enrolledCount %> (<%= enrolledPct %>%)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- [ADDITIONAL VISUAL 1] Lead Conversion Channels (Pie) -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Lead Acquisition Channels</div>
+        <p class="td-muted text-xs">Distribution of leads across traffic sources</p>
+      </div>
+      <div style="padding: 1rem; min-height: 250px; display: flex; justify-content: center; align-items: center;">
+        <canvas id="overviewChannelsChart" style="max-height: 220px; max-width: 220px;"></canvas>
+      </div>
+    </div>
+
+    <!-- [ADDITIONAL VISUAL 2] Batch enrollment distribution (Doughnut) -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Batch Enrollment Distribution</div>
+        <p class="td-muted text-xs">Comparison of student volume per active cohort</p>
+      </div>
+      <div style="padding: 1rem; min-height: 250px; display: flex; justify-content: center; align-items: center;">
+        <canvas id="overviewBatchDistChart" style="max-height: 220px; max-width: 220px;"></canvas>
+      </div>
+    </div>
+  </div>
+<% } %>
+
+<!-- ==================== TAB: FINANCIAL ==================== -->
+<% if (tab === 'financial') { %>
+  <!-- Outstanding Aging Categories -->
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+      <div class="card-title">Outstanding Invoice Aging</div>
+      <p class="td-muted text-sm">Receivables categorized by overdue duration buckets based on installment due dates.</p>
+    </div>
+    <div class="stats-grid" style="padding: 1.25rem; margin-bottom: 0;">
+      <div class="stat-card green">
+        <div class="stat-label">Current (Not Overdue)</div>
+        <div class="stat-value">₹<%= agingBuckets.current.toLocaleString('en-IN') %></div>
+        <div class="stat-sub">Not yet due</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="stat-label">1 - 30 Days Overdue</div>
+        <div class="stat-value">₹<%= agingBuckets.days_1_30.toLocaleString('en-IN') %></div>
+        <div class="stat-sub">Bucket 1</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-label">31 - 60 Days Overdue</div>
+        <div class="stat-value">₹<%= agingBuckets.days_31_60.toLocaleString('en-IN') %></div>
+        <div class="stat-sub">Bucket 2</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">61 - 90 Days Overdue</div>
+        <div class="stat-value">₹<%= agingBuckets.days_61_90.toLocaleString('en-IN') %></div>
+        <div class="stat-sub">Bucket 3</div>
+      </div>
+      <div class="stat-card red" style="background: rgba(220,53,69,0.12); border-color: rgba(220,53,69,0.35);">
+        <div class="stat-label" style="color: var(--red);">90+ Days Overdue</div>
+        <div class="stat-value" style="color: var(--red);">₹<%= agingBuckets.days_91_plus.toLocaleString('en-IN') %></div>
+        <div class="stat-sub">Critical receivables</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom: 1.5rem;">
+    <!-- Revenue Targets vs Actual Chart -->
+    <div class="card">
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <div class="card-title">Revenue Target vs Actual Collections Chart</div>
+          <p class="td-muted text-xs">Monthly Target Invoice totals vs Actual collected vs Expenditures & Net Profit</p>
+        </div>
+        <!-- Interactive Chart Controls & Filters -->
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+          <select id="financialChartPeriod" class="form-control" style="width: auto; font-size: 0.8rem; padding: 6px 12px; height: 34px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 6px; color: var(--text); outline: none; cursor: pointer; font-weight: 600; transition: border-color 0.2s;">
+            <option value="all">All Months</option>
+            <option value="3">Last 3 Months</option>
+            <option value="6">Last 6 Months</option>
+            <option value="12">Last 12 Months</option>
+          </select>
+          
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;" class="chart-toggle-container">
+            <!-- Hidden inputs to keep state in sync with existing JS -->
+            <input type="checkbox" id="toggleTarget" checked style="display: none;">
+            <input type="checkbox" id="toggleActual" checked style="display: none;">
+            <input type="checkbox" id="toggleExpenses" checked style="display: none;">
+            <input type="checkbox" id="toggleNetProfit" checked style="display: none;">
+            
+            <button type="button" class="btn-toggle active" data-id="toggleTarget" style="font-size: 0.72rem; padding: 5px 12px; border-radius: 20px; border: 1px solid rgba(212, 175, 55, 0.4); background: rgba(212, 175, 55, 0.15); color: var(--gold-light); cursor: pointer; font-weight: 600; transition: all 0.2s; outline: none; user-select: none;">Target</button>
+            <button type="button" class="btn-toggle active" data-id="toggleActual" style="font-size: 0.72rem; padding: 5px 12px; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.15); color: #10b981; cursor: pointer; font-weight: 600; transition: all 0.2s; outline: none; user-select: none;">Actual</button>
+            <button type="button" class="btn-toggle active" data-id="toggleExpenses" style="font-size: 0.72rem; padding: 5px 12px; border-radius: 20px; border: 1px solid rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.15); color: #ef4444; cursor: pointer; font-weight: 600; transition: all 0.2s; outline: none; user-select: none;">Expenses</button>
+            <button type="button" class="btn-toggle active" data-id="toggleNetProfit" style="font-size: 0.72rem; padding: 5px 12px; border-radius: 20px; border: 1px solid rgba(59, 130, 246, 0.4); background: rgba(59, 130, 246, 0.15); color: #3b82f6; cursor: pointer; font-weight: 600; transition: all 0.2s; outline: none; user-select: none;">Net Profit</button>
+          </div>
+        </div>
+      </div>
+      <div style="padding: 1.5rem; min-height: 300px;">
+        <canvas id="revenueTrendsChart" style="max-height: 280px; width: 100%;"></canvas>
+      </div>
+    </div>
+
+    <!-- [ADDITIONAL VISUAL 3] Cumulative Billing Growth -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Cumulative Billed Revenue Timeline</div>
+        <p class="td-muted text-xs">Total cumulative billed growth month-over-month</p>
+      </div>
+      <div style="padding: 1.5rem; min-height: 300px;">
+        <canvas id="cumulativeBillingChart" style="max-height: 280px; width: 100%;"></canvas>
+      </div>
+    </div>
+
+    <!-- [ADDITIONAL VISUAL 4] Payment Methods Tally -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Collection Methods Breakdown</div>
+        <p class="td-muted text-xs">Distribution of payments across modes (UPI, Bank Transfer, Cash)</p>
+      </div>
+      <div style="padding: 1.5rem; min-height: 250px;">
+        <canvas id="paymentMethodsChart" style="max-height: 230px; width: 100%;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Financial Ledger Tools -->
+  <div class="grid-2" style="margin-bottom: 1.5rem;">
+    <!-- Set Target -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🎯 Set Custom Monthly Revenue Target</div>
+        <p class="td-muted text-xs">Set or override the target collection goal for a month</p>
+      </div>
+      <form action="/admin/reports/financial/target" method="POST" style="padding: 1.25rem;">
+        <div class="form-group">
+          <label class="form-label" for="target_month">Select Month</label>
+          <input type="month" id="target_month" name="month" class="form-control" required style="background: var(--bg-input); border-color: var(--border); color: var(--text);">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="target_amount">Target Revenue (₹)</label>
+          <input type="number" id="target_amount" name="amount" class="form-control" placeholder="e.g. 100000" min="0" required style="background: var(--bg-input); border-color: var(--border); color: var(--text);">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm" style="background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600;">Save Target</button>
+      </form>
+    </div>
+
+    <!-- Log Expense -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">💸 Log Monthly Expense</div>
+        <p class="td-muted text-xs">Log a business expenditure (rent, electricity, staff, miscellaneous)</p>
+      </div>
+      <form action="/admin/reports/financial/expense" method="POST" style="padding: 1.25rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label class="form-label" for="expense_month">Select Month</label>
+            <input type="month" id="expense_month" name="month" class="form-control" required style="background: var(--bg-input); border-color: var(--border); color: var(--text);">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="expense_category">Category</label>
+            <select id="expense_category" name="category" class="form-control" required style="background: var(--bg-input); border-color: var(--border); color: var(--text);">
+              <option value="rent">Classroom Rent</option>
+              <option value="electricity">Electricity Bill</option>
+              <option value="staff">Staff Salary</option>
+              <option value="miscellaneous">Miscellaneous</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="expense_amount">Expenditure Amount (₹)</label>
+          <input type="number" id="expense_amount" name="amount" class="form-control" placeholder="e.g. 15000" min="0" required style="background: var(--bg-input); border-color: var(--border); color: var(--text);">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="expense_desc">Description / Notes</label>
+          <input type="text" id="expense_desc" name="description" class="form-control" placeholder="e.g. June Classroom 3 rent payment" style="background: var(--bg-input); border-color: var(--border); color: var(--text);">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm" style="background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600;">Log Expense</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Expenses List Registry -->
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+      <div class="card-title">Logged Expenses Register</div>
+      <p class="td-muted text-xs">A comprehensive list of all expenditures logged in the system</p>
+    </div>
+    <% if (!locals.expensesList || expensesList.length === 0) { %>
+      <div class="empty-state" style="padding: 2rem 1rem;">
+        <p>No expenditures logged yet.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Category</th>
+              <th>Description</th>
+              <th class="text-right">Amount (₹)</th>
+              <th class="text-right">Logged At</th>
+              <th class="text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% expensesList.forEach(exp => { %>
+              <tr>
+                <td class="mono font-semibold"><%= exp.month %></td>
+                <td>
+                  <% 
+                    let catLabel = 'Miscellaneous';
+                    let catBadge = 'badge-grey';
+                    if (exp.category === 'rent') { catLabel = 'Rent'; catBadge = 'badge-orange'; }
+                    else if (exp.category === 'electricity') { catLabel = 'Electricity'; catBadge = 'badge-yellow'; }
+                    else if (exp.category === 'staff') { catLabel = 'Staff'; catBadge = 'badge-green'; }
+                  %>
+                  <span class="badge <%= catBadge %>" style="text-transform: uppercase; font-size: 10px;"><%= catLabel %></span>
+                </td>
+                <td style="max-width: 250px; white-space: normal; line-height: 1.4;"><%= exp.description || '—' %></td>
+                <td class="mono text-right text-red fw-600">₹<%= exp.amount.toLocaleString('en-IN') %></td>
+                <td class="mono text-xs text-right"><%= new Date(exp.date).toLocaleDateString('en-IN') %></td>
+                <td class="text-right">
+                  <form action="/admin/reports/financial/expense/<%= exp._id %>/delete" method="POST" style="margin: 0; display: inline;" onsubmit="return confirm('Are you sure you want to delete this expense record?');">
+                    <button type="submit" class="btn btn-ghost btn-xs" style="color: var(--red); padding: 2px 6px;">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Revenue Table Breakdown -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Monthly Target vs Actual Collections Breakdown</div>
+    </div>
+    <% if (revenueData.length === 0) { %>
+      <div class="empty-state" style="padding: 3rem 1rem;">
+        <p>No billing or transaction records found to report.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Month (YYYY-MM)</th>
+              <th class="text-right">Target Collections (Invoice Net)</th>
+              <th class="text-right">Actual Collections (Payments)</th>
+              <th class="text-right">Collection Rate %</th>
+              <th class="text-right">Expenses</th>
+              <th class="text-right">Net Profit / Loss</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% revenueData.forEach(r => { %>
+              <% 
+                const rate = r.target > 0 ? Math.round((r.actual / r.target) * 100) : 0;
+                let rateColor = 'var(--red)';
+                if (rate >= 90) rateColor = 'var(--green)';
+                else if (rate >= 50) rateColor = 'var(--gold)';
+                const profitColor = r.netProfit >= 0 ? 'var(--green)' : 'var(--red)';
+              %>
+              <tr>
+                <td><strong class="mono"><%= r.month %></strong></td>
+                <td class="mono text-right fw-600">₹<%= r.target.toLocaleString('en-IN') %></td>
+                <td class="mono text-right text-gold fw-600">₹<%= r.actual.toLocaleString('en-IN') %></td>
+                <td class="mono text-right fw-700" style="color: <%= rateColor %>;"><%= rate %>%</td>
+                <td class="mono text-right text-red fw-600">₹<%= (r.expense || 0).toLocaleString('en-IN') %></td>
+                <td class="mono text-right fw-700" style="color: <%= profitColor %>;">₹<%= r.netProfit.toLocaleString('en-IN') %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+<!-- ==================== TAB: ENROLLMENT ==================== -->
+<% if (tab === 'enrollment') { %>
+  <div class="grid-2" style="margin-bottom: 1.5rem;">
+    <!-- Counsellor Conversion Volumes -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Counsellor Conversion Ratios</div>
+      </div>
+      <div style="padding: 1.25rem; min-height: 250px;">
+        <canvas id="counsellorConversionsChart" style="max-height: 230px; width: 100%;"></canvas>
+      </div>
+    </div>
+
+    <!-- Counsellor Speed -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Average Lead Conversion Time (Speed in Days)</div>
+      </div>
+      <div style="padding: 1.25rem; min-height: 250px;">
+        <canvas id="counsellorSpeedChart" style="max-height: 230px; width: 100%;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Funnel Velocity Statistics -->
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+      <div class="card-title">Funnel Velocity (Average Transition Days)</div>
+      <p class="td-muted text-sm">Measures the speed in days at which inquiries progress through stages to final conversion.</p>
+    </div>
+    <div class="stats-grid" style="padding: 1.25rem; margin-bottom: 0;">
+      <div class="stat-card gold">
+        <div class="stat-label">New ➔ Contacted</div>
+        <div class="stat-value"><%= funnelVelocity.newToContacted %> days</div>
+        <div class="stat-sub">Initial outbound outreach</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-label">Contacted ➔ Interested</div>
+        <div class="stat-value"><%= funnelVelocity.contactedToInterested %> days</div>
+        <div class="stat-sub">Nurturing response delay</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">Interested ➔ Converted</div>
+        <div class="stat-value"><%= funnelVelocity.interestedToConverted %> days</div>
+        <div class="stat-sub">Closing and enrollment finalize</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Overall Cycle Duration</div>
+        <div class="stat-value"><%= funnelVelocity.overall %> days</div>
+        <div class="stat-sub">Total time to convert (<%= funnelVelocity.count %> converted)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Counsellor Roster Table -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Counsellor Performance Analytics</div>
+      <p class="td-muted text-sm">Overview of team conversions, follow-ups logged, and conversion speed.</p>
+    </div>
+    <% if (counsellorPerformance.length === 0) { %>
+      <div class="empty-state" style="padding: 3rem 1rem;">
+        <p>No active counsellors found.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Counsellor</th>
+              <th class="text-right">Leads Assigned</th>
+              <th class="text-right">Follow-ups Logged</th>
+              <th class="text-right">Converted</th>
+              <th class="text-right">Lost</th>
+              <th class="text-right">Conversion Rate</th>
+              <th class="text-right">Avg Conversion Days</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% counsellorPerformance.forEach(c => { %>
+              <tr>
+                <td class="td-name">
+                  <%= c.counsellor.name %>
+                  <div class="td-muted text-xs"><%= c.counsellor.rollNumber %></div>
+                </td>
+                <td class="mono text-right"><%= c.total %></td>
+                <td class="mono text-right text-gold"><%= c.followUps %></td>
+                <td class="mono text-right text-green fw-600"><%= c.converted %></td>
+                <td class="mono text-right text-red"><%= c.lost %></td>
+                <td class="mono text-right fw-700 text-gold"><%= c.conversionRate %>%</td>
+                <td class="mono text-right"><%= c.avgDays %> days</td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+<!-- ==================== TAB: ATTENDANCE ==================== -->
+<% if (tab === 'attendance') { %>
+  <style>
+  .calendar-container {
+    margin-top: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  .calendar-header-day {
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--gold);
+    padding: 0.5rem 0;
+    text-transform: uppercase;
+    background: rgba(212, 175, 55, 0.05);
+    border-radius: 4px;
+    border: 1px solid rgba(212, 175, 55, 0.15);
+  }
+  .calendar-day-card {
+    min-height: 95px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.01);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  .calendar-day-card:hover {
+    border-color: var(--gold-border);
+    background: rgba(212, 175, 55, 0.05);
+    transform: translateY(-2px);
+  }
+  .calendar-day-card.active {
+    border-color: var(--gold);
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.3);
+    background: rgba(212, 175, 55, 0.08);
+  }
+  .calendar-day-card.holiday {
+    background: rgba(239, 68, 68, 0.06);
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+  .calendar-day-card.empty {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .day-num-lbl {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .day-pct-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    align-self: flex-end;
+  }
+  .pct-high {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--green);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .pct-low {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--red);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+  .pct-none {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .holiday-tag {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--red);
+    background: rgba(239, 68, 68, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 100%;
+    margin-top: 0.25rem;
+  }
+  .student-matrix-table th {
+    font-size: 0.75rem;
+    padding: 0.5rem 0.25rem;
+    text-align: center;
+    min-width: 30px;
+  }
+  .student-matrix-table td {
+    padding: 0.5rem 0.25rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+  }
+  .cell-status-p {
+    color: var(--green);
+    background: rgba(16, 185, 129, 0.15);
+    border-radius: 3px;
+    padding: 2px;
+    display: block;
+  }
+  .cell-status-a {
+    color: var(--red);
+    background: rgba(239, 68, 68, 0.15);
+    border-radius: 3px;
+    padding: 2px;
+    display: block;
+  }
+  .cell-status-none {
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+  </style>
+
+  <!-- Filter Month Selector Only -->
+  <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+    <form method="GET" action="/admin/reports" class="filter-bar" style="margin:0; display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+      <input type="hidden" name="tab" value="attendance">
+      <input type="hidden" name="period" value="<%= period %>">
+      <input type="hidden" name="batch" value="<%= batch %>">
+      <input type="hidden" name="course" value="<%= course %>">
+      
+      <div class="form-group" style="margin: 0; min-width: 150px;">
+        <label class="form-label" style="margin-bottom: 0.25rem;">Select Calendar Month</label>
+        <input type="month" name="month" class="form-control" style="padding: 0.45rem 0.75rem; width: 220px;" value="<%= selectedMonth %>" onchange="this.form.submit()" required>
+      </div>
+    </form>
+  </div>
+
+  <!-- Calendar Card -->
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <div class="card-title">Attendance Calendar: <%= batch !== 'all' ? batch : 'Academy Overall' %></div>
+        <p class="td-muted text-sm">Interactive monthly log. Percentage displays average student attendance rates per class session. Click any day block to view details.</p>
+      </div>
+      <div class="mono fw-600 text-gold" style="font-size: 1.1rem; text-transform: uppercase;">
+        <%= new Date(selectedMonth + '-02').toLocaleDateString('en-IN', {month: 'long', year: 'numeric'}) %>
+      </div>
+    </div>
+    <div style="padding: 1.25rem;">
+      <div class="calendar-grid">
+        <div class="calendar-header-day">Sun</div>
+        <div class="calendar-header-day">Mon</div>
+        <div class="calendar-header-day">Tue</div>
+        <div class="calendar-header-day">Wed</div>
+        <div class="calendar-header-day">Thu</div>
+        <div class="calendar-header-day">Fri</div>
+        <div class="calendar-header-day">Sat</div>
+
+        <!-- Preceding Blank Days -->
+        <% const firstDayOfWeek = calendarDays.length > 0 ? calendarDays[0].dayOfWeek : 0; %>
+        <% for(let i = 0; i < firstDayOfWeek; i++) { %>
+          <div class="calendar-day-card empty"></div>
+        <% } %>
+
+        <!-- Calendar Day Blocks -->
+        <% calendarDays.forEach(day => { %>
+          <div class="calendar-day-card <%= day.isHoliday ? 'holiday' : '' %>" 
+               data-date="<%= day.dateStr %>"
+               data-holiday="<%= day.isHoliday %>"
+               data-holiday-name="<%= day.holidayName %>">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
+              <span class="day-num-lbl"><%= day.dayNum %></span>
+              <% if (day.attendancePct !== null) { %>
+                <span class="day-pct-badge <%= day.attendancePct >= 75 ? 'pct-high' : 'pct-low' %>">
+                  <%= day.attendancePct %>%
+                </span>
+              <% } else { %>
+                <span class="day-pct-badge pct-none">—</span>
+              <% } %>
+            </div>
+            <% if (day.isHoliday) { %>
+              <div class="holiday-tag" title="Holiday: <%= day.holidayName %>">🎉 <%= day.holidayName %></div>
+            <% } %>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row of Grid Matrix + Click Details -->
+  <div class="grid-2" style="align-items: start; gap: 1.5rem; margin-bottom: 1.5rem;">
+    <!-- Click Details Panel -->
+    <div class="card" id="daily-attendance-detail">
+      <div class="card-header">
+        <div class="card-title" id="detail-date-header">Daily Attendance Log</div>
+        <p class="td-muted text-sm">Roster audit detail for the selected calendar date.</p>
+      </div>
+      <div style="padding: 1rem;">
+        <div id="detail-no-records" class="empty-state" style="padding: 3rem 1rem;">
+          Select a marked date block on the calendar above to view student roster details.
+        </div>
+        <div class="table-wrap" id="detail-table-wrap" style="display: none;">
+          <table>
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Status</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody id="detail-table-body">
+              <!-- Dynamically populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Student Grid matrix -->
+    <% if (batch !== 'all') { %>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Cohort Student Attendance Matrix: <%= batch %></div>
+          <p class="td-muted text-sm">Monthly grid (skipping holidays). Showing Present/Late (<span class="text-green fw-700">P</span>), Absent (<span class="text-red fw-700">A</span>), or Not Marked (<span class="text-muted">—</span>).</p>
+        </div>
+        <% if (studentGrid.length === 0) { %>
+          <div class="empty-state" style="padding: 3rem 1rem;">
+            No student enrollments found in batch <%= batch %>.
+          </div>
+        <% } else { %>
+          <div class="table-wrap" style="max-height: 450px; overflow: auto;">
+            <table class="student-matrix-table">
+              <thead>
+                <tr>
+                  <th style="text-align: left; position: sticky; left: 0; background: var(--card-bg); z-index: 2; min-width: 120px;">Student</th>
+                  <% gridDates.forEach(dateStr => { %>
+                    <th><%= Number(dateStr.slice(8)) %></th>
+                  <% }) %>
+                </tr>
+              </thead>
+              <tbody>
+                <% studentGrid.forEach(row => { %>
+                  <tr>
+                    <td style="text-align: left; position: sticky; left: 0; background: var(--card-bg); z-index: 2; font-weight: 600;" class="td-name">
+                      <%= row.name %>
+                    </td>
+                    <% gridDates.forEach(dateStr => { %>
+                      <% 
+                        const status = row.attendanceByDate[dateStr];
+                      %>
+                      <td>
+                        <% if (status === 'present' || status === 'late') { %>
+                          <span class="cell-status-p" title="<%= dateStr %>: <%= status.toUpperCase() %>">P</span>
+                        <% } else if (status === 'absent') { %>
+                          <span class="cell-status-a" title="<%= dateStr %>: ABSENT">A</span>
+                        <% } else { %>
+                          <span class="cell-status-none">—</span>
+                        <% } %>
+                      </td>
+                    <% }) %>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
+    <% } else { %>
+      <div class="card">
+        <div class="empty-state" style="padding: 4rem 1rem;">
+          Select a batch from the filter dropdown to unlock student-level daily matrix grids.
+        </div>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Attendance Rate Chart (only if batch is selected) -->
+  <% if (batch !== 'all' && attendanceSummary && attendanceSummary.length > 0) { %>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Batch Student Attendance Overview Comparison: <%= batch %></div>
+        <p class="td-muted text-sm">Historical cohort overall attendance rate vs min 75% standard.</p>
+      </div>
+      <div style="padding: 1.5rem; min-height: 320px;">
+        <canvas id="attendanceChart" style="max-height: 300px; width: 100%;"></canvas>
+      </div>
+    </div>
+  <% } %>
+
+  <!-- JSON Data Store for client-side calendar interactions -->
+  <script id="monthly-attendance-data" type="application/json"><%- JSON.stringify(monthlyAttendanceRecords || []) %></script>
+  
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const dayCards = document.querySelectorAll('.calendar-day-card:not(.empty)');
+    const detailSection = document.getElementById('daily-attendance-detail');
+    const detailDateHeader = document.getElementById('detail-date-header');
+    const detailTableBody = document.getElementById('detail-table-body');
+    const noRecordsMsg = document.getElementById('detail-no-records');
+    const tableWrap = document.getElementById('detail-table-wrap');
+
+    let attendanceRecords = [];
+    try {
+      const rawData = document.getElementById('monthly-attendance-data').textContent;
+      attendanceRecords = JSON.parse(rawData);
+    } catch(e) {
+      console.error("Failed to parse attendance records:", e);
+    }
+
+    dayCards.forEach(card => {
+      card.addEventListener('click', () => {
+        dayCards.forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+
+        const dateStr = card.getAttribute('data-date');
+        const isHoliday = card.getAttribute('data-holiday') === 'true';
+        const holidayName = card.getAttribute('data-holiday-name');
+
+        const dateObj = new Date(dateStr);
+        const formattedDate = dateObj.toLocaleDateString('en-IN', {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        });
+        detailDateHeader.textContent = `Daily Log: ${formattedDate}` + (isHoliday ? ` (Holiday: ${holidayName})` : '');
+
+        const filtered = attendanceRecords.filter(r => r.date === dateStr);
+
+        if (filtered.length === 0) {
+          tableWrap.style.display = 'none';
+          noRecordsMsg.style.display = 'block';
+          noRecordsMsg.textContent = isHoliday 
+            ? `This day was a scheduled holiday (${holidayName}). No classes conducted.`
+            : 'No attendance records logged for this calendar date.';
+        } else {
+          noRecordsMsg.style.display = 'none';
+          tableWrap.style.display = 'block';
+          detailTableBody.innerHTML = '';
+
+          filtered.forEach(rec => {
+            const studentName = rec.student?.name || 'Unknown Student';
+            const status = rec.status.toUpperCase();
+            const badgeClass = status === 'PRESENT' || status === 'LATE' ? 'badge-green' : 'badge-red';
+            const note = rec.note || '—';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td class="td-name">${studentName}</td>
+              <td><span class="badge ${badgeClass}">${status}</span></td>
+              <td>${note}</td>
+            `;
+            detailTableBody.appendChild(tr);
+          });
+        }
+      });
+    });
+
+    if (dayCards.length > 0) {
+      let initialCard = null;
+      const todayStr = new Date().toLocaleDateString('en-CA', {timeZone: 'Asia/Kolkata'});
+      initialCard = Array.from(dayCards).find(c => c.getAttribute('data-date') === todayStr);
+
+      if (!initialCard) {
+        initialCard = Array.from(dayCards).reverse().find(c => c.querySelector('.day-pct-badge:not(.pct-none)'));
+      }
+      if (!initialCard) {
+        initialCard = dayCards[0];
+      }
+      if (initialCard) {
+        initialCard.click();
+      }
+    }
+  });
+  </script>
+<% } %>
+
+<!-- ==================== TAB: ACADEMIC ==================== -->
+<% if (tab === 'academic') { %>
+  <!-- Batch Health Scores table -->
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+      <div class="card-title">Batch Health Scores</div>
+      <p class="td-muted text-sm">Composite health index measuring student engagement, attendance consistency, and financial compliance.</p>
+    </div>
+    <% if (batchHealthScores.length === 0) { %>
+      <div class="empty-state">
+        <p>No active student batches found.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Batch Name</th>
+              <th class="text-right">Students Count</th>
+              <th class="text-right">Avg Attendance</th>
+              <th class="text-right">Homework Submission Rate</th>
+              <th class="text-right">Fee Collection Rate</th>
+              <th class="text-right">Health Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% batchHealthScores.forEach(bh => { %>
+              <%
+                let healthBadge = 'badge-green';
+                if (bh.healthScore < 60) healthBadge = 'badge-red';
+                else if (bh.healthScore < 80) healthBadge = 'badge-gold';
+              %>
+              <tr>
+                <td><strong><%= bh.batchName %></strong></td>
+                <td class="mono text-right"><%= bh.studentCount %></td>
+                <td class="mono text-right"><%= bh.avgAttendance %>%</td>
+                <td class="mono text-right"><%= bh.submissionRate %>%</td>
+                <td class="mono text-right"><%= bh.collectionRate %>%</td>
+                <td class="mono text-right">
+                  <span class="badge <%= healthBadge %>" style="font-weight:700;"><%= bh.healthScore %>%</span>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="grid-2" style="margin-bottom: 1.5rem;">
+    <!-- [ADDITIONAL VISUAL 6] Homework submitted vs graded line -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Weekly Homework & Grading Load</div>
+        <p class="td-muted text-xs">Comparison of assignments submitted vs graded by week</p>
+      </div>
+      <div style="padding: 1.5rem; min-height: 250px;">
+        <canvas id="weeklyHomeworkChart" style="max-height: 230px; width: 100%;"></canvas>
+      </div>
+    </div>
+
+    <!-- At-Risk Student Alerts table -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">At-Risk Student Alerts</div>
+        <p class="td-muted text-sm">Students flagged due to low attendance (&lt; 75%), outstanding overdue fees, or &gt;= 3 pending assignments.</p>
+      </div>
+      <% if (atRiskStudents.length === 0) { %>
+        <div class="empty-state">
+          <p>No students flagged at risk currently. Faculty operations are performing beautifully!</p>
+        </div>
+      <% } else { %>
+        <div class="table-wrap" style="max-height: 250px; overflow-y: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Student Name</th>
+                <th>Batch</th>
+                <th class="text-right">Attendance</th>
+                <th class="text-right">Overdue Fees</th>
+                <th class="text-right">Pending Tasks</th>
+                <th>Flag Reasons</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% atRiskStudents.forEach(ar => { %>
+                <tr style="background: rgba(220, 53, 69, 0.05); border-left: 3px solid var(--red);">
+                  <td class="td-name"><strong><%= ar.student.name %></strong></td>
+                  <td><%= ar.student.batch %></td>
+                  <td class="mono text-right <%= ar.attendance < 75 ? 'text-red fw-700' : '' %>"><%= ar.attendance %>%</td>
+                  <td class="mono text-right <%= ar.overdueFees > 0 ? 'text-red fw-700' : '' %>">₹<%= ar.overdueFees.toLocaleString('en-IN') %></td>
+                  <td class="mono text-right <%= ar.pendingAssignments >= 3 ? 'text-red fw-700' : '' %>"><%= ar.pendingAssignments %></td>
+                  <td style="color: var(--red); font-size: 13px;"><%= ar.reasons %></td>
+                  <td class="text-center" style="white-space: nowrap;">
+                    <a href="/auth/inbox?chat=<%= ar.student._id %>" class="btn btn-sm btn-ghost btn-send-msg" style="padding: 2px 8px; font-size: 11px; margin-right: 4px;">✉ Send Message</a>
+                    <a href="/admin/fees/<%= ar.student._id %>" class="btn btn-sm btn-ghost btn-view-fee" style="padding: 2px 8px; font-size: 11px; margin-right: 4px; color: var(--gold);">💵 View Fee</a>
+                    <a href="/admin/students/<%= ar.student._id %>#attendance" class="btn btn-sm btn-ghost btn-view-att" style="padding: 2px 8px; font-size: 11px; color: var(--blue);">📅 View Attendance</a>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  </div>
+<% } %>
+
+<!-- ==================== TAB: STAFF ==================== -->
+<% if (tab === 'staff') { %>
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+      <div class="card-title">Teacher Workload Visual Insights</div>
+      <p class="td-muted text-sm">Workload compared across classes, assignments, grading, attendance, and curriculum completion.</p>
+    </div>
+    <div style="padding: 1rem; height: 340px; position: relative;">
+      <canvas id="teacherLoadChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Teacher Load & Productivity Metrics</div>
+      <p class="td-muted text-sm">Detailed 5-dimension workload data per teacher.</p>
+    </div>
+    <% if (teacherLoad.length === 0) { %>
+      <div class="empty-state">
+        <p>No active teachers found.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Teacher Name</th>
+              <th class="text-right">Classes Taught</th>
+              <th class="text-right">Assignments Created</th>
+              <th class="text-right">Submissions Graded</th>
+              <th class="text-right">Attendance Sessions Marked</th>
+              <th class="text-right">Curriculum Completion</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% teacherLoad.forEach(tl => { %>
+              <tr>
+                <td class="td-name"><strong><%= tl.teacher.name %></strong></td>
+                <td class="mono text-right"><%= tl.classesConducted %></td>
+                <td class="mono text-right"><%= tl.assignmentsCreated %></td>
+                <td class="mono text-right"><%= tl.submissionsGraded %></td>
+                <td class="mono text-right"><%= tl.attendanceSessionsMarked %></td>
+                <td class="mono text-right text-gold"><%= tl.curriculumCompletion %>%</td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+
+<!-- ==================== CHART LOGIC SCRIPTS ==================== -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Theme Helper for charts
+  const getThemeColors = () => {
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    return {
+      textColor: isDark ? '#a3a3a3' : '#4b5563',
+      gridColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'
+    };
+  };
+
+  const { textColor, gridColor } = getThemeColors();
+
+  Chart.defaults.color = textColor;
+  Chart.defaults.font.family = 'Inter, sans-serif';
+
+  // 1. OVERVIEW TAB CHARTS
+  <% if (tab === 'overview') { %>
+    const revMonths = <%- JSON.stringify(charts.revenueVsCollection.months) %>;
+    const revBilled = <%- JSON.stringify(charts.revenueVsCollection.billed) %>;
+    const revCollected = <%- JSON.stringify(charts.revenueVsCollection.collected) %>;
+
+    // Revenue vs Collection Bar
+    new Chart(document.getElementById('overviewRevenueChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: revMonths,
+        datasets: [
+          {
+            label: 'Billed',
+            data: revBilled,
+            backgroundColor: 'rgba(212, 175, 55, 0.8)', // Gold
+            borderRadius: 4
+          },
+          {
+            label: 'Collected',
+            data: revCollected,
+            backgroundColor: 'rgba(16, 185, 129, 0.8)', // Green
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { 
+            grid: { color: gridColor },
+            ticks: {
+              callback: function(value) { return '₹' + (value / 1000) + 'k'; }
+            }
+          }
+        }
+      }
+    });
+
+    const enrollMonths = <%- JSON.stringify(charts.enrollmentTrend.months) %>;
+    const enrollCounts = <%- JSON.stringify(charts.enrollmentTrend.counts) %>;
+
+    // Enrollment Trend Line
+    new Chart(document.getElementById('overviewEnrollmentChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: enrollMonths,
+        datasets: [{
+          label: 'New enrollments',
+          data: enrollCounts,
+          borderColor: 'rgba(249, 115, 22, 1)', // Orange
+          backgroundColor: 'rgba(249, 115, 22, 0.1)',
+          tension: 0.3,
+          fill: true,
+          pointBackgroundColor: 'rgba(249, 115, 22, 1)'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { grid: { color: gridColor }, ticks: { precision: 0 } }
+        }
+      }
+    });
+
+    const attDays = <%- JSON.stringify(charts.attendanceTrend.days) %>;
+    const attPct = <%- JSON.stringify(charts.attendanceTrend.pct) %>;
+
+    // Attendance Line
+    new Chart(document.getElementById('overviewAttendanceChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: attDays,
+        datasets: [{
+          label: 'Attendance %',
+          data: attPct,
+          borderColor: 'rgba(59, 130, 246, 1)', // Blue
+          backgroundColor: 'transparent',
+          tension: 0.2,
+          borderWidth: 3,
+          pointBackgroundColor: 'rgba(59, 130, 246, 1)'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { 
+            grid: { color: gridColor },
+            min: 0,
+            max: 100,
+            ticks: { callback: function(value) { return value + '%'; } }
+          }
+        }
+      }
+    });
+
+    // Lead acquisition channels (Pie)
+    const chanLabels = <%- JSON.stringify(charts.leadSources.labels) %>;
+    const chanValues = <%- JSON.stringify(charts.leadSources.values) %>;
+
+    new Chart(document.getElementById('overviewChannelsChart').getContext('2d'), {
+      type: 'pie',
+      data: {
+        labels: chanLabels,
+        datasets: [{
+          data: chanValues,
+          backgroundColor: [
+            'rgba(212, 175, 55, 0.85)',
+            'rgba(59, 130, 246, 0.85)',
+            'rgba(16, 185, 129, 0.85)',
+            'rgba(249, 115, 22, 0.85)',
+            'rgba(239, 68, 68, 0.85)',
+            'rgba(234, 179, 8, 0.85)',
+            'rgba(139, 92, 246, 0.85)'
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+        }
+      }
+    });
+
+    // Batch size distributions (Doughnut)
+    const batchLabels = <%- JSON.stringify(charts.batchDistribution.labels) %>;
+    const batchValues = <%- JSON.stringify(charts.batchDistribution.values) %>;
+
+    new Chart(document.getElementById('overviewBatchDistChart').getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: batchLabels,
+        datasets: [{
+          data: batchValues,
+          backgroundColor: [
+            'rgba(59, 130, 246, 0.85)',
+            'rgba(16, 185, 129, 0.85)',
+            'rgba(249, 115, 22, 0.85)',
+            'rgba(234, 179, 8, 0.85)'
+          ],
+          borderColor: 'transparent'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+        }
+      }
+    });
+  <% } %>
+
+  // 2. FINANCIAL TAB CHARTS
+  <% if (tab === 'financial') { %>
+    const rawRevenueData = <%- JSON.stringify(revenueData) %>;
+    let financialChart = null;
+
+    function renderFinancialChart() {
+      const period = document.getElementById('financialChartPeriod').value;
+
+      // Filter by period
+      let filteredData = [...rawRevenueData];
+      if (period !== 'all') {
+        const monthsCount = parseInt(period);
+        filteredData = filteredData.slice(-monthsCount);
+      }
+
+      const months = filteredData.map(r => r.month);
+      const datasets = [
+        {
+          label: 'Revenue Target',
+          data: filteredData.map(r => r.target),
+          type: 'bar',
+          backgroundColor: 'rgba(59, 130, 246, 0.7)', // Blue
+          borderRadius: 4,
+          yAxisID: 'y'
+        },
+        {
+          label: 'Actual Collections',
+          data: filteredData.map(r => r.actual),
+          type: 'line',
+          borderColor: 'rgba(16, 185, 129, 1)', // Green
+          backgroundColor: 'transparent',
+          tension: 0.2,
+          borderWidth: 3,
+          pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+          yAxisID: 'y1'
+        }
+      ];
+
+      const ctx = document.getElementById('revenueTrendsChart').getContext('2d');
+      if (financialChart) {
+        financialChart.destroy();
+      }
+
+      financialChart = new Chart(ctx, {
+        data: {
+          labels: months,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: textColor } } },
+          scales: {
+            x: { 
+              grid: { display: false },
+              ticks: { 
+                color: textColor,
+                maxRotation: 45,
+                minRotation: 45,
+                autoSkip: true,
+                maxTicksLimit: 12
+              }
+            },
+            y: { 
+              type: 'linear',
+              position: 'left',
+              grid: { color: gridColor },
+              ticks: {
+                color: textColor,
+                callback: function(value) { return '₹' + (value >= 1000 ? (value / 1000) + 'k' : value); }
+              },
+              title: {
+                display: true,
+                text: 'Target (₹)',
+                color: textColor
+              }
+            },
+            y1: { 
+              type: 'linear',
+              position: 'right',
+              grid: { drawOnChartArea: false },
+              ticks: {
+                color: textColor,
+                callback: function(value) { return '₹' + (value >= 1000 ? (value / 1000) + 'k' : value); }
+              },
+              title: {
+                display: true,
+                text: 'Actual Collections (₹)',
+                color: textColor
+              }
+            }
+          }
+        }
+      });
+    }
+
+    document.querySelectorAll('.btn-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const checkboxId = btn.getAttribute('data-id');
+        const checkbox = document.getElementById(checkboxId);
+        checkbox.checked = !checkbox.checked;
+        
+        if (checkbox.checked) {
+          btn.classList.add('active');
+          if (checkboxId === 'toggleTarget') {
+            btn.style.background = 'rgba(212, 175, 55, 0.15)';
+            btn.style.borderColor = 'rgba(212, 175, 55, 0.4)';
+            btn.style.color = 'var(--gold-light)';
+          } else if (checkboxId === 'toggleActual') {
+            btn.style.background = 'rgba(16, 185, 129, 0.15)';
+            btn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+            btn.style.color = '#10b981';
+          } else if (checkboxId === 'toggleExpenses') {
+            btn.style.background = 'rgba(239, 68, 68, 0.15)';
+            btn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+            btn.style.color = '#ef4444';
+          } else if (checkboxId === 'toggleNetProfit') {
+            btn.style.background = 'rgba(59, 130, 246, 0.15)';
+            btn.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+            btn.style.color = '#3b82f6';
+          }
+        } else {
+          btn.classList.remove('active');
+          btn.style.background = 'transparent';
+          btn.style.borderColor = 'var(--border)';
+          btn.style.color = 'var(--text-muted)';
+        }
+        
+        renderFinancialChart();
+      });
+    });
+
+    document.getElementById('financialChartPeriod').addEventListener('change', renderFinancialChart);
+
+    renderFinancialChart();
+
+    // Cumulative Revenue growth timeline
+    const cumMonths = <%- JSON.stringify(charts.cumulativeBilling.months) %>;
+    const cumGrowth = <%- JSON.stringify(charts.cumulativeBilling.growth) %>;
+
+    new Chart(document.getElementById('cumulativeBillingChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: cumMonths,
+        datasets: [{
+          label: 'Cumulative Billed (₹)',
+          data: cumGrowth,
+          borderColor: 'rgba(59, 130, 246, 1)', // Blue
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          fill: true,
+          tension: 0.2,
+          borderWidth: 3,
+          pointBackgroundColor: 'rgba(59, 130, 246, 1)'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            grid: { color: gridColor },
+            ticks: { callback: function(value) { return '₹' + (value / 1000) + 'k'; } }
+          }
+        }
+      }
+    });
+
+    // Payment methods split horizontal bar
+    const pmLabels = <%- JSON.stringify(charts.paymentMethods.labels) %>;
+    const pmValues = <%- JSON.stringify(charts.paymentMethods.values) %>;
+
+    new Chart(document.getElementById('paymentMethodsChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: pmLabels,
+        datasets: [{
+          label: 'Received Amount (₹)',
+          data: pmValues,
+          backgroundColor: 'rgba(16, 185, 129, 0.85)',
+          borderRadius: 4
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { callback: function(value) { return '₹' + (value / 1000) + 'k'; } } },
+          y: { grid: { display: false } }
+        }
+      }
+    });
+  <% } %>
+
+  // 3. ENROLLMENT TAB CHARTS
+  <% if (tab === 'enrollment') { %>
+    const cPerf = <%- JSON.stringify(counsellorPerformance) %>;
+    const cNames = cPerf.map(c => c.counsellor.name);
+    const cAssigned = cPerf.map(c => c.total);
+    const cConverted = cPerf.map(c => c.converted);
+    const cSpeeds = cPerf.map(c => c.avgDays);
+
+    // Counsellor comparison (conversion rate & avg days to convert)
+    const cRates = cPerf.map(c => c.conversionRate);
+    new Chart(document.getElementById('counsellorConversionsChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: cNames,
+        datasets: [
+          {
+            label: 'Conversion Rate %',
+            data: cRates,
+            backgroundColor: 'rgba(16, 185, 129, 0.8)', // Green
+            borderRadius: 4,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Avg Conversion (Days)',
+            data: cSpeeds,
+            backgroundColor: 'rgba(234, 179, 8, 0.8)', // Yellow
+            borderRadius: 4,
+            yAxisID: 'y1'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: textColor } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: textColor } },
+          y: { 
+            type: 'linear',
+            position: 'left',
+            grid: { color: gridColor }, 
+            ticks: { color: textColor, callback: function(value) { return value + '%'; } },
+            title: { display: true, text: 'Conversion Rate', color: textColor }
+          },
+          y1: {
+            type: 'linear',
+            position: 'right',
+            grid: { drawOnChartArea: false },
+            ticks: { color: textColor, precision: 0 },
+            title: { display: true, text: 'Avg Days to Convert', color: textColor }
+          }
+        }
+      }
+    });
+
+    // Hide or reuse counsellorSpeedChart container if it exists
+    const speedChartEl = document.getElementById('counsellorSpeedChart');
+    if (speedChartEl) {
+      const parentCard = speedChartEl.closest('.card');
+      if (parentCard) parentCard.style.display = 'none';
+    }
+  <% } %>
+
+  // 4. ATTENDANCE RATE CHART (Only when batch is active)
+  <% if (tab === 'attendance' && batch !== 'all' && attendanceSummary && attendanceSummary.length > 0) { %>
+    const attData = <%- JSON.stringify(attendanceSummary) %>;
+    const studentNames = attData.map(s => s.name);
+    const attRates = attData.map(s => s.attendancePct);
+
+    new Chart(document.getElementById('attendanceChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: studentNames,
+        datasets: [{
+          label: 'Attendance Rate %',
+          data: attRates,
+          backgroundColor: attRates.map(r => r < 75 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(16, 185, 129, 0.85)'),
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { 
+            grid: { color: gridColor },
+            min: 0,
+            max: 100,
+            ticks: { callback: function(value) { return value + '%'; } }
+          }
+        }
+      }
+    });
+  <% } %>
+
+  // 5. ACADEMIC TAB CHARTS
+  <% if (tab === 'academic') { %>
+    const hwLabels = <%- JSON.stringify(charts.weeklyHomework.labels) %>;
+    const hwSubmitted = <%- JSON.stringify(charts.weeklyHomework.submitted) %>;
+    const hwGraded = <%- JSON.stringify(charts.weeklyHomework.graded) %>;
+
+    new Chart(document.getElementById('weeklyHomeworkChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: hwLabels,
+        datasets: [
+          {
+            label: 'Submitted Homework',
+            data: hwSubmitted,
+            borderColor: 'rgba(59, 130, 246, 1)', // Blue
+            backgroundColor: 'transparent',
+            tension: 0.2,
+            borderWidth: 3,
+            pointBackgroundColor: 'rgba(59, 130, 246, 1)'
+          },
+          {
+            label: 'Graded Activity',
+            data: hwGraded,
+            borderColor: 'rgba(16, 185, 129, 1)', // Green
+            backgroundColor: 'transparent',
+            tension: 0.2,
+            borderWidth: 3,
+            pointBackgroundColor: 'rgba(16, 185, 129, 1)'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { grid: { color: gridColor }, ticks: { precision: 0 } }
+        }
+      }
+    });
+  <% } %>
+
+  // 6. STAFF TAB CHARTS
+  <% if (tab === 'staff' && typeof teacherLoad !== 'undefined' && teacherLoad.length > 0) { %>
+    const tLoad = <%- JSON.stringify(teacherLoad) %>;
+    const tNames = tLoad.map(tl => tl.teacher.name);
+
+    new Chart(document.getElementById('teacherLoadChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: ['Classes Taught', 'Assignments Created', 'Submissions Graded', 'Attendance Sessions Marked', 'Curriculum Completion %'],
+        datasets: tLoad.map((tl, index) => {
+          const colors = [
+            'rgba(59, 130, 246, 0.85)', // Blue
+            'rgba(16, 185, 129, 0.85)', // Green
+            'rgba(234, 179, 8, 0.85)',  // Yellow
+            'rgba(249, 115, 22, 0.85)'   // Orange
+          ];
+          return {
+            label: tl.teacher.name,
+            data: [tl.classesConducted, tl.assignmentsCreated, tl.submissionsGraded, tl.attendanceSessionsMarked, tl.curriculumCompletion],
+            backgroundColor: colors[index % colors.length],
+            borderRadius: 4
+          };
+        })
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: textColor } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: textColor } },
+          y: { grid: { color: gridColor }, ticks: { color: textColor, precision: 0 } }
+        }
+      }
+    });
+  <% } %>
+});
+</script>

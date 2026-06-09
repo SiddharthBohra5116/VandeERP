@@ -1,0 +1,158 @@
+<%
+  layout = 'main';
+  title = 'My Profile';
+  page = 'profile';
+%>
+
+<div class="profile-header">
+  <div class="avatar-lg">
+    <% if (user.profilePic) { %>
+      <img src="<%= user.profilePic %>" alt="<%= user.name %>">
+    <% } else { %>
+      <%= user.initials %>
+    <% } %>
+  </div>
+  <div>
+    <div class="profile-name"><%= user.name %></div>
+    <div class="profile-meta"><%= user.role.toUpperCase() %> &nbsp;·&nbsp; <%= user.email %></div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- Update Info Form -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Update Info</div>
+    </div>
+    <% if (user.role === 'student') { %>
+      <div class="alert alert-info" style="font-size: 0.8rem; line-height: 1.4; padding: 0.6rem 0.85rem; margin-bottom: 1rem; border-color: rgba(59, 130, 246, 0.2); background: rgba(59, 130, 246, 0.05); color: var(--text);">
+        ℹ️ <strong>Profile Notice:</strong> Changing your profile details requires verification. Submitting the changes below will log a profile update request for admin approval.
+      </div>
+      <% if (user.pendingProfileUpdate && user.pendingProfileUpdate.requestedAt) { %>
+        <div class="alert alert-warning" style="font-size: 0.8rem; line-height: 1.4; padding: 0.6rem 0.85rem; margin-bottom: 1rem; color: var(--text); border-color: var(--gold-border); background: var(--gold-dim);">
+          ⚠️ <strong>Pending Request:</strong> You already have a pending change request:<br>
+          &middot; Name: <em>"<%= user.pendingProfileUpdate.name %>"</em><br>
+          &middot; Phone: <em>"<%= user.pendingProfileUpdate.phone || '—' %>"</em><br>
+          &middot; Father's Name: <em>"<%= user.pendingProfileUpdate.fatherName || '—' %>"</em><br>
+          &middot; Mother's Name: <em>"<%= user.pendingProfileUpdate.motherName || '—' %>"</em><br>
+          &middot; Date of Birth: <em>"<%= user.pendingProfileUpdate.dob ? new Date(user.pendingProfileUpdate.dob).toLocaleDateString() : '—' %>"</em><br>
+          &middot; Address: <em>"<%= user.pendingProfileUpdate.address || '—' %>"</em><br>
+          &middot; City: <em>"<%= user.pendingProfileUpdate.city || '—' %>"</em><br>
+          Waiting for admin review. Re-submitting will overwrite this pending request.
+        </div>
+      <% } %>
+    <% } %>
+    <form action="/auth/profile" method="POST" enctype="multipart/form-data">
+      <div class="form-group">
+        <label class="form-label" for="name">Full Name</label>
+        <input type="text" id="name" name="name" class="form-control" value="<%= user.name %>" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="phone">Phone Number</label>
+        <input type="text" id="phone" name="phone" class="form-control" value="<%= user.phone || '' %>">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="fatherName">Father's Name</label>
+        <input type="text" id="fatherName" name="fatherName" class="form-control" value="<%= user.fatherName || '' %>">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="motherName">Mother's Name</label>
+        <input type="text" id="motherName" name="motherName" class="form-control" value="<%= user.motherName || '' %>">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="dob">Date of Birth</label>
+        <input type="date" id="dob" name="dob" class="form-control" value="<%= user.dob ? new Date(user.dob).toISOString().split('T')[0] : '' %>">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="address">Address</label>
+        <input type="text" id="address" name="address" class="form-control" value="<%= user.address || '' %>">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="city">City</label>
+        <input type="text" id="city" name="city" class="form-control" value="<%= user.city || '' %>">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="profilePic">Profile Picture</label>
+        <input type="file" id="profilePic" name="profilePic" class="form-control" accept="image/*">
+        <div class="form-hint">Upload a JPG, PNG, or GIF file.</div>
+      </div>
+      <button type="submit" class="btn btn-primary mt-2">Save Changes</button>
+    </form>
+  </div>
+
+  <!-- Change Password Form -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Change Password</div>
+    </div>
+    <form action="/auth/change-password" method="POST">
+      <div class="form-group">
+        <label class="form-label" for="currentPassword">Current Password</label>
+        <input type="password" id="currentPassword" name="currentPassword" class="form-control" placeholder="••••••••" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="newPassword">New Password</label>
+        <input type="password" id="newPassword" name="newPassword" class="form-control" placeholder="•••••••• (Min. 6 chars)" minlength="6" required>
+      </div>
+      <button type="submit" class="btn btn-ghost mt-2">Change Password</button>
+    </form>
+  </div>
+</div>
+
+<% if (user.role === 'student') { %>
+<!-- Document Verification Section -->
+<div id="document-verification" class="card" style="margin-top: 1.5rem;">
+  <div class="card-header" style="display: flex; align-items: center; gap: 0.75rem;">
+    <div style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      <% if (user.idProof && user.idVerified) { %>
+        background: rgba(34,197,94,0.1); color: #16a34a;
+      <% } else if (user.idProof && !user.idVerified) { %>
+        background: rgba(195,155,52,0.12); color: var(--gold);
+      <% } else { %>
+        background: rgba(239,68,68,0.1); color: var(--red);
+      <% } %>
+    ">
+      <% if (user.idProof && user.idVerified) { %>
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+      <% } else { %>
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="13" y2="13"/></svg>
+      <% } %>
+    </div>
+    <div>
+      <div class="card-title" style="margin: 0;">Document Verification</div>
+      <div style="font-size: 0.78rem; color: var(--text-sub); margin-top: 1px;">
+        <% if (user.idProof && user.idVerified) { %>
+          <span style="color: #16a34a; font-weight: 600;">✓ Verified</span> — Your document has been approved by the academy.
+        <% } else if (user.idProof && !user.idVerified) { %>
+          <span style="color: var(--gold); font-weight: 600;">Under review</span> — Submitted and awaiting admin approval.
+        <% } else { %>
+          <span style="color: var(--red); font-weight: 600;">Action required</span> — No document uploaded yet.
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <% if (user.idProof) { %>
+    <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: var(--bg-sub); border-radius: var(--radius); margin-bottom: 1rem; font-size: 0.84rem;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-sub); flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span style="color: var(--text-sub);">Current document on file:</span>
+      <a href="<%= user.idProof %>" target="_blank" style="color: var(--gold); text-decoration: underline; word-break: break-all;">View uploaded document</a>
+    </div>
+  <% } %>
+
+  <p style="font-size: 0.84rem; color: var(--text-sub); margin-bottom: 1rem; line-height: 1.5;">
+    Upload a clear photo or scan of a government-issued photo ID (Aadhaar card, passport, voter ID, or school/college ID card). Accepted formats: JPG, PNG, PDF — max 5 MB.
+    <% if (user.idProof) { %> Re-uploading will reset verification status and require admin re-approval.<% } %>
+  </p>
+
+  <form action="/student/profile/upload-id" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="form-group" style="margin-bottom: 1rem;">
+      <label class="form-label" for="idProof"><%= user.idProof ? 'Replace document' : 'Upload ID document' %></label>
+      <input type="file" id="idProof" name="idProof" class="form-control" accept="image/jpeg,image/png,application/pdf" required>
+      <div class="form-hint">Max file size: 5 MB. JPG, PNG or PDF only.</div>
+    </div>
+    <button type="submit" class="btn btn-primary"><%= user.idProof ? 'Re-upload Document' : 'Submit for Verification' %></button>
+  </form>
+</div>
+<% } %>

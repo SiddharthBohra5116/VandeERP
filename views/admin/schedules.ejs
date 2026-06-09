@@ -1,0 +1,1579 @@
+<%
+  layout = 'main';
+  title = 'Class Schedules';
+  subtitle = 'Master calendar, classrooms layout, and visual batch planning';
+  page = 'schedules';
+%>
+
+<!-- Style block for visual weekly planner & premium grid -->
+<style>
+  .tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0 !important;
+    color: var(--text-muted);
+    padding: 0.75rem 1.25rem;
+    font-weight: 700;
+    font-family: var(--font-display);
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+  .tab-btn.active {
+    border-bottom-color: var(--gold);
+    color: var(--gold);
+  }
+  .tab-btn:hover {
+    color: var(--text);
+  }
+  
+  /* Weekly Planner Grid */
+  .weekly-planner-wrapper {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 1.5rem;
+    margin-top: 1rem;
+  }
+  @media (max-width: 900px) {
+    .weekly-planner-wrapper {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .weekly-grid-container {
+    display: grid;
+    grid-template-columns: 60px repeat(7, 1fr);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-card);
+    overflow: hidden;
+    position: relative;
+    user-select: none;
+  }
+  
+  .weekly-grid-header {
+    grid-column: 2 / span 7;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: rgba(0, 0, 0, 0.25);
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .weekly-grid-header-day {
+    padding: 0.75rem;
+    border-right: 1px solid var(--border);
+  }
+  .weekly-grid-header-day:last-child {
+    border-right: none;
+  }
+
+  .weekly-grid-hours-sidebar {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    background: rgba(0, 0, 0, 0.15);
+  }
+  .weekly-grid-hour-label {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    border-bottom: 1px dashed var(--border-light);
+  }
+
+  .weekly-grid-body-columns {
+    grid-column: 2 / span 7;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    position: relative;
+    height: 720px; /* 12 hours * 60px */
+  }
+
+  .weekly-grid-day-col {
+    position: relative;
+    height: 100%;
+    border-right: 1px solid var(--border);
+    background-image: linear-gradient(var(--border-light) 1px, transparent 1px);
+    background-size: 100% 60px; /* hourly lines */
+    cursor: cell;
+    transition: background 0.15s;
+  }
+  .weekly-grid-day-col:last-child {
+    border-right: none;
+  }
+  .weekly-grid-day-col:hover {
+    background-color: rgba(255, 204, 0, 0.01);
+  }
+
+  /* Timetable visually placed blocks */
+  .weekly-grid-block {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    border-radius: 6px;
+    padding: 0.45rem;
+    font-size: 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    cursor: pointer;
+    overflow: hidden;
+    line-height: 1.25;
+    border-left: 3px solid var(--gold);
+    background: rgba(255, 204, 0, 0.04);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+  .weekly-grid-block:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(255, 204, 0, 0.1);
+    background: rgba(255, 204, 0, 0.08);
+    z-index: 10;
+  }
+  
+  .weekly-grid-block.clashed {
+    border-left-color: var(--red) !important;
+    background: rgba(239, 68, 68, 0.06) !important;
+  }
+  .weekly-grid-block.clashed:hover {
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.15);
+    background: rgba(239, 68, 68, 0.1) !important;
+  }
+
+  .slot-subject {
+    font-weight: 800;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .slot-teacher {
+    color: var(--gold-light);
+    font-weight: 600;
+    font-size: 0.65rem;
+  }
+  .slot-classroom {
+    color: var(--text-muted);
+    font-size: 0.6rem;
+  }
+  .slot-time {
+    font-family: monospace;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    margin-top: auto;
+  }
+  .clash-badge {
+    background: var(--red);
+    color: #fff;
+    font-size: 0.55rem;
+    font-weight: 800;
+    padding: 1px 4px;
+    border-radius: 3px;
+    position: absolute;
+    top: 4px; right: 4px;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
+  }
+
+  /* Popover config */
+  .slot-popover {
+    position: absolute;
+    width: 280px;
+    background: #1e1e1ecf;
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    z-index: 1000;
+    padding: 1rem;
+    display: none;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .slot-popover-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.4rem;
+    margin-bottom: 0.2rem;
+  }
+  .slot-popover-header h5 {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--gold);
+    margin: 0;
+  }
+  .tab-hidden {
+    display: none !important;
+  }
+</style>
+
+<!-- Header Tabs Navigation -->
+<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; flex-wrap: wrap; gap: 10px;">
+  <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+    <button type="button" class="btn tab-btn active" onclick="switchTab('monthCalendar')" id="btn-monthCalendar">Monthly Calendar View</button>
+    <button type="button" class="btn tab-btn" onclick="switchTab('dailyTimeline')" id="btn-dailyTimeline">Daily Room Planner</button>
+    <button type="button" class="btn tab-btn" onclick="switchTab('hierarchyTree')" id="btn-hierarchyTree">Classroom Hierarchy Tree</button>
+    <button type="button" class="btn tab-btn" onclick="switchTab('templates')" id="btn-templates">Weekly Templates (Auto-Generator)</button>
+    <button type="button" class="btn tab-btn" onclick="switchTab('classroomView')" id="btn-classroomView">Classroom Grid View</button>
+    <button type="button" class="btn tab-btn" onclick="switchTab('classrooms')" id="btn-classrooms">Manage Classrooms</button>
+  </div>
+  <div style="padding-bottom: 0.5rem; display: flex; gap: 0.5rem;">
+    <button type="button" class="btn btn-primary btn-sm" onclick="openCreateDrawer('')">+ Add Schedule</button>
+  </div>
+</div>
+
+<!-- ==================== TAB 1: MONTHLY CALENDAR GRID ==================== -->
+<div id="tab-monthCalendar" class="tab-pane">
+  <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 10px;">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; color: var(--text); margin: 0;"><%= currentMonthLabel %></h3>
+      </div>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <a href="?month=<%= prevMonthStr %>" class="btn btn-ghost btn-xs" style="padding: 0.35rem 0.65rem;">&larr; Previous Month</a>
+        <a href="?month=<%= new Date().toISOString().slice(0, 7) %>" class="btn btn-ghost btn-xs" style="padding: 0.35rem 0.65rem; color: var(--gold);">Current Month</a>
+        <a href="?month=<%= nextMonthStr %>" class="btn btn-ghost btn-xs" style="padding: 0.35rem 0.65rem;">Next Month &rarr;</a>
+      </div>
+    </div>
+
+    <!-- Monthly Calendar Grid Layout -->
+    <div style="display: grid; grid-template-columns: repeat(7, 1fr); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--bg-card);">
+      <% ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => { %>
+        <div style="background: rgba(0,0,0,0.25); text-align: center; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0.65rem; border-bottom: 1px solid var(--border);"><%= day %></div>
+      <% }) %>
+
+      <% for (let i = 0; i < startDayOfWeek; i++) { %>
+        <div style="background: rgba(0,0,0,0.05); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-height: 120px;"></div>
+      <% } %>
+
+      <% 
+        const [yStr, mStr] = monthParam.split('-');
+      %>
+      <% for (let d = 1; d <= daysInMonth; d++) { 
+          const dateStr = `${yStr}-${mStr}-${String(d).padStart(2,'0')}`;
+          const isToday = new Date().toDateString() === new Date(yStr, parseInt(mStr)-1, d).toDateString();
+          const daySchedules = monthSchedulesGrouped[d] || [];
+      %>
+        <div class="calendar-day-cell" style="min-height: 120px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem; position: relative; background: <%= isToday ? 'rgba(255,204,0,0.02)' : 'transparent' %>; transition: background 0.15s;" onmouseover="this.querySelector('.day-cell-add-btn').style.opacity='1'" onmouseout="this.querySelector('.day-cell-add-btn').style.opacity='0'">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.78rem; font-weight: 700; color: <%= isToday ? 'var(--gold)' : 'var(--text-muted)' %>"><%= d %></span>
+            <button class="day-cell-add-btn" onclick="openCreateDrawer('<%= dateStr %>')" style="opacity: 0; background: none; border: none; color: var(--gold-light); font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: opacity 0.15s; display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%;">+</button>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1; padding-bottom: 4px;">
+            <% daySchedules.forEach(sched => { 
+                const isCancelled = sched.status === 'cancelled';
+                const isCompleted = sched.status === 'completed';
+            %>
+              <div class="calendar-event-card" 
+                   data-id="<%= sched._id %>"
+                   data-subject="<%= sched.subject %>"
+                   data-batch="<%= sched.batch %>"
+                   data-teacher="<%= sched.teacher ? sched.teacher._id : '' %>"
+                   data-classroom="<%= sched.classroom ? sched.classroom._id : '' %>"
+                   data-date="<%= sched.date %>"
+                   data-starttime="<%= sched.startTime %>"
+                   data-endtime="<%= sched.endTime %>"
+                   data-status="<%= sched.status %>"
+                   onclick="openEditDrawer(this)"
+                   style="background: var(--bg-hover); border-left: 2px solid <%= isCancelled ? 'var(--red)' : (isCompleted ? 'var(--blue)' : 'var(--gold)') %>; border-radius: 4px; padding: 0.35rem 0.45rem; font-size: 0.65rem; color: var(--text-sub); cursor: pointer; display: flex; flex-direction: column; gap: 2px; transition: transform 0.1s; line-height: 1.2;"
+                   onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='none';">
+                <div style="font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= sched.subject %></div>
+                <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.58rem;">
+                  <span><%= sched.startTime.split(' ')[0] %>-<%= sched.endTime.split(' ')[0] %></span>
+                  <span style="color: var(--gold-light); font-weight:600;"><%= sched.classroom ? sched.classroom.name.replace(/^(classroom|room)\s+/i, '') : 'Room' %></span>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      <% } %>
+
+      <% 
+        const totalCellsFilled = startDayOfWeek + daysInMonth;
+        const trailingCells = totalCellsFilled % 7 === 0 ? 0 : 7 - (totalCellsFilled % 7);
+      %>
+      <% for (let i = 0; i < trailingCells; i++) { %>
+        <div style="background: rgba(0,0,0,0.05); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-height: 120px;"></div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TAB 2: DAILY CLASSROOM TIMELINE PLANNER ==================== -->
+<div id="tab-dailyTimeline" class="tab-pane tab-hidden">
+  <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 10px;">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-sub);">Target Day:</span>
+        <input type="date" id="dailyTimelineDatePicker" class="form-control" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; background: var(--bg-hover);" value="<%= dayParam %>" onchange="changeDailyPlannerDate(this.value)">
+      </div>
+      <div style="font-size: 0.8rem; color: var(--text-muted);">Daily classroom scheduling allocations</div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+      <% classrooms.forEach(room => { 
+          const roomSchedules = timelineClassroomData[room._id.toString()] || [];
+      %>
+        <div style="background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; min-height: 350px; display: flex; flex-direction: column;">
+          <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-bottom: 1px solid var(--border); text-align: center;">
+            <h4 style="font-family: var(--font-display); font-size: 0.85rem; font-weight: 800; color: var(--gold); margin: 0;"><%= room.name %></h4>
+            <span style="font-size: 0.65rem; color: var(--text-muted);"><%= room.location || 'First Floor' %> &middot; Cap: <%= room.capacity %></span>
+          </div>
+
+          <div style="padding: 0.75rem; display: flex; flex-direction: column; gap: 0.6rem; flex: 1; overflow-y: auto;">
+            <% if (roomSchedules.length === 0) { %>
+              <div style="flex: 1; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; color: var(--text-muted); font-style: italic; opacity: 0.6;">Room Available</div>
+            <% } else { %>
+              <% roomSchedules.forEach(sched => { %>
+                <div class="calendar-event-card"
+                     data-id="<%= sched._id %>"
+                     data-subject="<%= sched.subject %>"
+                     data-batch="<%= sched.batch %>"
+                     data-teacher="<%= sched.teacher ? sched.teacher._id : '' %>"
+                     data-classroom="<%= sched.classroom ? sched.classroom._id : '' %>"
+                     data-date="<%= sched.date %>"
+                     data-starttime="<%= sched.startTime %>"
+                     data-endtime="<%= sched.endTime %>"
+                     data-status="<%= sched.status %>"
+                     onclick="openEditDrawer(this)"
+                     style="background: var(--bg-card); border-left: 3px solid var(--gold); border-radius: 4px; padding: 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.7rem; cursor: pointer; transition: border-color 0.15s, transform 0.15s;"
+                     onmouseover="this.style.borderColor='var(--gold-hover)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--gold)'; this.style.transform='none'">
+                  <div style="font-weight: 700; color: var(--text);"><%= sched.subject %></div>
+                  <div style="font-size: 0.65rem; color: var(--text-sub); display: flex; flex-direction: column; gap: 1px; margin-top: auto; padding-top: 4px; border-top: 1px dashed var(--border-light);">
+                    <span style="font-weight: 600;"><%= sched.batch %></span>
+                    <% if (sched.teacher) { %>
+                      <span style="color: var(--gold-light);">👨‍🏫 <%= sched.teacher.name %></span>
+                    <% } %>
+                    <span style="font-family: monospace; font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">⏰ <%= sched.startTime %> - <%= sched.endTime %></span>
+                  </div>
+                </div>
+              <% }) %>
+            <% } %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TAB 3: CLASSROOM HIERARCHY TREE ==================== -->
+<div id="tab-hierarchyTree" class="tab-pane tab-hidden">
+  <% 
+    const classroomTree = {};
+    classrooms.forEach(c => {
+      classroomTree[c.name] = { id: c._id, courses: {} };
+    });
+    schedules.forEach(s => {
+      if (s.classroom) {
+        const cName = s.classroom.name;
+        if (!classroomTree[cName]) {
+          classroomTree[cName] = { id: s.classroom._id, courses: {} };
+        }
+        
+        let courseName = 'Other General';
+        const bLower = s.batch.toLowerCase();
+        if (bLower.includes('video')) {
+          courseName = 'Video Editing';
+        } else if (bLower.includes('marketing')) {
+          courseName = 'Digital Marketing';
+        }
+        
+        if (!classroomTree[cName].courses[courseName]) {
+          classroomTree[cName].courses[courseName] = {};
+        }
+        if (!classroomTree[cName].courses[courseName][s.batch]) {
+          classroomTree[cName].courses[courseName][s.batch] = [];
+        }
+        classroomTree[cName].courses[courseName][s.batch].push(s);
+      }
+    });
+  %>
+
+  <div class="card" style="padding: 1.25rem;">
+    <div style="display: flex; flex-direction: column; gap: 1rem;">
+      <% Object.keys(classroomTree).forEach((cName, idx) => { 
+          const node = classroomTree[cName];
+      %>
+        <details style="background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;" <%= idx === 0 ? 'open' : '' %>>
+          <summary style="padding: 0.85rem 1.25rem; font-weight: 700; font-size: 0.9rem; color: var(--text); cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="color: var(--gold);">🏫</span>
+              <%= cName %>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal;">
+              <%= Object.keys(node.courses).length %> courses active
+            </span>
+          </summary>
+          
+          <div style="padding: 1rem; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 1rem; background: var(--bg-card);">
+            <% if (Object.keys(node.courses).length === 0) { %>
+              <p style="font-size:0.75rem; color: var(--text-muted); font-style: italic;">No classes currently scheduled in this classroom.</p>
+            <% } else { %>
+              <% Object.keys(node.courses).forEach(courseName => { %>
+                <div style="border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 0.5rem;">
+                  <div style="background: rgba(0,0,0,0.1); padding: 0.5rem 0.75rem; font-weight: 700; font-size: 0.78rem; color: var(--gold-light);">📁 Course: <%= courseName %></div>
+                  <div style="padding: 0.75rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                    <% Object.keys(node.courses[courseName]).forEach(batchName => { 
+                        const batchSchedules = node.courses[courseName][batchName];
+                    %>
+                      <div style="border: 1px solid var(--border-light); border-radius: 4px; overflow: hidden;">
+                        <div style="background: rgba(255,255,255,0.02); padding: 0.4rem 0.6rem; font-size: 0.72rem; font-weight: 600; color: var(--text-sub); border-bottom: 1px solid var(--border-light);">👥 Batch: <%= batchName %></div>
+                        <div class="table-wrap">
+                          <table style="margin: 0; font-size: 0.75rem;">
+                            <thead>
+                              <tr>
+                                <th>Subject</th>
+                                <th>Teacher</th>
+                                <th>Date & Time</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <% batchSchedules.forEach(sched => { %>
+                                <tr>
+                                  <td><strong><%= sched.subject %></strong></td>
+                                  <td><%= sched.teacher ? sched.teacher.name : '—' %></td>
+                                  <td><%= new Date(sched.date + "T00:00:00").toLocaleDateString('en-IN') %> &middot; <span class="text-gold"><%= sched.startTime %> - <%= sched.endTime %></span></td>
+                                  <td>
+                                    <span class="badge <%= sched.status === 'scheduled' ? 'badge-green' : sched.status === 'completed' ? 'badge-blue' : 'badge-red' %>" style="font-size: 0.55rem;">
+                                      <%= sched.status %>
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <button class="btn btn-ghost btn-xs"
+                                            data-id="<%= sched._id %>"
+                                            data-subject="<%= sched.subject %>"
+                                            data-batch="<%= sched.batch %>"
+                                            data-teacher="<%= sched.teacher ? sched.teacher._id : '' %>"
+                                            data-classroom="<%= sched.classroom ? sched.classroom._id : '' %>"
+                                            data-date="<%= sched.date %>"
+                                            data-starttime="<%= sched.startTime %>"
+                                            data-endtime="<%= sched.endTime %>"
+                                            data-status="<%= sched.status %>"
+                                            onclick="openEditDrawer(this)"
+                                            style="padding: 0.2rem 0.4rem; font-size: 0.65rem;">Edit</button>
+                                  </td>
+                                </tr>
+                              <% }) %>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    <% }) %>
+                  </div>
+                </div>
+              <% }) %>
+            <% } %>
+          </div>
+        </details>
+      <% }) %>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TAB 4: VISUAL WEEKLY TIMETABLE GENERATOR ==================== -->
+<div id="tab-templates" class="tab-pane tab-hidden">
+  <div class="card" style="padding: 1.25rem;">
+    
+    <!-- Top control parameters -->
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; border-bottom: 1px solid var(--border); padding-bottom: 1.25rem; margin-bottom: 1rem;">
+      <div class="form-group" style="margin: 0; min-width: 220px;">
+        <label class="form-label">Selected Planning Batch *</label>
+        <select id="v_select_batch" class="form-control" onchange="loadBatchTemplate(this.value)">
+          <option value="">-- Select Batch to Configure --</option>
+          <% batches.forEach(b => { %>
+            <option value="<%= b %>"><%= b %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="form-group" style="margin: 0; width: 140px;">
+        <label class="form-label">Start Date</label>
+        <input type="date" id="v_startDate" class="form-control">
+      </div>
+      <div class="form-group" style="margin: 0; width: 140px;">
+        <label class="form-label">End Date</label>
+        <input type="date" id="v_endDate" class="form-control">
+      </div>
+      
+      <button class="btn btn-primary btn-sm" onclick="saveActiveTemplate()" style="margin-left: auto;">Save & Propagate Calendar</button>
+    </div>
+
+    <!-- Interactive Workspace Wrapper -->
+    <div class="weekly-planner-wrapper">
+      
+      <!-- Left Info Board -->
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="card" style="padding: 0.85rem; background: var(--bg-hover);">
+          <h4 style="font-family: var(--font-display); font-size: 0.8rem; font-weight: 800; color: var(--gold); margin-bottom: 0.5rem;">Visual Help Box</h4>
+          <ul style="font-size: 0.68rem; color: var(--text-sub); display: flex; flex-direction: column; gap: 6px; padding-left: 12px; list-style: disc;">
+            <li>Select a batch from the dropdown to start.</li>
+            <li>Click any blank cell in a day column to create a schedule slot.</li>
+            <li>Click on any existing card block to edit or delete it.</li>
+            <li>Clashes are highlighted in <strong>red</strong> with real-time alert details.</li>
+          </ul>
+        </div>
+        
+        <div id="v_active_template_card" class="card" style="padding: 0.85rem; border: 1px solid var(--border); display: none;">
+          <h4 style="font-family: var(--font-display); font-size: 0.8rem; font-weight: 800; color: var(--text); margin-bottom: 0.4rem;">Template Status</h4>
+          <div id="v_status_info" style="font-size: 0.72rem; color: var(--text-sub); display: flex; flex-direction: column; gap: 4px;">
+            <!-- filled by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Calendar Weekly Grid View -->
+      <div style="position: relative;">
+        
+        <!-- Slot inline config popover dialog -->
+        <div class="slot-popover" id="slotPopover">
+          <div class="slot-popover-header">
+            <h5 id="popoverTitle">Configure Slot</h5>
+            <button onclick="closePopover()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; font-weight: bold;">&times;</button>
+          </div>
+          
+          <input type="hidden" id="pop_slot_id">
+          
+          <div class="form-group" style="margin-bottom: 0.5rem;">
+            <label style="font-size: 0.6rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Day of Week</label>
+            <select id="pop_day" class="form-control" style="font-size: 0.75rem; padding: 0.3rem;">
+              <option value="Monday">Monday</option>
+              <option value="Tuesday">Tuesday</option>
+              <option value="Wednesday">Wednesday</option>
+              <option value="Thursday">Thursday</option>
+              <option value="Friday">Friday</option>
+              <option value="Saturday">Saturday</option>
+              <option value="Sunday">Sunday</option>
+            </select>
+          </div>
+          
+          <div class="form-group" style="margin-bottom: 0.5rem;">
+            <label style="font-size: 0.6rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Subject *</label>
+            <input type="text" id="pop_subject" class="form-control" style="font-size: 0.75rem; padding: 0.3rem;" list="subjectDatalist" placeholder="e.g. Color Grading">
+          </div>
+          
+          <div class="form-group" style="margin-bottom: 0.5rem;">
+            <label style="font-size: 0.6rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Instructor *</label>
+            <select id="pop_teacher" class="form-control" style="font-size: 0.75rem; padding: 0.3rem;">
+              <% teachers.forEach(t => { %>
+                <option value="<%= t._id %>"><%= t.name %></option>
+              <% }) %>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.5rem;">
+            <label style="font-size: 0.6rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Classroom / Hall *</label>
+            <select id="pop_classroom" class="form-control" style="font-size: 0.75rem; padding: 0.3rem;">
+              <% classrooms.forEach(r => { %>
+                <option value="<%= r._id %>"><%= r.name %></option>
+              <% }) %>
+            </select>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;">
+            <div>
+              <label style="font-size: 0.6rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Start Time</label>
+              <input type="time" id="pop_start" class="form-control" style="font-size: 0.75rem; padding: 0.3rem;">
+            </div>
+            <div>
+              <label style="font-size: 0.6rem; color: var(--text-muted); display: block; margin-bottom: 2px;">End Time</label>
+              <input type="time" id="pop_end" class="form-control" style="font-size: 0.75rem; padding: 0.3rem;">
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.4rem; justify-content: flex-end;">
+            <button type="button" class="btn btn-danger btn-xs" id="pop_delete_btn" onclick="deleteActiveSlot()" style="margin-right: auto; padding: 0.2rem 0.4rem;">Delete</button>
+            <button type="button" class="btn btn-ghost btn-xs" onclick="closePopover()">Cancel</button>
+            <button type="button" class="btn btn-primary btn-xs" onclick="savePopoverSlot()">Apply</button>
+          </div>
+        </div>
+
+        <!-- Weekly Grid Layout -->
+        <div class="weekly-grid-container" id="weeklyPlannerGrid">
+          <div class="weekly-grid-header">
+            <% ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].forEach(day => { %>
+              <div class="weekly-grid-header-day"><%= day.substring(0, 3) %></div>
+            <% }) %>
+          </div>
+
+          <div class="weekly-grid-hours-sidebar">
+            <% for(let h = 8; h <= 20; h++) { %>
+              <% const label = h === 12 ? '12 PM' : h > 12 ? `${h-12} PM` : `${h} AM`; %>
+              <div class="weekly-grid-hour-label"><%= label %></div>
+            <% } %>
+          </div>
+
+          <div class="weekly-grid-body-columns">
+            <% ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].forEach(day => { %>
+              <div class="weekly-grid-day-col" data-day="<%= day %>" onclick="onGridColumnClick(event, '<%= day %>')">
+                <!-- slots are populated absolutely here by JavaScript -->
+              </div>
+            <% }) %>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- ==================== TAB 6: CLASSROOM GRID VIEW ==================== -->
+<div id="tab-classroomView" class="tab-pane tab-hidden">
+  <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 10px;">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-sub);">Select Day:</span>
+        <input type="date" id="classroomGridDatePicker" class="form-control" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; background: var(--bg-hover);" value="<%= dayParam %>" onchange="changeClassroomGridDate(this.value)">
+      </div>
+      <div style="font-size: 0.8rem; color: var(--text-muted);">Classroom-wise allocation grid for the day</div>
+    </div>
+
+    <%
+      const defaultTimeSlots = [
+        "09:00 AM - 11:00 AM",
+        "11:00 AM - 01:00 PM",
+        "01:00 PM - 03:00 PM",
+        "03:00 PM - 05:00 PM",
+        "05:00 PM - 07:00 PM"
+      ];
+      
+      const dynamicSlots = [];
+      schedules.forEach(s => {
+        if (s.date === dayParam && s.status !== 'cancelled') {
+          const slotStr = `${s.startTime} - ${s.endTime}`;
+          if (!defaultTimeSlots.includes(slotStr) && !dynamicSlots.includes(slotStr)) {
+            dynamicSlots.push(slotStr);
+          }
+        }
+      });
+      
+      const timeStringToMinutes = (timeStr) => {
+        const parts = timeStr.split(' ');
+        if (parts.length < 2) return 0;
+        const [time, modifier] = parts;
+        let [hours, minutes] = time.split(':').map(Number);
+        if (hours === 12) {
+          hours = 0;
+        }
+        if (modifier === 'PM') {
+          hours += 12;
+        }
+        return hours * 60 + minutes;
+      };
+
+      const sortedTimeSlots = [...defaultTimeSlots, ...dynamicSlots].sort((a, b) => {
+        const startA = a.split(' - ')[0];
+        const startB = b.split(' - ')[0];
+        return timeStringToMinutes(startA) - timeStringToMinutes(startB);
+      });
+    %>
+
+    <div class="table-wrap" style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; min-width: 800px; text-align: center;">
+        <thead>
+          <tr style="background: rgba(0,0,0,0.25);">
+            <th style="padding: 10px; border: 1px solid var(--border); text-align: left; font-weight: 700; color: var(--text-muted); font-size: 0.8rem;">Time Slot</th>
+            <% classrooms.forEach(room => { %>
+              <th style="padding: 10px; border: 1px solid var(--border); font-weight: 700; color: var(--gold); font-size: 0.8rem;"><%= room.name %></th>
+            <% }) %>
+          </tr>
+        </thead>
+        <tbody>
+          <% sortedTimeSlots.forEach(slot => { %>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 12px; border: 1px solid var(--border); text-align: left; font-weight: 600; font-size: 0.75rem; color: var(--text-sub);"><%= slot %></td>
+              <% classrooms.forEach(room => { 
+                  const slotStart = slot.split(' - ')[0];
+                  const slotEnd = slot.split(' - ')[1];
+                  const matchedClasses = schedules.filter(s => 
+                    s.date === dayParam &&
+                    s.status !== 'cancelled' &&
+                    s.classroom && 
+                    s.classroom._id.toString() === room._id.toString() &&
+                    s.startTime === slotStart && 
+                    s.endTime === slotEnd
+                  );
+              %>
+                <td style="padding: 10px; border: 1px solid var(--border); vertical-align: middle; min-width: 150px; font-size: 0.72rem; position: relative;">
+                  <% if (matchedClasses.length > 0) { %>
+                    <% if (matchedClasses.length > 1) { %>
+                      <div class="clash-badge" style="position: static; display: inline-block; margin-bottom: 4px; background: var(--red);">Double Booked</div>
+                    <% } %>
+                    <% matchedClasses.forEach(sched => { %>
+                      <div class="calendar-event-card"
+                           data-id="<%= sched._id %>"
+                           data-subject="<%= sched.subject %>"
+                           data-batch="<%= sched.batch %>"
+                           data-teacher="<%= sched.teacher ? sched.teacher._id : '' %>"
+                           data-classroom="<%= sched.classroom ? sched.classroom._id : '' %>"
+                           data-date="<%= sched.date %>"
+                           data-starttime="<%= sched.startTime %>"
+                           data-endtime="<%= sched.endTime %>"
+                           data-status="<%= sched.status %>"
+                           onclick="openEditDrawer(this)"
+                           style="background: var(--bg-hover); border-left: 3px solid <%= matchedClasses.length > 1 ? 'var(--red)' : 'var(--gold)' %>; border-radius: 4px; padding: 0.4rem; text-align: left; cursor: pointer; transition: transform 0.1s; margin-bottom: 4px;"
+                           onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='none';">
+                        <div style="font-weight: 700; color: var(--text);"><%= sched.subject %></div>
+                        <div style="color: var(--text-muted); font-size: 0.65rem; margin-top: 2px;">
+                          👥 <%= sched.batch %><br>
+                          👨‍🏫 <%= sched.teacher ? sched.teacher.name : 'No Teacher' %>
+                        </div>
+                      </div>
+                    <% }) %>
+                  <% } else { %>
+                    <span style="color: var(--text-muted); opacity: 0.4; font-style: italic;">Free</span>
+                  <% } %>
+                </td>
+              <% }) %>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TAB 5: MANAGE CLASSROOMS ==================== -->
+<div id="tab-classrooms" class="tab-pane tab-hidden">
+  <div class="card" style="padding: 1.25rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; color: var(--text); margin: 0;">Classrooms & Suites Management</h3>
+      <button class="btn btn-primary btn-sm" onclick="toggleRoomModal('createRoomModal', true)">+ Add Classroom</button>
+    </div>
+
+    <!-- Classrooms Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem;">
+      <% classrooms.forEach(room => { %>
+        <div class="card" style="display: flex; flex-direction: column; gap: 0.85rem; border: 1px solid var(--border); transition: all 0.2s; background: var(--bg-hover);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <div style="background: var(--gold-dim); border: 1px solid var(--gold-border); border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: var(--gold);">
+                🏫
+              </div>
+              <div>
+                <h4 style="font-family: var(--font-display); font-size: 0.9rem; font-weight: 800; color: var(--text); margin: 0;"><%= room.name %></h4>
+                <span class="badge <%= room.isActive ? 'badge-green' : 'badge-grey' %>" style="font-size: 0.55rem; padding: 1px 4px; margin-top: 0.15rem;">
+                  <%= room.isActive ? 'Active' : 'Maintenance' %>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div style="font-size: 0.75rem; display: flex; flex-direction: column; gap: 0.35rem; color: var(--text-sub); border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted);">Location:</span>
+              <strong><%= room.location || 'Main Campus' %></strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted);">Capacity:</span>
+              <strong><%= room.capacity %> students</strong>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.25rem; justify-content: flex-end; margin-top: auto; padding-top: 0.75rem; border-top: 1px dashed var(--border-light);">
+            <button class="btn btn-ghost btn-xs" onclick="openEditRoomModal('<%= room._id %>', '<%= room.name %>', '<%= room.capacity %>', '<%= room.location %>', <%= room.isActive %>)">Edit</button>
+            <form action="/admin/classrooms/<%= room._id %>/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this classroom? All its schedule references will be lost.')" style="margin:0;">
+              <button type="submit" class="btn btn-danger btn-xs" style="padding: 0.25rem 0.5rem; font-size: 0.65rem;">Delete</button>
+            </form>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== CREATE CLASSROOM MODAL ==================== -->
+<div id="createRoomModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 2000; align-items: center; justify-content: center;">
+  <div class="card" style="width: 100%; max-width: 420px; padding: 1.5rem; border-color: var(--border-light); position: relative;">
+    <h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; color: var(--text); margin-bottom: 1rem;">Create Classroom</h3>
+    <form action="/admin/classrooms/create" method="POST" style="margin: 0;">
+      <div class="form-group">
+        <label class="form-label" for="room_c_name">Classroom Name *</label>
+        <input type="text" id="room_c_name" name="name" class="form-control" placeholder="Room 101" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="room_c_capacity">Capacity (Students)</label>
+        <input type="number" id="room_c_capacity" name="capacity" class="form-control" placeholder="25" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="room_c_location">Location / Building</label>
+        <input type="text" id="room_c_location" name="location" class="form-control" placeholder="First Floor">
+      </div>
+      <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+        <input type="checkbox" id="room_c_isActive" name="isActive" checked style="width: 16px; height: 16px; accent-color: var(--gold);">
+        <label for="room_c_isActive" style="font-size: 0.8rem; color: var(--text-sub); cursor: pointer; user-select: none;">Mark Room as Active</label>
+      </div>
+      <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; justify-content: flex-end;">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="toggleRoomModal('createRoomModal', false)">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Create Room</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ==================== EDIT CLASSROOM MODAL ==================== -->
+<div id="editRoomModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 2000; align-items: center; justify-content: center;">
+  <div class="card" style="width: 100%; max-width: 420px; padding: 1.5rem; border-color: var(--border-light); position: relative;">
+    <h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; color: var(--text); margin-bottom: 1rem;">Edit Classroom</h3>
+    <form id="editRoomForm" action="" method="POST" style="margin: 0;">
+      <div class="form-group">
+        <label class="form-label" for="room_e_name">Classroom Name *</label>
+        <input type="text" id="room_e_name" name="name" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="room_e_capacity">Capacity (Students)</label>
+        <input type="number" id="room_e_capacity" name="capacity" class="form-control" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="room_e_location">Location / Building</label>
+        <input type="text" id="room_e_location" name="location" class="form-control">
+      </div>
+      <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+        <input type="checkbox" id="room_e_isActive" name="isActive" style="width: 16px; height: 16px; accent-color: var(--gold);">
+        <label for="room_e_isActive" style="font-size: 0.8rem; color: var(--text-sub); cursor: pointer; user-select: none;">Mark Room as Active</label>
+      </div>
+      <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; justify-content: flex-end;">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="toggleRoomModal('editRoomModal', false)">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ==================== DRAWER OVERLAY ==================== -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeAllDrawers()"></div>
+
+<!-- ==================== CREATE SCHEDULE SLIDE-OVER DRAWER ==================== -->
+<div class="slide-over-drawer" id="createDrawer">
+  <div class="drawer-header">
+    <h3 style="font-family: var(--font-display); font-size: 1rem; font-weight: 800; color: var(--text); margin:0;">Schedule New Session</h3>
+    <button class="modal-close" onclick="closeAllDrawers()" style="font-size: 1.25rem;">&times;</button>
+  </div>
+  <div class="drawer-body">
+    <form action="/admin/schedules/create" method="POST" id="createScheduleForm" style="margin: 0;">
+      <div class="form-group">
+        <label class="form-label" for="c_subject">Subject Title *</label>
+        <input type="text" id="c_subject" name="subject" class="form-control" placeholder="e.g. Color Grading Basics" list="subjectDatalist" required>
+        <datalist id="subjectDatalist">
+          <option value="Video Editing Basics">
+          <option value="Advanced Premiere & DaVinci Resolve">
+          <option value="Syllabus Term Overview">
+          <option value="Digital Marketing Mastery">
+          <option value="SEO & Copywriting Fundamentals">
+          <option value="Social Media Strategy & Ad Campaigns">
+        </datalist>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="c_batch">Target Batch *</label>
+        <select id="c_batch" name="batch" class="form-control" required>
+          <option value="">-- Select Batch --</option>
+          <% batches.forEach(b => { %>
+            <option value="<%= b %>"><%= b %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="c_teacher">Assigned Instructor *</label>
+        <select id="c_teacher" name="teacher" class="form-control" required>
+          <option value="">-- Select Instructor --</option>
+          <% teachers.forEach(t => { %>
+            <option value="<%= t._id %>"><%= t.name %> (<%= t.subject || 'Faculty' %>)</option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="c_classroom">Target Classroom / Suite *</label>
+        <select id="c_classroom" name="classroom" class="form-control" required>
+          <option value="">-- Select Classroom --</option>
+          <% classrooms.forEach(r => { %>
+            <option value="<%= r._id %>"><%= r.name %> (Cap: <%= r.capacity %>)</option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="c_date">Schedule Date *</label>
+        <input type="date" id="c_date" name="date" class="form-control" required>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="c_startTime">Start Time *</label>
+          <input type="time" id="c_startTime" name="startTime" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="c_endTime">End Time *</label>
+          <input type="time" id="c_endTime" name="endTime" class="form-control" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="c_status">Session Status</label>
+        <select id="c_status" name="status" class="form-control">
+          <option value="scheduled" selected>Scheduled</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+
+      <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; justify-content: flex-end;">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeAllDrawers()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Schedule Session</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ==================== EDIT SCHEDULE SLIDE-OVER DRAWER ==================== -->
+<div class="slide-over-drawer" id="editDrawer">
+  <div class="drawer-header">
+    <h3 style="font-family: var(--font-display); font-size: 1rem; font-weight: 800; color: var(--text); margin:0;">Edit Session Allocation</h3>
+    <button class="modal-close" onclick="closeAllDrawers()" style="font-size: 1.25rem;">&times;</button>
+  </div>
+  <div class="drawer-body">
+    <form action="" method="POST" id="editScheduleForm" style="margin: 0;">
+      <div class="form-group">
+        <label class="form-label" for="e_subject">Subject Title *</label>
+        <input type="text" id="e_subject" name="subject" class="form-control" list="subjectDatalist" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="e_batch">Target Batch *</label>
+        <select id="e_batch" name="batch" class="form-control" required>
+          <option value="">-- Select Batch --</option>
+          <% batches.forEach(b => { %>
+            <option value="<%= b %>"><%= b %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="e_teacher">Assigned Instructor *</label>
+        <select id="e_teacher" name="teacher" class="form-control" required>
+          <option value="">-- Select Instructor --</option>
+          <% teachers.forEach(t => { %>
+            <option value="<%= t._id %>"><%= t.name %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="e_classroom">Target Classroom / Suite *</label>
+        <select id="e_classroom" name="classroom" class="form-control" required>
+          <option value="">-- Select Classroom --</option>
+          <% classrooms.forEach(r => { %>
+            <option value="<%= r._id %>"><%= r.name %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="e_date">Schedule Date *</label>
+        <input type="date" id="e_date" name="date" class="form-control" required>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="e_startTime">Start Time *</label>
+          <input type="time" id="e_startTime" name="startTime" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="e_endTime">End Time *</label>
+          <input type="time" id="e_endTime" name="endTime" class="form-control" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="e_status">Session Status</label>
+        <select id="e_status" name="status" class="form-control">
+          <option value="scheduled">Scheduled</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+
+      <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; justify-content: flex-end;">
+        <button type="button" class="btn btn-danger btn-sm" onclick="triggerDeleteSession()" style="margin-right: auto;">Delete</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeAllDrawers()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+      </div>
+    </form>
+
+    <form action="" method="POST" id="deleteScheduleForm" style="display: none;" onsubmit="return confirm('Delete this schedule slot permanently?')">
+    </form>
+  </div>
+</div>
+
+<!-- ==================== DYNAMIC DATA SCRIPTS ==================== -->
+<script>
+  // Global reference variables
+  const timetablesData = <%- JSON.stringify(typeof timetables !== 'undefined' ? timetables : []) %>;
+  const teachersData = <%- JSON.stringify(typeof teachers !== 'undefined' ? teachers : []) %>;
+  const classroomsData = <%- JSON.stringify(typeof classrooms !== 'undefined' ? classrooms : []) %>;
+  
+  let activeBatch = "";
+  let activeSlots = []; // local slots for current selected batch
+
+  // Helper to format AM/PM to 24h string (HH:mm) for input[type="time"]
+  function formatTimeTo24h(timeStr) {
+    if (!timeStr) return '';
+    timeStr = timeStr.trim().toUpperCase();
+    const matches = timeStr.match(/^(\d+):(\d+)\s*(AM|PM)$/);
+    if (!matches) return timeStr;
+    let hours = parseInt(matches[1], 10);
+    const minutes = matches[2];
+    const ampm = matches[3];
+    if (ampm === 'PM' && hours < 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+    return `${String(hours).padStart(2, '0')}:${minutes}`;
+  }
+
+  // Convert "HH:mm" standard string back to "hh:mm AM/PM"
+  function format24hToAMPM(timeStr) {
+    if (!timeStr) return '';
+    const parts = timeStr.split(':');
+    let hours = parseInt(parts[0], 10);
+    const minutes = parts[1];
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 0 hour is 12
+    return `${hours}:${minutes} ${ampm}`;
+  }
+
+  function parseTimeToMinutes(timeStr) {
+    if (!timeStr) return 0;
+    timeStr = timeStr.trim().toUpperCase();
+    let hours = 0;
+    let minutes = 0;
+    
+    if (timeStr.includes('AM') || timeStr.includes('PM')) {
+      const matches = timeStr.match(/^(\d+):(\d+)\s*(AM|PM)$/);
+      if (matches) {
+        hours = parseInt(matches[1], 10);
+        minutes = parseInt(matches[2], 10);
+        const ampm = matches[3];
+        if (ampm === 'PM' && hours < 12) hours += 12;
+        if (ampm === 'AM' && hours === 12) hours = 0;
+      }
+    } else {
+      const parts = timeStr.split(':');
+      if (parts.length >= 2) {
+        hours = parseInt(parts[0], 10);
+        minutes = parseInt(parts[1], 10);
+      }
+    }
+    return hours * 60 + minutes;
+  }
+
+  // Active tab state management
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-pane').forEach(el => {
+      el.classList.add('tab-hidden');
+    });
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+
+    const activePane = document.getElementById('tab-' + tabId);
+    if (activePane) {
+      activePane.classList.remove('tab-hidden');
+    }
+    const activeBtn = document.getElementById('btn-' + tabId);
+    if (activeBtn) {
+      activeBtn.classList.add('active');
+    }
+
+    try {
+      sessionStorage.setItem('adminSchedulesActiveTab', tabId);
+    } catch (e) {
+      // Ignored: fails safely in strict privacy/incognito mode
+    }
+  }
+
+  function changeDailyPlannerDate(val) {
+    window.location.href = `?day=${val}&month=<%= monthParam %>`;
+  }
+
+  function changeClassroomGridDate(val) {
+    window.location.href = `?day=${val}&month=<%= monthParam %>&view=classroom`;
+  }
+
+  // Slide-over drawer actions
+  function openCreateDrawer(dateStr) {
+    closeAllDrawers();
+    document.getElementById('c_subject').value = '';
+    document.getElementById('c_batch').value = '';
+    document.getElementById('c_teacher').value = '';
+    document.getElementById('c_classroom').value = '';
+    document.getElementById('c_startTime').value = '10:00';
+    document.getElementById('c_endTime').value = '11:30';
+    document.getElementById('c_status').value = 'scheduled';
+    
+    if (dateStr) {
+      document.getElementById('c_date').value = dateStr;
+    } else {
+      document.getElementById('c_date').value = new Date().toISOString().split('T')[0];
+    }
+
+    document.getElementById('createDrawer').classList.add('open');
+    document.getElementById('drawerOverlay').classList.add('active');
+  }
+
+  function openEditDrawer(element) {
+    closeAllDrawers();
+    let target = element;
+    if (!target.classList.contains('calendar-event-card') && !target.classList.contains('btn')) {
+      target = target.closest('.calendar-event-card') || target.closest('.btn');
+    }
+    
+    const id = target.getAttribute('data-id');
+    const subject = target.getAttribute('data-subject');
+    const batch = target.getAttribute('data-batch');
+    const teacher = target.getAttribute('data-teacher');
+    const classroom = target.getAttribute('data-classroom');
+    const date = target.getAttribute('data-date');
+    const starttime = target.getAttribute('data-starttime');
+    const endtime = target.getAttribute('data-endtime');
+    const status = target.getAttribute('data-status');
+
+    document.getElementById('editScheduleForm').action = `/admin/schedules/${id}/edit`;
+    document.getElementById('deleteScheduleForm').action = `/admin/schedules/${id}/delete`;
+    
+    document.getElementById('e_subject').value = subject;
+    document.getElementById('e_batch').value = batch;
+    document.getElementById('e_teacher').value = teacher;
+    document.getElementById('e_classroom').value = classroom;
+    document.getElementById('e_date').value = date;
+    document.getElementById('e_startTime').value = formatTimeTo24h(starttime);
+    document.getElementById('e_endTime').value = formatTimeTo24h(endtime);
+    document.getElementById('e_status').value = status;
+
+    document.getElementById('editDrawer').classList.add('open');
+    document.getElementById('drawerOverlay').classList.add('active');
+  }
+
+  function closeAllDrawers() {
+    document.getElementById('createDrawer').classList.remove('open');
+    document.getElementById('editDrawer').classList.remove('open');
+    document.getElementById('drawerOverlay').classList.remove('active');
+    closePopover();
+  }
+
+  function triggerDeleteSession() {
+    document.getElementById('deleteScheduleForm').submit();
+  }
+
+  // Classroom Modals
+  function toggleRoomModal(modalId, show) {
+    const m = document.getElementById(modalId);
+    if (m) m.style.display = show ? 'flex' : 'none';
+  }
+  function openEditRoomModal(id, name, capacity, location, isActive) {
+    document.getElementById('editRoomForm').action = `/admin/classrooms/${id}/edit`;
+    document.getElementById('room_e_name').value = name;
+    document.getElementById('room_e_capacity').value = capacity;
+    document.getElementById('room_e_location').value = location;
+    document.getElementById('room_e_isActive').checked = !!isActive;
+    toggleRoomModal('editRoomModal', true);
+  }
+
+  // ==================== VISUAL WEEKLY GRID CONTROLLER ====================
+  
+  function loadBatchTemplate(batchName) {
+    activeBatch = batchName;
+    if (!batchName) {
+      document.getElementById('v_active_template_card').style.display = 'none';
+      clearWeeklyGridBlocks();
+      return;
+    }
+
+    const t = timetablesData.find(item => item.batch === batchName);
+    const statusInfo = document.getElementById('v_status_info');
+    
+    if (t) {
+      document.getElementById('v_startDate').value = t.startDate ? t.startDate.split('T')[0] : '';
+      document.getElementById('v_endDate').value = t.endDate ? t.endDate.split('T')[0] : '';
+      
+      activeSlots = t.slots.map(s => ({
+        id: s._id,
+        dayOfWeek: s.dayOfWeek,
+        subject: s.subject,
+        teacher: s.teacher ? (s.teacher._id || s.teacher) : '',
+        classroom: s.classroom ? (s.classroom._id || s.classroom) : '',
+        startTime: s.startTime,
+        endTime: s.endTime
+      }));
+
+      statusInfo.innerHTML = `
+        <span>Status: <strong class="text-green">Template Active</strong></span>
+        <span>Start Date: <strong>${new Date(t.startDate).toLocaleDateString('en-IN')}</strong></span>
+        <span>End Date: <strong>${new Date(t.endDate).toLocaleDateString('en-IN')}</strong></span>
+        <span>Total Class Slots: <strong>${activeSlots.length}</strong></span>
+      `;
+    } else {
+      // Setup defaults for a new template configuration
+      document.getElementById('v_startDate').value = new Date().toISOString().split('T')[0];
+      const nextMonth = new Date();
+      nextMonth.setMonth(nextMonth.getMonth() + 2);
+      document.getElementById('v_endDate').value = nextMonth.toISOString().split('T')[0];
+      
+      activeSlots = [];
+      statusInfo.innerHTML = `<span>Status: <strong class="text-gold">New Configuration</strong></span>`;
+    }
+
+    document.getElementById('v_active_template_card').style.display = 'block';
+    renderWeeklyGridSlots();
+  }
+
+  function clearWeeklyGridBlocks() {
+    document.querySelectorAll('.weekly-grid-day-col').forEach(col => {
+      col.innerHTML = '';
+    });
+  }
+
+  function renderWeeklyGridSlots() {
+    clearWeeklyGridBlocks();
+    
+    activeSlots.forEach((slot, index) => {
+      const col = document.querySelector(`.weekly-grid-day-col[data-day="${slot.dayOfWeek}"]`);
+      if (!col) return;
+
+      const startMin = parseTimeToMinutes(slot.startTime);
+      const endMin = parseTimeToMinutes(slot.endTime);
+      
+      // Calculate layout offsets: grid spans 8:00 AM (480 mins) to 8:00 PM (1200 mins)
+      const gridStart = 8 * 60; 
+      const gridHeightMins = 12 * 60; // 12 hours total
+      
+      const topOffset = ((startMin - gridStart) / gridHeightMins) * 100;
+      const heightVal = ((endMin - startMin) / gridHeightMins) * 100;
+
+      // Cross-reference details
+      const teacher = teachersData.find(x => x._id === slot.teacher);
+      const classroom = classroomsData.find(x => x._id === slot.classroom);
+
+      // Check for clashes in other templates in real-time
+      const clash = checkClientClash(slot, index);
+
+      const block = document.createElement('div');
+      block.className = `weekly-grid-block ${clash.clashed ? 'clashed' : ''}`;
+      block.style.top = `${topOffset}%`;
+      block.style.height = `${heightVal}%`;
+      block.title = clash.clashed ? clash.reason : `${slot.subject} with ${teacher ? teacher.name : 'Faculty'}`;
+      
+      block.innerHTML = `
+        ${clash.clashed ? '<span class="clash-badge" title="' + clash.reason + '">⚠️ Clash</span>' : ''}
+        <div class="slot-subject">${slot.subject}</div>
+        <div class="slot-teacher">👨‍🏫 ${teacher ? teacher.name.split(' ')[0] : 'Faculty'}</div>
+        <div class="slot-classroom">🏫 ${classroom ? classroom.name : 'Room'}</div>
+        <div class="slot-time">${slot.startTime} - ${slot.endTime}</div>
+      `;
+
+      block.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openSlotPopover(block, slot, index);
+      });
+
+      col.appendChild(block);
+    });
+  }
+
+  function checkClientClash(activeSlot, indexToExclude) {
+    const newStart = parseTimeToMinutes(activeSlot.startTime);
+    const newEnd = parseTimeToMinutes(activeSlot.endTime);
+    
+    // 1. Check inside active slots of this template first
+    for (let i = 0; i < activeSlots.length; i++) {
+      if (i === indexToExclude) continue;
+      const slot = activeSlots[i];
+      if (slot.dayOfWeek !== activeSlot.dayOfWeek) continue;
+
+      const extStart = parseTimeToMinutes(slot.startTime);
+      const extEnd = parseTimeToMinutes(slot.endTime);
+
+      if (newStart < extEnd && extStart < newEnd) {
+        if (slot.classroom === activeSlot.classroom) {
+          const room = classroomsData.find(r => r._id === slot.classroom);
+          return { clashed: true, reason: `Local Room Clash: "${room ? room.name : 'Classroom'}" is double-booked with another slot in this batch.` };
+        }
+        if (slot.teacher === activeSlot.teacher) {
+          const t = teachersData.find(x => x._id === slot.teacher);
+          return { clashed: true, reason: `Local Teacher Clash: Instructor "${t ? t.name : 'Teacher'}" is scheduled at two slots simultaneously.` };
+        }
+      }
+    }
+
+    // 2. Check across other saved timetables database
+    for (const t of timetablesData) {
+      if (t.batch === activeBatch) continue; // ignore self
+      
+      for (const slot of t.slots) {
+        if (slot.dayOfWeek !== activeSlot.dayOfWeek) continue;
+
+        const extStart = parseTimeToMinutes(slot.startTime);
+        const extEnd = parseTimeToMinutes(slot.endTime);
+
+        if (newStart < extEnd && extStart < newEnd) {
+          const targetRoomId = slot.classroom ? (slot.classroom._id || slot.classroom) : '';
+          const targetTeacherId = slot.teacher ? (slot.teacher._id || slot.teacher) : '';
+
+          if (targetRoomId === activeSlot.classroom) {
+            const room = classroomsData.find(r => r._id === activeSlot.classroom);
+            return { clashed: true, reason: `System Room Clash: Classroom "${room ? room.name : 'Room'}" is already allocated to Batch "${t.batch}" (${slot.subject}) from ${slot.startTime} to ${slot.endTime}.` };
+          }
+          if (targetTeacherId === activeSlot.teacher) {
+            const teacher = teachersData.find(x => x._id === activeSlot.teacher);
+            return { clashed: true, reason: `System Teacher Clash: Instructor "${teacher ? teacher.name : 'Teacher'}" is scheduled to teach Batch "${t.batch}" (${slot.subject}) from ${slot.startTime} to ${slot.endTime}.` };
+          }
+        }
+      }
+    }
+
+    return { clashed: false };
+  }
+
+  function onGridColumnClick(event, day) {
+    if (!activeBatch) {
+      alert("Please select a batch from the dropdown first!");
+      return;
+    }
+    
+    // Prevent trigger when clicking on slot cards
+    if (event.target.closest('.weekly-grid-block')) return;
+
+    const colRect = event.currentTarget.getBoundingClientRect();
+    const clickY = event.clientY - colRect.top;
+    const clickPercent = clickY / colRect.height;
+    
+    // Grid spans 8:00 AM (480 min) to 8:00 PM (1200 min = 720 min total span)
+    const totalMinutes = 12 * 60;
+    const clickedMinute = (clickPercent * totalMinutes) + (8 * 60);
+    
+    // Round to nearest 30 mins
+    const roundedMin = Math.round(clickedMinute / 30) * 30;
+    const startHour = Math.floor(roundedMin / 60);
+    const startMin = roundedMin % 60;
+    
+    const endHour = Math.floor((roundedMin + 90) / 60);
+    const endMin = (roundedMin + 90) % 60;
+
+    const startTimeStr = `${String(startHour).padStart(2,'0')}:${String(startMin).padStart(2,'0')}`;
+    const endTimeStr = `${String(endHour).padStart(2,'0')}:${String(endMin).padStart(2,'0')}`;
+
+    openSlotPopover(event.currentTarget, {
+      dayOfWeek: day,
+      subject: '',
+      teacher: teachersData[0] ? teachersData[0]._id : '',
+      classroom: classroomsData[0] ? classroomsData[0]._id : '',
+      startTime: format24hToAMPM(startTimeStr),
+      endTime: format24hToAMPM(endTimeStr)
+    }, -1);
+  }
+
+  function openSlotPopover(anchorElement, slot, index) {
+    const popover = document.getElementById('slotPopover');
+    
+    document.getElementById('pop_slot_id').value = index;
+    document.getElementById('pop_day').value = slot.dayOfWeek;
+    document.getElementById('pop_subject').value = slot.subject || '';
+    document.getElementById('pop_teacher').value = slot.teacher || '';
+    document.getElementById('pop_classroom').value = slot.classroom || '';
+    document.getElementById('pop_start').value = formatTimeTo24h(slot.startTime);
+    document.getElementById('pop_end').value = formatTimeTo24h(slot.endTime);
+
+    // Hide or show delete button
+    document.getElementById('pop_delete_btn').style.display = index === -1 ? 'none' : 'block';
+    document.getElementById('popoverTitle').innerText = index === -1 ? 'Add Class Slot' : 'Configure Slot';
+
+    // Position popover relative to column element
+    popover.style.display = 'flex';
+    
+    const anchorRect = anchorElement.getBoundingClientRect();
+    const gridRect = document.getElementById('weeklyPlannerGrid').getBoundingClientRect();
+    
+    // Compute positions
+    let left = anchorRect.left - gridRect.left + 10;
+    if (left + 300 > gridRect.width) {
+      left = anchorRect.left - gridRect.left - 290;
+    }
+    
+    let top = anchorRect.top - gridRect.top;
+    if (index === -1) {
+      // Spawned from click coordinates
+      const e = window.event;
+      if (e) {
+        top = e.clientY - gridRect.top - 100;
+      }
+    }
+    
+    popover.style.left = `${left}px`;
+    popover.style.top = `${Math.max(10, top)}px`;
+  }
+
+  function closePopover() {
+    document.getElementById('slotPopover').style.display = 'none';
+  }
+
+  function savePopoverSlot() {
+    const index = parseInt(document.getElementById('pop_slot_id').value, 10);
+    const day = document.getElementById('pop_day').value;
+    const subject = document.getElementById('pop_subject').value;
+    const teacher = document.getElementById('pop_teacher').value;
+    const classroom = document.getElementById('pop_classroom').value;
+    const start = document.getElementById('pop_start').value;
+    const end = document.getElementById('pop_end').value;
+
+    if (!subject || !teacher || !classroom || !start || !end) {
+      alert("All fields are required!");
+      return;
+    }
+
+    const startMin = parseTimeToMinutes(start);
+    const endMin = parseTimeToMinutes(end);
+    if (startMin >= endMin) {
+      alert("Error: Start time must be scheduled before end time.");
+      return;
+    }
+
+    const slotData = {
+      dayOfWeek: day,
+      subject: subject,
+      teacher: teacher,
+      classroom: classroom,
+      startTime: format24hToAMPM(start),
+      endTime: format24hToAMPM(end)
+    };
+
+    if (index === -1) {
+      activeSlots.push(slotData);
+    } else {
+      activeSlots[index] = slotData;
+    }
+
+    closePopover();
+    renderWeeklyGridSlots();
+  }
+
+  function deleteActiveSlot() {
+    const index = parseInt(document.getElementById('pop_slot_id').value, 10);
+    if (index !== -1) {
+      activeSlots.splice(index, 1);
+    }
+    closePopover();
+    renderWeeklyGridSlots();
+  }
+
+  // Submit and Save visual timetable to DB
+  function saveActiveTemplate() {
+    if (!activeBatch) {
+      alert("Please select a batch first!");
+      return;
+    }
+    
+    const startDate = document.getElementById('v_startDate').value;
+    const endDate = document.getElementById('v_endDate').value;
+    
+    if (!startDate || !endDate) {
+      alert("Please set both Batch Start and End dates.");
+      return;
+    }
+
+    // Build POST form dynamically
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/admin/timetables';
+
+    // Append standard parameters
+    appendHiddenField(form, 'batch', activeBatch);
+    appendHiddenField(form, 'startDate', startDate);
+    appendHiddenField(form, 'endDate', endDate);
+
+    // Append slot vectors
+    activeSlots.forEach(slot => {
+      appendHiddenField(form, 'dayOfWeek', slot.dayOfWeek);
+      appendHiddenField(form, 'subject', slot.subject);
+      appendHiddenField(form, 'teacher', slot.teacher);
+      appendHiddenField(form, 'classroom', slot.classroom);
+      appendHiddenField(form, 'startTime', slot.startTime);
+      appendHiddenField(form, 'endTime', slot.endTime);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function appendHiddenField(form, name, value) {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = name;
+    input.value = value;
+    form.appendChild(input);
+  }
+
+  // Load state on start
+  document.addEventListener('DOMContentLoaded', () => {
+    // Restore tab
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryTab = urlParams.get('tab');
+    const queryView = urlParams.get('view');
+    let cachedTab = null;
+    try {
+      cachedTab = sessionStorage.getItem('adminSchedulesActiveTab');
+    } catch (e) {
+      // Ignored: fails safely in strict privacy/incognito mode
+    }
+    let activeTab = queryTab || cachedTab || 'monthCalendar';
+    if (queryView === 'classroom') {
+      activeTab = 'classroomView';
+    }
+    switchTab(activeTab);
+
+    // Check for alerts/messages
+    const err = urlParams.get('error');
+    if (err) {
+      if (typeof showToast !== 'undefined') {
+        showToast(decodeURIComponent(err), 'error');
+      } else {
+        alert(decodeURIComponent(err));
+      }
+    }
+
+    const openCreate = urlParams.get('openCreate');
+    const openEdit = urlParams.get('openEdit');
+    if (openCreate) {
+      openCreateDrawer(urlParams.get('date'));
+      document.getElementById('c_subject').value = urlParams.get('subject') || '';
+      document.getElementById('c_batch').value = urlParams.get('batch') || '';
+      document.getElementById('c_teacher').value = urlParams.get('teacher') || '';
+      document.getElementById('c_classroom').value = urlParams.get('classroom') || '';
+      document.getElementById('c_startTime').value = urlParams.get('startTime') || '';
+      document.getElementById('c_endTime').value = urlParams.get('endTime') || '';
+      document.getElementById('c_status').value = urlParams.get('status') || 'scheduled';
+    } else if (openEdit) {
+      const matchCard = document.querySelector(`.calendar-event-card[data-id="${openEdit}"]`);
+      if (matchCard) openEditDrawer(matchCard);
+    }
+  });
+</script>

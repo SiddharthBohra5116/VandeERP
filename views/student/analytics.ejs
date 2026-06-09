@@ -1,0 +1,236 @@
+<%
+  layout = 'main';
+  title = 'My Analytics & Visual Trends';
+  subtitle = 'Track your weekly attendance consistency, assignment grades, subject metrics, and curriculum completion';
+  page = 'analytics';
+%>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  .analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 600px) {
+    .analytics-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .progress-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  }
+  .progress-title {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  .progress-val {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--text);
+  }
+</style>
+
+<div class="stats-grid" style="margin-bottom: 1.5rem;">
+  <div class="stat-card gold">
+    <div class="stat-label">Fees Paid</div>
+    <div class="stat-value">₹<%= feeStatus.paidAmount.toLocaleString('en-IN') %></div>
+    <div class="stat-sub">of total Billed ₹<%= feeStatus.totalBilled.toLocaleString('en-IN') %></div>
+  </div>
+
+  <div class="stat-card orange">
+    <div class="stat-label">Fees Outstanding</div>
+    <div class="stat-value">₹<%= feeStatus.outstandingAmount.toLocaleString('en-IN') %></div>
+    <div class="stat-sub">
+      <% if (feeStatus.nextInstallmentDate) { %>
+        Next installment: <%= new Date(feeStatus.nextInstallmentDate).toLocaleDateString('en-IN') %>
+      <% } else { %>
+        No upcoming installment
+      <% } %>
+    </div>
+  </div>
+
+  <div class="stat-card green">
+    <div class="stat-label">Average Test Score</div>
+    <%
+      let testSum = 0;
+      avgTestScores.forEach(t => { testSum += t.score; });
+      let finalAvg = avgTestScores.length > 0 ? Math.round(testSum / avgTestScores.length) : 0;
+    %>
+    <div class="stat-value"><%= finalAvg %>%</div>
+    <div class="stat-sub">Across all courses</div>
+  </div>
+</div>
+
+<div class="analytics-grid">
+  <!-- Attendance Trend Chart -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Attendance Trend (Weekly)</div>
+      <p class="td-muted text-xs">Track your weekly present/late ratio consistency</p>
+    </div>
+    <div style="padding: 1rem; height: 260px; position: relative;">
+      <canvas id="studentAttendanceChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Assignment Scores History -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Assignment Grade History</div>
+      <p class="td-muted text-xs">Scores obtained per homework assignment</p>
+    </div>
+    <div style="padding: 1rem; height: 260px; position: relative;">
+      <canvas id="studentAssignmentChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="analytics-grid">
+  <!-- Test Score per Subject -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Test Average by Subject</div>
+      <p class="td-muted text-xs">Your academic mastery ratings per topic area</p>
+    </div>
+    <div style="padding: 1rem; height: 260px; position: relative;">
+      <canvas id="studentTestScoresChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Curriculum Completion progress -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Curriculum Completion Progress</div>
+      <p class="td-muted text-sm">Monitors complete syllabus updates per topic area</p>
+    </div>
+    <div style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem;">
+      <% if (curriculumCompletion.length === 0) { %>
+        <div class="empty-state">
+          <p>No curriculums initialized for your batch yet.</p>
+        </div>
+      <% } else { %>
+        <% curriculumCompletion.forEach(c => { %>
+          <div>
+            <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px;">
+              <span><%= c.subject %></span>
+              <span class="text-gold"><%= c.pct %>%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: <%= c.pct %>%"></div>
+            </div>
+          </div>
+        <% }) %>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Theme styling helpers
+  const isDark = document.body.classList.contains('dark-theme') || true; 
+  const textColor = isDark ? '#e0e0e0' : '#333333';
+  const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
+
+  // 1. Attendance Trend
+  const attData = <%- JSON.stringify(attendanceTrend) %>;
+  new Chart(document.getElementById('studentAttendanceChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: attData.map(d => d.label),
+      datasets: [{
+        label: 'Attendance Rate %',
+        data: attData.map(d => d.pct),
+        borderColor: 'rgba(16, 185, 129, 1)', // Green
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        fill: true,
+        tension: 0.2,
+        borderWidth: 3,
+        pointBackgroundColor: 'rgba(16, 185, 129, 1)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: textColor } },
+        y: { 
+          grid: { color: gridColor },
+          min: 0,
+          max: 100,
+          ticks: { color: textColor, callback: function(value) { return value + '%'; } }
+        }
+      }
+    }
+  });
+
+  // 2. Assignment Grades
+  const assignData = <%- JSON.stringify(assignmentScores) %>;
+  new Chart(document.getElementById('studentAssignmentChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: assignData.map(d => d.title),
+      datasets: [{
+        label: 'Obtained Score',
+        data: assignData.map(d => d.score),
+        backgroundColor: 'rgba(59, 130, 246, 0.85)', // Blue
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: textColor } },
+        y: { 
+          grid: { color: gridColor },
+          ticks: { color: textColor }
+        }
+      }
+    }
+  });
+
+  // 3. Test Scores
+  const testData = <%- JSON.stringify(avgTestScores) %>;
+  new Chart(document.getElementById('studentTestScoresChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: testData.map(d => d.subject),
+      datasets: [{
+        label: 'Average Score %',
+        data: testData.map(d => d.score),
+        backgroundColor: 'rgba(234, 179, 8, 0.85)', // Yellow
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: textColor } },
+        y: { 
+          grid: { color: gridColor },
+          min: 0,
+          max: 100,
+          ticks: { color: textColor, callback: function(value) { return value + '%'; } }
+        }
+      }
+    }
+  });
+});
+</script>

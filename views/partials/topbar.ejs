@@ -1,0 +1,414 @@
+<header class="topbar">
+  <div style="display: flex; align-items: center;">
+    <% if (typeof user !== 'undefined' && user) { %>
+      <button class="menu-toggle" id="menuToggleBtn" aria-label="Toggle Sidebar">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+    <% } %>
+    <div class="topbar-title" style="display: flex; align-items: center; gap: 15px;">
+      <span><%= title %></span>
+      <div id="liveClock" class="topbar-clock" style="font-family: monospace; font-size: 0.85rem; color: var(--gold-light); opacity: 0.8; padding: 4px 8px; border-radius: 4px; background: rgba(0,0,0,0.2); border: 1px solid rgba(212,175,55,0.2);"></div>
+    </div>
+  </div>
+  
+  <% if (typeof user !== 'undefined' && user && user.role === 'admin') { %>
+    <form action="/admin/students" method="GET" style="margin-left: 20px; display: flex; align-items: center; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); padding: 2px 8px; width: 280px; height: 32px;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); margin-right: 6px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" name="search" placeholder="Search student roll, name, phone..." style="background: none; border: none; outline: none; color: var(--text); font-size: 0.8rem; width: 100%;" value="<%= (typeof filter !== 'undefined' && filter && filter.search) || '' %>">
+    </form>
+  <% } %>
+  
+  <% if (typeof user !== 'undefined' && user) { %>
+    <div class="topbar-right" style="display: flex; align-items: center;">
+      <!-- Theme Toggle Switcher -->
+      <button class="btn-icon theme-toggle-btn" id="themeToggleBtn" style="background: none; border: none; color: var(--text-muted); padding: 8px; margin-right: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: color 0.3s;" aria-label="Toggle Theme">
+        <!-- Moon Icon (Visible in Light Mode) -->
+        <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <!-- Sun Icon (Visible in Dark Mode) -->
+        <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      </button>
+
+      <!-- Notification Bell -->
+      <div class="notification-bell-container" style="position: relative; margin-right: 18px;">
+        <button class="btn-icon" id="notificationBellBtn" style="background: none; border: none; color: var(--text-muted); position: relative; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: color 0.3s;" aria-label="Notifications">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <% if (typeof notifications !== 'undefined' && notifications.length > 0) { %>
+            <span class="badge" style="position: absolute; top: 2px; right: 2px; background: var(--error, #ef4444); color: white; border-radius: 50%; font-size: 0.65rem; min-width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid var(--bg-card);"><%= notifications.length %></span>
+          <% } %>
+        </button>
+        
+        <!-- Dropdown Menu -->
+        <div class="notification-dropdown" id="notificationDropdown" style="display: none; position: absolute; top: 130%; right: 0; width: 320px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 1000; max-height: 400px; overflow-y: auto;">
+          <div style="padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 600; color: var(--text); font-size: 0.9rem;">Alert Center</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <% if (typeof notifications !== 'undefined' && notifications.length > 0) { %>
+                <button id="markAllNotificationsReadBtn" style="background: none; border: none; color: var(--gold-light); font-size: 0.72rem; cursor: pointer; font-weight: 600; padding: 2px 4px; border-radius: 4px; transition: background 0.2s;">Mark all read</button>
+                <span class="header-unread-count" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;"><%= notifications.length %> Unread</span>
+              <% } else { %>
+                <span class="header-unread-count" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500; display: none;">0 Unread</span>
+              <% } %>
+            </div>
+          </div>
+          <div class="notification-list" style="padding: 4px 0;">
+            <% if (typeof notifications !== 'undefined' && notifications.length > 0) { %>
+              <% notifications.forEach(n => { %>
+                <div class="notification-wrapper" style="position: relative; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;" data-id="<%= n.id %>">
+                  <a href="<%= n.link || '#' %>" class="notification-item" style="display: block; padding: 12px 36px 12px 16px; text-decoration: none; color: var(--text);">
+                    <div style="font-weight: 600; font-size: 0.8rem; color: var(--gold-light); margin-bottom: 3px; display: flex; align-items: center; gap: 8px; padding-right: 15px;">
+                      <% if (n.type === 'message') { %>
+                        💬
+                      <% } else if (n.type === 'reset_request') { %>
+                        🔑
+                      <% } else if (n.type === 'fee_overdue' || n.type === 'fee_due_soon') { %>
+                        💵
+                      <% } else if (n.type === 'schedule') { %>
+                        🗓️
+                      <% } else if (n.type === 'low_attendance') { %>
+                        🔴
+                      <% } else { %>
+                        🔔
+                      <% } %>
+                      <%= n.title %>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;"><%= n.message %></div>
+                    <% if (n.date) { %>
+                      <div style="font-size: 0.65rem; color: rgba(255,255,255,0.3); margin-top: 5px;"><%= new Date(n.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %> — <%= new Date(n.date).toLocaleDateString() %></div>
+                    <% } %>
+                  </a>
+                  <!-- Individual Dismiss Button -->
+                  <button class="dismiss-notification-btn" data-id="<%= n.id %>" style="position: absolute; top: 12px; right: 12px; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 2px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: color 0.2s, background 0.2s;" aria-label="Dismiss">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              <% }) %>
+            <% } else { %>
+              <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">
+                No unread notifications
+              </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Script for Notification Management -->
+      <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const dropdown = document.getElementById('notificationDropdown');
+        if (!dropdown) return;
+
+        const updateBellBadge = (newCount) => {
+          const bellBtn = document.getElementById('notificationBellBtn');
+          if (!bellBtn) return;
+          let badge = bellBtn.querySelector('.badge');
+          if (newCount > 0) {
+            if (!badge) {
+              badge = document.createElement('span');
+              badge.className = 'badge';
+              badge.style.cssText = 'position: absolute; top: 2px; right: 2px; background: var(--error, #ef4444); color: white; border-radius: 50%; font-size: 0.65rem; min-width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid var(--bg-card);';
+              bellBtn.appendChild(badge);
+            }
+            badge.textContent = newCount;
+          } else if (badge) {
+            badge.remove();
+          }
+          
+          // Update header label too
+          const headerUnread = dropdown.querySelector('.header-unread-count');
+          if (headerUnread) {
+            if (newCount > 0) {
+              headerUnread.textContent = newCount + ' Unread';
+              headerUnread.style.display = 'inline';
+            } else {
+              headerUnread.style.display = 'none';
+            }
+          }
+        };
+
+        const renderNotifications = (notifications) => {
+          const listContainer = dropdown.querySelector('.notification-list');
+          if (!listContainer) return;
+          
+          if (!notifications || notifications.length === 0) {
+            listContainer.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">No unread notifications</div>`;
+            const markAllBtn = document.getElementById('markAllNotificationsReadBtn');
+            if (markAllBtn) markAllBtn.remove();
+            return;
+          }
+          
+          // Ensure mark all read button exists if there are notifications
+          let markAllBtn = document.getElementById('markAllNotificationsReadBtn');
+          const headerRight = dropdown.querySelector('div[style*="display: flex; gap: 8px;"]');
+          if (headerRight && !markAllBtn) {
+            markAllBtn = document.createElement('button');
+            markAllBtn.id = 'markAllNotificationsReadBtn';
+            markAllBtn.style.cssText = 'background: none; border: none; color: var(--gold-light); font-size: 0.72rem; cursor: pointer; font-weight: 600; padding: 2px 4px; border-radius: 4px; transition: background 0.2s;';
+            markAllBtn.textContent = 'Mark all read';
+            headerRight.insertBefore(markAllBtn, headerRight.firstChild);
+            
+            markAllBtn.addEventListener('click', async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const wrappers = listContainer.querySelectorAll('.notification-wrapper');
+              const ids = Array.from(wrappers).map(w => w.getAttribute('data-id'));
+              if (ids.length === 0) return;
+              wrappers.forEach((w) => {
+                w.style.transition = 'all 0.3s ease';
+                w.style.opacity = '0';
+                w.style.transform = 'translateX(20px)';
+              });
+              setTimeout(() => {
+                listContainer.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">No unread notifications</div>`;
+                updateBellBadge(0);
+                markAllBtn.remove();
+              }, 300);
+              try {
+                await fetch('/auth/notifications/read-all', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ ids })
+                });
+              } catch (err) {
+                console.error('Error marking all notifications read:', err);
+              }
+            });
+          }
+          
+          listContainer.innerHTML = notifications.map(n => {
+            let icon = '🔔';
+            if (n.type === 'message') icon = '💬';
+            else if (n.type === 'reset_request') icon = '🔑';
+            else if (n.type === 'fee_overdue' || n.type === 'fee_due_soon') icon = '💵';
+            else if (n.type === 'schedule') icon = '🗓️';
+            else if (n.type === 'low_attendance') icon = '🔴';
+            
+            const timeStr = n.date ? new Date(n.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+            const dateStr = n.date ? new Date(n.date).toLocaleDateString() : '';
+            
+            return `
+              <div class="notification-wrapper" style="position: relative; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;" data-id="${n.id}">
+                <a href="${n.link || '#'}" class="notification-item" style="display: block; padding: 12px 36px 12px 16px; text-decoration: none; color: var(--text);">
+                  <div style="font-weight: 600; font-size: 0.8rem; color: var(--gold-light); margin-bottom: 3px; display: flex; align-items: center; gap: 8px; padding-right: 15px;">
+                    ${icon} ${n.title}
+                  </div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">${n.message}</div>
+                  ${n.date ? `<div style="font-size: 0.65rem; color: rgba(255,255,255,0.3); margin-top: 5px;">${timeStr} — ${dateStr}</div>` : ''}
+                </a>
+                <button class="dismiss-notification-btn" data-id="${n.id}" style="position: absolute; top: 12px; right: 12px; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 2px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: color 0.2s, background 0.2s;" aria-label="Dismiss">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+            `;
+          }).join('');
+        };
+
+        const updateSidebarBadges = (badges) => {
+          if (!badges) return;
+          // 1. Reset Requests
+          const resetItem = document.querySelector('a[href="/admin/dashboard"]');
+          if (resetItem) {
+            let b = resetItem.querySelector('.badge');
+            if (badges.resetRequests > 0) {
+              if (!b) {
+                b = document.createElement('span');
+                b.className = 'badge badge-gold';
+                b.style.cssText = 'margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 5px;';
+                resetItem.appendChild(b);
+              }
+              b.textContent = badges.resetRequests;
+            } else if (b) {
+              b.remove();
+            }
+          }
+
+          // 2. Fees Overdue
+          const feesItem = document.querySelector('a[href="/admin/fees"]');
+          if (feesItem) {
+            let b = feesItem.querySelector('.badge');
+            if (badges.feesOverdue > 0) {
+              if (!b) {
+                b = document.createElement('span');
+                b.className = 'badge badge-gold';
+                b.style.cssText = 'margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 5px;';
+                feesItem.appendChild(b);
+              }
+              b.textContent = badges.feesOverdue;
+            } else if (b) {
+              b.remove();
+            }
+          }
+
+          // 3. Stale Leads (counsellor)
+          const leadsItem = document.querySelector('a[href="/counsellor/leads"]');
+          if (leadsItem) {
+            let b = leadsItem.querySelector('.badge');
+            if (badges.staleLeads > 0) {
+              if (!b) {
+                b = document.createElement('span');
+                b.className = 'badge badge-gold';
+                b.style.cssText = 'margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 5px;';
+                leadsItem.appendChild(b);
+              }
+              b.textContent = badges.staleLeads;
+            } else if (b) {
+              b.remove();
+            }
+          }
+
+          // 4. Ungraded Assignments (teacher)
+          const assignmentsItem = document.querySelector('a[href="/teacher/assignments"]');
+          if (assignmentsItem) {
+            let b = assignmentsItem.querySelector('.badge');
+            if (badges.ungradedAssignments > 0) {
+              if (!b) {
+                b = document.createElement('span');
+                b.className = 'badge badge-gold';
+                b.style.cssText = 'margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 5px;';
+                assignmentsItem.appendChild(b);
+              }
+              b.textContent = badges.ungradedAssignments;
+            } else if (b) {
+              b.remove();
+            }
+          }
+
+          // 5. Unread Messages (Inbox)
+          const inboxItem = document.querySelector('a[href="/auth/inbox"]');
+          if (inboxItem) {
+            let b = inboxItem.querySelector('.badge');
+            if (badges.unreadMessages > 0) {
+              if (!b) {
+                b = document.createElement('span');
+                b.className = 'badge badge-gold';
+                b.style.cssText = 'margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 5px;';
+                inboxItem.appendChild(b);
+              }
+              b.textContent = badges.unreadMessages;
+            } else if (b) {
+              b.remove();
+            }
+          }
+        };
+
+        const fetchNotifications = async () => {
+          try {
+            const res = await fetch('/api/notifications');
+            if (res.ok) {
+              const data = await res.json();
+              updateBellBadge(data.notifications ? data.notifications.length : 0);
+              renderNotifications(data.notifications || []);
+              updateSidebarBadges(data.sidebarBadges || {});
+            }
+          } catch (err) {
+            console.error('Error fetching notifications asynchronously:', err);
+          }
+        };
+
+        // Initial fetch
+        fetchNotifications();
+
+        // Poll every 60 seconds
+        setInterval(fetchNotifications, 60000);
+
+        // Mark single notification as read
+        dropdown.addEventListener('click', async (e) => {
+          const dismissBtn = e.target.closest('.dismiss-notification-btn');
+          const notificationLink = e.target.closest('.notification-item');
+
+          if (dismissBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const id = dismissBtn.getAttribute('data-id');
+            const wrapper = dismissBtn.closest('.notification-wrapper');
+            if (!wrapper) return;
+
+            // Visual feedback (fade out and slide out)
+            wrapper.style.transition = 'all 0.3s ease';
+            wrapper.style.opacity = '0';
+            wrapper.style.transform = 'translateX(20px)';
+
+            setTimeout(() => {
+              wrapper.remove();
+              const list = dropdown.querySelector('.notification-list');
+              const items = list.querySelectorAll('.notification-wrapper');
+              updateBellBadge(items.length);
+
+              if (items.length === 0) {
+                list.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">No unread notifications</div>`;
+                const markAllBtn = document.getElementById('markAllNotificationsReadBtn');
+                if (markAllBtn) markAllBtn.remove();
+              }
+            }, 300);
+
+            try {
+              await fetch(`/auth/notifications/${id}/read`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+              });
+            } catch (err) {
+              console.error('Error marking notification read:', err);
+            }
+          } else if (notificationLink) {
+            e.preventDefault();
+            const wrapper = notificationLink.closest('.notification-wrapper');
+            const id = wrapper ? wrapper.getAttribute('data-id') : null;
+            const targetUrl = notificationLink.getAttribute('href');
+
+            if (id) {
+              try {
+                await fetch(`/auth/notifications/${id}/read`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' }
+                });
+              } catch (err) {
+                console.error('Error marking notification read on click:', err);
+              }
+            }
+            window.location.href = targetUrl;
+          }
+        });
+      });
+      </script>
+
+      <!-- User Chip -->
+      <a href="/auth/profile" class="user-chip" style="display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer;">
+        <%
+          let avatarColor = 'var(--gold-dark)';
+          if (user.role === 'admin') avatarColor = '#1e3a8a';
+          else if (user.role === 'teacher') avatarColor = '#065f46';
+          else if (user.role === 'counsellor') avatarColor = '#92400e';
+          else if (user.role === 'student') avatarColor = '#5b21b6';
+        %>
+        <div class="avatar" style="<% if (!user.profilePic) { %>background-color: <%= avatarColor %>; color: #fff; font-weight: bold; display: flex; align-items: center; justify-content: center;<% } %>">
+          <% if (user.profilePic) { %>
+            <img src="<%= user.profilePic %>" alt="<%= user.name %>">
+          <% } else { %>
+            <%= user.initials %>
+          <% } %>
+        </div>
+        <div style="line-height: 1.2;">
+          <div class="uname" style="font-size: 0.85rem; font-weight: 600; color: var(--text);"><%= user.name %></div>
+          <div class="urole" style="font-size: 0.7rem; color: var(--gold-light); text-transform: uppercase; font-weight: 500;"><%= user.role %></div>
+        </div>
+      </a>
+    </div>
+  <% } %>
+</header>

@@ -1,0 +1,127 @@
+<%
+  layout = 'main';
+  title = 'Admitted Students';
+  subtitle = `${students.length} students converted from CRM pipeline`;
+  page = 'admissions';
+%>
+
+<!-- Summary Grid -->
+<div class="stats-grid" style="margin-bottom:24px;">
+  <div class="stat-card green">
+    <div class="stat-label">Total Admitted</div>
+    <div class="stat-value"><%= students.length %></div>
+    <div class="stat-sub">From your pipeline</div>
+  </div>
+  <div class="stat-card gold">
+    <div class="stat-label">Video Editing</div>
+    <div class="stat-value"><%= students.filter(s => s.course === 'Video Editing').length %></div>
+  </div>
+  <div class="stat-card blue">
+    <div class="stat-label">Digital Marketing</div>
+    <div class="stat-value"><%= students.filter(s => s.course === 'Digital Marketing').length %></div>
+  </div>
+  <div class="stat-card orange">
+    <div class="stat-label">Both Courses</div>
+    <div class="stat-value"><%= students.filter(s => s.course === 'Both').length %></div>
+  </div>
+</div>
+
+<!-- Search Bar -->
+<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+  <form method="GET" action="/counsellor/admissions" class="filter-bar" style="margin: 0; display: flex; gap: 0.75rem;">
+    <input type="text" name="search" class="form-control" placeholder="Search admitted students by name..." value="<%= (typeof filter !== 'undefined' && filter.search) ? filter.search : '' %>" style="flex: 1; padding: 0.45rem 0.75rem;">
+    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+    <a href="/counsellor/admissions" class="btn btn-ghost btn-sm">Clear</a>
+  </form>
+</div>
+
+<div id="results-container" class="card">
+  <% if (students.length === 0) { %>
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <p>No admissions yet. Convert leads to students to see them here.</p>
+    </div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Course</th>
+            <th>Batch</th>
+            <th>Source</th>
+            <th>Admitted On</th>
+            <th>Status</th>
+            <th>Fee Ledger Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% students.forEach((item, i) => { %>
+            <%
+              const student = item.student;
+              const lead = item.lead;
+              const feePct = student.fees_total > 0 ? Math.round((student.fees_paid / student.fees_total) * 100) : 0;
+              const statusVal = student.status || (student.isActive ? 'active' : 'inactive');
+              const statusBadgeClass = {
+                active: 'badge-green',
+                inactive: 'badge-grey',
+                drop: 'badge-red',
+                complete: 'badge-gold'
+              }[statusVal];
+            %>
+            <tr>
+              <td class="td-mono text-muted"><%= i + 1 %></td>
+              <td>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <div style="width:28px; height:28px; border-radius:6px; background:var(--gold-dim); border:1px solid var(--gold-border); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--gold); flex-shrink:0;">
+                    <%= student.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2) %>
+                  </div>
+                  <strong><%= student.name %></strong>
+                </div>
+              </td>
+              <td class="td-mono"><%= student.phone || '—' %></td>
+              <td><span class="badge badge-orange"><%= student.course %></span></td>
+              <td class="td-muted"><%= student.batch || '—' %></td>
+              <td class="td-muted"><%= lead ? lead.source : '—' %></td>
+              <td class="td-mono td-muted">
+                <%= lead ? new Date(lead.updatedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'}) : '—' %>
+              </td>
+              <td>
+                <span class="badge <%= statusBadgeClass %>"><%= statusVal %></span>
+              </td>
+              <td>
+                <div style="min-width:110px;">
+                  <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted); font-family:var(--mono); margin-bottom:4px;">
+                    <span>₹<%= (student.fees_paid||0).toLocaleString('en-IN') %></span>
+                    <span style="font-weight:600;"><%= feePct %>%</span>
+                  </div>
+                  <div class="progress-bar" style="margin-bottom:6px;">
+                    <div class="progress-fill <%= feePct === 100 ? 'green' : feePct > 50 ? '' : 'red' %>"
+                         style="width:<%= feePct %>%"></div>
+                  </div>
+                  <a href="/counsellor/admissions/<%= student._id %>/fee" style="display:inline-flex; align-items:center; gap:4px; font-size:10px; color:var(--gold); font-weight:600; text-decoration:none;">
+                    <%
+                      const badgeClass = {
+                        paid: 'badge-green',
+                        partial: 'badge-orange',
+                        overdue: 'badge-red',
+                        unpaid: 'badge-grey'
+                      }[item.feeStatus] || 'badge-grey';
+                    %>
+                    <span class="badge <%= badgeClass %>" style="font-size:9px; padding:1px 5px; text-transform:uppercase;"><%= item.feeStatus %></span>
+                    View Ledger
+                  </a>
+                </div>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<script src="/js/instant-filter.js"></script>
+

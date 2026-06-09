@@ -1,0 +1,71 @@
+<%
+  layout = 'main';
+  title = 'Assignments';
+  subtitle = 'Manage assignment goals, deadlines, and grade student submissions';
+  page = 'assignments';
+%>
+
+<div style="display:flex; justify-content:flex-end; margin-bottom:1.25rem;">
+  <a href="/teacher/assignments/create" class="btn btn-primary btn-sm">+ Create Assignment</a>
+</div>
+
+<div class="card">
+  <% if (assignments.length === 0) { %>
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+      <p>No assignments posted yet. Click "+ Create Assignment" to post one.</p>
+    </div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Assignment Title</th>
+            <th>Batch & Subject</th>
+            <th>Due Date</th>
+            <th>Max Marks</th>
+            <th>Submissions</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% assignments.forEach(assign => { %>
+            <% 
+              const isOverdue = new Date(assign.dueDate) < new Date();
+              const submissionsCount = assign.submissions.length;
+            %>
+            <tr>
+              <td class="td-name">
+                <a href="/teacher/assignments/<%= assign._id %>" style="color:var(--gold); font-weight:600;"><%= assign.title %></a>
+                <% if (assign.fileName) { %>
+                  <div class="td-muted text-xs" style="margin-top:2px;">📎 <%= assign.fileName %></div>
+                <% } %>
+              </td>
+              <td>
+                <div><%= assign.subject %></div>
+                <div class="td-muted text-sm">Batch: <%= assign.batch %></div>
+              </td>
+              <td class="mono text-sm <%= isOverdue ? 'text-red' : 'text-sub' %>" style="<%= isOverdue ? 'font-weight:600;' : '' %>">
+                <%= new Date(assign.dueDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %>
+                <%= isOverdue ? ' (Past Due)' : '' %>
+              </td>
+              <td class="mono text-sm text-center"><%= assign.totalMarks %></td>
+              <td class="mono text-sm fw-700 text-center text-gold">
+                <%= submissionsCount %>
+              </td>
+              <td>
+                <span class="badge <%= assign.isActive ? 'badge-green' : 'badge-grey' %>">
+                  <%= assign.isActive ? 'Active' : 'Archived' %>
+                </span>
+              </td>
+              <td>
+                <a href="/teacher/assignments/<%= assign._id %>" class="btn btn-ghost btn-xs">View Submissions</a>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>

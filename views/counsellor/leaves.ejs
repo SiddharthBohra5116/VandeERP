@@ -1,0 +1,83 @@
+<%
+  layout = 'main';
+  title = 'My Leave Requests';
+  subtitle = 'Submit leave requests and track approval history';
+  page = 'leaves';
+%>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+  <div>
+    <h2 class="profile-name" style="font-size:1.5rem; font-weight:800; color:var(--text);">Leaves & Time Off</h2>
+    <p class="td-muted text-sm">Request leave of absence and check application status</p>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- Request Leave Form -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Apply for Leave</div>
+    </div>
+    <form action="/counsellor/leaves/apply" method="POST" style="margin-top: 1rem;">
+      <div class="form-group">
+        <label class="form-label" for="start_date">Start Date</label>
+        <input type="date" id="start_date" name="startDate" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="end_date">End Date</label>
+        <input type="date" id="end_date" name="endDate" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="leave_reason">Reason for Leave</label>
+        <textarea id="leave_reason" name="reason" class="form-control" placeholder="Provide full details for the admin review..." style="min-height: 100px;" required></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm" style="margin-top: 0.5rem;">Submit Leave Request</button>
+    </form>
+  </div>
+
+  <!-- Leave History List -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Leave History</div>
+    </div>
+    <% if (leaves.length === 0) { %>
+      <div class="empty-state" style="padding: 2.5rem 1rem;">
+        <p>You haven't requested any leaves yet.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap" style="margin-top: 1rem;">
+        <table>
+          <thead>
+            <tr>
+              <th>Date Range</th>
+              <th>Reason</th>
+              <th>Status</th>
+              <th>Applied On</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% leaves.forEach(l => { %>
+              <tr>
+                <td class="mono text-sm">
+                  <%= l.startDate %> &rarr; <%= l.endDate %>
+                </td>
+                <td style="max-width: 200px; white-space: normal; line-height: 1.4;"><%= l.reason %></td>
+                <td>
+                  <% 
+                    const statusClass = {
+                      pending: 'badge-grey',
+                      approved: 'badge-green',
+                      rejected: 'badge-red'
+                    }[l.status] || 'badge-grey';
+                  %>
+                  <span class="badge <%= statusClass %>"><%= l.status %></span>
+                </td>
+                <td class="mono text-xs"><%= new Date(l.appliedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</div>

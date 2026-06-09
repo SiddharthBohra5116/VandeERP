@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> — Vande Digital Academy</title>
+  <!-- NProgress Loader -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.css">
+  <link rel="stylesheet" href="/css/main.css">
+  <meta name="csrf-token" content="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+  <script>
+    // Early theme initialization to prevent flash of dark theme in light mode
+    (function() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      if (savedTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        document.addEventListener('DOMContentLoaded', () => {
+          document.body.classList.add('light-theme');
+        });
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+    <%- include('../partials/sidebar') %>
+    
+    <div class="main-wrap">
+      <%- include('../partials/topbar') %>
+      
+      <main class="page-content">
+        <% if (typeof success !== 'undefined' && success && success.length) { %>
+          <div class="alert alert-success">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span><%= Array.isArray(success) ? success[0] : success %></span>
+          </div>
+        <% } %>
+        
+        <% if (typeof error !== 'undefined' && error && error.length) { %>
+          <div class="alert alert-error">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span><%= Array.isArray(error) ? error[0] : error %></span>
+          </div>
+        <% } %>
+        
+        <%- body %>
+      </main>
+    </div>
+  </div>
+  
+  <!-- NProgress Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.js"></script>
+  
+  <script>
+    // 1. NProgress Navigation loader
+    NProgress.configure({ showSpinner: false, minimum: 0.1 });
+    window.addEventListener('beforeunload', () => {
+      NProgress.start();
+    });
+    
+    document.querySelectorAll('a').forEach(link => {
+      // Don't show progress for javascript hrefs, hashes, or blank target links
+      const href = link.getAttribute('href');
+      if (href && !href.startsWith('#') && !href.startsWith('javascript:') && link.getAttribute('target') !== '_blank') {
+        link.addEventListener('click', () => {
+          NProgress.start();
+        });
+      }
+    });
+
+    // 2. Responsive Mobile Sidebar with persistence
+    const menuToggleBtn = document.getElementById('menuToggleBtn');
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarBackdrop = document.getElementById('sidebarBackdrop');    const restoreSidebarState = () => {
+      const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+      if (window.innerWidth > 900) {
+        const btn = document.getElementById('desktopSidebarCollapseBtn');
+        const span = btn ? btn.querySelector('span') : null;
+        const svg = btn ? btn.querySelector('svg') : null;
+        if (isCollapsed) {
+          sidebar.classList.add('collapsed');
+          document.querySelector('.main-wrap').classList.add('expanded');
+          if (span) span.style.display = 'none';
+          if (svg) svg.innerHTML = '<path d="M9 18l6-6-6-6"/>';
+        } else {
+          sidebar.classList.remove('collapsed');
+          document.querySelector('.main-wrap').classList.remove('expanded');
+          if (span) span.style.display = 'inline';
+          if (svg) svg.innerHTML = '<path d="M15 18l-6-6 6-6"/>';
+        }
+      }
+    };
+
+    if (sidebar && sidebarBackdrop) {
+      if (menuToggleBtn) {
+        menuToggleBtn.addEventListener('click', () => {
+          if (window.innerWidth <= 900) {
+            sidebar.classList.add('open');
+            sidebarBackdrop.classList.add('active');
+          }
+        });
+      }
+
+      sidebarBackdrop.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        sidebarBackdrop.classList.remove('active');
+      });
+
+      const desktopSidebarCollapseBtn = document.getElementById('desktopSidebarCollapseBtn');
+      if (desktopSidebarCollapseBtn) {
+        desktopSidebarCollapseBtn.addEventListener('click', () => {
+          sidebar.classList.toggle('collapsed');
+          document.querySelector('.main-wrap').classList.toggle('expanded');
+          const isCollapsed = sidebar.classList.contains('collapsed');
+          localStorage.setItem('sidebar-collapsed', isCollapsed);
+          
+          const span = desktopSidebarCollapseBtn.querySelector('span');
+          const svg = desktopSidebarCollapseBtn.querySelector('svg');
+          if (isCollapsed) {
+            if (span) span.style.display = 'none';
+            if (svg) svg.innerHTML = '<path d="M9 18l6-6-6-6"/>';
+          } else {
+            if (span) span.style.display = 'inline';
+            if (svg) svg.innerHTML = '<path d="M15 18l-6-6 6-6"/>';
+          }
+        });
+      }
+
+      // Auto-restore state on desktop load
+      restoreSidebarState();
+    }
+
+    // 3. Live Digital Clock & Date
+    const liveClock = document.getElementById('liveClock');
+    if (liveClock) {
+      const updateClock = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hrs = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        const secs = String(now.getSeconds()).padStart(2, '0');
+        liveClock.textContent = `${year}-${month}-${day} ${hrs}:${mins}:${secs}`;
+      };
+      updateClock();
+      setInterval(updateClock, 1000);
+    }
+
+    // 4. Time-Aware Greetings Injector
+    const greetingText = "<%= typeof greeting !== 'undefined' ? greeting : '' %>";
+    const userName = "<%= typeof user !== 'undefined' && user ? user.name.split(' ')[0] : '' %>";
+    const greetingBanner = document.getElementById('dashboardGreeting');
+    if (greetingBanner && userName) {
+      greetingBanner.textContent = `${greetingText}, ${userName}! ✨`;
+    }
+
+    // 5. Notification dropdown toggle
+    const notificationBellBtn = document.getElementById('notificationBellBtn');
+    const notificationDropdown = document.getElementById('notificationDropdown');
+    
+    if (notificationBellBtn && notificationDropdown) {
+      notificationBellBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const visible = notificationDropdown.style.display === 'block';
+        notificationDropdown.style.display = visible ? 'none' : 'block';
+        // Hide theme toggle dropdown if open
+      });
+      
+      document.addEventListener('click', (e) => {
+        if (!notificationDropdown.contains(e.target) && e.target !== notificationBellBtn) {
+          notificationDropdown.style.display = 'none';
+        }
+      });
+    }
+
+    // 6. Theme Toggle Logic
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    if (themeToggleBtn) {
+      const sunIcon = themeToggleBtn.querySelector('.icon-sun');
+      const moonIcon = themeToggleBtn.querySelector('.icon-moon');
+      
+      const updateIcons = (theme) => {
+        if (theme === 'light') {
+          sunIcon.style.display = 'none';
+          moonIcon.style.display = 'block';
+        } else {
+          sunIcon.style.display = 'block';
+          moonIcon.style.display = 'none';
+        }
+      };
+
+      // Set initial icons state
+      updateIcons(localStorage.getItem('theme') || 'light');
+
+      themeToggleBtn.addEventListener('click', () => {
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        localStorage.setItem('theme', newTheme);
+        updateIcons(newTheme);
+        
+        if (newTheme === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+          document.body.classList.add('light-theme');
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+          document.body.classList.remove('light-theme');
+        }
+      });
+    }
+
+    // 7. Textarea auto-resize & counter
+    document.querySelectorAll('textarea').forEach(textarea => {
+      const autoResize = () => {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+      };
+      textarea.addEventListener('input', autoResize);
+      if (textarea.value) autoResize();
+
+      const maxLength = textarea.getAttribute('maxlength');
+      if (maxLength) {
+        const counter = document.createElement('div');
+        counter.className = 'char-counter';
+        counter.style.fontSize = '0.72rem';
+        counter.style.color = 'var(--text-muted)';
+        counter.style.textAlign = 'right';
+        counter.style.marginTop = '4px';
+        
+        const updateCounter = () => {
+          counter.textContent = `${textarea.value.length} / ${maxLength}`;
+        };
+        textarea.parentNode.insertBefore(counter, textarea.nextSibling);
+        textarea.addEventListener('input', updateCounter);
+        updateCounter();
+      }
+    });
+
+    // 8. Submit button loading states (form locks)
+    document.querySelectorAll('form').forEach(form => {
+      form.addEventListener('submit', (e) => {
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+          if (submitBtn.disabled) {
+            e.preventDefault();
+            return;
+          }
+          submitBtn.disabled = true;
+          submitBtn.setAttribute('data-original-text', submitBtn.innerHTML);
+          submitBtn.innerHTML = `<span class="spinner-border" style="display:inline-block; width:12px; height:12px; border:2px solid currentColor; border-top-color:transparent; border-radius:50%; animation:spin 0.6s linear infinite; margin-right:6px; vertical-align: middle;"></span> Processing...`;
+        }
+      });
+    });
+
+    // 9. Confirm dialogs on destructive actions
+    document.addEventListener('click', (e) => {
+      const target = e.target.closest('[data-confirm]');
+      if (target) {
+        const msg = target.getAttribute('data-confirm') || 'Are you sure you want to perform this action?';
+        if (!confirm(msg)) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    });
+
+    // 10. Close alerts/toasts automatically after 4 seconds
+    setTimeout(() => {
+      document.querySelectorAll('.alert').forEach(el => {
+        el.style.opacity = '0';
+        el.style.transition = 'opacity 0.5s ease';
+        setTimeout(() => el.remove(), 500);
+      });
+    }, 4000);
+    // 11. CSRF Token Injection for POST Forms and AJAX calls
+    document.addEventListener("DOMContentLoaded", () => {
+      const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+      if (!tokenMeta) return;
+      const token = tokenMeta.getAttribute('content');
+      
+      const injectToken = () => {
+        document.querySelectorAll('form').forEach(form => {
+          if (form.method.toUpperCase() === 'POST') {
+            if (form.enctype === 'multipart/form-data') {
+              const url = new URL(form.action, window.location.href);
+              url.searchParams.set('_csrf', token);
+              form.action = url.pathname + url.search;
+            } else {
+              if (!form.querySelector('input[name="_csrf"]')) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = '_csrf';
+                input.value = token;
+                form.appendChild(input);
+              }
+            }
+          }
+        });
+      };
+      
+      injectToken();
+      // Also monitor dynamically added forms
+      const observer = new MutationObserver(injectToken);
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      // Intercept fetch
+      const originalFetch = window.fetch;
+      window.fetch = function(url, options) {
+        options = options || {};
+        options.headers = options.headers || {};
+        if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method.toUpperCase())) {
+          if (options.headers instanceof Headers) {
+            options.headers.set('X-CSRF-Token', token);
+          } else {
+            options.headers['X-CSRF-Token'] = token;
+          }
+        }
+        return originalFetch(url, options);
+      };
+    });
+  </script>
+</body>
+</html>

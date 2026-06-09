@@ -1,0 +1,76 @@
+<%
+  layout = 'main';
+  title = 'Curriculum View';
+  subtitle = 'Checklist of syllabus topics, modules, and completion progress';
+  page = 'curriculum';
+%>
+
+<div style="display:flex; flex-direction:column; gap:1.25rem;">
+  <% if (curricula.length === 0) { %>
+    <div class="card">
+      <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5v-15z"/></svg>
+        <p>No curriculums published for your batch cohort yet.</p>
+      </div>
+    </div>
+  <% } else { %>
+    <% curricula.forEach(curr => { %>
+      <div class="card">
+        <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+          <div>
+            <h3 style="font-family:var(--font-display); font-size:1.15rem; font-weight:700;"><%= curr.subject %></h3>
+            <div class="td-muted text-sm">Instructor: <%= curr.teacher ? curr.teacher.name : 'Faculty' %></div>
+          </div>
+          
+          <% const pct = curr.completionPct; %>
+          <div style="text-align: right; min-width: 140px;">
+            <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:600; margin-bottom: 3px;">
+              <span>Syllabus Completion</span>
+              <span><%= pct %>%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill <%= pct === 100 ? 'green' : pct > 50 ? 'orange' : 'red' %>" style="width: <%= pct %>%"></div>
+            </div>
+          </div>
+        </div>
+
+        <p style="color:var(--text-sub); font-size:13px; margin-bottom:1rem; line-height:1.5;"><%= curr.description || 'No detailed scope outlined.' %></p>
+        
+        <!-- Checklist Topics -->
+        <div class="section-title" style="margin-bottom:0.5rem;">Syllabus Checklist</div>
+        <% if (curr.topics.length === 0) { %>
+          <p class="td-muted text-sm">No topics added to this syllabus yet.</p>
+        <% } else { %>
+          <% const sortedTopics = curr.topics.sort((a,b) => a.order - b.order); %>
+          <div style="display:flex; flex-direction:column;">
+            <% sortedTopics.forEach(topic => { %>
+              <div class="topic-item">
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                  <span style="font-size:14px; color: <%= topic.completed ? 'var(--green)' : 'var(--border-light)' %>;">
+                    <%= topic.completed ? '✓' : '○' %>
+                  </span>
+                  <div>
+                    <div class="topic-name <%= topic.completed ? 'done' : '' %>">
+                      <%= topic.name %>
+                    </div>
+                    <div class="topic-meta">
+                      <%= topic.description || 'No description notes' %>
+                    </div>
+                  </div>
+                </div>
+                
+                <% if (topic.completed && topic.completedDate) { %>
+                  <div class="badge badge-green" style="font-size:9px; padding:1px 6px;">
+                    Completed: <%= topic.completedDate %>
+                  </div>
+                <% } else { %>
+                  <span class="badge badge-grey" style="font-size:9px;">Pending</span>
+                <% } %>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+    <% }) %>
+  <% } %>
+</div>

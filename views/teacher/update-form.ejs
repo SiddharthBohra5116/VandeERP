@@ -1,0 +1,57 @@
+<%
+  layout = 'main';
+  title = 'Post Class Update';
+  subtitle = 'Record topics taught and assign home tasks for your student groups';
+  page = 'updates';
+%>
+
+<div class="card" style="max-width: 650px; margin: 0 auto;">
+  <form action="/teacher/updates/create" method="POST" enctype="multipart/form-data">
+    <div class="form-row-3">
+      <div class="form-group">
+        <label class="form-label" for="batch">Select Batch</label>
+        <select id="batch" name="batch" class="form-control" required>
+          <option value="" disabled selected>Select Batch</option>
+          <% batches.forEach(b => { %>
+            <option value="<%= b %>"><%= b %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="subject">Subject</label>
+        <input type="text" id="subject" name="subject" class="form-control" placeholder="e.g. Color Grading" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="date">Class Date</label>
+        <% const today = new Date().toISOString().split('T')[0]; %>
+        <input type="date" id="date" name="date" class="form-control" value="<%= today %>" required>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="topics">Topics Covered</label>
+      <input type="text" id="topics" name="topics" class="form-control" placeholder="e.g. Lumetri Color, Vectorscopes, 3-Way Corrector (comma separated)" required>
+      <div class="form-hint">Separate multiple topics with a comma.</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="homework">Homework / Tasks Assigned</label>
+      <textarea id="homework" name="homework" class="form-control" placeholder="Describe the homework assigned to students..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="file">Supplementary Class Material</label>
+      <input type="file" id="file" name="file" class="form-control">
+      <div class="form-hint">Upload notes, PDF files, or reference assets.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary">Post Updates</button>
+      <a href="/teacher/updates" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,81 @@
+<%
+  layout = 'main';
+  title = 'Attendance History';
+  subtitle = 'Review previously marked class attendance logs';
+  page = 'attendance-history';
+%>
+
+<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+  <form method="GET" action="/teacher/attendance/history" class="filter-bar" style="margin:0;">
+    <div class="form-group" style="margin:0; min-width:140px;">
+      <label class="form-label" style="margin-bottom:0.25rem;">Batch</label>
+      <select name="batch" class="form-control" style="padding:0.45rem 0.75rem;">
+        <option value="">All Batches</option>
+        <% batches.forEach(b => { %>
+          <option value="<%= b %>" <%= filter.batch === b ? 'selected' : '' %>><%= b %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="form-group" style="margin:0; min-width:140px;">
+      <label class="form-label" style="margin-bottom:0.25rem;">Subject</label>
+      <input type="text" name="subject" class="form-control" style="padding:0.45rem 0.75rem;" placeholder="Filter by subject" value="<%= filter.subject || '' %>">
+    </div>
+
+    <div class="form-group" style="margin:0; min-width:140px;">
+      <label class="form-label" style="margin-bottom:0.25rem;">Month</label>
+      <input type="month" name="month" class="form-control" style="padding:0.45rem 0.75rem;" value="<%= filter.month || '' %>">
+    </div>
+
+    <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+      <button type="submit" class="btn btn-primary btn-sm">Filter Logs</button>
+      <a href="/teacher/attendance/history" class="btn btn-ghost btn-sm">Clear</a>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <% if (records.length === 0) { %>
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <p>No historical records found matching the filters.</p>
+    </div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Student Name</th>
+            <th>Batch & Subject</th>
+            <th>Status</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% records.forEach(r => { %>
+            <tr>
+              <td class="mono text-sm fw-600"><%= r.date %></td>
+              <td class="td-name"><%= r.student ? r.student.name : 'Deleted Student' %></td>
+              <td>
+                <div><%= r.subject %></div>
+                <div class="td-muted text-sm">Batch: <%= r.batch %></div>
+              </td>
+              <td>
+                <% 
+                  const badgeClass = {
+                    present: 'badge-green',
+                    absent: 'badge-red',
+                    late: 'badge-orange'
+                  }[r.status] || 'badge-grey';
+                %>
+                <span class="badge <%= badgeClass %>"><%= r.status %></span>
+              </td>
+              <td class="text-sm"><%= r.note || '—' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>

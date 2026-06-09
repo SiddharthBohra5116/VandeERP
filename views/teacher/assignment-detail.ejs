@@ -1,0 +1,225 @@
+<%
+  layout = 'main';
+  title = assignment.title;
+  subtitle = `Details and submissions for Subject: ${assignment.subject} (Batch: ${assignment.batch})`;
+  page = 'assignments';
+%>
+
+<div class="grid-3" style="margin-bottom:1.25rem;">
+  <div class="stat-card gold">
+    <div class="stat-label">Max Marks</div>
+    <div class="stat-value"><%= assignment.totalMarks %></div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-label">Submissions</div>
+    <div class="stat-value"><%= assignment.submissions.length %></div>
+  </div>
+  <div class="stat-card blue">
+    <div class="stat-label">Due Date</div>
+    <div class="stat-value" style="font-size: 1.15rem; font-weight:600; padding: 5px 0;">
+      <%= new Date(assignment.dueDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) %>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:1.25rem;">
+  <div class="card-header">
+    <div class="card-title">Assignment Description</div>
+    <% if (assignment.fileUrl) { %>
+      <a href="<%= assignment.fileUrl %>" class="btn btn-ghost btn-sm" download="<%= assignment.fileName %>">
+        📥 Download Reference File
+      </a>
+    <% } %>
+  </div>
+  <p style="white-space: pre-line; line-height: 1.6; color: var(--text-sub);"><%= assignment.description || 'No detailed instructions provided.' %></p>
+</div>
+
+<!-- Submissions Table -->
+<div class="card">
+  <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom:10px; margin-bottom:12px; flex-wrap: wrap; gap: 10px;">
+    <div class="card-title">Student Submissions & Hand-ins</div>
+    
+    <!-- Submission Filter Tabs -->
+    <form method="GET" action="/teacher/assignments/<%= assignment._id %>" class="filter-bar" style="margin: 0; padding: 0; border: none; background: none; display: flex; gap: 4px; overflow-x: auto; width: 100%;">
+      <a href="/teacher/assignments/<%= assignment._id %>" class="btn btn-xs <%= !filter.status ? 'btn-primary' : 'btn-ghost' %>">All (<%= counts.all %>)</a>
+      <a href="/teacher/assignments/<%= assignment._id %>?status=pending" class="btn btn-xs <%= filter.status === 'pending' ? 'btn-primary' : 'btn-ghost' %>">Pending (<%= counts.pending %>)</a>
+      <a href="/teacher/assignments/<%= assignment._id %>?status=submitted" class="btn btn-xs <%= filter.status === 'submitted' ? 'btn-primary' : 'btn-ghost' %>">Submitted (<%= counts.submitted %>)</a>
+      <a href="/teacher/assignments/<%= assignment._id %>?status=graded" class="btn btn-xs <%= filter.status === 'graded' ? 'btn-primary' : 'btn-ghost' %>">Graded (<%= counts.graded %>)</a>
+      <a href="/teacher/assignments/<%= assignment._id %>?status=late" class="btn btn-xs <%= filter.status === 'late' ? 'btn-primary' : 'btn-ghost' %>">Late (<%= counts.late %>)</a>
+      <a href="/teacher/assignments/<%= assignment._id %>?status=overdue" class="btn btn-xs <%= filter.status === 'overdue' ? 'btn-primary' : 'btn-ghost' %>">Overdue (<%= counts.overdue %>)</a>
+    </form>
+  </div>
+  
+  <% if (submissions.length === 0) { %>
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+      <p>No submissions match the selected status.</p>
+    </div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Uploaded On</th>
+            <th>File Attachment</th>
+            <th>Marks</th>
+            <th>Status</th>
+            <th>Feedback</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% submissions.forEach(sub => { %>
+            <tr id="submission-<%= sub.submissionId %>">
+              <td class="td-name">
+                <%= sub.student ? sub.student.name : 'Deleted Student' %>
+                <div class="td-muted text-sm">Batch: <%= sub.student ? sub.student.batch : '—' %></div>
+              </td>
+              <td class="mono text-sm">
+                <%= sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—' %>
+              </td>
+              <td>
+                <% if (sub.fileUrl) { %>
+                  <a href="<%= sub.fileUrl %>" class="btn btn-ghost btn-xs" target="_blank" download="<%= sub.fileName %>">
+                    📥 Download (<%= sub.fileName %>)
+                  </a>
+                <% } else { %>
+                  <span class="td-muted">No attachment</span>
+                <% } %>
+                <% if (sub.note) { %>
+                  <div class="td-muted text-xs" style="margin-top:4px; max-width:200px; overflow:hidden; text-overflow:ellipsis;">📝 <%= sub.note %></div>
+                <% } %>
+              </td>
+              <td class="mono text-sm text-center">
+                <% if (sub.marks !== null) { %>
+                  <strong class="text-gold"><%= sub.marks %></strong> / <%= assignment.totalMarks %>
+                <% } else { %>
+                  <span class="td-muted">—</span>
+                <% } %>
+              </td>
+              <td>
+                <% 
+                  const badgeClass = {
+                    submitted: 'badge-blue',
+                    graded: 'badge-green',
+                    late: 'badge-orange',
+                    overdue: 'badge-red',
+                    pending: 'badge-grey'
+                  }[sub.status] || 'badge-grey';
+                %>
+                <span class="badge <%= badgeClass %>"><%= sub.status %></span>
+              </td>
+              <td class="text-sm" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <%= sub.feedback || '—' %>
+              </td>
+              <td>
+                <% if (sub.hasSubmitted) { %>
+                  <button class="btn btn-primary btn-xs" 
+                          onclick="triggerGradingModal('<%= assignment._id %>', '<%= sub.submissionId %>', '<%= sub.student ? sub.student.name : 'Student' %>', '<%= sub.marks || '' %>', '<%= sub.feedback || '' %>', '<%= sub.status %>')">
+                    <%= sub.marks !== null ? 'Re-grade' : 'Grade' %>
+                  </button>
+                <% } else { %>
+                  <span class="td-muted">—</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<!-- Grading Modal -->
+<div id="gradeModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Grade Submission</div>
+      <button class="modal-close" onclick="closeGradeModal()">&times;</button>
+    </div>
+    <form id="gradeForm" method="POST">
+      <p style="font-size:13px; color:var(--text-sub); margin-bottom:1.25rem;">
+        Grading submission for <strong id="gradeStudentName">Student</strong>. Max Marks: <strong><%= assignment.totalMarks %></strong>.
+      </p>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="marks">Marks Obtained</label>
+          <input type="number" id="marks" name="marks" class="form-control" min="0" max="<%= assignment.totalMarks %>" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="status">Submission Status</label>
+          <select id="status" name="status" class="form-control" required>
+            <option value="graded">Graded</option>
+            <option value="submitted">Submitted (Pending review)</option>
+            <option value="late">Late Submission</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="feedback">Teacher Feedback</label>
+        <textarea id="feedback" name="feedback" class="form-control" placeholder="Offer suggestions or points of improvement..."></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeGradeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Save Grade</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function triggerGradingModal(assignId, subId, studentName, marks, feedback, status) {
+    const form = document.getElementById('gradeForm');
+    form.action = '/teacher/assignments/' + assignId + '/grade/' + subId;
+    
+    document.getElementById('gradeStudentName').innerText = studentName;
+    document.getElementById('marks').value = marks;
+    document.getElementById('feedback').value = feedback;
+    document.getElementById('status').value = status === 'submitted' || status === 'late' || status === 'graded' ? status : 'graded';
+    
+    document.getElementById('gradeModal').classList.add('open');
+  }
+
+  function closeGradeModal() {
+    document.getElementById('gradeModal').classList.remove('open');
+  }
+
+  document.getElementById('gradeModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeGradeModal();
+    }
+  });
+</script>
+
+<style>
+  @keyframes blink-flash {
+    0% { background-color: transparent; }
+    25% { background-color: rgba(212, 175, 55, 0.25); outline: 2px solid var(--gold); }
+    75% { background-color: rgba(212, 175, 55, 0.25); outline: 2px solid var(--gold); }
+    100% { background-color: transparent; }
+  }
+  .blink-highlight {
+    animation: blink-flash 1.2s ease-in-out 3;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#submission-')) {
+      const targetRow = document.querySelector(hash);
+      if (targetRow) {
+        // Apply blink effect
+        targetRow.classList.add('blink-highlight');
+        // Smooth scroll to target row
+        setTimeout(() => {
+          targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 150);
+      }
+    }
+  });
+</script>

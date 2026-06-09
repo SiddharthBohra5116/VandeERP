@@ -1,0 +1,83 @@
+<%
+  layout = 'main';
+  title = 'My Performance Reports';
+  subtitle = 'Overview of your pipeline conversion speed, lead metrics, and active cohort health';
+  page = 'reports';
+%>
+
+<div class="stats-grid" style="margin-bottom: 2rem;">
+  <div class="stat-card gold">
+    <div class="stat-label">Total Leads Assigned</div>
+    <div class="stat-value"><%= totalLeads %></div>
+    <div class="stat-sub">All time queries assigned</div>
+  </div>
+
+  <div class="stat-card green">
+    <div class="stat-label">Conversion Rate</div>
+    <div class="stat-value"><%= conversionRate %>%</div>
+    <div class="stat-sub">Converted leads percentage</div>
+  </div>
+
+  <div class="stat-card blue">
+    <div class="stat-label">Avg days to convert</div>
+    <div class="stat-value"><%= avgDays %> Days</div>
+    <div class="stat-sub">From creation to enrollment</div>
+  </div>
+</div>
+
+<!-- Health Cohort Grid -->
+<div class="card">
+  <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px;">
+    <div>
+      <div class="card-title">My Admitted Students Health Cohort Grid</div>
+      <div class="card-sub">Monitors student engagement, attendance patterns, submission ratios, and billing schedules</div>
+    </div>
+  </div>
+
+  <% if (studentHealthGrid.length === 0) { %>
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3; margin-bottom:1rem;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      <p>No admitted students found in your cohort.</p>
+    </div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Student Name</th>
+            <th>Batch</th>
+            <th class="text-right">Attendance Rate</th>
+            <th class="text-center">Fee Status</th>
+            <th class="text-right">Outstanding Fee</th>
+            <th class="text-right">Assignment Submission Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% studentHealthGrid.forEach(item => { %>
+            <tr style="border-left: 3px solid <%= item.attendancePct < 75 || item.feeStatus === 'overdue' ? 'var(--red, #ef4444)' : 'var(--green, #10b981)' %>;">
+              <td><strong><%= item.student.name %></strong></td>
+              <td class="td-mono"><%= item.student.batch || 'Unassigned' %></td>
+              <td class="mono text-right <%= item.attendancePct < 75 ? 'text-red fw-700' : '' %>">
+                <%= item.attendancePct %>%
+              </td>
+              <td class="text-center">
+                <% 
+                  let badgeClass = 'badge-green';
+                  if (item.feeStatus === 'partial') badgeClass = 'badge-gold';
+                  else if (item.feeStatus === 'overdue') badgeClass = 'badge-red';
+                %>
+                <span class="badge <%= badgeClass %>" style="text-transform: uppercase;"><%= item.feeStatus %></span>
+              </td>
+              <td class="mono text-right">
+                ₹<%= item.outstanding.toLocaleString('en-IN') %>
+              </td>
+              <td class="mono text-right <%= item.submissionRate < 75 ? 'text-orange' : '' %>">
+                <%= item.submissionRate %>%
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>

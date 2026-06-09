@@ -1,0 +1,87 @@
+<%
+  layout = 'main';
+  title = 'My Attendance';
+  subtitle = 'History of your presence and classroom attendance';
+  page = 'attendance';
+%>
+
+<div class="stats-grid">
+  <div class="stat-card green">
+    <div class="stat-label">Attendance Rate</div>
+    <div class="stat-value"><%= stats.pct %>%</div>
+    <div class="stat-sub">Goal: Keep above 85%</div>
+  </div>
+  <div class="stat-card blue">
+    <div class="stat-label">Total Classes</div>
+    <div class="stat-value"><%= stats.total %></div>
+    <div class="stat-sub">Sessions held</div>
+  </div>
+  <div class="stat-card gold">
+    <div class="stat-label">Present Days</div>
+    <div class="stat-value"><%= stats.presentCount %></div>
+    <div class="stat-sub">Classes attended</div>
+  </div>
+  <div class="stat-card red">
+    <div class="stat-label">Absent Days</div>
+    <div class="stat-value"><%= stats.absent %></div>
+    <div class="stat-sub">Classes missed</div>
+  </div>
+</div>
+
+<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+  <form method="GET" action="/student/attendance" class="filter-bar" style="margin:0;">
+    <div class="form-group" style="margin:0; min-width:140px;">
+      <label class="form-label" style="margin-bottom:0.25rem;">Select Month</label>
+      <input type="month" name="month" class="form-control" style="padding:0.45rem 0.75rem;" value="<%= filter.month || '' %>">
+    </div>
+
+    <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+      <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+      <a href="/student/attendance" class="btn btn-ghost btn-sm">Clear</a>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Attendance log ledger</div>
+  </div>
+  <% if (records.length === 0) { %>
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <p>No attendance records logged for your account in the selected query scope.</p>
+    </div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Subject Topic</th>
+            <th>Status</th>
+            <th>Teacher Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% records.forEach(r => { %>
+            <tr>
+              <td class="mono text-sm fw-600"><%= r.date %></td>
+              <td><%= r.subject %></td>
+              <td>
+                <% 
+                  const badgeClass = {
+                    present: 'badge-green',
+                    absent: 'badge-red',
+                    late: 'badge-orange'
+                  }[r.status] || 'badge-grey';
+                %>
+                <span class="badge <%= badgeClass %>"><%= r.status %></span>
+              </td>
+              <td class="text-sm"><%= r.note || '—' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>

@@ -1,0 +1,176 @@
+<%
+  layout = 'main';
+  title = 'Holidays & Leaves';
+  subtitle = 'Academy Holidays & Staff Leave Requests';
+  page = 'holidays-leaves';
+%>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+  <div>
+    <h2 class="profile-name" style="font-size:1.5rem; font-weight:800; color:var(--text);">Holidays & Leaves</h2>
+    <p class="td-muted text-sm">Schedule academy holidays and process staff leave applications</p>
+  </div>
+</div>
+
+<!-- Tabs Navigation -->
+<div class="card" style="padding: 0.5rem; margin-bottom: 1.25rem;">
+  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+    <button class="btn btn-sm btn-primary tab-btn" onclick="openTab(event, 'holidaysTab')">🗓️ Academy Holidays</button>
+    <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'leavesTab')">✉️ Staff Leaves</button>
+  </div>
+</div>
+
+<!-- Tab Content: Holidays -->
+<div id="holidaysTab" class="tab-content">
+  <div class="grid-2">
+    <!-- Schedule a Holiday -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Schedule New Holiday</div>
+      </div>
+      <form action="/admin/holidays/create" method="POST" style="margin-top: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="holiday_name">Holiday Name</label>
+          <input type="text" id="holiday_name" name="name" class="form-control" placeholder="e.g. Diwali Festival" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="holiday_date">Date</label>
+          <input type="date" id="holiday_date" name="date" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm" style="margin-top: 0.5rem;">Save Holiday</button>
+      </form>
+    </div>
+
+    <!-- Holidays List -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Academy Holidays Calendar</div>
+      </div>
+      <% if (holidays.length === 0) { %>
+        <div class="empty-state" style="padding: 2rem 1rem;">
+          <p>No holidays scheduled yet.</p>
+        </div>
+      <% } else { %>
+        <div class="table-wrap" style="margin-top: 1rem;">
+          <table>
+            <thead>
+              <tr>
+                <th>Holiday Name</th>
+                <th>Date</th>
+                <th class="text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% holidays.forEach(h => { %>
+                <tr>
+                  <td><strong><%= h.name %></strong></td>
+                  <td class="mono text-sm"><%= h.date %></td>
+                  <td class="text-right">
+                    <form action="/admin/holidays/<%= h._id %>/delete" method="POST" style="display:inline; margin:0;" onsubmit="return confirm('Delete this holiday?');">
+                      <button type="submit" class="btn btn-ghost btn-xs" style="color:var(--red);">Delete</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<!-- Tab Content: Leaves -->
+<div id="leavesTab" class="tab-content" style="display:none;">
+  <div class="card">
+    <div class="card-header" style="margin-bottom: 1.25rem;">
+      <div class="card-title">Staff Leave Applications</div>
+    </div>
+    <% if (leaves.length === 0) { %>
+      <div class="empty-state" style="padding: 3rem 1rem;">
+        <p>No leave requests found.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Applicant</th>
+              <th>Date Range</th>
+              <th>Reason</th>
+              <th>Status</th>
+              <th>Applied Date</th>
+              <th class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% leaves.forEach(leave => { %>
+              <tr>
+                <td>
+                  <div style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                    <%= leave.teacher ? leave.teacher.name : 'Deleted Staff' %>
+                    <% if (leave.teacher && leave.teacher.role) { %>
+                      <% 
+                        let roleColor = 'var(--gold)';
+                        if (leave.teacher.role === 'teacher') roleColor = '#10b981';
+                        else if (leave.teacher.role === 'counsellor') roleColor = '#f59e0b';
+                      %>
+                      <span class="badge" style="font-size: 0.65rem; text-transform: uppercase; border-color: <%= roleColor %>20; color: <%= roleColor %>; background-color: <%= roleColor %>08; padding: 1px 5px;"><%= leave.teacher.role %></span>
+                    <% } %>
+                  </div>
+                  <div class="td-muted text-xs"><%= leave.teacher ? leave.teacher.email : '—' %></div>
+                </td>
+                <td class="mono text-sm">
+                  <%= leave.startDate %> &rarr; <%= leave.endDate %>
+                </td>
+                <td style="max-width: 250px; white-space: normal; line-height: 1.4;"><%= leave.reason %></td>
+                <td>
+                  <% 
+                    const statusClass = {
+                      pending: 'badge-grey',
+                      approved: 'badge-green',
+                      rejected: 'badge-red'
+                    }[leave.status] || 'badge-grey';
+                  %>
+                  <span class="badge <%= statusClass %>"><%= leave.status %></span>
+                </td>
+                <td class="mono text-xs"><%= new Date(leave.appliedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %></td>
+                <td class="text-right">
+                  <div style="display:flex; gap:0.25rem; justify-content:flex-end;">
+                    <% if (leave.status !== 'approved') { %>
+                      <form action="/admin/leaves/<%= leave._id %>/approve" method="POST" style="margin:0;">
+                        <button type="submit" class="btn btn-primary btn-xs" style="background:var(--green); border-color:var(--green); color:black; font-weight:600;">Approve</button>
+                      </form>
+                    <% } %>
+                    <% if (leave.status !== 'rejected') { %>
+                      <form action="/admin/leaves/<%= leave._id %>/reject" method="POST" style="margin:0;">
+                        <button type="submit" class="btn btn-ghost btn-xs" style="color:var(--red); font-weight:600;">Reject</button>
+                      </form>
+                    <% } %>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<script>
+  function openTab(evt, tabId) {
+    const tabcontents = document.querySelectorAll(".tab-content");
+    tabcontents.forEach(tab => tab.style.display = "none");
+
+    const tablinks = document.querySelectorAll(".tab-btn");
+    tablinks.forEach(link => {
+      link.classList.remove("btn-primary");
+      link.classList.add("btn-ghost");
+    });
+
+    document.getElementById(tabId).style.display = "block";
+    evt.currentTarget.classList.remove("btn-ghost");
+    evt.currentTarget.classList.add("btn-primary");
+  }
+</script>

@@ -1,0 +1,267 @@
+<%
+  layout = 'main';
+  title = 'Admin Dashboard';
+  subtitle = 'Overview of Academy operations';
+  page = 'dashboard';
+%>
+
+<!-- Greeting Header -->
+<h2 id="dashboardGreeting" style="font-family: var(--font-display); font-weight: 800; font-size: 1.6rem; color: var(--gold); margin-bottom: 1.5rem;">Welcome back!</h2>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+  <a href="/admin/fees" class="stat-card gold" style="display: block; text-decoration: none; transition: transform 0.2s;">
+    <div class="stat-label">Today's Fee Collections</div>
+    <div class="stat-value">₹<%= stats.todayCollections.toLocaleString('en-IN') %></div>
+    <div class="stat-sub">Payments collected today</div>
+  </a>
+  <a href="/admin/schedules" class="stat-card blue" style="display: block; text-decoration: none; transition: transform 0.2s;">
+    <div class="stat-label">Today's Scheduled Classes</div>
+    <div class="stat-value"><%= stats.todayCompletedCount %> / <%= stats.todayScheduledCount %></div>
+    <div class="stat-sub">Completed / Total scheduled</div>
+  </a>
+  <a href="/admin/leads?status=ready_to_convert" class="stat-card orange" style="display: block; text-decoration: none; transition: transform 0.2s;">
+    <div class="stat-label">Leads Ready to Convert</div>
+    <div class="stat-value"><%= stats.readyLeadsCount %></div>
+    <div class="stat-sub">Converted status pending</div>
+  </a>
+  <a href="/admin/students?attendance=low" class="stat-card red" style="display: block; text-decoration: none; transition: transform 0.2s;">
+    <div class="stat-label">At-Risk Students</div>
+    <div class="stat-value"><%= stats.atRiskCount %></div>
+    <div class="stat-sub">Attendance below 75%</div>
+  </a>
+  <a href="/admin/holidays-leaves" class="stat-card purple" style="display: block; text-decoration: none; transition: transform 0.2s;">
+    <div class="stat-label">Pending Leave Requests</div>
+    <div class="stat-value"><%= stats.pendingLeavesCount %></div>
+    <div class="stat-sub">Awaiting admin approval</div>
+  </a>
+  <a href="/admin/students" class="stat-card green" style="display: block; text-decoration: none; transition: transform 0.2s;">
+    <div class="stat-label">Ungraded Submissions</div>
+    <div class="stat-value"><%= stats.ungradedSubmissionsCount %></div>
+    <div class="stat-sub">Awaiting marks evaluation</div>
+  </a>
+</div>
+
+<!-- Password Reset Requests -->
+<% if (typeof resetRequests !== 'undefined' && resetRequests && resetRequests.length > 0) { %>
+<div class="card" style="margin-bottom: 1.5rem; border-color: var(--gold-border); background: linear-gradient(180deg, rgba(255,204,0,0.03) 0%, rgba(0,0,0,0) 100%);">
+  <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
+    <div class="card-title" style="color: var(--gold); display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Pending Password Reset Requests
+    </div>
+    <span class="badge badge-gold"><%= resetRequests.length %> requested</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Role</th>
+          <th>Phone</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% resetRequests.forEach(reqUser => { %>
+          <tr>
+            <td>
+              <div class="td-name"><%= reqUser.name %></div>
+              <div class="td-muted text-sm"><%= reqUser.email %></div>
+            </td>
+            <td>
+              <span class="badge <%= reqUser.role === 'admin' ? 'badge-gold' : reqUser.role === 'teacher' ? 'badge-blue' : reqUser.role === 'counsellor' ? 'badge-orange' : 'badge-grey' %>">
+                <%= reqUser.role %>
+              </span>
+            </td>
+            <td class="mono text-sm"><%= reqUser.phone || '—' %></td>
+            <td style="text-align: right;">
+              <div class="d-flex gap-1" style="justify-content: flex-end; align-items: center;">
+                <button class="btn btn-primary btn-sm" onclick="triggerPasswordReset('<%= reqUser._id %>', '<%= reqUser.name %>')">
+                  Reset Password
+                </button>
+                <form action="/admin/users/<%= reqUser._id %>/dismiss-reset" method="POST" style="margin:0; padding:0; display: inline-block;">
+                  <input type="hidden" name="redirect" value="/admin/dashboard?updated=1">
+                  <button type="submit" class="btn btn-ghost btn-sm">
+                    Dismiss
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>
+
+<!-- Incoming Messages -->
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
+    <div class="card-title" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gold"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Incoming Student & Staff Messages
+    </div>
+  </div>
+  <% if (typeof messages === 'undefined' || !messages || messages.length === 0) { %>
+    <div class="empty-state" style="padding: 1.5rem;">
+      <p style="font-size:0.8rem;">No messages or queries received from students or staff yet.</p>
+    </div>
+  <% } else { %>
+    <div style="display: flex; flex-direction: column; gap: 0.75rem; padding: 0.25rem 0.5rem;">
+      <% messages.forEach(msg => { %>
+        <div style="background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <strong style="color: var(--text); font-size: 13px;"><%= msg.sender ? msg.sender.name : 'Unknown' %></strong>
+              <span class="badge <%= msg.sender && msg.sender.role === 'teacher' ? 'badge-blue' : msg.sender && msg.sender.role === 'counsellor' ? 'badge-orange' : 'badge-grey' %>" style="font-size: 9px; padding: 1px 4px;"><%= msg.sender ? msg.sender.role : 'user' %></span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-sub); line-height: 1.5; margin: 0;"><%= msg.content %></p>
+          </div>
+          <div style="text-align: right; min-width: 100px;">
+            <span class="mono" style="font-size: 11px; color: var(--text-muted);"><%= new Date(msg.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %></span>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;"><%= new Date(msg.createdAt).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}) %></div>
+            <% if (msg.sender) { %>
+              <div style="margin-top: 6px;">
+                <% if (msg.sender.role === 'student') { %>
+                  <a href="/admin/students/<%= msg.sender._id %>" class="btn btn-ghost btn-xs">Reply</a>
+                <% } else if (msg.sender.role === 'teacher') { %>
+                  <a href="/admin/teachers/<%= msg.sender._id %>" class="btn btn-ghost btn-xs">Reply</a>
+                <% } else if (msg.sender.role === 'counsellor') { %>
+                  <a href="/admin/counsellors/<%= msg.sender._id %>" class="btn btn-ghost btn-xs">Reply</a>
+                <% } %>
+              </div>
+            <% } %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<div class="grid-2">
+  <!-- Recent Students -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Recent Admissions</div>
+      <a href="/admin/users?role=student" class="btn btn-ghost btn-sm">All Students</a>
+    </div>
+    
+    <% if (recentStudents.length === 0) { %>
+      <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <p>No student admissions yet.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Course</th>
+              <th>Batch</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% recentStudents.forEach(student => { %>
+              <tr>
+                <td class="td-name"><%= student.name %></td>
+                <td><span class="badge badge-orange"><%= student.course %></span></td>
+                <td class="td-muted"><%= student.batch || '—' %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Hot Leads -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Leads requiring Follow-up</div>
+      <a href="/admin/leads" class="btn btn-ghost btn-sm">All Leads</a>
+    </div>
+    
+    <% if (hotLeads.length === 0) { %>
+      <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/></svg>
+        <p>No active follow-ups due.</p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Assigned To</th>
+              <th>Follow-up</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% hotLeads.forEach(lead => { %>
+              <% const isOverdue = lead.followUpDate && new Date(lead.followUpDate) < new Date(); %>
+              <tr>
+                <td class="td-name">
+                  <div><%= lead.name %></div>
+                  <div class="td-muted text-sm" style="font-family: monospace;"><%= lead.phone %></div>
+                </td>
+                <td><%= lead.assignedTo ? lead.assignedTo.name : 'Unassigned' %></td>
+                <td style="color: <%= isOverdue ? 'var(--red)' : 'inherit' %>; font-weight: <%= isOverdue ? 'bold' : 'normal' %>;">
+                  <%= lead.followUpDate ? new Date(lead.followUpDate).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) : '—' %>
+                  <%= isOverdue ? '⚠️' : '' %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<!-- Modal Overlay for Password Reset -->
+<div id="resetModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Reset Password</div>
+      <button class="modal-close" onclick="closeResetModal()">&times;</button>
+    </div>
+    <form id="resetForm" method="POST">
+      <input type="hidden" name="redirect" value="/admin/dashboard?pwd_reset=1">
+      <p style="font-size:13px; color:var(--text-sub); margin-bottom:1.25rem;">
+        Set a new password for <strong id="resetUserName">User</strong>:
+      </p>
+      <div class="form-group">
+        <label class="form-label" for="password">New Password</label>
+        <input type="password" id="password" name="password" class="form-control" placeholder="Min. 6 characters" minlength="6" required>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeResetModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Save New Password</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function triggerPasswordReset(userId, userName) {
+    const form = document.getElementById('resetForm');
+    form.action = '/admin/users/' + userId + '/reset-password';
+    document.getElementById('resetUserName').innerText = userName;
+    document.getElementById('resetModal').classList.add('open');
+  }
+
+  function closeResetModal() {
+    document.getElementById('resetModal').classList.remove('open');
+    document.getElementById('password').value = '';
+  }
+
+  // Close modal when clicking on layout background
+  document.getElementById('resetModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeResetModal();
+    }
+  });
+</script>

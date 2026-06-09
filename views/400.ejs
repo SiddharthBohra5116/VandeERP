@@ -1,0 +1,10 @@
+<%
+  layout = (typeof user !== 'undefined' && user) ? 'main' : 'auth';
+  title = 'Bad Request';
+%>
+<div class="error-page">
+  <div class="error-code">4<span>0</span>0</div>
+  <h2>Invalid Request!</h2>
+  <p><%= typeof error !== 'undefined' && error ? error : 'The request could not be processed due to invalid syntax or parameters.' %></p>
+  <a href="/" class="btn btn-primary">Go to Dashboard</a>
+</div>

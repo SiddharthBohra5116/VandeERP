@@ -1,0 +1,79 @@
+<%
+  layout = 'main';
+  title = 'Course Completion Feedback';
+  subtitle = 'Congratulations on completing your course! Please take a moment to share your experience with us.';
+  page = 'dashboard';
+%>
+
+<div class="card" style="max-width: 600px; margin: 2rem auto; border-color: var(--gold-border); background: linear-gradient(180deg, rgba(255,204,0,0.01) 0%, rgba(0,0,0,0) 100%);">
+  <div style="text-align: center; margin-bottom: 1.5rem;">
+    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🎓</div>
+    <h3 style="color: var(--gold); font-weight: 700; margin-bottom: 0.25rem;">Congratulations, <%= user.name %>!</h3>
+    <p style="font-size: 0.85rem; color: var(--text-muted);">Your feedback helps us maintain and improve our training quality.</p>
+  </div>
+
+  <form action="/student/feedback" method="POST">
+    
+    <!-- Rating 1: Teacher -->
+    <div class="form-group" style="margin-bottom: 1.5rem;">
+      <label class="form-label" style="font-weight: 600;">1. How would you rate your Instructor / Faculty? *</label>
+      <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+        <% [1, 2, 3, 4, 5].forEach(rating => { %>
+          <label style="flex: 1; text-align: center; background: var(--bg-input); border: 1px solid var(--border); padding: 0.5rem; border-radius: var(--radius-sm); cursor: pointer; display: block;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="if(!this.querySelector('input').checked) this.style.borderColor='var(--border)'">
+            <input type="radio" name="teacherRating" value="<%= rating %>" required style="margin-bottom: 0.25rem;">
+            <div style="font-size: 0.8rem; font-weight: 600; color: var(--text);"><%= rating %> ★</div>
+          </label>
+        <% }) %>
+      </div>
+    </div>
+
+    <!-- Rating 2: Content -->
+    <div class="form-group" style="margin-bottom: 1.5rem;">
+      <label class="form-label" style="font-weight: 600;">2. How would you rate the Course Content & Curriculum? *</label>
+      <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+        <% [1, 2, 3, 4, 5].forEach(rating => { %>
+          <label style="flex: 1; text-align: center; background: var(--bg-input); border: 1px solid var(--border); padding: 0.5rem; border-radius: var(--radius-sm); cursor: pointer; display: block;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="if(!this.querySelector('input').checked) this.style.borderColor='var(--border)'">
+            <input type="radio" name="contentRating" value="<%= rating %>" required style="margin-bottom: 0.25rem;">
+            <div style="font-size: 0.8rem; font-weight: 600; color: var(--text);"><%= rating %> ★</div>
+          </label>
+        <% }) %>
+      </div>
+    </div>
+
+    <!-- Rating 3: Facilities -->
+    <div class="form-group" style="margin-bottom: 1.5rem;">
+      <label class="form-label" style="font-weight: 600;">3. How would you rate the Academy Facilities / Lab Infrastructure? *</label>
+      <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+        <% [1, 2, 3, 4, 5].forEach(rating => { %>
+          <label style="flex: 1; text-align: center; background: var(--bg-input); border: 1px solid var(--border); padding: 0.5rem; border-radius: var(--radius-sm); cursor: pointer; display: block;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="if(!this.querySelector('input').checked) this.style.borderColor='var(--border)'">
+            <input type="radio" name="facilitiesRating" value="<%= rating %>" required style="margin-bottom: 0.25rem;">
+            <div style="font-size: 0.8rem; font-weight: 600; color: var(--text);"><%= rating %> ★</div>
+          </label>
+        <% }) %>
+      </div>
+    </div>
+
+    <!-- Comments -->
+    <div class="form-group" style="margin-bottom: 1.5rem;">
+      <label class="form-label" for="comments" style="font-weight: 600;">4. Any additional comments or suggestions for improvement?</label>
+      <textarea id="comments" name="comments" class="form-control" placeholder="Tell us what you liked or how we can do better..." style="min-height: 100px;"></textarea>
+    </div>
+
+    <div class="divider"></div>
+
+    <button type="submit" class="btn btn-primary btn-block">Submit Feedback & Open Dashboard</button>
+  </form>
+</div>
+
+<script>
+  // Dynamic border highlight for checked radio options
+  document.querySelectorAll('input[type="radio"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      const name = e.target.name;
+      document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+        r.parentElement.style.borderColor = r.checked ? 'var(--gold-border)' : 'var(--border)';
+        r.parentElement.style.background = r.checked ? 'rgba(255,204,0,0.02)' : 'var(--bg-input)';
+      });
+    });
+  });
+</script>

@@ -1,0 +1,167 @@
+const User = require('../../models/User');
+const Student = require('../../models/Student');
+
+const logger = require('../../utils/logger');
+
+
+// GET /admin/profile-requests
+exports.getProfileRequests = async (req, res) => {
+  try {
+    const students = await Student.find({
+      'pendingProfileUpdate.requestedAt': { $ne: null }
+    })
+      .populate('userId', 'name email phone profilePic status')
+      .sort({ 'pendingProfileUpdate.requestedAt': -1 });
+
+    res.render('admin/profile-requests', {
+      title: 'Profile Update Requests',
+      user: req.user,
+      students,
+      page: 'profile-requests'
+    });
+
+  } catch (err) {
+    logger.error('Get Profile Requests Error', {
+      err: err.message,
+      stack: err.stack
+    });
+
+    res.status(500).render('500', {
+      title: 'Error',
+      user: req.user,
+      layout: 'main'
+    });
+  }
+};
+
+
+// POST /admin/students/:id/approve-profile
+exports.postApproveProfileUpdate = async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id).populate('userId');
+
+    if (!student || !student.userId) {
+      return res.redirect('/admin/students');
+    }
+
+    const pending = student.pendingProfileUpdate;
+
+    if (pending && pending.requestedAt) {
+      if (pending.name !== null && pending.name !== undefined) {
+        student.userId.name = pending.name;
+      }
+
+      if (pending.phone !== null && pending.phone !== undefined) {
+        student.userId.phone = pending.phone;
+      }
+
+      if (pending.profilePic !== null && pending.profilePic !== undefined) {
+        student.userId.profilePic = pending.profilePic;
+        student.documents.profilePic = pending.profilePic;
+      }
+
+      if (pending.address !== null && pending.address !== undefined) {
+        student.userId.address = pending.address;
+      }
+
+      if (pending.city !== null && pending.city !== undefined) {
+        student.userId.city = pending.city;
+      }
+
+      if (pending.dob !== null && pending.dob !== undefined) {
+        student.userId.dob = pending.dob;
+      }
+
+      if (pending.fatherName !== null && pending.fatherName !== undefined) {
+        student.family.father.name = pending.fatherName;
+      }
+
+      if (pending.motherName !== null && pending.motherName !== undefined) {
+        student.family.mother.name = pending.motherName;
+      }
+
+      student.pendingProfileUpdate = {
+        name: null,
+        phone: null,
+        profilePic: null,
+        fatherName: null,
+        motherName: null,
+        address: null,
+        city: null,
+        dob: null,
+        requestedAt: null
+      };
+
+      await student.userId.save();
+      await student.save();
+
+      logger.info('Student profile update request approved', {
+        studentId: student._id
+      });
+    }
+
+    res.redirect(
+      req.body.redirect ||
+      `/admin/students/${student._id}?profile_approved=1`
+    );
+
+  } catch (err) {
+    logger.error('Approve Profile Update Error', {
+      err: err.message,
+      stack: err.stack
+    });
+
+    res.status(500).render('500', {
+      title: 'Error',
+      user: req.user,
+      layout: 'main'
+    });
+  }
+};
+
+
+// POST /admin/students/:id/reject-profile
+exports.postRejectProfileUpdate = async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+
+    if (!student) {
+      return res.redirect('/admin/students');
+    }
+
+    student.pendingProfileUpdate = {
+      name: null,
+      phone: null,
+      profilePic: null,
+      fatherName: null,
+      motherName: null,
+      address: null,
+      city: null,
+      dob: null,
+      requestedAt: null
+    };
+
+    await student.save();
+
+    logger.info('Student profile update request rejected', {
+      studentId: student._id
+    });
+
+    res.redirect(
+      req.body.redirect ||
+      `/admin/students/${student._id}?profile_rejected=1`
+    );
+
+  } catch (err) {
+    logger.error('Reject Profile Update Error', {
+      err: err.message,
+      stack: err.stack
+    });
+
+    res.status(500).render('500', {
+      title: 'Error',
+      user: req.user,
+      layout: 'main'
+    });
+  }
+};

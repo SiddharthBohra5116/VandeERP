@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Completion Certificate — <%= student.name %></title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800&family=Montserrat:wght@300;400;600&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --gold: #c39b34;
+      --gold-light: #f3e5ab;
+      --dark: #111111;
+      --bg: #ffffff;
+      --text: #222222;
+      --border: #dfb75c;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #f7f7f7;
+      font-family: 'Montserrat', sans-serif;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .no-print-bar {
+      width: 100%;
+      max-width: 1000px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1e1e1e;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .btn-print {
+      background: var(--gold);
+      color: black;
+      border: none;
+      padding: 8px 20px;
+      font-weight: 700;
+      border-radius: 4px;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 1px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-print:hover {
+      background: #d4a73b;
+      transform: translateY(-1px);
+    }
+
+    .btn-back {
+      color: #cccccc;
+      text-decoration: none;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-back:hover {
+      color: white;
+    }
+
+    /* Certificate Outer Frame */
+    .certificate-container {
+      background: var(--bg);
+      width: 297mm;
+      height: 210mm;
+      padding: 24px;
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Ornate Borders */
+    .certificate-border-outer {
+      border: 8px double var(--gold);
+      width: 100%;
+      height: 100%;
+      padding: 16px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .certificate-border-inner {
+      border: 2px solid var(--gold);
+      width: 100%;
+      height: 100%;
+      padding: 30px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+    }
+
+    /* Decorative Corners */
+    .corner-dec {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--gold);
+    }
+    .corner-dec.top-left { top: 10px; left: 10px; border-right: none; border-bottom: none; }
+    .corner-dec.top-right { top: 10px; right: 10px; border-left: none; border-bottom: none; }
+    .corner-dec.bottom-left { bottom: 10px; left: 10px; border-right: none; border-top: none; }
+    .corner-dec.bottom-right { bottom: 10px; right: 10px; border-left: none; border-top: none; }
+
+    /* Content Layout */
+    .cert-header {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .cert-logo {
+      font-family: 'Cinzel', serif;
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--dark);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .cert-logo span {
+      color: var(--gold);
+    }
+
+    .cert-subtitle {
+      font-size: 10px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      color: #666666;
+      font-weight: 600;
+    }
+
+    .cert-main-title {
+      font-family: 'Cinzel', serif;
+      font-size: 40px;
+      color: var(--gold);
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-align: center;
+      margin: 15px 0 10px 0;
+      text-transform: uppercase;
+    }
+
+    .cert-award {
+      font-size: 12px;
+      font-style: italic;
+      color: #555555;
+      font-family: 'Playfair Display', serif;
+      letter-spacing: 1px;
+    }
+
+    .cert-recipient {
+      font-family: 'Playfair Display', serif;
+      font-size: 44px;
+      font-weight: 600;
+      color: var(--dark);
+      margin: 15px 0 5px 0;
+      border-bottom: 2px solid #eaeaea;
+      padding-bottom: 5px;
+      min-width: 60%;
+      text-align: center;
+    }
+
+    .cert-text {
+      font-size: 14px;
+      line-height: 1.8;
+      color: #444444;
+      max-width: 80%;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .cert-course {
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .cert-footer {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 0 30px;
+      margin-bottom: 10px;
+    }
+
+    .cert-signature-block {
+      text-align: center;
+      width: 180px;
+    }
+
+    .cert-signature-line {
+      border-top: 1px solid #999999;
+      margin-top: 40px;
+      padding-top: 6px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #666666;
+      font-weight: 600;
+    }
+
+    .cert-signature-title {
+      font-size: 10px;
+      color: #999999;
+      margin-top: 2px;
+    }
+
+    /* Gold Ribbon Seal */
+    .cert-seal {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .seal-ribbon-left, .seal-ribbon-right {
+      position: absolute;
+      width: 20px;
+      height: 70px;
+      background: var(--gold);
+      bottom: -30px;
+      transform-origin: top center;
+    }
+
+    .seal-ribbon-left {
+      left: 28px;
+      transform: rotate(25deg);
+      clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 50% 85%, 0% 100%);
+    }
+
+    .seal-ribbon-right {
+      right: 28px;
+      transform: rotate(-25deg);
+      clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 50% 85%, 0% 100%);
+    }
+
+    .seal-circle {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fcd063, #c39b34);
+      border: 3px dotted #ffffff;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .seal-star {
+      color: white;
+      font-size: 24px;
+    }
+
+    .cert-meta {
+      font-size: 11px;
+      font-family: monospace;
+      color: #888888;
+      position: absolute;
+      bottom: 15px;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 50px;
+    }
+
+    /* Print Styles */
+    @media print {
+      body {
+        background: transparent;
+        padding: 0;
+      }
+      .no-print-bar {
+        display: none !important;
+      }
+      .certificate-container {
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hidden elements when printing -->
+  <div class="no-print-bar">
+    <a href="javascript:window.history.back();" class="btn-back">&larr; Back to Portal</a>
+    <div style="font-size:14px; font-weight:600;">Graduation Credential Certificate Ready</div>
+    <button class="btn-print" onclick="window.print()">Print / Save PDF</button>
+  </div>
+
+  <!-- Certificate Canvas -->
+  <div class="certificate-container">
+    <div class="certificate-border-outer">
+      <div class="certificate-border-inner">
+        <!-- Corner decorations -->
+        <div class="corner-dec top-left"></div>
+        <div class="corner-dec top-right"></div>
+        <div class="corner-dec bottom-left"></div>
+        <div class="corner-dec bottom-right"></div>
+
+        <!-- Header -->
+        <div class="cert-header">
+          <div class="cert-logo">VANDE<span>DIGITAL</span></div>
+          <div class="cert-subtitle">Academy of Digital Arts & Tech</div>
+        </div>
+
+        <!-- Title -->
+        <div>
+          <h1 class="cert-main-title">Certificate of Completion</h1>
+        </div>
+
+        <div class="cert-award">This credential is proudly awarded to</div>
+        
+        <!-- Recipient -->
+        <div class="cert-recipient">
+          <%= student.name %>
+        </div>
+
+        <!-- Body Text -->
+        <div class="cert-text">
+          for successfully fulfilling all curriculum goals, practical studio projects, and comprehensive evaluations prescribed for the professional course of study in
+          <div class="cert-course" style="margin-top:8px;"><%= student.course %></div>
+        </div>
+
+        <!-- Footer signatures and seal -->
+        <div class="cert-footer">
+          <div class="cert-signature-block">
+            <div class="cert-signature-line">
+              <%= student.enrollmentDate ? new Date(student.enrollmentDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : 'N/A' %>
+            </div>
+            <div class="cert-signature-title">Enrollment Date</div>
+          </div>
+
+          <div class="cert-seal">
+            <div class="seal-ribbon-left"></div>
+            <div class="seal-ribbon-right"></div>
+            <div class="seal-circle">
+              <span class="seal-star">🎓</span>
+            </div>
+          </div>
+
+          <div class="cert-signature-block">
+            <div class="cert-signature-line">
+              <%= new Date(completionDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) %>
+            </div>
+            <div class="cert-signature-title">Graduation Date</div>
+          </div>
+        </div>
+
+        <!-- Meta Verification Info -->
+        <div class="cert-meta">
+          <span>Credential ID: <%= student.rollNumber %></span>
+          <span>Status: GRADUATED</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

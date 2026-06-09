@@ -1,0 +1,79 @@
+<%
+  layout = 'main';
+  const isEdit = !!target;
+  title = isEdit ? 'Edit Batch' : 'Create Batch';
+  subtitle = isEdit ? `Modify details for cohort ${target.name}` : 'Create a new course cohort roster';
+  page = 'batches';
+%>
+
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert alert-danger" style="margin-bottom: 1.25rem; color: var(--red); background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.2); font-size: 0.85rem; padding: 0.75rem 1rem;">
+      ⚠️ <%= error %>
+    </div>
+  <% } %>
+
+  <form action="<%= isEdit ? '/admin/batches/' + target._id + '/edit' : '/admin/batches/create' %>" method="POST">
+    <div class="form-group">
+      <label class="form-label" for="name">Batch Code / Name *</label>
+      <input type="text" id="name" name="name" class="form-control" value="<%= isEdit ? target.name : '' %>" placeholder="e.g. VE-09AM-A2" required>
+      <div class="form-hint">Must be unique (e.g. VE-09AM-A1, DM-03PM-A2).</div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="course">Course Subject *</label>
+        <select id="course" name="course" class="form-control" required>
+          <option value="" disabled <%= !isEdit ? 'selected' : '' %>>Select Course</option>
+          <option value="Video Editing" <%= isEdit && target.course === 'Video Editing' ? 'selected' : '' %>>Video Editing</option>
+          <option value="Digital Marketing" <%= isEdit && target.course === 'Digital Marketing' ? 'selected' : '' %>>Digital Marketing</option>
+          <option value="Both" <%= isEdit && target.course === 'Both' ? 'selected' : '' %>>Both</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="capacity">Student Capacity *</label>
+        <input type="number" id="capacity" name="capacity" class="form-control" value="<%= isEdit ? target.capacity : 20 %>" min="1" required>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="startDate">Start Date</label>
+        <input type="date" id="startDate" name="startDate" class="form-control" value="<%= isEdit && target.startDate ? new Date(target.startDate).toISOString().split('T')[0] : '' %>">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="endDate">End Date</label>
+        <input type="date" id="endDate" name="endDate" class="form-control" value="<%= isEdit && target.endDate ? new Date(target.endDate).toISOString().split('T')[0] : '' %>">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Assign Faculty / Teachers</label>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-top: 6px; padding: 10px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 6px; max-height: 180px; overflow-y: auto;">
+        <% teachers.forEach(t => { %>
+          <label class="d-flex align-center gap-1" style="font-size: 0.85rem; cursor: pointer; user-select: none;">
+            <input type="checkbox" name="teachers" value="<%= t._id %>" 
+              <%= isEdit && target.teachers && target.teachers.some(tid => String(tid) === String(t._id)) ? 'checked' : '' %>>
+            <%= t.name %>
+          </label>
+        <% }) %>
+      </div>
+      <div class="form-hint">Assign one or more instructors who can grade assignments and post updates for this cohort.</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="isActive">Batch Status</label>
+      <select id="isActive" name="isActive" class="form-control">
+        <option value="true" <%= !isEdit || target.isActive ? 'selected' : '' %>>Active</option>
+        <option value="false" <%= isEdit && !target.isActive ? 'selected' : '' %>>Inactive</option>
+      </select>
+    </div>
+
+    <div style="display:flex; gap:10px; justify-content:flex-end; padding-top:12px; border-top:1px solid var(--border); margin-top:20px;">
+      <a href="/admin/batches" class="btn btn-ghost btn-sm">Cancel</a>
+      <button type="submit" class="btn btn-primary btn-sm"><%= isEdit ? 'Save Changes' : 'Create Batch' %></button>
+    </div>
+  </form>
+</div>
