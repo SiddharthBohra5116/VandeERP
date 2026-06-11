@@ -1,4 +1,7 @@
 const User = require('../../models/User');
+const Student = require('../../models/Student');
+const Batch = require('../../models/Batch');
+const Course = require('../../models/Course');
 const Attendance = require('../../models/Attendance');
 const Assignment = require('../../models/Assignment');
 const Progress = require('../../models/Progress');
@@ -20,19 +23,37 @@ exports.getProgress = async (req, res) => {
     let progressRecords = [];
 
     if (batch && subject) {
-<<<<<<< HEAD
-      students = await User.find({ role: 'student', batch, isActive: true }).sort({ name: 1 });
-      const studentIds = students.map(s => s._id);
-      progressRecords = await Progress.find({ subject, student: { $in: studentIds } }).populate('student', 'name').populate('teacher', 'name');
-=======
-      [students, progressRecords] = await Promise.all([
-        User.find({ role: 'student', batch, isActive: true }).sort({ name: 1 }),
-        Progress.find({ teacher: req.user._id, subject }).populate('student', 'name'),
-      ]);
->>>>>>> origin/main
+      const courseDoc = await Course.findOne({ name: subject });
+      const courseId = courseDoc ? courseDoc._id : null;
+      const batchDoc = await Batch.findOne({ name: batch });
+      const batchId = batchDoc ? batchDoc._id : null;
+
+      const studentDocs = await Student.find({ batch });
+      const studentUserIds = studentDocs.map(s => s.userId);
+      students = await User.find({ _id: { $in: studentUserIds }, status: 'active' }).sort({ name: 1 });
+      
+      const studentProfileIds = studentDocs.map(s => s._id);
+      
+      if (courseId) {
+        progressRecords = await Progress.find({ course: courseId, student: { $in: studentProfileIds } })
+          .populate({
+            path: 'student',
+            populate: { path: 'userId', select: 'name' }
+          })
+          .populate('teacher', 'name');
+
+        // Map progressRecords so student.name exists for views expecting it
+        progressRecords = progressRecords.map(p => {
+          const pObj = p.toObject();
+          if (pObj.student && pObj.student.userId) {
+            pObj.student.name = pObj.student.userId.name;
+          }
+          return pObj;
+        });
+      }
     }
 
-    const batches = await User.distinct('batch', { role: 'student', isActive: true });
+    const batches = await Batch.distinct('name', { isActive: true });
     res.render('teacher/progress', {
       title: 'Student Progress', user: req.user, students, progressRecords, batches, filter: req.query,
     });
@@ -51,13 +72,19 @@ exports.postAddTestResult = async (req, res) => {
   const { studentId, subject, testName, score, totalMarks, date, remarks } = req.body;
   console.log('🏆 Add Test Result request:', { teacherId: req.user._id, studentId, subject, testName });
   try {
-<<<<<<< HEAD
-    let record = await Progress.findOne({ student: studentId, subject, teacher: req.user._id });
-=======
-    let record = await Progress.findOne({ student: studentId, subject });
->>>>>>> origin/main
+    const courseDoc = await Course.findOne({ name: subject });
+    const courseId = courseDoc ? courseDoc._id : null;
+    const studentDoc = await Student.findById(studentId);
+    const batchDoc = await Batch.findOne({ name: studentDoc ? studentDoc.batch : '' });
+
+    let record = await Progress.findOne({ student: studentId, course: courseId });
     if (!record) {
-      record = new Progress({ student: studentId, subject, teacher: req.user._id });
+      record = new Progress({
+        student: studentId,
+        course: courseId,
+        batch: batchDoc ? batchDoc._id : null,
+        teacher: req.user._id
+      });
     }
     record.testResults.push({ testName, score: Number(score), totalMarks: Number(totalMarks), date, remarks });
     await record.save();
@@ -76,12 +103,10 @@ exports.postAddTestResult = async (req, res) => {
 exports.postUpdateRemark = async (req, res) => {
   console.log('💬 Update Progress Remark request:', { studentId: req.params.studentId, subject: req.body.subject });
   try {
+    const courseDoc = await Course.findOne({ name: req.body.subject });
+    const courseId = courseDoc ? courseDoc._id : null;
     await Progress.findOneAndUpdate(
-<<<<<<< HEAD
-      { student: req.params.studentId, subject: req.body.subject, teacher: req.user._id },
-=======
-      { student: req.params.studentId, subject: req.body.subject },
->>>>>>> origin/main
+      { student: req.params.studentId, course: courseId },
       { teacherRemark: req.body.remark }
     );
     res.redirect(`/teacher/progress?batch=${req.body.batch}&subject=${req.body.subject}&saved=1`);
@@ -103,32 +128,43 @@ exports.getMyStudents = async (req, res) => {
   const { batch, search, attendance } = req.query;
   console.log('👨‍🎓 My Students list load:', { teacherId: req.user._id, batch, search, attendance });
   try {
-<<<<<<< HEAD
     const Schedule = require('../../models/Schedule');
     const assignedBatches = await Schedule.distinct('batch', { teacher: req.user._id });
-    const filter = { role: 'student', status: { $in: ['active', 'complete'] }, batch: { $in: assignedBatches } };
-    const { escapeRegex } = require('../../utils/sanitize');
-    if (batch) filter.batch = batch;
-    if (search) filter.name = { $regex: escapeRegex(search), $options: 'i' };
-=======
-    const filter = { role: 'student', isActive: true };
-    if (batch) filter.batch = batch;
-    if (search) filter.name = { $regex: search, $options: 'i' };
->>>>>>> origin/main
+    
+    const Batch = require('../../models/Batch');
+    const batchDocs = await Batch.find({ _id: { $in: assignedBatches } });
+    const assignedBatchNames = batchDocs.map(b => b.name);
 
-    const [students, batches] = await Promise.all([
-      User.find(filter).sort({ name: 1 }),
-      User.distinct('batch', { role: 'student', isActive: true }),
-    ]);
+    const studentFilter = { batch: { $in: assignedBatchNames } };
+    if (batch) studentFilter.batch = batch;
+
+    const studentsWithProfile = await Student.find(studentFilter).populate('userId');
+    let students = studentsWithProfile.map(sp => {
+      const u = sp.userId ? sp.userId.toObject() : {};
+      u.batch = sp.batch;
+      u.studentId = sp._id; // Student profile ID
+      u.idProof = sp.documents ? sp.documents.idProof : null;
+      u.idVerified = sp.idVerified;
+      u.status = sp.statusHistory && sp.statusHistory.length > 0 ? sp.statusHistory[sp.statusHistory.length - 1].status : 'active';
+      return u;
+    }).filter(u => u._id && (u.status === 'active' || u.status === 'complete'));
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      students = students.filter(s => s.name && s.name.toLowerCase().includes(searchLower));
+    }
+
+    const batches = assignedBatchNames;
 
     if (students.length > 0) {
-      const studentIds = students.map(s => s._id);
+      const studentUserIds = students.map(s => s._id);
+      const studentProfileIds = students.map(s => s.studentId);
       const todayStr = todayIST();
 
       const [attendanceRecords, todayRecords, progressRecords, assignments] = await Promise.all([
-        Attendance.find({ student: { $in: studentIds } }),
-        Attendance.find({ date: todayStr, student: { $in: studentIds } }),
-        Progress.find({ student: { $in: studentIds } }),
+        Attendance.find({ student: { $in: studentProfileIds } }),
+        Attendance.find({ date: todayStr, student: { $in: studentProfileIds } }),
+        Progress.find({ student: { $in: studentProfileIds } }),
         Assignment.find({ teacher: req.user._id }),
       ]);
 
@@ -136,7 +172,7 @@ exports.getMyStudents = async (req, res) => {
 
       // Ungraded submission counts per student
       const ungradedCounts = {};
-      studentIds.forEach(id => { ungradedCounts[id.toString()] = 0; });
+      studentUserIds.forEach(id => { ungradedCounts[id.toString()] = 0; });
       assignments.forEach(a => {
         a.submissions.forEach(sub => {
           if (sub.student && ungradedCounts[sub.student.toString()] !== undefined && sub.status !== 'graded') {
@@ -153,7 +189,7 @@ exports.getMyStudents = async (req, res) => {
       });
 
       students.forEach(s => {
-        const scores = studentProgress[s._id.toString()] || [];
+        const scores = studentProgress[s.studentId.toString()] || [];
         s.overallProgress = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
         s.ungradedCount = ungradedCounts[s._id.toString()] || 0;
       });
