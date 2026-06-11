@@ -1,0 +1,65 @@
+Master Priority List — ERP System Improvements
+
+🔴 CRITICAL: Flow Gaps That Break Real-World Operations
+1. Lead Model Missing ready_to_convert Status
+The Lead.js schema enum only has ['new', 'contacted', 'interested', 'converted', 'lost'] — ready_to_convert was added to the UI and controller logic but never added to the Mongoose schema enum. Any lead.save() with that status silently fails or throws a validation error in strict mode.
+2. No Admin-Side Lead Assignment Interface
+Admins can see leads but cannot reassign a lead from one counsellor to another. There is no route, form, or button for this. In real operations when a counsellor goes on leave or leaves the company, all their pipeline leads are orphaned with no recovery path.
+3. Conversion Creates a Student with No Batch Validation
+When a counsellor converts a lead, batch is passed as free text from a dropdown that's auto-populated from existing students. If the academy has zero students yet (fresh install), the batch field will be empty or undefined and the student is created with batch: null, locking them out of timetable, attendance, and assignments entirely. There's no guard or fallback.
+4. Fee Ledger Installment Dates Are Never Actually Set
+Fee.create() during conversion doesn't populate the installments array with names, amounts, or dueDate values. The sequential allocation logic in lateFines.js is built to work against named installments, but the fee record is created blank. Late fine calculations and the Revenue report's installment-anchored forecasting both return empty/zero data for all new students.
+5. Student Timetable Shows Schedules for the Wrong Day (IST Timezone Bug)
+new Date(s.date) followed by .toLocaleDateString('en-US', { weekday: 'long' }) on an IST server will produce the wrong weekday for any date after 6:30 PM IST, because the string "2025-06-10" is parsed as UTC midnight, which maps to the previous day in UTC+5:30. The fix was mentioned but the date grouping in both studentController.js and teacherController.js still uses new Date(s.date) without the IST-safe local parse.
+6. Counsellor Can Convert a Lead — Admin Cannot
+The admin leadController.js has a gold-highlighted row for ready_to_convert leads with a 👑 badge, but there is no /admin/leads/:id/convert route or form. Admins cannot actually complete the conversion themselves, defeating the purpose of the handoff pipeline.
+
+🟠 HIGH: Core Workflow Completeness
+7. No Notification When a Lead Is Marked Ready-to-Convert
+When a counsellor marks a lead ready_to_convert, the admin has no push notification, badge count, or email alert. The admin must manually visit the leads page and scan for gold rows. Add a real-time badge on the admin nav (unread ready_to_convert count) and a dashboard widget for these.
+8. Admin Dashboard Has No Actionable Summary
+The admin dashboard (/admin/dashboard) is not included in the uploaded views, suggesting it's either very sparse or missing. The admin's entry point should show: today's fee collections, pending ready_to_convert leads count, at-risk student count, ungraded assignments count, and today's scheduled classes — all as one-click cards.
+9. Teacher Cannot Mark a Class as Completed from the Timetable View
+The schedule completion action (feat-teacher-sched) exists in the controller but the teacher's timetable/dashboard has no inline "Mark Complete" button next to each class slot. Teachers must navigate away to a separate schedules page. The daily workflow should be: see today's classes → mark complete → add note, all in one flow.
+10. Student Profile Update Request Has No Admin Approval Queue
+The pendingProfileUpdate field exists in the User model and students can submit changes, but there is no admin view to list all pending profile update requests, review them side by side (old vs new), and approve or reject them. These requests just sit in the database forever.
+11. Assignment Grading Has No "Ungraded" Filter / Teacher Inbox
+Teachers can see assignments but there is no consolidated "needs grading" queue. A teacher with 3 batches and 30 students has to open each assignment individually to find ungraded submissions. There should be a single grading queue page: all ungraded submissions across all their assignments, sorted by overdue first.
+12. No WhatsApp / SMS Quick-Action on Lead Cards
+The Lead model tracks phone and the follow-up channel can be WhatsApp, but there are no wa.me/ quick-link buttons on the lead list or detail page. In practice, counsellors copy the number manually. A single <a href="https://wa.me/91{phone}"> tag per lead row would save significant time.
+13. Fee Payment Recording Requires Admin — No Counsellor Shortcut
+When a student pays an instalment in person, the counsellor who collects it must ask the admin to log it. There should be a "Record Payment" button on the counsellor's fee-detail view (read-only view already exists) that submits to the admin with a pending-approval flag, rather than direct write access.
+
+🟡 MEDIUM: Analytics & Reports Overhaul
+14. Revenue Tab Shows Raw Numbers with No Visual Chart
+The revenue tab has revenueData array passed to EJS but there's no Chart.js bar/line chart rendered for it — only a raw text table of months and numbers. This is the most important financial view and it needs a dual-axis chart (target bar vs actual line) with month labels.
+15. Funnel Velocity Tab Has No Per-Counsellor Breakdown
+Funnel velocity shows aggregate mean transition times but doesn't let you compare counsellors side by side. You can't tell if Counsellor A converts in 5 days and Counsellor B takes 25 days. Add a stacked bar chart per counsellor with each pipeline stage's average duration.
+16. At-Risk Tab Has No Drill-Down or Action Button
+The at-risk students list shows flagged names but there's no action from that view — no "Message Student," no "Notify Counsellor," no "View Fee," no "View Attendance." It's a read-only list that forces the admin to manually copy names and navigate away. Each row needs inline quick-action links.
+17. Batch Health Score Is a Number with No Trend
+The batch health composite score (attendance % + submission rate + fee payment rate) is a current snapshot with no historical comparison. You can't tell if a batch is improving or declining week over week. Store weekly snapshots or compute a 4-week rolling comparison.
+18. Reports Has No Date Range Filter
+Every tab shows all-time or current-period data with no way to filter by a custom date range (e.g. "show me June 2025" or "last quarter"). Without this, month-on-month comparisons are impossible and the data quickly becomes too large to be meaningful.
+19. Teacher Load Tab Missing Grading Speed Metric Visualization
+The teacher load tab tracks grading speed and update rates as numbers in a table, but there's no comparative chart. A radar/spider chart per teacher showing 5 dimensions (classes conducted, assignments created, grading speed, daily update rate, attendance submission rate) would immediately surface underperforming areas.
+20. No Cohort Retention / Drop-Out Trend Analysis
+The system has statusHistory on every student (active → drop, active → complete) with timestamps, but no report uses this. A monthly cohort retention chart (how many students from each enrollment month are still active vs dropped vs completed) is the single most important long-term health metric for an academy.
+
+🟢 ENHANCEMENT: Interactive Onboarding Tour
+21. Role-Based Interactive Product Tour (New Feature)
+Each role currently lands on a dashboard with no guidance on what to do first. Build a Shepherd.js or custom step-by-step tour that activates on first login (or via a "?" button), walks users through their key pages with highlighted tooltips, and is dismissible/resumable. Separate tour flows needed for: Admin, Counsellor, Teacher, Student.
+22. Tour Should Simulate Real Data Scenarios
+For the admin's tour, the walkthrough should point to: "this is a lead ready to convert → click here to admit them → here is where the fee ledger was created → here is where attendance shows up." The tour must follow the actual business flow, not just point at menu items.
+
+⚪ LOW: DX & System Health
+23. ready_to_convert Missing from Lead Schema (already item 1, but also needs migration note)
+Any existing lead documents in production with status: 'ready_to_convert' set via findOneAndUpdate (which bypasses schema validation) will appear to work but will fail on .validate() calls. A one-time migration script to add this to the enum is needed alongside the schema fix.
+24. Seeder Does Not Create Installment Records
+seeder.js creates historical fee documents but without the installments sub-array populated, so the revenue report, aging buckets, and fine calculations all return empty results on a freshly seeded database — making it impossible to demo or test those features without manual data entry.
+25. Academy System Guide File (Academy_ERP_CRM_System_Guide.md) Is Stale
+The guide in the repo root describes features that either don't exist yet or work differently than described (e.g. the admin conversion flow). This should be replaced by an auto-generated route map (node -e "app.router...") plus a changelog rather than a manually maintained markdown file that will always be out of date.
+26. No Global Search
+There is no way for an admin to type a student name, phone number, or roll number and get a result across students, leads, and fee records simultaneously. Every lookup requires knowing which section to navigate to first.
+27. Messages System Is One-Way (Admin → Others)
+The Message model supports sender/recipient pairs, but the UI only shows "message admin" buttons from counsellors and teachers. There is no threaded inbox, no reply-to, and no counsellor-to-teacher or teacher-to-student communication path. It functions as a one-way announcement board, not a messaging system.

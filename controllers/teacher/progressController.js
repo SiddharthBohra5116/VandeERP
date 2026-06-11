@@ -20,9 +20,16 @@ exports.getProgress = async (req, res) => {
     let progressRecords = [];
 
     if (batch && subject) {
+<<<<<<< HEAD
       students = await User.find({ role: 'student', batch, isActive: true }).sort({ name: 1 });
       const studentIds = students.map(s => s._id);
       progressRecords = await Progress.find({ subject, student: { $in: studentIds } }).populate('student', 'name').populate('teacher', 'name');
+=======
+      [students, progressRecords] = await Promise.all([
+        User.find({ role: 'student', batch, isActive: true }).sort({ name: 1 }),
+        Progress.find({ teacher: req.user._id, subject }).populate('student', 'name'),
+      ]);
+>>>>>>> origin/main
     }
 
     const batches = await User.distinct('batch', { role: 'student', isActive: true });
@@ -44,7 +51,11 @@ exports.postAddTestResult = async (req, res) => {
   const { studentId, subject, testName, score, totalMarks, date, remarks } = req.body;
   console.log('🏆 Add Test Result request:', { teacherId: req.user._id, studentId, subject, testName });
   try {
+<<<<<<< HEAD
     let record = await Progress.findOne({ student: studentId, subject, teacher: req.user._id });
+=======
+    let record = await Progress.findOne({ student: studentId, subject });
+>>>>>>> origin/main
     if (!record) {
       record = new Progress({ student: studentId, subject, teacher: req.user._id });
     }
@@ -66,7 +77,11 @@ exports.postUpdateRemark = async (req, res) => {
   console.log('💬 Update Progress Remark request:', { studentId: req.params.studentId, subject: req.body.subject });
   try {
     await Progress.findOneAndUpdate(
+<<<<<<< HEAD
       { student: req.params.studentId, subject: req.body.subject, teacher: req.user._id },
+=======
+      { student: req.params.studentId, subject: req.body.subject },
+>>>>>>> origin/main
       { teacherRemark: req.body.remark }
     );
     res.redirect(`/teacher/progress?batch=${req.body.batch}&subject=${req.body.subject}&saved=1`);
@@ -88,12 +103,18 @@ exports.getMyStudents = async (req, res) => {
   const { batch, search, attendance } = req.query;
   console.log('👨‍🎓 My Students list load:', { teacherId: req.user._id, batch, search, attendance });
   try {
+<<<<<<< HEAD
     const Schedule = require('../../models/Schedule');
     const assignedBatches = await Schedule.distinct('batch', { teacher: req.user._id });
     const filter = { role: 'student', status: { $in: ['active', 'complete'] }, batch: { $in: assignedBatches } };
     const { escapeRegex } = require('../../utils/sanitize');
     if (batch) filter.batch = batch;
     if (search) filter.name = { $regex: escapeRegex(search), $options: 'i' };
+=======
+    const filter = { role: 'student', isActive: true };
+    if (batch) filter.batch = batch;
+    if (search) filter.name = { $regex: search, $options: 'i' };
+>>>>>>> origin/main
 
     const [students, batches] = await Promise.all([
       User.find(filter).sort({ name: 1 }),

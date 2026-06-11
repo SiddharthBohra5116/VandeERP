@@ -82,6 +82,7 @@
         </div>
         <div class="form-group">
           <label class="form-label" for="batch">Batch Title</label>
+<<<<<<< HEAD
           <select id="batch" name="batch" class="form-control">
             <option value="General Batch" <%= (!isEdit || target.batch === 'General Batch' || !target.batch) ? 'selected' : '' %>>General Batch</option>
             <% if (typeof batches !== 'undefined' && batches && batches.length > 0) { %>
@@ -95,6 +96,9 @@
               <option value="<%= target.batch %>" selected><%= target.batch %></option>
             <% } %>
           </select>
+=======
+          <input type="text" id="batch" name="batch" class="form-control" value="<%= isEdit ? target.batch : '' %>" placeholder="e.g. Morning 10AM">
+>>>>>>> origin/main
         </div>
       </div>
       

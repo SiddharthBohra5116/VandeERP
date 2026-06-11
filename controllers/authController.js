@@ -135,8 +135,8 @@ exports.updateProfile = async (req, res) => {
     }
 
     // Staff roles update immediately
-    const update = { 
-      name: name ? name.trim() : '', 
+    const update = {
+      name: name ? name.trim() : '',
       phone: phone ? phone.trim() : '',
       fatherName: fatherName ? fatherName.trim() : '',
       motherName: motherName ? motherName.trim() : '',
@@ -186,7 +186,7 @@ exports.changePassword = async (req, res) => {
 exports.getInbox = async (req, res) => {
   try {
     const Message = require('../models/Message');
-    
+
     // Fetch all unique participants current user has chatted with
     const allUserMessages = await Message.find({
       $or: [{ sender: req.user._id }, { recipient: req.user._id }]
@@ -199,9 +199,9 @@ exports.getInbox = async (req, res) => {
       const senderId = m.sender.toString();
       const recipientId = m.recipient.toString();
       const otherId = senderId === req.user._id.toString() ? recipientId : senderId;
-      
+
       participantIds.add(otherId);
-      
+
       lastMessageMap[otherId] = {
         content: m.content,
         createdAt: m.createdAt,
@@ -383,10 +383,10 @@ exports.postInboxSend = async (req, res) => {
   } catch (err) {
     console.error('❌ postInboxSend Error:', err);
     if (err.message && (err.message.includes('authorized') || err.message.includes('authorized to message'))) {
-      return res.status(403).render('403', { 
-        title: 'Access Restricted', 
-        user: req.user, 
-        error: err.message 
+      return res.status(403).render('403', {
+        title: 'Access Restricted',
+        user: req.user,
+        error: err.message
       });
     }
     res.redirect(`/auth/inbox?error=${encodeURIComponent(err.message)}`);
@@ -474,10 +474,10 @@ exports.editMessage = async (req, res) => {
     const isPastWindow = msg.editableUntil && now > new Date(msg.editableUntil);
 
     if (hasBeenRead || isPastWindow) {
-      return res.status(400).render('400', { 
-        title: 'Bad Request', 
-        user: req.user, 
-        error: 'Messages can only be edited if they are unread and within 10 minutes of being sent.' 
+      return res.status(400).render('400', {
+        title: 'Bad Request',
+        user: req.user,
+        error: 'Messages can only be edited if they are unread and within 10 minutes of being sent.'
       });
     }
 
@@ -500,5 +500,18 @@ exports.editMessage = async (req, res) => {
   } catch (err) {
     console.error('❌ editMessage Error:', err);
     res.status(500).render('500', { title: 'Error', user: req.user, layout: 'main' });
+  }
+};
+// GET /auth/guide
+exports.getGuide = async (req, res) => {
+  try {
+    res.render('auth/guide', {
+      title: 'Platform Guide & Policy Manual',
+      user: req.user,
+      page: 'guide'
+    });
+  } catch (err) {
+    console.error('❌ getGuide Error:', err);
+    res.status(500).render('500', { title: 'Error', user: req.user });
   }
 };

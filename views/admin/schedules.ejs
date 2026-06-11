@@ -230,7 +230,10 @@
     <button type="button" class="btn tab-btn" onclick="switchTab('dailyTimeline')" id="btn-dailyTimeline">Daily Room Planner</button>
     <button type="button" class="btn tab-btn" onclick="switchTab('hierarchyTree')" id="btn-hierarchyTree">Classroom Hierarchy Tree</button>
     <button type="button" class="btn tab-btn" onclick="switchTab('templates')" id="btn-templates">Weekly Templates (Auto-Generator)</button>
+<<<<<<< HEAD
     <button type="button" class="btn tab-btn" onclick="switchTab('classroomView')" id="btn-classroomView">Classroom Grid View</button>
+=======
+>>>>>>> origin/main
     <button type="button" class="btn tab-btn" onclick="switchTab('classrooms')" id="btn-classrooms">Manage Classrooms</button>
   </div>
   <div style="padding-bottom: 0.5rem; display: flex; gap: 0.5rem;">
@@ -451,7 +454,11 @@
                                 <tr>
                                   <td><strong><%= sched.subject %></strong></td>
                                   <td><%= sched.teacher ? sched.teacher.name : '—' %></td>
+<<<<<<< HEAD
                                   <td><%= new Date(sched.date + "T00:00:00").toLocaleDateString('en-IN') %> &middot; <span class="text-gold"><%= sched.startTime %> - <%= sched.endTime %></span></td>
+=======
+                                  <td><%= new Date(sched.date).toLocaleDateString('en-IN') %> &middot; <span class="text-gold"><%= sched.startTime %> - <%= sched.endTime %></span></td>
+>>>>>>> origin/main
                                   <td>
                                     <span class="badge <%= sched.status === 'scheduled' ? 'badge-green' : sched.status === 'completed' ? 'badge-blue' : 'badge-red' %>" style="font-size: 0.55rem;">
                                       <%= sched.status %>
@@ -636,6 +643,7 @@
   </div>
 </div>
 
+<<<<<<< HEAD
 <!-- ==================== TAB 6: CLASSROOM GRID VIEW ==================== -->
 <div id="tab-classroomView" class="tab-pane tab-hidden">
   <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
@@ -752,6 +760,8 @@
   </div>
 </div>
 
+=======
+>>>>>>> origin/main
 <!-- ==================== TAB 5: MANAGE CLASSROOMS ==================== -->
 <div id="tab-classrooms" class="tab-pane tab-hidden">
   <div class="card" style="padding: 1.25rem;">
@@ -1116,10 +1126,13 @@
     window.location.href = `?day=${val}&month=<%= monthParam %>`;
   }
 
+<<<<<<< HEAD
   function changeClassroomGridDate(val) {
     window.location.href = `?day=${val}&month=<%= monthParam %>&view=classroom`;
   }
 
+=======
+>>>>>>> origin/main
   // Slide-over drawer actions
   function openCreateDrawer(dateStr) {
     closeAllDrawers();
@@ -1537,17 +1550,24 @@
     // Restore tab
     const urlParams = new URLSearchParams(window.location.search);
     const queryTab = urlParams.get('tab');
+<<<<<<< HEAD
     const queryView = urlParams.get('view');
+=======
+>>>>>>> origin/main
     let cachedTab = null;
     try {
       cachedTab = sessionStorage.getItem('adminSchedulesActiveTab');
     } catch (e) {
       // Ignored: fails safely in strict privacy/incognito mode
     }
+<<<<<<< HEAD
     let activeTab = queryTab || cachedTab || 'monthCalendar';
     if (queryView === 'classroom') {
       activeTab = 'classroomView';
     }
+=======
+    const activeTab = queryTab || cachedTab || 'monthCalendar';
+>>>>>>> origin/main
     switchTab(activeTab);
 
     // Check for alerts/messages

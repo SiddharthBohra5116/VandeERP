@@ -49,5 +49,7 @@ router.post('/notifications/read-all', protect, ctrl.postReadAllNotifications);
 // Message Edit Window
 router.post('/messages/:id/edit', protect, ctrl.editMessage);
 router.put('/messages/:id/edit', protect, ctrl.editMessage);
+// Interactive Visual Platform Guide
+router.get('/guide', protect, ctrl.getGuide);
 
 module.exports = router;

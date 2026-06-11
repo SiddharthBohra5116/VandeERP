@@ -1,6 +1,11 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const User = require('./models/User');
+const Student = require('./models/Student');
+const Teacher = require('./models/Teacher');
+const Counsellor = require('./models/Counsellor');
+const Course = require('./models/Course');
+const Batch = require('./models/Batch');
 const Lead = require('./models/Lead');
 const Fee = require('./models/Fee');
 const Curriculum = require('./models/Curriculum');
@@ -23,6 +28,11 @@ async function seed() {
   
   console.log('🧹 Clearing database collections...');
   await User.deleteMany({});
+  await Student.deleteMany({});
+  await Teacher.deleteMany({});
+  await Counsellor.deleteMany({});
+  await Course.deleteMany({});
+  await Batch.deleteMany({});
   await Lead.deleteMany({});
   await Fee.deleteMany({});
   await Curriculum.deleteMany({});
@@ -39,6 +49,26 @@ async function seed() {
   await Expense.deleteMany({});
   await RevenueTarget.deleteMany({});
   
+  console.log('📚 Seeding Courses...');
+  const courseVE = await Course.create({
+    name: 'Video Editing',
+    code: 'VE',
+    durationMonths: 3,
+    fees: 25000
+  });
+  const courseDM = await Course.create({
+    name: 'Digital Marketing',
+    code: 'DM',
+    durationMonths: 3,
+    fees: 20000
+  });
+  const courseBoth = await Course.create({
+    name: 'Both',
+    code: 'BT',
+    durationMonths: 6,
+    fees: 45000
+  });
+
   console.log('🏫 Seeding Classrooms...');
   const classrooms = await Classroom.create([
     { name: 'Room A (Video Suite)', capacity: 15, location: 'First Floor, Left Wing' },
@@ -64,7 +94,8 @@ async function seed() {
       role: 'teacher',
       phone: '8888888801',
       subject: 'Video Editing',
-      qualification: 'M.Sc. in Film Editing & VFX'
+      qualification: 'M.Sc. in Film Editing & VFX',
+      experienceYears: 6
     },
     {
       name: 'Priya Patel',
@@ -73,7 +104,8 @@ async function seed() {
       role: 'teacher',
       phone: '8888888802',
       subject: 'Digital Marketing',
-      qualification: 'MBA in Marketing, 8+ Yrs Corporate Experience'
+      qualification: 'MBA in Marketing, 8+ Yrs Corporate Experience',
+      experienceYears: 8
     },
     {
       name: 'Amit Verma',
@@ -82,7 +114,8 @@ async function seed() {
       role: 'teacher',
       phone: '8888888803',
       subject: 'Video Editing',
-      qualification: 'BFA in Cinema Studies'
+      qualification: 'BFA in Cinema Studies',
+      experienceYears: 4
     },
     {
       name: 'Sneha Kapoor',
@@ -91,7 +124,8 @@ async function seed() {
       role: 'teacher',
       phone: '8888888804',
       subject: 'Digital Marketing',
-      qualification: 'MA in Journalism & Communication'
+      qualification: 'MA in Journalism & Communication',
+      experienceYears: 5
     },
     {
       name: 'Gaurav Sen',
@@ -100,7 +134,8 @@ async function seed() {
       role: 'teacher',
       phone: '8888888805',
       subject: 'Digital Marketing',
-      qualification: 'Certified Google Ads Specialist'
+      qualification: 'Certified Google Ads Specialist',
+      experienceYears: 7
     },
     {
       name: 'Default Teacher',
@@ -109,13 +144,27 @@ async function seed() {
       role: 'teacher',
       phone: '8888888888',
       subject: 'Video Editing',
-      qualification: 'Lead Faculty'
+      qualification: 'Lead Faculty',
+      experienceYears: 10
     }
   ];
   
   const teachers = [];
   for (const t of teacherData) {
-    teachers.push(await User.create(t));
+    const user = await User.create({
+      name: t.name,
+      email: t.email,
+      password: t.password,
+      role: t.role,
+      phone: t.phone
+    });
+    const profile = await Teacher.create({
+      userId: user._id,
+      subjects: [t.subject],
+      qualification: t.qualification,
+      experienceYears: t.experienceYears
+    });
+    teachers.push(user);
   }
 
   console.log('🤝 Seeding 3 Counsellors...');
@@ -145,7 +194,33 @@ async function seed() {
 
   const counsellors = [];
   for (const c of counsellorData) {
-    counsellors.push(await User.create(c));
+    const user = await User.create(c);
+    await Counsellor.create({
+      userId: user._id
+    });
+    counsellors.push(user);
+  }
+
+  console.log('🗂️ Seeding Batches...');
+  const allBatchNames = [
+    'VE-09AM-A1', 'VE-11AM-A1', 'VE-03PM-A1', 'VE-05PM-A1',
+    'DM-09AM-A1', 'DM-11AM-A1', 'DM-03PM-A1', 'DM-05PM-A1'
+  ];
+  const batches = [];
+  for (const name of allBatchNames) {
+    const course = name.startsWith('VE-') ? courseVE : courseDM;
+    const batchTeachers = name.startsWith('VE-') 
+      ? [teachers[0]._id, teachers[2]._id, teachers[5]._id]
+      : [teachers[1]._id, teachers[3]._id, teachers[4]._id];
+    
+    const batch = await Batch.create({
+      name,
+      course: course._id,
+      capacity: 20,
+      teachers: batchTeachers,
+      isActive: true
+    });
+    batches.push(batch);
   }
 
   console.log('🗓️ Seeding Historical Holidays (3 Years)...');
@@ -167,7 +242,6 @@ async function seed() {
   }
 
   console.log('✉️ Seeding Teacher Leave History...');
-  // Seed some approved and rejected leaves
   const leaveRequests = [
     {
       teacher: teachers[0]._id,
@@ -214,25 +288,22 @@ async function seed() {
   ];
 
   const courses = ['Video Editing', 'Digital Marketing', 'Both'];
-  const batches = {
+  const possibleBatches = {
     'Video Editing': ['VE-09AM-A1', 'VE-11AM-A1', 'VE-03PM-A1', 'VE-05PM-A1'],
     'Digital Marketing': ['DM-09AM-A1', 'DM-11AM-A1', 'DM-03PM-A1', 'DM-05PM-A1'],
     'Both': ['VE-09AM-A1', 'DM-03PM-A1']
   };
 
-  const studentList = [];
+  const studentList = []; // Array of Student profile documents
 
   for (let i = 0; i < studentNames.length; i++) {
     const name = studentNames[i];
     const email = i === 0 ? 'student@gmail.com' : `${name.toLowerCase().replace(/ /g, '.')}@gmail.com`;
-    const course = i === 0 ? 'Video Editing' : courses[i % courses.length];
-    const possibleBatches = batches[course];
-    const batch = possibleBatches[i % possibleBatches.length];
+    const courseName = i === 0 ? 'Video Editing' : courses[i % courses.length];
+    const selectedCourse = courseName === 'Video Editing' ? courseVE : (courseName === 'Digital Marketing' ? courseDM : courseBoth);
+    const possibleBatchList = possibleBatches[courseName];
+    const batch = possibleBatchList[i % possibleBatchList.length];
 
-    // Distribute registration dates over the past 3 years:
-    // Students 0-9: enrolled in 2023-2024 (completed)
-    // Students 10-19: enrolled in 2024-2025 (completed/active)
-    // Students 20-29: enrolled recently in 2025-2026 (active)
     let enrollmentDate;
     let status = 'active';
     let feedback = { submitted: false };
@@ -262,23 +333,21 @@ async function seed() {
         };
       }
     } else {
-      enrollmentDate = new Date(Date.now() - (i * 3 * 24 * 60 * 60 * 1000)); // recently enrolled
+      enrollmentDate = new Date(Date.now() - (i * 3 * 24 * 60 * 60 * 1000));
       status = (i === 24) ? 'drop' : 'active';
     }
 
-    const fees_total = course === 'Both' ? 45000 : course === 'Video Editing' ? 25000 : 20000;
+    const fees_total = courseName === 'Both' ? 45000 : courseName === 'Video Editing' ? 25000 : 20000;
     const discount = i % 5 === 0 ? 3000 : 0;
     const netFees = fees_total - discount;
     
-    // Payments calculation
     let fees_paid = 0;
     if (status === 'complete') {
-      fees_paid = netFees; // fully paid
+      fees_paid = netFees;
     } else if (status === 'active') {
       fees_paid = Math.floor(netFees / (1.5 + (i % 3)));
     }
 
-    // Assign Faculty & Counsellors based on batch code prefix
     let assignedTeacher;
     if (batch.startsWith('VE-')) {
       const veTeachers = [teachers[0], teachers[2], teachers[5]];
@@ -289,23 +358,35 @@ async function seed() {
     }
     const assignedCounsellor = counsellors[i % counsellors.length];
 
-    const student = await User.create({
+    const user = await User.create({
       name,
       email,
       password: 'password123',
       role: 'student',
       phone: `98765432${String(i).padStart(2, '0')}`,
-      course,
+      status
+    });
+
+    const student = await Student.create({
+      userId: user._id,
+      counsellor: assignedCounsellor._id,
+      teacher: assignedTeacher._id,
+      course: selectedCourse._id,
       batch,
       enrollmentDate,
       fees_total,
       fees_paid,
-      status,
-      feedback,
-      teacher: assignedTeacher._id,
-      counsellor: assignedCounsellor._id,
+      family: {
+        father: { name: 'Father ' + name, phone: '9988776655' },
+        mother: { name: 'Mother ' + name, phone: '9988776644' },
+        guardian: { name: 'Guardian ' + name, relation: 'Uncle', phone: '9988776633' }
+      },
+      documents: {
+        profilePic: null,
+        idProof: i % 3 === 0 ? `/uploads/dummy_id_${i}.jpg` : null
+      },
       idVerified: i % 3 === 0,
-      idProof: i % 3 === 0 ? `/files/dummy_id_${i}.jpg` : null,
+      feedback,
       statusHistory: [
         { status: 'active', changedBy: admin._id, date: enrollmentDate, reason: 'Initial intake' },
         ...(status === 'complete' ? [{ status: 'complete', changedBy: admin._id, date: new Date(enrollmentDate.getTime() + 180 * 24 * 60 * 60 * 1000), reason: 'Completed requirements' }] : []),
@@ -334,7 +415,7 @@ async function seed() {
 
     await Fee.create({
       student: student._id,
-      course,
+      course: selectedCourse._id,
       totalAmount: fees_total,
       paidAmount: fees_paid,
       discount,
@@ -358,8 +439,8 @@ async function seed() {
     const status = leadStatuses[i % leadStatuses.length];
     const assignedCounsellor = counsellors[i % counsellors.length];
     const createdDate = new Date(Date.now() - (30 * i * 24 * 60 * 60 * 1000));
+    const courseName = courses[i % courses.length];
     
-    // Detailed multi-step followups
     const followUpHistory = [
       {
         note: `Initial lead registered via ${leadSources[i % leadSources.length]}.`,
@@ -380,7 +461,7 @@ async function seed() {
 
     if (status === 'interested' || status === 'converted') {
       followUpHistory.push({
-        note: `Lead showed high interest in ${courses[i % courses.length]} program. Requested demo class.`,
+        note: `Lead showed high interest in ${courseName} program. Requested demo class.`,
         status: 'interested',
         doneBy: assignedCounsellor._id,
         dateAt: new Date(createdDate.getTime() + 48 * 3600000)
@@ -407,7 +488,7 @@ async function seed() {
       name: leadNames[i],
       phone: `90909090${String(i).padStart(2, '0')}`,
       email: `${leadNames[i].toLowerCase().replace(/ /g, '.')}@gmail.com`,
-      course: courses[i % courses.length],
+      course: courseName,
       source: leadSources[i % leadSources.length],
       status: status,
       notes: `Prospective applicant. Source channel: ${leadSources[i % leadSources.length]}`,
@@ -420,49 +501,36 @@ async function seed() {
   }
 
   console.log('📚 Seeding Assignments & Student Homework Submissions...');
-  const allBatches = [
-    'VE-09AM-A1', 'VE-11AM-A1', 'VE-03PM-A1', 'VE-05PM-A1',
-    'DM-09AM-A1', 'DM-11AM-A1', 'DM-03PM-A1', 'DM-05PM-A1'
-  ];
-
-  // We will seed 8 assignments per batch spread over the last 3 years
-  for (const b of allBatches) {
+  for (const b of allBatchNames) {
     let teacher;
     let subject;
     if (b.startsWith('VE-')) {
       const veTeachers = [teachers[0], teachers[2], teachers[5]];
-      teacher = veTeachers[allBatches.indexOf(b) % veTeachers.length];
+      teacher = veTeachers[allBatchNames.indexOf(b) % veTeachers.length];
       subject = 'Video Editing';
     } else {
       const dmTeachers = [teachers[1], teachers[3], teachers[4]];
-      teacher = dmTeachers[allBatches.indexOf(b) % dmTeachers.length];
+      teacher = dmTeachers[allBatchNames.indexOf(b) % dmTeachers.length];
       subject = 'Digital Marketing';
     }
 
     for (let j = 1; j <= 8; j++) {
-      // 6 assignments are in the past, 2 are in the future
       let dueDate;
       if (j <= 6) {
-        // past assignments
         dueDate = new Date(Date.now() - (j * 45 * 24 * 60 * 60 * 1000));
       } else {
-        // future assignments
         dueDate = new Date(Date.now() + ((j - 6) * 10 * 24 * 60 * 60 * 1000));
       }
 
       const creationDate = new Date(dueDate.getTime() - 14 * 24 * 60 * 60 * 1000);
       const submissions = [];
 
-      // Find students in this batch who enrolled before this assignment creation date
       const batchStudents = studentList.filter(s => s.batch === b && s.enrollmentDate <= creationDate);
 
       batchStudents.forEach((s, idx) => {
-        // Distribute submission states
         if (dueDate < new Date()) {
-          // Past assignments
-          // Slacker student: student list index is divisible by 7 (leave unsubmitted/overdue!)
           if (idx % 7 === 0) {
-            return; // no submission
+            return;
           }
 
           const isLate = idx % 11 === 0;
@@ -470,7 +538,7 @@ async function seed() {
 
           submissions.push({
             student: s._id,
-            fileUrl: `/files/submission_${s._id}_${j}.zip`,
+            fileUrl: `/uploads/submission_${s._id}_${j}.zip`,
             fileName: `homework_project_${j}.zip`,
             note: isLate ? 'Sorry for the late submission teacher.' : 'Completed all requirements.',
             submittedAt: isLate ? new Date(dueDate.getTime() + 12 * 3600000) : new Date(creationDate.getTime() + 4 * 24 * 60 * 60 * 1000),
@@ -479,12 +547,10 @@ async function seed() {
             status: isGraded ? 'graded' : (isLate ? 'late' : 'submitted')
           });
         } else {
-          // Future assignments
-          // Some submit early, some leave blank
           if (idx % 3 === 0) {
             submissions.push({
               student: s._id,
-              fileUrl: `/files/submission_${s._id}_${j}.zip`,
+              fileUrl: `/uploads/submission_${s._id}_${j}.zip`,
               fileName: `homework_project_${j}.zip`,
               note: 'Submitting early.',
               submittedAt: new Date(creationDate.getTime() + 2 * 24 * 60 * 60 * 1000),
@@ -512,18 +578,14 @@ async function seed() {
   }
 
   console.log('🗓️ Seeding 3 Years of Class Schedules & Attendance Records...');
-  // Loop back day-by-day for the past 3 years to populate realistic historical logs.
   const currentDate = new Date();
-  
-  // Seed historical class dates (1 class every Monday & Wednesday for each batch over the last 3 years)
   const daysToSeed = [];
-  let runner = new Date(Date.now() - 3 * 365 * 24 * 60 * 60 * 1000); // 3 years ago
+  let runner = new Date(Date.now() - 3 * 365 * 24 * 60 * 60 * 1000);
   
   while (runner < currentDate) {
-    const dayOfWeek = runner.getDay(); // 0: Sun, 1: Mon, etc.
+    const dayOfWeek = runner.getDay();
     const dateStr = runner.toISOString().split('T')[0];
     
-    // Exclude Sundays and Holidays
     if (dayOfWeek !== 0 && !holidayDates.has(dateStr)) {
       daysToSeed.push({
         dateStr,
@@ -531,33 +593,31 @@ async function seed() {
         rawDate: new Date(runner)
       });
     }
-    runner.setDate(runner.getDate() + 1); // next day
+    runner.setDate(runner.getDate() + 1);
   }
 
-  // To prevent running out of database limits, we will sample 1 in 4 days
   const sampledClassDays = daysToSeed.filter((_, idx) => idx % 4 === 0);
 
   for (const day of sampledClassDays) {
-    for (const b of allBatches) {
+    for (const b of allBatchNames) {
       let teacher;
       let subject;
       if (b.startsWith('VE-')) {
         const veTeachers = [teachers[0], teachers[2], teachers[5]];
-        teacher = veTeachers[allBatches.indexOf(b) % veTeachers.length];
+        teacher = veTeachers[allBatchNames.indexOf(b) % veTeachers.length];
         subject = 'Video Editing';
       } else {
         const dmTeachers = [teachers[1], teachers[3], teachers[4]];
-        teacher = dmTeachers[allBatches.indexOf(b) % dmTeachers.length];
+        teacher = dmTeachers[allBatchNames.indexOf(b) % dmTeachers.length];
         subject = 'Digital Marketing';
       }
 
-      // Verify if teacher was on leave on this date
       const onLeave = leaveRequests.some(l => {
         if (l.teacher.toString() !== teacher._id.toString()) return false;
         return day.dateStr >= l.startDate && day.dateStr <= l.endDate;
       });
 
-      if (onLeave) continue; // Skip seeding schedule and attendance for this teacher
+      if (onLeave) continue;
 
       let selectedClassroom;
       if (b.startsWith('VE-')) {
@@ -566,7 +626,6 @@ async function seed() {
         selectedClassroom = classrooms[1];
       }
 
-      // Determine time slot from the batch code (09AM, 11AM, 03PM, 05PM)
       let startTime = '09:00 AM';
       let endTime = '10:30 AM';
       if (b.includes('-11AM-')) {
@@ -580,7 +639,6 @@ async function seed() {
         endTime = '06:30 PM';
       }
 
-      // Create Schedule
       await Schedule.create({
         subject,
         batch: b,
@@ -592,14 +650,13 @@ async function seed() {
         status: day.rawDate < currentDate ? 'completed' : 'scheduled'
       });
 
-      // Roster students enrolled in this batch
       const batchStudents = studentList.filter(s => s.batch === b && s.enrollmentDate <= day.rawDate);
       
       for (const s of batchStudents) {
-        // Only mark attendance if student is active/complete at that date
-        const isCompleteAtDate = s.status === 'complete' && day.rawDate > new Date(s.enrollmentDate.getTime() + 180 * 24 * 60 * 60 * 1000);
-        if (isCompleteAtDate || s.status === 'drop' && day.rawDate > new Date(s.enrollmentDate.getTime() + 45 * 24 * 60 * 60 * 1000)) {
-          continue; // Student was no longer attending classes
+        const isCompleteAtDate = s.statusHistory.some(sh => sh.status === 'complete' && day.rawDate > sh.date);
+        const isDropAtDate = s.statusHistory.some(sh => sh.status === 'drop' && day.rawDate > sh.date);
+        if (isCompleteAtDate || isDropAtDate) {
+          continue;
         }
 
         const rand = Math.random();
@@ -616,7 +673,6 @@ async function seed() {
         });
       }
 
-      // Add a Daily Lesson Update for past dates
       if (day.rawDate < currentDate) {
         await DailyUpdate.create({
           subject,
@@ -688,8 +744,11 @@ async function seed() {
   await mongoose.disconnect();
 }
 
-seed().catch(err => {
-  console.error('❌ Seeder script failed:', err);
-  process.exit(1);
-});
+if (require.main === module) {
+  seed().catch(err => {
+    console.error('❌ Seeder script failed:', err);
+    process.exit(1);
+  });
+}
 
+module.exports = seed;

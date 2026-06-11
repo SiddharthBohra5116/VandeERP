@@ -231,12 +231,6 @@ router.get(
 // ===================================
 
 router.post(
-  '/messages/send',
-  ...guard,
-  messageCtrl.postSendMessage
-);
-
-router.post(
   '/messages/read-all',
   ...guard,
   messageCtrl.markAllMessagesRead

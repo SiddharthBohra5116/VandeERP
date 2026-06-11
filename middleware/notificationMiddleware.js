@@ -26,7 +26,10 @@ async function calculateNotifications(user) {
       alerts.push({
         id: m._id.toString(),
         type: 'message',
+<<<<<<< HEAD
         senderId: m.sender ? m.sender._id.toString() : null,
+=======
+>>>>>>> origin/main
         title: `Message from ${m.sender ? m.sender.name : 'System'}`,
         message: m.content.length > 60 ? `${m.content.substring(0, 57)}...` : m.content,
         link: user.role === 'admin' ? '/admin/dashboard' : `/${user.role}/dashboard`,
@@ -36,6 +39,7 @@ async function calculateNotifications(user) {
 
     // 2. Role-specific alerts
     if (user.role === 'admin') {
+<<<<<<< HEAD
       // Ready to convert leads alert
       const readyLeads = await Lead.find({ status: 'ready_to_convert' }).limit(5);
       readyLeads.forEach(l => {
@@ -49,6 +53,8 @@ async function calculateNotifications(user) {
         });
       });
 
+=======
+>>>>>>> origin/main
       // Password Reset Requests
       const resetUsers = await User.find({ resetRequested: true }).limit(5);
       resetUsers.forEach(u => {
@@ -63,6 +69,7 @@ async function calculateNotifications(user) {
       });
 
       // Overdue fees
+<<<<<<< HEAD
       const now = new Date();
       const fees = await Fee.find({ dueDate: { $lt: now } })
         .populate('student', 'name _id')
@@ -76,11 +83,20 @@ async function calculateNotifications(user) {
       overdueFees.slice(0, 5).forEach(f => {
         const net = (f.totalAmount || 0) - (f.discount || 0);
         const due = Math.max(0, net - (f.paidAmount || 0));
+=======
+      const fees = await Fee.find().populate('student');
+      const overdueFees = fees.filter(f => f.student && f.dueAmount > 0 && f.dueDate && new Date(f.dueDate) < today);
+      overdueFees.slice(0, 5).forEach(f => {
+>>>>>>> origin/main
         alerts.push({
           id: f._id.toString(),
           type: 'fee_overdue',
           title: 'Fee Overdue Alert',
+<<<<<<< HEAD
           message: `${f.student.name}'s fees are overdue (₹${due}).`,
+=======
+          message: `${f.student.name}'s fees are overdue (₹${f.dueAmount}).`,
+>>>>>>> origin/main
           link: `/admin/fees/${f.student._id}`,
           date: f.updatedAt
         });
@@ -117,7 +133,11 @@ async function calculateNotifications(user) {
               type: 'grading_pending',
               title: 'Grading Pending',
               message: `${sub.student ? sub.student.name : 'Student'} submitted ${a.title}`,
+<<<<<<< HEAD
               link: `/teacher/assignments/${a._id}#submission-${sub._id}`,
+=======
+              link: '/teacher/assignments',
+>>>>>>> origin/main
               date: sub.submittedAt
             });
           }
@@ -211,6 +231,7 @@ async function calculateNotifications(user) {
         });
 
         // C. Fees Reminders (Due / Overdue)
+<<<<<<< HEAD
         const tenDaysFromNow = new Date();
         tenDaysFromNow.setDate(tenDaysFromNow.getDate() + 10);
 
@@ -233,6 +254,26 @@ async function calculateNotifications(user) {
               link: '/counsellor/admissions',
               date: f.dueDate
             });
+=======
+        const fees = await Fee.find({ student: { $in: studentIds } }).populate('student');
+        const tenDaysFromNow = new Date();
+        tenDaysFromNow.setDate(tenDaysFromNow.getDate() + 10);
+
+        fees.forEach(f => {
+          if (f.student && f.dueAmount > 0 && f.dueDate) {
+            const dueDate = new Date(f.dueDate);
+            if (dueDate <= tenDaysFromNow) {
+              const overdue = dueDate < today;
+              alerts.push({
+                id: f._id.toString(),
+                type: overdue ? 'fee_overdue' : 'fee_due_soon',
+                title: overdue ? '💵 Converted Student Fee Overdue' : '💵 Converted Student Fee Due',
+                message: `${f.student.name}'s fee of ₹${f.dueAmount} is ${overdue ? 'overdue' : 'due soon'}.`,
+                link: '/counsellor/admissions',
+                date: f.dueDate
+              });
+            }
+>>>>>>> origin/main
           }
         });
       }
@@ -319,7 +360,11 @@ async function calculateNotifications(user) {
           type: 'homework_due',
           title: 'Assignment Deadline',
           message: `Pending homework: "${a.title}" is due by ${a.dueDate.toISOString().split('T')[0]}`,
+<<<<<<< HEAD
           link: `/student/assignments#assignment-${a._id}`,
+=======
+          link: '/student/assignments',
+>>>>>>> origin/main
           date: a.dueDate
         });
       });
@@ -333,11 +378,15 @@ async function calculateNotifications(user) {
   const unreadAlerts = alerts.filter(a => !user.readNotifications || !user.readNotifications.includes(a.id));
 
   // Sort alerts chronologically (latest first)
+<<<<<<< HEAD
   return unreadAlerts.sort((a, b) => {
     const dateA = a.date ? new Date(a.date) : new Date(0);
     const dateB = b.date ? new Date(b.date) : new Date(0);
     return dateB - dateA;
   });
+=======
+  return unreadAlerts.sort((a, b) => new Date(b.date) - new Date(a.date));
+>>>>>>> origin/main
 }
 
 async function calculateSidebarBadges(user) {
@@ -346,8 +395,12 @@ async function calculateSidebarBadges(user) {
     feesOverdue: 0,
     ungradedAssignments: 0,
     staleLeads: 0,
+<<<<<<< HEAD
     unreadMessages: 0,
     readyToConvert: 0
+=======
+    unreadMessages: 0
+>>>>>>> origin/main
   };
   const today = new Date();
   try {
@@ -356,6 +409,7 @@ async function calculateSidebarBadges(user) {
 
     if (user.role === 'admin') {
       badges.resetRequests = await User.countDocuments({ resetRequested: true });
+<<<<<<< HEAD
       badges.readyToConvert = await Lead.countDocuments({ status: 'ready_to_convert' });
       const overdueFeeRaw = await Fee.find({ dueDate: { $lt: today } })
         .select('totalAmount discount paidAmount')
@@ -364,6 +418,10 @@ async function calculateSidebarBadges(user) {
         const net = (f.totalAmount || 0) - (f.discount || 0);
         return Math.max(0, net - (f.paidAmount || 0)) > 0;
       }).length;
+=======
+      const fees = await Fee.find();
+      badges.feesOverdue = fees.filter(f => f.dueAmount > 0 && f.dueDate && new Date(f.dueDate) < today).length;
+>>>>>>> origin/main
     } else if (user.role === 'teacher') {
       const activeAssignments = await Assignment.find({ teacher: user._id, isActive: true });
       let ungradedCount = 0;
@@ -402,6 +460,7 @@ async function calculateSidebarBadges(user) {
 }
 
 const populateNotifications = async (req, res, next) => {
+<<<<<<< HEAD
   // Skip execution for static assets (Issue 3.6)
   if (req.url.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/) || req.url.startsWith('/uploads/')) {
     return next();
@@ -410,6 +469,11 @@ const populateNotifications = async (req, res, next) => {
   res.locals.notifications = [];
   res.locals.greeting = '';
   res.locals.sidebarBadges = { resetRequests: 0, feesOverdue: 0, ungradedAssignments: 0, staleLeads: 0, readyToConvert: 0 };
+=======
+  res.locals.notifications = [];
+  res.locals.greeting = '';
+  res.locals.sidebarBadges = { resetRequests: 0, feesOverdue: 0, ungradedAssignments: 0, staleLeads: 0 };
+>>>>>>> origin/main
 
   // 1. Time-aware greeting calculation
   const hour = new Date().getHours();
@@ -429,17 +493,26 @@ const populateNotifications = async (req, res, next) => {
 
   if (token) {
     try {
+<<<<<<< HEAD
       if (!process.env.JWT_SECRET) {
         throw new Error('JWT_SECRET configuration is missing on the server.');
       }
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+=======
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'vande_secret_key');
+>>>>>>> origin/main
       const user = await User.findById(decoded.id).select('-password');
       if (user && (user.isActive || user.status === 'complete')) {
         req.user = user;
         res.locals.user = user;
+<<<<<<< HEAD
         // DB queries removed from middleware per Day 5 performance rules
         res.locals.notifications = [];
         res.locals.sidebarBadges = {};
+=======
+        res.locals.notifications = await calculateNotifications(user);
+        res.locals.sidebarBadges = await calculateSidebarBadges(user);
+>>>>>>> origin/main
       }
     } catch (err) {
       // Token expired or invalid, let auth protect middleware handle routing redirects later
@@ -449,8 +522,12 @@ const populateNotifications = async (req, res, next) => {
   next();
 };
 
+<<<<<<< HEAD
 module.exports = {
   populateNotifications,
   calculateNotifications,
   calculateSidebarBadges
 };
+=======
+module.exports = populateNotifications;
+>>>>>>> origin/main

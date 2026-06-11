@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+<<<<<<< HEAD
 
 const holidaySchema = new mongoose.Schema({
 
@@ -25,6 +26,15 @@ const holidaySchema = new mongoose.Schema({
     default: ''
   }
 
+=======
+const { HOLIDAY_TYPES } = require('../config/constants');
+
+const holidaySchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  date: { type: String, required: true, unique: true },
+  type: { type: String, enum: HOLIDAY_TYPES, default: 'academy' },
+  note: { type: String, default: '' }
+>>>>>>> origin/main
 }, { timestamps: true });
 
 module.exports = mongoose.model('Holiday', holidaySchema);
