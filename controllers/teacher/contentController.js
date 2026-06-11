@@ -54,17 +54,10 @@ exports.postCreateUpdate = async (req, res) => {
   });
   try {
     if (req.user.role !== 'admin') {
-<<<<<<< HEAD
-      const isAuthorized = await Schedule.findOne({ teacher: req.user._id, batch: req.body.batch, subject: req.body.subject });
-      if (!isAuthorized) {
-        console.warn(`⚠️ Teacher unauthorized update attempt for batch ${req.body.batch} subject ${req.body.subject}`);
-        return res.redirect('/teacher/updates?error=You+are+not+scheduled+to+teach+this+subject+for+this+batch');
-=======
       const validBatch = await Schedule.findOne({ teacher: req.user._id, batch: req.body.batch });
       if (!validBatch) {
         console.warn(`⚠️ Teacher unauthorized update attempt for batch ${req.body.batch}`);
         return res.status(403).render('403', { title: 'Access Denied', user: req.user });
->>>>>>> origin/main
       }
     }
 
@@ -73,11 +66,7 @@ exports.postCreateUpdate = async (req, res) => {
       data.topics = data.topics.split(',').map(t => t.trim()).filter(Boolean);
     }
     if (req.file) {
-<<<<<<< HEAD
-      data.fileUrl = `/files/${req.file.filename}`;
-=======
       data.fileUrl = `/uploads/${req.file.filename}`;
->>>>>>> origin/main
       data.fileName = req.file.originalname;
     }
 

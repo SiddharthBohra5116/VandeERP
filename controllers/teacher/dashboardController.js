@@ -21,11 +21,7 @@ exports.getDashboard = async (req, res) => {
   console.log('📊 Teacher Dashboard load:', { teacherId: req.user._id, today });
 
   try {
-<<<<<<< HEAD
     const [pendingAssignments, todayAttendance, recentUpdates, messages, schedules, admin, todaySchedules] = await Promise.all([
-=======
-    const [pendingAssignments, todayAttendance, recentUpdates, messages, schedules, admin] = await Promise.all([
->>>>>>> origin/main
       Assignment.find({ teacher: req.user._id, isActive: true, dueDate: { $gte: new Date() } })
         .sort({ dueDate: 1 }).limit(5),
       Attendance.countDocuments({ teacher: req.user._id, date: today }),
@@ -34,11 +30,8 @@ exports.getDashboard = async (req, res) => {
       Schedule.find({ teacher: req.user._id, date: { $gte: today } })
         .populate('classroom', 'name location').sort({ date: 1, startTime: 1 }).limit(5),
       User.findOne({ role: 'admin' }),
-<<<<<<< HEAD
       Schedule.find({ teacher: req.user._id, date: today })
         .populate('classroom', 'name location').sort({ startTime: 1 }),
-=======
->>>>>>> origin/main
     ]);
 
     // ─── WEEKLY TIMETABLE ────────────────────────────────────────────────────
@@ -96,10 +89,7 @@ exports.getDashboard = async (req, res) => {
       pendingAssignments: pendingAssignments || [],
       messages: messages || [],
       schedules: schedules || [],
-<<<<<<< HEAD
       todaySchedules: todaySchedules || [],
-=======
->>>>>>> origin/main
       recentUpdates: recentUpdates || [],
       daysTimetable,
       weekDates,
