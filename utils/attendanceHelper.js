@@ -28,7 +28,7 @@ async function filterValidAttendance(records) {
       const recDateStr = rec.date; // YYYY-MM-DD
       
       const onLeave = approvedLeaves.some(leave => {
-        const leaveTeacherId = leave.teacher.toString();
+        const leaveTeacherId = leave.user ? leave.user.toString() : (leave.teacher ? leave.teacher.toString() : '');
         if (leaveTeacherId !== teacherId) return false;
         
         return recDateStr >= leave.startDate && recDateStr <= leave.endDate;
@@ -45,7 +45,7 @@ async function filterValidAttendance(records) {
 
 /**
  * Calculates attendance percentage and other stats for students.
- * @param {Array} students - Array of student User objects/documents.
+ * @param {Array} students - Array of student User/Student objects/documents.
  * @param {Array} allAttendanceRecords - All attendance records for these students.
  * @param {Array} todayRecords - Attendance records marked today.
  */
@@ -54,7 +54,10 @@ async function calculateStudentsAttendance(students, allAttendanceRecords, today
   
   const studentMap = {};
   students.forEach(u => {
-    studentMap[u._id.toString()] = { total: 0, present: 0, absent: 0, late: 0, lastAbsenceDate: null };
+    const id = u.studentId ? u.studentId.toString() : (u._id ? u._id.toString() : '');
+    if (id) {
+      studentMap[id] = { total: 0, present: 0, absent: 0, late: 0, lastAbsenceDate: null };
+    }
   });
 
   // Sort valid records chronologically to find the last absence date
@@ -79,10 +82,10 @@ async function calculateStudentsAttendance(students, allAttendanceRecords, today
   const markedTodaySet = new Set((todayRecords || []).map(r => r.student.toString()));
 
   students.forEach(u => {
-    const sId = u._id.toString();
-    const stats = studentMap[sId];
+    const id = u.studentId ? u.studentId.toString() : (u._id ? u._id.toString() : '');
+    const stats = studentMap[id] || { total: 0, present: 0, absent: 0, late: 0, lastAbsenceDate: null };
     u.attendancePct = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 100;
-    u.isMarkedToday = markedTodaySet.has(sId);
+    u.isMarkedToday = markedTodaySet.has(id);
     u.attendanceStats = stats;
   });
 
