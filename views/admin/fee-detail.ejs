@@ -169,7 +169,6 @@
         %>
         <input type="date" id="dueDate" name="dueDate" class="form-control" value="<%= formattedDate %>">
       </div>
-<<<<<<< HEAD
 
       <!-- Installments Edit List -->
       <div style="margin-top: 1rem; border-top: 1px dashed var(--border); padding-top: 1rem;">
@@ -207,14 +206,10 @@
       </div>
 
       <button type="submit" class="btn btn-ghost" style="margin-top: 1rem;">Save Adjustments</button>
-=======
-      <button type="submit" class="btn btn-ghost">Save Adjustments</button>
->>>>>>> origin/main
     </form>
   </div>
 </div>
 
-<<<<<<< HEAD
 <script>
   function addInstRow() {
     const container = document.getElementById('inst_list_container');
@@ -250,8 +245,6 @@
   }
 </script>
 
-=======
->>>>>>> origin/main
 <!-- Receipt Ledger -->
 <div class="card" style="margin-top: 1.25rem;">
   <div class="card-header">
@@ -278,7 +271,7 @@
         <tbody>
           <% fee.payments.forEach(p => { %>
             <tr>
-              <td class="mono text-sm"><%= new Date(p.date).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %></td>
+              <td class="mono text-sm"><%= new Date(p.paidAt || p.date).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %></td>
               <td class="mono text-green fw-600">₹<%= p.amount.toLocaleString('en-IN') %></td>
               <td><span class="badge badge-grey"><%= p.method %></span></td>
               <td class="mono text-xs"><%= p.transactionId || '—' %></td>
