@@ -16,14 +16,7 @@ const protect = async (req, res, next) => {
   }
 
   try {
-<<<<<<< HEAD
-    if (!process.env.JWT_SECRET) {
-      throw new Error('JWT_SECRET configuration is missing on the server.');
-    }
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-=======
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'vande_secret_key');
->>>>>>> origin/main
     req.user = await User.findById(decoded.id).select('-password');
     if (!req.user || (!req.user.isActive && req.user.status !== 'complete')) {
       if (req.accepts('html')) return res.redirect('/auth/login');

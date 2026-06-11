@@ -10,30 +10,12 @@ const attachmentSchema = new mongoose.Schema({
 const messageSchema = new mongoose.Schema({
   sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-<<<<<<< HEAD
-
-  replyTo: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Message',
-    default: null
-  },
-
-  content: { type: String, trim: true, default: '' },
-  attachments: [attachmentSchema],
-
-  read: { type: Boolean, default: false },
-  readAt: { type: Date, default: null },
-
-  editableUntil: { type: Date },
-
-=======
   replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
   content: { type: String, trim: true, default: '' },
   attachments: [attachmentSchema],
   read: { type: Boolean, default: false },
   readAt: { type: Date, default: null },
   editableUntil: { type: Date },
->>>>>>> origin/main
   isDeletedBySender: { type: Boolean, default: false },
   isDeletedByRecipient: { type: Boolean, default: false }
 }, { timestamps: true });
@@ -41,17 +23,9 @@ const messageSchema = new mongoose.Schema({
 messageSchema.pre('validate', function(next) {
   const hasText = this.content && this.content.trim().length > 0;
   const hasAttachments = this.attachments && this.attachments.length > 0;
-<<<<<<< HEAD
-
   if (!hasText && !hasAttachments) {
     this.invalidate('content', 'Message must contain text or at least one attachment.');
   }
-
-=======
-  if (!hasText && !hasAttachments) {
-    this.invalidate('content', 'Message must contain text or at least one attachment.');
-  }
->>>>>>> origin/main
   next();
 });
 
@@ -60,10 +34,6 @@ messageSchema.pre('save', function(next) {
     const creationTime = this.createdAt || new Date();
     this.editableUntil = new Date(creationTime.getTime() + 10 * 60 * 1000);
   }
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/main
   next();
 });
 
