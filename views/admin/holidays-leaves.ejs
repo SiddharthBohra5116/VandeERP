@@ -1,22 +1,14 @@
 <%
   layout = 'main';
   title = 'Holidays & Leaves';
-<<<<<<< HEAD
   subtitle = 'Academy Holidays & Staff Leave Requests';
-=======
-  subtitle = 'Academy Holidays & Teacher Leave Requests';
->>>>>>> origin/main
   page = 'holidays-leaves';
 %>
 
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
   <div>
     <h2 class="profile-name" style="font-size:1.5rem; font-weight:800; color:var(--text);">Holidays & Leaves</h2>
-<<<<<<< HEAD
     <p class="td-muted text-sm">Schedule academy holidays and process staff leave applications</p>
-=======
-    <p class="td-muted text-sm">Schedule academy holidays and process teacher leave applications</p>
->>>>>>> origin/main
   </div>
 </div>
 
@@ -24,11 +16,7 @@
 <div class="card" style="padding: 0.5rem; margin-bottom: 1.25rem;">
   <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
     <button class="btn btn-sm btn-primary tab-btn" onclick="openTab(event, 'holidaysTab')">🗓️ Academy Holidays</button>
-<<<<<<< HEAD
     <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'leavesTab')">✉️ Staff Leaves</button>
-=======
-    <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'leavesTab')">✉️ Teacher Leaves</button>
->>>>>>> origin/main
   </div>
 </div>
 
@@ -78,7 +66,7 @@
                   <td><strong><%= h.name %></strong></td>
                   <td class="mono text-sm"><%= h.date %></td>
                   <td class="text-right">
-                    <form action="/admin/holidays/<%= h._id %>/delete" method="POST" style="display:inline; margin:0;" onsubmit="return confirm('Delete this holiday?');">
+                     <form action="/admin/holidays/<%= h._id %>/delete" method="POST" style="display:inline; margin:0;" onsubmit="return confirm('Delete this holiday?');">
                       <button type="submit" class="btn btn-ghost btn-xs" style="color:var(--red);">Delete</button>
                     </form>
                   </td>
@@ -96,11 +84,7 @@
 <div id="leavesTab" class="tab-content" style="display:none;">
   <div class="card">
     <div class="card-header" style="margin-bottom: 1.25rem;">
-<<<<<<< HEAD
       <div class="card-title">Staff Leave Applications</div>
-=======
-      <div class="card-title">Teacher Leave Applications</div>
->>>>>>> origin/main
     </div>
     <% if (leaves.length === 0) { %>
       <div class="empty-state" style="padding: 3rem 1rem;">
@@ -111,11 +95,7 @@
         <table>
           <thead>
             <tr>
-<<<<<<< HEAD
               <th>Applicant</th>
-=======
-              <th>Teacher</th>
->>>>>>> origin/main
               <th>Date Range</th>
               <th>Reason</th>
               <th>Status</th>
@@ -127,7 +107,6 @@
             <% leaves.forEach(leave => { %>
               <tr>
                 <td>
-<<<<<<< HEAD
                   <div style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
                     <%= leave.teacher ? leave.teacher.name : 'Deleted Staff' %>
                     <% if (leave.teacher && leave.teacher.role) { %>
@@ -140,10 +119,6 @@
                     <% } %>
                   </div>
                   <div class="td-muted text-xs"><%= leave.teacher ? leave.teacher.email : '—' %></div>
-=======
-                  <div style="font-weight: 600;"><%= leave.teacher ? leave.teacher.name : 'Deleted Teacher' %></div>
-                  <div class="td-muted text-xs"><%= leave.teacher ? leave.teacher.rollNumber : '—' %></div>
->>>>>>> origin/main
                 </td>
                 <td class="mono text-sm">
                   <%= leave.startDate %> &rarr; <%= leave.endDate %>
@@ -161,7 +136,6 @@
                 </td>
                 <td class="mono text-xs"><%= new Date(leave.appliedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %></td>
                 <td class="text-right">
-<<<<<<< HEAD
                   <div style="display:flex; gap:0.25rem; justify-content:flex-end;">
                     <% if (leave.status !== 'approved') { %>
                       <form action="/admin/leaves/<%= leave._id %>/approve" method="POST" style="margin:0;">
@@ -174,20 +148,6 @@
                       </form>
                     <% } %>
                   </div>
-=======
-                  <% if (leave.status === 'pending') { %>
-                    <div style="display:flex; gap:0.25rem; justify-content:flex-end;">
-                      <form action="/admin/leaves/<%= leave._id %>/approve" method="POST" style="margin:0;">
-                        <button type="submit" class="btn btn-primary btn-xs" style="background:var(--green); border-color:var(--green); color:black;">Approve</button>
-                      </form>
-                      <form action="/admin/leaves/<%= leave._id %>/reject" method="POST" style="margin:0;">
-                        <button type="submit" class="btn btn-ghost btn-xs" style="color:var(--red);">Reject</button>
-                      </form>
-                    </div>
-                  <% } else { %>
-                    <span class="td-muted text-xs">Processed</span>
-                  <% } %>
->>>>>>> origin/main
                 </td>
               </tr>
             <% }) %>
