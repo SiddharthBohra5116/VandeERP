@@ -61,7 +61,7 @@
                     dotBorder = 'none';
                   }
                 %>
-                <span class="call-dot" title="<%= titleText %>" style="width:10px; height:10px; border-radius:50%; background:<%= dotColor %>; border:<%= dotBorder %>; display:inline-block; cursor:help;"></span>
+                <span class="call-dot" title="<%= titleText %>" <%= `style="width:10px; height:10px; border-radius:50%; background:${dotColor}; border:${dotBorder}; display:inline-block; cursor:help;"` %>></span>
               <% } %>
             </div>
           </div>
@@ -92,7 +92,7 @@
         <div style="display:flex; justify-content:space-between;">
           <span class="text-muted text-sm">Follow-up Date</span>
          <% const isOverdue = lead.followUpDate && new Date(lead.followUpDate) < new Date() && lead.status !== 'admission_completed' && lead.status !== 'lost'; %>
-          <span class="mono text-sm" style="color:<%= isOverdue ? 'var(--red)' : 'var(--text)' %>">
+          <span class="mono text-sm" <%= isOverdue ? 'style="color: var(--red);"' : 'style="color: var(--text);"' %>>
             <%= lead.followUpDate ? new Date(lead.followUpDate).toLocaleDateString('en-IN', {weekday:'short',day:'numeric',month:'short',year:'numeric'}) : '—' %>
             <% if (isOverdue) { %> ⚠️<% } %>
           </span>
@@ -297,8 +297,8 @@
                 textColor = 'var(--green)';
               }
             %>
-            <div style="flex-grow: 1; min-width: 50px; height: 2px; background: <%= lineColor %>; margin: -26px -10px 0 -10px; position: relative; display: flex; align-items: center; justify-content: center; z-index: 1;">
-              <span style="background: var(--bg-card); padding: 1px 5px; border-radius: 8px; font-size: 8px; font-weight: 700; font-family: var(--mono); color: <%= textColor %>; border: 1px solid <%= lineColor %>; margin-top: -2px;">
+            <div <%= `style="flex-grow: 1; min-width: 50px; height: 2px; background: ${lineColor}; margin: -26px -10px 0 -10px; position: relative; display: flex; align-items: center; justify-content: center; z-index: 1;"` %>>
+              <span <%= `style="background: var(--bg-card); padding: 1px 5px; border-radius: 8px; font-size: 8px; font-weight: 700; font-family: var(--mono); color: ${textColor}; border: 1px solid ${lineColor}; margin-top: -2px;"` %>>
                 <%= gapLabel %> gap
               </span>
             </div>
@@ -337,7 +337,7 @@
             %>
             <div class="timeline-item">
               <div class="timeline-dot <%= fu.doneBy && fu.doneBy.role === 'admin' ? 'active' : '' %>"></div>
-              <div class="timeline-body" style="<%= fu.doneBy && fu.doneBy.role === 'admin' ? 'border-left: 2px solid var(--gold-border); padding-left: 10px;' : '' %>">
+              <div class="timeline-body" <%= fu.doneBy && fu.doneBy.role === 'admin' ? 'style="border-left: 2px solid var(--gold-border); padding-left: 10px;"' : '' %>>
                 <div style="display:flex; align-items:center; gap:8px; margin-bottom:2px; flex-wrap: wrap;">
                   <% if (fu.doneBy && fu.doneBy.role === 'admin') { %>
                     <div style="font-size:12px; font-weight:700; color:var(--gold); display:flex; align-items:center; gap:0.25rem;">
@@ -369,7 +369,7 @@
                   <%= new Date(fu.doneAt).toLocaleDateString('en-IN', {weekday:'short',day:'numeric',month:'short'}) %> &nbsp;·&nbsp;
                   <%= new Date(fu.doneAt).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}) %>
                 </div>
-                <div class="mt-1 text-sm" style="line-height:1.4; <%= fu.doneBy && fu.doneBy.role === 'admin' ? 'color:var(--text); font-style:italic;' : 'color:var(--text-sub);' %>">
+                <div class="mt-1 text-sm" <%= fu.doneBy && fu.doneBy.role === 'admin' ? 'style="line-height:1.4; color:var(--text); font-style:italic;"' : 'style="line-height:1.4; color:var(--text-sub);"' %>>
                   <%= fu.note %>
                 </div>
               </div>

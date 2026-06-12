@@ -71,7 +71,7 @@
                       </span>
                     </div>
                     <div class="progress-bar">
-                      <div class="progress-fill <%= overall >= 75 ? 'green' : 'gold' %>" style="width: <%= overall %>%"></div>
+                      <div class="progress-fill <%= overall >= 75 ? 'green' : 'gold' %>" <%= `style="width: ${overall}%"` %>></div>
                     </div>
                   </div>
                 </td>

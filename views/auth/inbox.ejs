@@ -5,7 +5,7 @@
   page = 'inbox';
 %>
 
-<div class="inbox-container">
+<div class="inbox-container <%= selectedContact ? 'has-selection' : '' %>">
   <!-- Contacts Panel (Left) -->
   <div class="inbox-contacts-panel">
     <div class="contacts-search-box">
@@ -62,7 +62,7 @@
                 <%
                   const initials = c.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                 %>
-                <div class="contact-avatar-fallback" style="background-color: <%= roleColor %>15; color: <%= roleColor %>;">
+                <div class="contact-avatar-fallback" <%= `style="background-color: ${roleColor}15; color: ${roleColor};"` %>>
                   <%= initials %>
                 </div>
               <% } %>
@@ -121,14 +121,14 @@
             <%
               const initials = selectedContact.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
             %>
-            <div class="chat-header-avatar-fallback" style="background-color: <%= roleColor %>15; color: <%= roleColor %>;">
+            <div class="chat-header-avatar-fallback" <%= `style="background-color: ${roleColor}15; color: ${roleColor};"` %>>
               <%= initials %>
             </div>
           <% } %>
           <div>
             <div class="chat-header-name"><%= selectedContact.name %></div>
             <div class="chat-header-meta">
-              <span class="contact-role-badge" style="border-color: <%= roleColor %>20; color: <%= roleColor %>; background-color: <%= roleColor %>08; font-size: 10px; padding: 1px 6px;">
+              <span class="contact-role-badge" <%= `style="border-color: ${roleColor}20; color: ${roleColor}; background-color: ${roleColor}08; font-size: 10px; padding: 1px 6px;"` %>>
                 <%= selectedContact.role %></span>
             </div>
           </div>
@@ -646,10 +646,16 @@
     height: calc(100vh - 120px);
   }
   .inbox-contacts-panel {
-    display: <%= selectedContact ? 'none' : 'flex' %>;
+    display: flex;
   }
   .inbox-chat-panel {
-    display: <%= selectedContact ? 'flex' : 'none' %>;
+    display: none;
+  }
+  .inbox-container.has-selection .inbox-contacts-panel {
+    display: none;
+  }
+  .inbox-container.has-selection .inbox-chat-panel {
+    display: flex;
   }
 }
 

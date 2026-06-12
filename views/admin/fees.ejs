@@ -93,7 +93,7 @@
                     <span><%= pct %>%</span>
                   </div>
                   <div class="progress-bar">
-                    <div class="progress-fill <%= pct === 100 ? 'green' : pct > 50 ? 'orange' : 'red' %>" style="width: <%= pct %>%"></div>
+                    <div class="progress-fill <%= pct === 100 ? 'green' : pct > 50 ? 'orange' : 'red' %>" <%= `style="width: ${pct}%"` %>></div>
                   </div>
                 </div>
               </td>

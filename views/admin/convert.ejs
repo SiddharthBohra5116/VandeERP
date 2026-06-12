@@ -73,7 +73,7 @@
         </div>
       </div>
 
-      <div class="form-row" id="custom_batch_container" style="display: <%= (batches && batches.length > 0) ? 'none' : 'block' %>;">
+      <div class="form-row" id="custom_batch_container" <%= `style="display: ${(batches && batches.length > 0) ? 'none' : 'block'};"` %>>
         <div class="form-group">
           <label class="form-label" style="font-size: 10px;">New Batch Name *</label>
           <input type="text" id="customBatch" name="customBatch" class="form-control" placeholder="e.g. DM-03PM-A2" <%= (batches && batches.length > 0) ? '' : 'required' %>>

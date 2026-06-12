@@ -93,7 +93,7 @@
               <td><span class="badge badge-orange"><%= lead.course %></span></td>
               <td class="td-muted"><%= lead.source %></td>
               <td><span class="badge <%= statusBadge %>"><%= lead.status %></span></td>
-              <td class="td-mono" style="color: <%= isOverdue ? 'var(--red)' : 'inherit' %>; font-weight: <%= isOverdue ? 'bold' : 'normal' %>;">
+              <td class="td-mono" <%= isOverdue ? 'style="color: var(--red); font-weight: bold;"' : '' %>>
                 <%= lead.followUpDate ? new Date(lead.followUpDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'}) : '—' %>
                 <% if (isOverdue) { %> ⚠️<% } %>
               </td>

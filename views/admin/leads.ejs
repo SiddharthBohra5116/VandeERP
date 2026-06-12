@@ -75,7 +75,7 @@
             <% 
               const isOverdue = l.followUpDate && new Date(l.followUpDate) < new Date() && l.status !== 'admission_completed' && l.status !== 'lost';
             %>
-            <trstyle="<%= l.status === 'joining_interested' ? 'background: linear-gradient(90deg, rgba(212,175,55,0.08) 0%, rgba(0,0,0,0) 100%); border-left: 3px solid var(--gold);' : '' %>"
+            <tr <%= l.status === 'joining_interested' ? 'style="background: linear-gradient(90deg, rgba(212,175,55,0.08) 0%, rgba(0,0,0,0) 100%); border-left: 3px solid var(--gold);"' : '' %>>
               <td class="td-name">
                 <a href="/admin/leads/<%= l._id %>" style="color:var(--gold); font-weight:600;"><%= l.name %></a>
                 <% if (l.status === 'joining_interested') { %>

@@ -65,7 +65,7 @@
             const statusBadgeClass = isPaid ? 'badge-green' : isLate ? 'badge-red' : 'badge-orange';
             const instPct = inst.amount > 0 ? Math.round((inst.paidAmount / inst.amount) * 100) : 0;
           %>
-          <div style="background:var(--bg-input); border: 1px solid <%= isLate ? 'rgba(239,68,68,0.2)' : 'var(--border)' %>; border-radius:var(--radius); padding: 1rem; display:flex; flex-direction:column; gap:0.5rem; position:relative;">
+          <div <%= isLate ? 'style="background:var(--bg-input); border: 1px solid rgba(239,68,68,0.2); border-radius:var(--radius); padding: 1rem; display:flex; flex-direction:column; gap:0.5rem; position:relative;"' : 'style="background:var(--bg-input); border: 1px solid var(--border); border-radius:var(--radius); padding: 1rem; display:flex; flex-direction:column; gap:0.5rem; position:relative;"' %>>
             <div style="display:flex; justify-content:space-between; align-items:start;">
               <div style="font-size:13px; font-weight:700; color:var(--text);"><%= inst.name %></div>
               <span class="badge <%= statusBadgeClass %>" style="font-size:9px; padding:1px 5px;"><%= statusLabel %></span>
@@ -91,7 +91,7 @@
                 <span><%= instPct %>%.</span>
               </div>
               <div class="progress-bar" style="height:4px; background:rgba(255,255,255,0.05); border-radius: 4px;">
-                <div class="progress-fill <%= isPaid ? 'green' : instPct > 0 ? 'orange' : 'red' %>" style="width: <%= instPct %>%"></div>
+                <div class="progress-fill <%= isPaid ? 'green' : instPct > 0 ? 'orange' : 'red' %>" <%= `style="width: ${instPct}%"` %>></div>
               </div>
             </div>
           </div>

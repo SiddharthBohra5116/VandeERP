@@ -105,15 +105,7 @@
 <!-- Document Verification Section -->
 <div id="document-verification" class="card" style="margin-top: 1.5rem;">
   <div class="card-header" style="display: flex; align-items: center; gap: 0.75rem;">
-    <div style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-      <% if (user.idProof && user.idVerified) { %>
-        background: rgba(34,197,94,0.1); color: #16a34a;
-      <% } else if (user.idProof && !user.idVerified) { %>
-        background: rgba(195,155,52,0.12); color: var(--gold);
-      <% } else { %>
-        background: rgba(239,68,68,0.1); color: var(--red);
-      <% } %>
-    ">
+    <div <%= (user.idProof && user.idVerified) ? 'style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(34,197,94,0.1); color: #16a34a;"' : (user.idProof && !user.idVerified) ? 'style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(195,155,52,0.12); color: var(--gold);"' : 'style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(239,68,68,0.1); color: var(--red);"' %>>
       <% if (user.idProof && user.idVerified) { %>
         <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
       <% } else { %>

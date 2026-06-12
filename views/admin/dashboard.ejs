@@ -208,7 +208,7 @@
                   <div class="td-muted text-sm" style="font-family: monospace;"><%= lead.phone %></div>
                 </td>
                 <td><%= lead.assignedTo ? lead.assignedTo.name : 'Unassigned' %></td>
-                <td style="color: <%= isOverdue ? 'var(--red)' : 'inherit' %>; font-weight: <%= isOverdue ? 'bold' : 'normal' %>;">
+                <td <%= isOverdue ? 'style="color: var(--red); font-weight: bold;"' : '' %>>
                   <%= lead.followUpDate ? new Date(lead.followUpDate).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) : '—' %>
                   <%= isOverdue ? '⚠️' : '' %>
                 </td>

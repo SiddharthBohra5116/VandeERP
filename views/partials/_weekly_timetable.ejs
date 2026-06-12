@@ -40,11 +40,11 @@
         const isToday = new Date().toDateString() === dateObj.toDateString();
         const dayClasses = daysTimetable[day] || [];
     %>
-      <div style="background: <%= isToday ? 'rgba(255,204,0,0.03)' : 'var(--bg-hover)' %>; border: 1px solid <%= isToday ? 'var(--gold-border)' : 'var(--border)' %>; border-radius: var(--radius); min-height: 250px; display: flex; flex-direction: column;">
+      <div <%= `style="background: ${isToday ? 'rgba(255,204,0,0.03)' : 'var(--bg-hover)'}; border: 1px solid ${isToday ? 'var(--gold-border)' : 'var(--border)'}; border-radius: var(--radius); min-height: 250px; display: flex; flex-direction: column;"` %>>
         
         <!-- Day Title Header -->
-        <div style="padding: 0.6rem 0.75rem; border-bottom: 1px solid <%= isToday ? 'var(--gold-border)' : 'var(--border)' %>; text-align: center; background: <%= isToday ? 'var(--gold-dim)' : 'rgba(0,0,0,0.1)' %>;">
-          <div style="font-size: 0.75rem; font-weight: 700; color: <%= isToday ? 'var(--gold)' : 'var(--text-sub)' %>; text-transform: uppercase; letter-spacing: 0.05em;"><%= day.slice(0, 3) %></div>
+        <div <%= `style="padding: 0.6rem 0.75rem; border-bottom: 1px solid ${isToday ? 'var(--gold-border)' : 'var(--border)'}; text-align: center; background: ${isToday ? 'var(--gold-dim)' : 'rgba(0,0,0,0.1)'};"` %>>
+          <div <%= `style="font-size: 0.75rem; font-weight: 700; color: ${isToday ? 'var(--gold)' : 'var(--text-sub)'}; text-transform: uppercase; letter-spacing: 0.05em;"` %>><%= day.slice(0, 3) %></div>
           <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.1rem;"><%= dateObj.getDate() %> <%= dateObj.toLocaleDateString('en-IN', {month:'short'}) %></div>
         </div>
 
@@ -63,12 +63,12 @@
                 if (isCancelled) timeColor = 'var(--text-muted)';
                 else if (isCompleted) timeColor = 'var(--blue)';
             %>
-              <div style="background: var(--bg-card); border: 1px solid <%= isCancelled ? 'var(--border-light)' : 'var(--border)' %>; border-left: 3px solid <%= isCancelled ? 'var(--red)' : (isCompleted ? 'var(--blue)' : 'var(--gold)') %>; border-radius: 4px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem; transition: transform 0.15s, border-color 0.15s; position: relative;" 
+              <div <%= `style="background: var(--bg-card); border: 1px solid ${isCancelled ? 'var(--border-light)' : 'var(--border)'}; border-left: 3px solid ${isCancelled ? 'var(--red)' : (isCompleted ? 'var(--blue)' : 'var(--gold)')}; border-radius: 4px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem; transition: transform 0.15s, border-color 0.15s; position: relative;"` %> 
                    onmouseover="this.style.transform='translateY(-1px)'; this.style.borderColor='var(--gold-border)'"
                    onmouseout="this.style.transform='none'; this.style.borderColor='var(--border)'">
                 
                 <!-- Time Slot -->
-                <div style="font-family: var(--font-body); font-weight: 700; font-size: 0.68rem; color: <%= timeColor %>; display: flex; align-items: center; gap: 3px;">
+                <div <%= `style="font-family: var(--font-body); font-weight: 700; font-size: 0.68rem; color: ${timeColor}; display: flex; align-items: center; gap: 3px;"` %>>
                   <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   <%= sched.startTime %>
                 </div>
@@ -102,7 +102,7 @@
                 </div>
 
                 <!-- Session Status Dot indicator -->
-                <div style="position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: <%= isCancelled ? 'var(--red)' : (isCompleted ? 'var(--blue)' : 'var(--green)') %>;" title="Status: <%= sched.status %>"></div>
+                <div <%= `style="position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: ${isCancelled ? 'var(--red)' : (isCompleted ? 'var(--blue)' : 'var(--green)')};"` %> title="Status: <%= sched.status %>"></div>
               </div>
             <% }) %>
           <% } %>

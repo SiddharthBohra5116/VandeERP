@@ -340,21 +340,21 @@
           </div>
         </div>
         <div class="funnel-stage">
-          <div class="funnel-fill" style="width: <%= contactedPct %>%; background: rgba(234, 179, 8, 0.2);"></div>
+          <div class="funnel-fill" <%= `style="width: ${contactedPct}%; background: rgba(234, 179, 8, 0.2);"` %>></div>
           <div class="funnel-content">
             <span>Contacted</span>
             <span><%= contactedCount %> (<%= contactedPct %>%)</span>
           </div>
         </div>
         <div class="funnel-stage">
-          <div class="funnel-fill" style="width: <%= interestedPct %>%; background: rgba(249, 115, 22, 0.2);"></div>
+          <div class="funnel-fill" <%= `style="width: ${interestedPct}%; background: rgba(249, 115, 22, 0.2);"` %>></div>
           <div class="funnel-content">
             <span>Interested</span>
             <span><%= interestedCount %> (<%= interestedPct %>%)</span>
           </div>
         </div>
         <div class="funnel-stage">
-          <div class="funnel-fill" style="width: <%= enrolledPct %>%; background: rgba(16, 185, 129, 0.2);"></div>
+          <div class="funnel-fill" <%= `style="width: ${enrolledPct}%; background: rgba(16, 185, 129, 0.2);"` %>></div>
           <div class="funnel-content">
             <span>Enrolled</span>
             <span><%= enrolledCount %> (<%= enrolledPct %>%)</span>
@@ -627,9 +627,9 @@
                 <td><strong class="mono"><%= r.month %></strong></td>
                 <td class="mono text-right fw-600">₹<%= r.target.toLocaleString('en-IN') %></td>
                 <td class="mono text-right text-gold fw-600">₹<%= r.actual.toLocaleString('en-IN') %></td>
-                <td class="mono text-right fw-700" style="color: <%= rateColor %>;"><%= rate %>%</td>
+                <td class="mono text-right fw-700" <%= `style="color: ${rateColor};"` %>><%= rate %>%</td>
                 <td class="mono text-right text-red fw-600">₹<%= (r.expense || 0).toLocaleString('en-IN') %></td>
-                <td class="mono text-right fw-700" style="color: <%= profitColor %>;">₹<%= r.netProfit.toLocaleString('en-IN') %></td>
+                <td class="mono text-right fw-700" <%= `style="color: ${profitColor};"` %>>₹<%= r.netProfit.toLocaleString('en-IN') %></td>
               </tr>
             <% }) %>
           </tbody>
@@ -1034,7 +1034,7 @@
   <% } %>
 
   <!-- JSON Data Store for client-side calendar interactions -->
-  <script id="monthly-attendance-data" type="application/json"><%- JSON.stringify(monthlyAttendanceRecords || []) %></script>
+  <textarea id="monthly-attendance-data" style="display: none;"><%- JSON.stringify(monthlyAttendanceRecords || []) %></textarea>
   
   <script>
   document.addEventListener('DOMContentLoaded', () => {
@@ -1047,7 +1047,7 @@
 
     let attendanceRecords = [];
     try {
-      const rawData = document.getElementById('monthly-attendance-data').textContent;
+      const rawData = document.getElementById('monthly-attendance-data').value;
       attendanceRecords = JSON.parse(rawData);
     } catch(e) {
       console.error("Failed to parse attendance records:", e);
@@ -1282,10 +1282,26 @@
   </div>
 <% } %>
 
+<textarea id="reports-charts-data" style="display: none;"><%- JSON.stringify({
+  charts: typeof charts !== 'undefined' ? charts : {},
+  revenueData: typeof revenueData !== 'undefined' ? revenueData : [],
+  counsellorPerformance: typeof counsellorPerformance !== 'undefined' ? counsellorPerformance : [],
+  attendanceSummary: typeof attendanceSummary !== 'undefined' ? attendanceSummary : [],
+  teacherLoad: typeof teacherLoad !== 'undefined' ? teacherLoad : []
+}) %></textarea>
 
 <!-- ==================== CHART LOGIC SCRIPTS ==================== -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+  // Parse reports data store
+  let reportsData = { charts: {}, revenueData: [], counsellorPerformance: [], attendanceSummary: [], teacherLoad: [] };
+  try {
+    reportsData = JSON.parse(document.getElementById('reports-charts-data').value);
+  } catch (err) {
+    console.error("Failed to parse reports-charts-data:", err);
+  }
+  window.reportsData = reportsData;
+
   // Theme Helper for charts
   const getThemeColors = () => {
     const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
@@ -1296,545 +1312,587 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const { textColor, gridColor } = getThemeColors();
+  window.chartTextColor = textColor;
+  window.chartGridColor = gridColor;
 
   Chart.defaults.color = textColor;
   Chart.defaults.font.family = 'Inter, sans-serif';
+});
+</script>
 
-  // 1. OVERVIEW TAB CHARTS
-  <% if (tab === 'overview') { %>
-    const revMonths = <%- JSON.stringify(charts.revenueVsCollection.months) %>;
-    const revBilled = <%- JSON.stringify(charts.revenueVsCollection.billed) %>;
-    const revCollected = <%- JSON.stringify(charts.revenueVsCollection.collected) %>;
+<% if (tab === 'overview') { %>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const reportsData = window.reportsData;
+  const textColor = window.chartTextColor;
+  const gridColor = window.chartGridColor;
 
-    // Revenue vs Collection Bar
-    new Chart(document.getElementById('overviewRevenueChart').getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: revMonths,
-        datasets: [
-          {
-            label: 'Billed',
-            data: revBilled,
-            backgroundColor: 'rgba(212, 175, 55, 0.8)', // Gold
-            borderRadius: 4
-          },
-          {
-            label: 'Collected',
-            data: revCollected,
-            backgroundColor: 'rgba(16, 185, 129, 0.8)', // Green
-            borderRadius: 4
+  const revMonths = reportsData.charts?.revenueVsCollection?.months || [];
+  const revBilled = reportsData.charts?.revenueVsCollection?.billed || [];
+  const revCollected = reportsData.charts?.revenueVsCollection?.collected || [];
+
+  // Revenue vs Collection Bar
+  new Chart(document.getElementById('overviewRevenueChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: revMonths,
+      datasets: [
+        {
+          label: 'Billed',
+          data: revBilled,
+          backgroundColor: 'rgba(212, 175, 55, 0.8)', // Gold
+          borderRadius: 4
+        },
+        {
+          label: 'Collected',
+          data: revCollected,
+          backgroundColor: 'rgba(16, 185, 129, 0.8)', // Green
+          borderRadius: 4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { 
+          grid: { color: gridColor },
+          ticks: {
+            callback: function(value) { return '₹' + (value / 1000) + 'k'; }
           }
+        }
+      }
+    }
+  });
+
+  const enrollMonths = reportsData.charts?.enrollmentTrend?.months || [];
+  const enrollCounts = reportsData.charts?.enrollmentTrend?.counts || [];
+
+  // Enrollment Trend Line
+  new Chart(document.getElementById('overviewEnrollmentChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: enrollMonths,
+      datasets: [{
+        label: 'New enrollments',
+        data: enrollCounts,
+        borderColor: 'rgba(249, 115, 22, 1)', // Orange
+        backgroundColor: 'rgba(249, 115, 22, 0.1)',
+        tension: 0.3,
+        fill: true,
+        pointBackgroundColor: 'rgba(249, 115, 22, 1)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: gridColor }, ticks: { precision: 0 } }
+      }
+    }
+  });
+
+  const attDays = reportsData.charts?.attendanceTrend?.days || [];
+  const attPct = reportsData.charts?.attendanceTrend?.pct || [];
+
+  // Attendance Line
+  new Chart(document.getElementById('overviewAttendanceChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: attDays,
+      datasets: [{
+        label: 'Attendance %',
+        data: attPct,
+        borderColor: 'rgba(59, 130, 246, 1)', // Blue
+        backgroundColor: 'transparent',
+        tension: 0.2,
+        borderWidth: 3,
+        pointBackgroundColor: 'rgba(59, 130, 246, 1)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { 
+          grid: { color: gridColor },
+          min: 0,
+          max: 100,
+          ticks: { callback: function(value) { return value + '%'; } }
+        }
+      }
+    }
+  });
+
+  // Lead acquisition channels (Pie)
+  const chanLabels = reportsData.charts?.leadSources?.labels || [];
+  const chanValues = reportsData.charts?.leadSources?.values || [];
+
+  new Chart(document.getElementById('overviewChannelsChart').getContext('2d'), {
+    type: 'pie',
+    data: {
+      labels: chanLabels,
+      datasets: [{
+        data: chanValues,
+        backgroundColor: [
+          'rgba(212, 175, 55, 0.85)',
+          'rgba(59, 130, 246, 0.85)',
+          'rgba(16, 185, 129, 0.85)',
+          'rgba(249, 115, 22, 0.85)',
+          'rgba(239, 68, 68, 0.85)',
+          'rgba(234, 179, 8, 0.85)',
+          'rgba(139, 92, 246, 0.85)'
         ]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+      }
+    }
+  });
+
+  // Batch size distributions (Doughnut)
+  const batchLabels = reportsData.charts?.batchDistribution?.labels || [];
+  const batchValues = reportsData.charts?.batchDistribution?.values || [];
+
+  new Chart(document.getElementById('overviewBatchDistChart').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: batchLabels,
+      datasets: [{
+        data: batchValues,
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.85)',
+          'rgba(16, 185, 129, 0.85)',
+          'rgba(249, 115, 22, 0.85)',
+          'rgba(234, 179, 8, 0.85)'
+        ],
+        borderColor: 'transparent'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+      }
+    }
+  });
+});
+</script>
+<% } %>
+
+<% if (tab === 'financial') { %>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const reportsData = window.reportsData;
+  const textColor = window.chartTextColor;
+  const gridColor = window.chartGridColor;
+
+  const rawRevenueData = reportsData.revenueData || [];
+  let financialChart = null;
+
+  function renderFinancialChart() {
+    const period = document.getElementById('financialChartPeriod').value;
+
+    // Filter by period
+    let filteredData = [...rawRevenueData];
+    if (period !== 'all') {
+      const monthsCount = parseInt(period);
+      filteredData = filteredData.slice(-monthsCount);
+    }
+
+    const months = filteredData.map(r => r.month);
+    const datasets = [
+      {
+        label: 'Revenue Target',
+        data: filteredData.map(r => r.target),
+        type: 'bar',
+        backgroundColor: 'rgba(59, 130, 246, 0.7)', // Blue
+        borderRadius: 4,
+        yAxisID: 'y'
+      },
+      {
+        label: 'Actual Collections',
+        data: filteredData.map(r => r.actual),
+        type: 'line',
+        borderColor: 'rgba(16, 185, 129, 1)', // Green
+        backgroundColor: 'transparent',
+        tension: 0.2,
+        borderWidth: 3,
+        pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+        yAxisID: 'y1'
+      }
+    ];
+
+    const ctx = document.getElementById('revenueTrendsChart').getContext('2d');
+    if (financialChart) {
+      financialChart.destroy();
+    }
+
+    financialChart = new Chart(ctx, {
+      data: {
+        labels: months,
+        datasets: datasets
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom' } },
+        plugins: { legend: { position: 'bottom', labels: { color: textColor } } },
         scales: {
-          x: { grid: { display: false } },
+          x: { 
+            grid: { display: false },
+            ticks: { 
+              color: textColor,
+              maxRotation: 45,
+              minRotation: 45,
+              autoSkip: true,
+              maxTicksLimit: 12
+            }
+          },
           y: { 
+            type: 'linear',
+            position: 'left',
             grid: { color: gridColor },
             ticks: {
-              callback: function(value) { return '₹' + (value / 1000) + 'k'; }
+              color: textColor,
+              callback: function(value) { return '₹' + (value >= 1000 ? (value / 1000) + 'k' : value); }
+            },
+            title: {
+              display: true,
+              text: 'Target (₹)',
+              color: textColor
+            }
+          },
+          y1: { 
+            type: 'linear',
+            position: 'right',
+            grid: { drawOnChartArea: false },
+            ticks: {
+              color: textColor,
+              callback: function(value) { return '₹' + (value >= 1000 ? (value / 1000) + 'k' : value); }
+            },
+            title: {
+              display: true,
+              text: 'Actual Collections (₹)',
+              color: textColor
             }
           }
         }
       }
     });
+  }
 
-    const enrollMonths = <%- JSON.stringify(charts.enrollmentTrend.months) %>;
-    const enrollCounts = <%- JSON.stringify(charts.enrollmentTrend.counts) %>;
+  document.querySelectorAll('.btn-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const checkboxId = btn.getAttribute('data-id');
+      const checkbox = document.getElementById(checkboxId);
+      checkbox.checked = !checkbox.checked;
+      
+      if (checkbox.checked) {
+        btn.classList.add('active');
+        if (checkboxId === 'toggleTarget') {
+          btn.style.background = 'rgba(212, 175, 55, 0.15)';
+          btn.style.borderColor = 'rgba(212, 175, 55, 0.4)';
+          btn.style.color = 'var(--gold-light)';
+        } else if (checkboxId === 'toggleActual') {
+          btn.style.background = 'rgba(16, 185, 129, 0.15)';
+          btn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+          btn.style.color = '#10b981';
+        } else if (checkboxId === 'toggleExpenses') {
+          btn.style.background = 'rgba(239, 68, 68, 0.15)';
+          btn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+          btn.style.color = '#ef4444';
+        } else if (checkboxId === 'toggleNetProfit') {
+          btn.style.background = 'rgba(59, 130, 246, 0.15)';
+          btn.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+          btn.style.color = '#3b82f6';
+        }
+      } else {
+        btn.classList.remove('active');
+        btn.style.background = 'transparent';
+        btn.style.borderColor = 'var(--border)';
+        btn.style.color = 'var(--text-muted)';
+      }
+      
+      renderFinancialChart();
+    });
+  });
 
-    // Enrollment Trend Line
-    new Chart(document.getElementById('overviewEnrollmentChart').getContext('2d'), {
-      type: 'line',
-      data: {
-        labels: enrollMonths,
-        datasets: [{
-          label: 'New enrollments',
-          data: enrollCounts,
-          borderColor: 'rgba(249, 115, 22, 1)', // Orange
-          backgroundColor: 'rgba(249, 115, 22, 0.1)',
-          tension: 0.3,
-          fill: true,
-          pointBackgroundColor: 'rgba(249, 115, 22, 1)'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false } },
-          y: { grid: { color: gridColor }, ticks: { precision: 0 } }
+  document.getElementById('financialChartPeriod').addEventListener('change', renderFinancialChart);
+
+  renderFinancialChart();
+
+  // Cumulative Revenue growth timeline
+  const cumMonths = reportsData.charts?.cumulativeBilling?.months || [];
+  const cumGrowth = reportsData.charts?.cumulativeBilling?.growth || [];
+
+  new Chart(document.getElementById('cumulativeBillingChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: cumMonths,
+      datasets: [{
+        label: 'Cumulative Billed (₹)',
+        data: cumGrowth,
+        borderColor: 'rgba(59, 130, 246, 1)', // Blue
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        fill: true,
+        tension: 0.2,
+        borderWidth: 3,
+        pointBackgroundColor: 'rgba(59, 130, 246, 1)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          grid: { color: gridColor },
+          ticks: { callback: function(value) { return '₹' + (value / 1000) + 'k'; } }
         }
       }
-    });
+    }
+  });
 
-    const attDays = <%- JSON.stringify(charts.attendanceTrend.days) %>;
-    const attPct = <%- JSON.stringify(charts.attendanceTrend.pct) %>;
+  // Payment methods split horizontal bar
+  const pmLabels = reportsData.charts?.paymentMethods?.labels || [];
+  const pmValues = reportsData.charts?.paymentMethods?.values || [];
 
-    // Attendance Line
-    new Chart(document.getElementById('overviewAttendanceChart').getContext('2d'), {
-      type: 'line',
-      data: {
-        labels: attDays,
-        datasets: [{
-          label: 'Attendance %',
-          data: attPct,
-          borderColor: 'rgba(59, 130, 246, 1)', // Blue
-          backgroundColor: 'transparent',
-          tension: 0.2,
-          borderWidth: 3,
-          pointBackgroundColor: 'rgba(59, 130, 246, 1)'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false } },
-          y: { 
-            grid: { color: gridColor },
-            min: 0,
-            max: 100,
-            ticks: { callback: function(value) { return value + '%'; } }
-          }
-        }
+  new Chart(document.getElementById('paymentMethodsChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: pmLabels,
+      datasets: [{
+        label: 'Received Amount (₹)',
+        data: pmValues,
+        backgroundColor: 'rgba(16, 185, 129, 0.85)',
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { callback: function(value) { return '₹' + (value / 1000) + 'k'; } } },
+        y: { grid: { display: false } }
       }
-    });
+    }
+  });
+});
+</script>
+<% } %>
 
-    // Lead acquisition channels (Pie)
-    const chanLabels = <%- JSON.stringify(charts.leadSources.labels) %>;
-    const chanValues = <%- JSON.stringify(charts.leadSources.values) %>;
+<% if (tab === 'enrollment') { %>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const reportsData = window.reportsData;
+  const textColor = window.chartTextColor;
+  const gridColor = window.chartGridColor;
 
-    new Chart(document.getElementById('overviewChannelsChart').getContext('2d'), {
-      type: 'pie',
-      data: {
-        labels: chanLabels,
-        datasets: [{
-          data: chanValues,
-          backgroundColor: [
-            'rgba(212, 175, 55, 0.85)',
-            'rgba(59, 130, 246, 0.85)',
-            'rgba(16, 185, 129, 0.85)',
-            'rgba(249, 115, 22, 0.85)',
-            'rgba(239, 68, 68, 0.85)',
-            'rgba(234, 179, 8, 0.85)',
-            'rgba(139, 92, 246, 0.85)'
-          ]
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
-        }
-      }
-    });
+  const cPerf = reportsData.counsellorPerformance || [];
+  const cNames = cPerf.map(c => c.counsellor.name);
+  const cAssigned = cPerf.map(c => c.total);
+  const cConverted = cPerf.map(c => c.converted);
+  const cSpeeds = cPerf.map(c => c.avgDays);
 
-    // Batch size distributions (Doughnut)
-    const batchLabels = <%- JSON.stringify(charts.batchDistribution.labels) %>;
-    const batchValues = <%- JSON.stringify(charts.batchDistribution.values) %>;
-
-    new Chart(document.getElementById('overviewBatchDistChart').getContext('2d'), {
-      type: 'doughnut',
-      data: {
-        labels: batchLabels,
-        datasets: [{
-          data: batchValues,
-          backgroundColor: [
-            'rgba(59, 130, 246, 0.85)',
-            'rgba(16, 185, 129, 0.85)',
-            'rgba(249, 115, 22, 0.85)',
-            'rgba(234, 179, 8, 0.85)'
-          ],
-          borderColor: 'transparent'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
-        }
-      }
-    });
-  <% } %>
-
-  // 2. FINANCIAL TAB CHARTS
-  <% if (tab === 'financial') { %>
-    const rawRevenueData = <%- JSON.stringify(revenueData) %>;
-    let financialChart = null;
-
-    function renderFinancialChart() {
-      const period = document.getElementById('financialChartPeriod').value;
-
-      // Filter by period
-      let filteredData = [...rawRevenueData];
-      if (period !== 'all') {
-        const monthsCount = parseInt(period);
-        filteredData = filteredData.slice(-monthsCount);
-      }
-
-      const months = filteredData.map(r => r.month);
-      const datasets = [
+  // Counsellor comparison (conversion rate & avg days to convert)
+  const cRates = cPerf.map(c => c.conversionRate);
+  new Chart(document.getElementById('counsellorConversionsChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: cNames,
+      datasets: [
         {
-          label: 'Revenue Target',
-          data: filteredData.map(r => r.target),
-          type: 'bar',
-          backgroundColor: 'rgba(59, 130, 246, 0.7)', // Blue
+          label: 'Conversion Rate %',
+          data: cRates,
+          backgroundColor: 'rgba(16, 185, 129, 0.8)', // Green
           borderRadius: 4,
           yAxisID: 'y'
         },
         {
-          label: 'Actual Collections',
-          data: filteredData.map(r => r.actual),
-          type: 'line',
+          label: 'Avg Conversion (Days)',
+          data: cSpeeds,
+          backgroundColor: 'rgba(234, 179, 8, 0.8)', // Yellow
+          borderRadius: 4,
+          yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: textColor } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: textColor } },
+        y: { 
+          type: 'linear',
+          position: 'left',
+          grid: { color: gridColor }, 
+          ticks: { color: textColor, callback: function(value) { return value + '%'; } },
+          title: { display: true, text: 'Conversion Rate', color: textColor }
+        },
+        y1: {
+          type: 'linear',
+          position: 'right',
+          grid: { drawOnChartArea: false },
+          ticks: { color: textColor, precision: 0 },
+          title: { display: true, text: 'Avg Days to Convert', color: textColor }
+        }
+      }
+    }
+  });
+
+  // Hide or reuse counsellorSpeedChart container if it exists
+  const speedChartEl = document.getElementById('counsellorSpeedChart');
+  if (speedChartEl) {
+    const parentCard = speedChartEl.closest('.card');
+    if (parentCard) parentCard.style.display = 'none';
+  }
+});
+</script>
+<% } %>
+
+<% if (tab === 'attendance' && batch !== 'all' && attendanceSummary && attendanceSummary.length > 0) { %>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const reportsData = window.reportsData;
+  const gridColor = window.chartGridColor;
+
+  const attData = reportsData.attendanceSummary || [];
+  const studentNames = attData.map(s => s.name);
+  const attRates = attData.map(s => s.attendancePct);
+
+  new Chart(document.getElementById('attendanceChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: studentNames,
+      datasets: [{
+        label: 'Attendance Rate %',
+        data: attRates,
+        backgroundColor: attRates.map(r => r < 75 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(16, 185, 129, 0.85)'),
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { 
+          grid: { color: gridColor },
+          min: 0,
+          max: 100,
+          ticks: { callback: function(value) { return value + '%'; } }
+        }
+      }
+    }
+  });
+});
+</script>
+<% } %>
+
+<% if (tab === 'academic') { %>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const reportsData = window.reportsData;
+  const gridColor = window.chartGridColor;
+
+  const hwLabels = reportsData.charts?.weeklyHomework?.labels || [];
+  const hwSubmitted = reportsData.charts?.weeklyHomework?.submitted || [];
+  const hwGraded = reportsData.charts?.weeklyHomework?.graded || [];
+
+  new Chart(document.getElementById('weeklyHomeworkChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: hwLabels,
+      datasets: [
+        {
+          label: 'Submitted Homework',
+          data: hwSubmitted,
+          borderColor: 'rgba(59, 130, 246, 1)', // Blue
+          backgroundColor: 'transparent',
+          tension: 0.2,
+          borderWidth: 3,
+          pointBackgroundColor: 'rgba(59, 130, 246, 1)'
+        },
+        {
+          label: 'Graded Activity',
+          data: hwGraded,
           borderColor: 'rgba(16, 185, 129, 1)', // Green
           backgroundColor: 'transparent',
           tension: 0.2,
           borderWidth: 3,
-          pointBackgroundColor: 'rgba(16, 185, 129, 1)',
-          yAxisID: 'y1'
+          pointBackgroundColor: 'rgba(16, 185, 129, 1)'
         }
-      ];
-
-      const ctx = document.getElementById('revenueTrendsChart').getContext('2d');
-      if (financialChart) {
-        financialChart.destroy();
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: gridColor }, ticks: { precision: 0 } }
       }
-
-      financialChart = new Chart(ctx, {
-        data: {
-          labels: months,
-          datasets: datasets
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom', labels: { color: textColor } } },
-          scales: {
-            x: { 
-              grid: { display: false },
-              ticks: { 
-                color: textColor,
-                maxRotation: 45,
-                minRotation: 45,
-                autoSkip: true,
-                maxTicksLimit: 12
-              }
-            },
-            y: { 
-              type: 'linear',
-              position: 'left',
-              grid: { color: gridColor },
-              ticks: {
-                color: textColor,
-                callback: function(value) { return '₹' + (value >= 1000 ? (value / 1000) + 'k' : value); }
-              },
-              title: {
-                display: true,
-                text: 'Target (₹)',
-                color: textColor
-              }
-            },
-            y1: { 
-              type: 'linear',
-              position: 'right',
-              grid: { drawOnChartArea: false },
-              ticks: {
-                color: textColor,
-                callback: function(value) { return '₹' + (value >= 1000 ? (value / 1000) + 'k' : value); }
-              },
-              title: {
-                display: true,
-                text: 'Actual Collections (₹)',
-                color: textColor
-              }
-            }
-          }
-        }
-      });
     }
-
-    document.querySelectorAll('.btn-toggle').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const checkboxId = btn.getAttribute('data-id');
-        const checkbox = document.getElementById(checkboxId);
-        checkbox.checked = !checkbox.checked;
-        
-        if (checkbox.checked) {
-          btn.classList.add('active');
-          if (checkboxId === 'toggleTarget') {
-            btn.style.background = 'rgba(212, 175, 55, 0.15)';
-            btn.style.borderColor = 'rgba(212, 175, 55, 0.4)';
-            btn.style.color = 'var(--gold-light)';
-          } else if (checkboxId === 'toggleActual') {
-            btn.style.background = 'rgba(16, 185, 129, 0.15)';
-            btn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
-            btn.style.color = '#10b981';
-          } else if (checkboxId === 'toggleExpenses') {
-            btn.style.background = 'rgba(239, 68, 68, 0.15)';
-            btn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-            btn.style.color = '#ef4444';
-          } else if (checkboxId === 'toggleNetProfit') {
-            btn.style.background = 'rgba(59, 130, 246, 0.15)';
-            btn.style.borderColor = 'rgba(59, 130, 246, 0.4)';
-            btn.style.color = '#3b82f6';
-          }
-        } else {
-          btn.classList.remove('active');
-          btn.style.background = 'transparent';
-          btn.style.borderColor = 'var(--border)';
-          btn.style.color = 'var(--text-muted)';
-        }
-        
-        renderFinancialChart();
-      });
-    });
-
-    document.getElementById('financialChartPeriod').addEventListener('change', renderFinancialChart);
-
-    renderFinancialChart();
-
-    // Cumulative Revenue growth timeline
-    const cumMonths = <%- JSON.stringify(charts.cumulativeBilling.months) %>;
-    const cumGrowth = <%- JSON.stringify(charts.cumulativeBilling.growth) %>;
-
-    new Chart(document.getElementById('cumulativeBillingChart').getContext('2d'), {
-      type: 'line',
-      data: {
-        labels: cumMonths,
-        datasets: [{
-          label: 'Cumulative Billed (₹)',
-          data: cumGrowth,
-          borderColor: 'rgba(59, 130, 246, 1)', // Blue
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          fill: true,
-          tension: 0.2,
-          borderWidth: 3,
-          pointBackgroundColor: 'rgba(59, 130, 246, 1)'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false } },
-          y: {
-            grid: { color: gridColor },
-            ticks: { callback: function(value) { return '₹' + (value / 1000) + 'k'; } }
-          }
-        }
-      }
-    });
-
-    // Payment methods split horizontal bar
-    const pmLabels = <%- JSON.stringify(charts.paymentMethods.labels) %>;
-    const pmValues = <%- JSON.stringify(charts.paymentMethods.values) %>;
-
-    new Chart(document.getElementById('paymentMethodsChart').getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: pmLabels,
-        datasets: [{
-          label: 'Received Amount (₹)',
-          data: pmValues,
-          backgroundColor: 'rgba(16, 185, 129, 0.85)',
-          borderRadius: 4
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { color: gridColor }, ticks: { callback: function(value) { return '₹' + (value / 1000) + 'k'; } } },
-          y: { grid: { display: false } }
-        }
-      }
-    });
-  <% } %>
-
-  // 3. ENROLLMENT TAB CHARTS
-  <% if (tab === 'enrollment') { %>
-    const cPerf = <%- JSON.stringify(counsellorPerformance) %>;
-    const cNames = cPerf.map(c => c.counsellor.name);
-    const cAssigned = cPerf.map(c => c.total);
-    const cConverted = cPerf.map(c => c.converted);
-    const cSpeeds = cPerf.map(c => c.avgDays);
-
-    // Counsellor comparison (conversion rate & avg days to convert)
-    const cRates = cPerf.map(c => c.conversionRate);
-    new Chart(document.getElementById('counsellorConversionsChart').getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: cNames,
-        datasets: [
-          {
-            label: 'Conversion Rate %',
-            data: cRates,
-            backgroundColor: 'rgba(16, 185, 129, 0.8)', // Green
-            borderRadius: 4,
-            yAxisID: 'y'
-          },
-          {
-            label: 'Avg Conversion (Days)',
-            data: cSpeeds,
-            backgroundColor: 'rgba(234, 179, 8, 0.8)', // Yellow
-            borderRadius: 4,
-            yAxisID: 'y1'
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { color: textColor } } },
-        scales: {
-          x: { grid: { display: false }, ticks: { color: textColor } },
-          y: { 
-            type: 'linear',
-            position: 'left',
-            grid: { color: gridColor }, 
-            ticks: { color: textColor, callback: function(value) { return value + '%'; } },
-            title: { display: true, text: 'Conversion Rate', color: textColor }
-          },
-          y1: {
-            type: 'linear',
-            position: 'right',
-            grid: { drawOnChartArea: false },
-            ticks: { color: textColor, precision: 0 },
-            title: { display: true, text: 'Avg Days to Convert', color: textColor }
-          }
-        }
-      }
-    });
-
-    // Hide or reuse counsellorSpeedChart container if it exists
-    const speedChartEl = document.getElementById('counsellorSpeedChart');
-    if (speedChartEl) {
-      const parentCard = speedChartEl.closest('.card');
-      if (parentCard) parentCard.style.display = 'none';
-    }
-  <% } %>
-
-  // 4. ATTENDANCE RATE CHART (Only when batch is active)
-  <% if (tab === 'attendance' && batch !== 'all' && attendanceSummary && attendanceSummary.length > 0) { %>
-    const attData = <%- JSON.stringify(attendanceSummary) %>;
-    const studentNames = attData.map(s => s.name);
-    const attRates = attData.map(s => s.attendancePct);
-
-    new Chart(document.getElementById('attendanceChart').getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: studentNames,
-        datasets: [{
-          label: 'Attendance Rate %',
-          data: attRates,
-          backgroundColor: attRates.map(r => r < 75 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(16, 185, 129, 0.85)'),
-          borderRadius: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false } },
-          y: { 
-            grid: { color: gridColor },
-            min: 0,
-            max: 100,
-            ticks: { callback: function(value) { return value + '%'; } }
-          }
-        }
-      }
-    });
-  <% } %>
-
-  // 5. ACADEMIC TAB CHARTS
-  <% if (tab === 'academic') { %>
-    const hwLabels = <%- JSON.stringify(charts.weeklyHomework.labels) %>;
-    const hwSubmitted = <%- JSON.stringify(charts.weeklyHomework.submitted) %>;
-    const hwGraded = <%- JSON.stringify(charts.weeklyHomework.graded) %>;
-
-    new Chart(document.getElementById('weeklyHomeworkChart').getContext('2d'), {
-      type: 'line',
-      data: {
-        labels: hwLabels,
-        datasets: [
-          {
-            label: 'Submitted Homework',
-            data: hwSubmitted,
-            borderColor: 'rgba(59, 130, 246, 1)', // Blue
-            backgroundColor: 'transparent',
-            tension: 0.2,
-            borderWidth: 3,
-            pointBackgroundColor: 'rgba(59, 130, 246, 1)'
-          },
-          {
-            label: 'Graded Activity',
-            data: hwGraded,
-            borderColor: 'rgba(16, 185, 129, 1)', // Green
-            backgroundColor: 'transparent',
-            tension: 0.2,
-            borderWidth: 3,
-            pointBackgroundColor: 'rgba(16, 185, 129, 1)'
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom' } },
-        scales: {
-          x: { grid: { display: false } },
-          y: { grid: { color: gridColor }, ticks: { precision: 0 } }
-        }
-      }
-    });
-  <% } %>
-
-  // 6. STAFF TAB CHARTS
-  <% if (tab === 'staff' && typeof teacherLoad !== 'undefined' && teacherLoad.length > 0) { %>
-    const tLoad = <%- JSON.stringify(teacherLoad) %>;
-    const tNames = tLoad.map(tl => tl.teacher.name);
-
-    new Chart(document.getElementById('teacherLoadChart').getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: ['Classes Taught', 'Assignments Created', 'Submissions Graded', 'Attendance Sessions Marked', 'Curriculum Completion %'],
-        datasets: tLoad.map((tl, index) => {
-          const colors = [
-            'rgba(59, 130, 246, 0.85)', // Blue
-            'rgba(16, 185, 129, 0.85)', // Green
-            'rgba(234, 179, 8, 0.85)',  // Yellow
-            'rgba(249, 115, 22, 0.85)'   // Orange
-          ];
-          return {
-            label: tl.teacher.name,
-            data: [tl.classesConducted, tl.assignmentsCreated, tl.submissionsGraded, tl.attendanceSessionsMarked, tl.curriculumCompletion],
-            backgroundColor: colors[index % colors.length],
-            borderRadius: 4
-          };
-        })
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { color: textColor } } },
-        scales: {
-          x: { grid: { display: false }, ticks: { color: textColor } },
-          y: { grid: { color: gridColor }, ticks: { color: textColor, precision: 0 } }
-        }
-      }
-    });
-  <% } %>
+  });
 });
 </script>
+<% } %>
+
+<% if (tab === 'staff' && typeof teacherLoad !== 'undefined' && teacherLoad.length > 0) { %>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const reportsData = window.reportsData;
+  const gridColor = window.chartGridColor;
+  const textColor = window.chartTextColor;
+
+  const tLoad = reportsData.teacherLoad || [];
+  const tNames = tLoad.map(tl => tl.teacher.name);
+
+  new Chart(document.getElementById('teacherLoadChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ['Classes Taught', 'Assignments Created', 'Submissions Graded', 'Attendance Sessions Marked', 'Curriculum Completion %'],
+      datasets: tLoad.map((tl, index) => {
+        const colors = [
+          'rgba(59, 130, 246, 0.85)', // Blue
+          'rgba(16, 185, 129, 0.85)', // Green
+          'rgba(234, 179, 8, 0.85)',  // Yellow
+          'rgba(249, 115, 22, 0.85)'   // Orange
+        ];
+        return {
+          label: tl.teacher.name,
+          data: [tl.classesConducted, tl.assignmentsCreated, tl.submissionsGraded, tl.attendanceSessionsMarked, tl.curriculumCompletion],
+          backgroundColor: colors[index % colors.length],
+          borderRadius: 4
+        };
+      })
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: textColor } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: textColor } },
+        y: { grid: { color: gridColor }, ticks: { color: textColor, precision: 0 } }
+      }
+    }
+  });
+});
+</script>
+<% } %>

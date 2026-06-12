@@ -19,7 +19,7 @@
     <% const pct = curriculum.completionPct; %>
     <div class="stat-value"><%= pct %>%</div>
     <div class="progress-bar" style="margin-top:8px;">
-      <div class="progress-fill <%= pct === 100 ? 'green' : pct > 50 ? 'orange' : 'red' %>" style="width: <%= pct %>%"></div>
+      <div class="progress-fill <%= pct === 100 ? 'green' : pct > 50 ? 'orange' : 'red' %>" <%= `style="width: ${pct}%"` %>></div>
     </div>
   </div>
 </div>

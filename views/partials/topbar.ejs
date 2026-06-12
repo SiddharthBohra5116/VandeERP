@@ -397,7 +397,7 @@
           else if (user.role === 'counsellor') avatarColor = '#92400e';
           else if (user.role === 'student') avatarColor = '#5b21b6';
         %>
-        <div class="avatar" style="<% if (!user.profilePic) { %>background-color: <%= avatarColor %>; color: #fff; font-weight: bold; display: flex; align-items: center; justify-content: center;<% } %>">
+        <div class="avatar" <%= !user.profilePic ? `style="background-color: ${avatarColor}; color: #fff; font-weight: bold; display: flex; align-items: center; justify-content: center;"` : '' %>>
           <% if (user.profilePic) { %>
             <img src="<%= user.profilePic %>" alt="<%= user.name %>">
           <% } else { %>

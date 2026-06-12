@@ -29,7 +29,7 @@
               <span><%= pct %>%</span>
             </div>
             <div class="progress-bar">
-              <div class="progress-fill <%= pct === 100 ? 'green' : pct > 50 ? 'orange' : 'red' %>" style="width: <%= pct %>%"></div>
+              <div class="progress-fill <%= pct === 100 ? 'green' : pct > 50 ? 'orange' : 'red' %>" <%= `style="width: ${pct}%"` %>></div>
             </div>
           </div>
         </div>
@@ -46,7 +46,7 @@
             <% sortedTopics.forEach(topic => { %>
               <div class="topic-item">
                 <div style="display:flex; align-items:center; gap:0.6rem;">
-                  <span style="font-size:14px; color: <%= topic.completed ? 'var(--green)' : 'var(--border-light)' %>;">
+                  <span <%= `style="font-size:14px; color: ${topic.completed ? 'var(--green)' : 'var(--border-light)'};"` %>>
                     <%= topic.completed ? '✓' : '○' %>
                   </span>
                   <div>

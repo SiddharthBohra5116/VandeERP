@@ -115,7 +115,7 @@
                         if (leave.teacher.role === 'teacher') roleColor = '#10b981';
                         else if (leave.teacher.role === 'counsellor') roleColor = '#f59e0b';
                       %>
-                      <span class="badge" style="font-size: 0.65rem; text-transform: uppercase; border-color: <%= roleColor %>20; color: <%= roleColor %>; background-color: <%= roleColor %>08; padding: 1px 5px;"><%= leave.teacher.role %></span>
+                      <span class="badge" <%= `style="font-size: 0.65rem; text-transform: uppercase; border-color: ${roleColor}20; color: ${roleColor}; background-color: ${roleColor}08; padding: 1px 5px;"` %>><%= leave.teacher.role %></span>
                     <% } %>
                   </div>
                   <div class="td-muted text-xs"><%= leave.teacher ? leave.teacher.email : '—' %></div>

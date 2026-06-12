@@ -46,7 +46,7 @@
                 <div><%= assign.course && assign.course.name ? assign.course.name : '—' %></div>
                 <div class="td-muted text-sm">Batch: <%= assign.batch %></div>
               </td>
-              <td class="mono text-sm <%= isOverdue ? 'text-red' : 'text-sub' %>" style="<%= isOverdue ? 'font-weight:600;' : '' %>">
+              <td class="mono text-sm <%= isOverdue ? 'text-red' : 'text-sub' %>" <%= isOverdue ? 'style="font-weight:600;"' : '' %>>
                 <%= new Date(assign.dueDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %>
                 <%= isOverdue ? ' (Past Due)' : '' %>
               </td>
