@@ -54,10 +54,7 @@
             <th>Role Specifics</th>
             <% if (typeof roleActive !== 'undefined' && roleActive === 'student') { %>
               <th>Attendance</th>
-<<<<<<< HEAD
               <th>KYC Status</th>
-=======
->>>>>>> origin/main
             <% } %>
             <th>Status</th>
             <th>Actions</th>
@@ -134,7 +131,6 @@
                     <span class="badge badge-grey" style="font-size: 8px; padding: 1px 3px; display: block; margin-top: 4px; width: max-content;">Unmarked today</span>
                   <% } %>
                 </td>
-<<<<<<< HEAD
                 <td>
                   <% 
                     const hasKyc = u.idProof && u.fatherName && u.guardianPhone;
@@ -143,8 +139,6 @@
                   %>
                   <span class="badge <%= kycBadgeClass %>"><%= kycLabel %></span>
                 </td>
-=======
->>>>>>> origin/main
               <% } %>
               <td>
                 <% 
