@@ -18,7 +18,7 @@
       <div class="card">
         <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1rem;">
           <div>
-            <h3 style="font-family:var(--font-display); font-size:1.15rem; font-weight:700;"><%= record.subject %></h3>
+            <h3 style="font-family:var(--font-display); font-size:1.15rem; font-weight:700;"><%= record.course && record.course.name ? record.course.name : '—' %></h3>
             <div class="td-muted text-sm">Instructor: <%= record.teacher ? record.teacher.name : 'Faculty' %></div>
           </div>
           <div style="text-align: right;">

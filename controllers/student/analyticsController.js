@@ -82,9 +82,9 @@ exports.getAnalytics = async (req, res) => {
     // 2. Assignment Score History
     const assignments = batchId
       ? await Assignment.find({
-          batch: batchId,
-          isActive: true
-        }).sort({ dueDate: 1 })
+        batch: batchId,
+        isActive: true
+      }).sort({ dueDate: 1 })
       : [];
 
     const assignmentScores = assignments.map(assignment => {
@@ -105,12 +105,11 @@ exports.getAnalytics = async (req, res) => {
       student: studentId
     })
       .populate('course', 'name code')
-      .populate('module', 'title name')
       .populate('teacher', 'name');
 
     const avgTestScores = progressList.map(progress => ({
       course: progress.course?.name || studentProfile.course?.name || 'Course',
-      module: progress.module?.title || progress.module?.name || 'General',
+      module: 'General',
       score: progress.overallScore
     }));
 

@@ -2,6 +2,7 @@ const { spawn } = require('child_process');
 const http = require('http');
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const Student = require('../models/Student');
 
 // Helper to wait
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -90,17 +91,22 @@ async function run() {
     }
     studentId = student._id.toString();
 
-    // Reset student profile fields for clean test
-    student.idProof = null;
-    student.idVerified = false;
+    // Reset student fields in User and Student profile
     student.status = 'active';
     student.isActive = true;
-    student.feedback = { submitted: false };
-    student.remarks = [];
-    student.statusHistory = [];
     await student.save();
 
-    console.log(`📌 Target Student: ${student.name} (ID: ${studentId}, Batch: ${student.batch})`);
+    const studentProfile = await Student.findOne({ userId: student._id });
+    if (studentProfile) {
+      studentProfile.documents.idProof = null;
+      studentProfile.idVerified = false;
+      studentProfile.feedback = { submitted: false };
+      studentProfile.remarks = [];
+      studentProfile.statusHistory = [];
+      await studentProfile.save();
+    }
+
+    console.log(`📌 Target Student: ${student.name} (ID: ${studentId})`);
 
     // 1. Log in as Student
     console.log('\n🔑 Step 1: Logging in as Student...');
@@ -136,11 +142,11 @@ async function run() {
     }
 
     // Verify upload in DB
-    const studentAfterUpload = await User.findById(studentId);
-    if (!studentAfterUpload.idProof || studentAfterUpload.idVerified) {
+    const studentProfileAfterUpload = await Student.findOne({ userId: studentId });
+    if (!studentProfileAfterUpload.documents.idProof || studentProfileAfterUpload.idVerified) {
       throw new Error('Verification failed: ID proof path was not written or verified was true!');
     }
-    console.log(`✅ ID proof uploaded successfully. Path: ${studentAfterUpload.idProof}`);
+    console.log(`✅ ID proof uploaded successfully. Path: ${studentProfileAfterUpload.documents.idProof}`);
 
     // 3. Log in as Admin and Verify ID Proof
     console.log('\n🔑 Step 3: Logging in as Admin & verifying student ID proof...');
@@ -157,7 +163,7 @@ async function run() {
 
     // Verify ID POST
     const verifyRes = await makeRequest({
-      hostname: 'localhost', port: 3130, path: `/admin/students/${studentId}/verify-id`, method: 'POST',
+      hostname: 'localhost', port: 3130, path: `/admin/students/${studentProfileAfterUpload._id}/verify-id`, method: 'POST',
       headers: { 'Cookie': adminCookie }
     });
 
@@ -165,8 +171,8 @@ async function run() {
       throw new Error(`Admin verify ID failed: status code ${verifyRes.statusCode}`);
     }
 
-    const studentAfterVerify = await User.findById(studentId);
-    if (!studentAfterVerify.idVerified) {
+    const studentProfileAfterVerify = await Student.findById(studentProfileAfterUpload._id);
+    if (!studentProfileAfterVerify.idVerified) {
       throw new Error('Verification failed: idVerified flag is still false!');
     }
     console.log('✅ Student ID verified successfully by Admin.');
@@ -176,7 +182,7 @@ async function run() {
     const remarkNote = 'Excellent progress on class project work. Needs to focus on DaVinci Resolve color panels next.';
     const remarkPostData = `note=${encodeURIComponent(remarkNote)}`;
     const remarkRes = await makeRequest({
-      hostname: 'localhost', port: 3130, path: `/admin/students/${studentId}/remark`, method: 'POST',
+      hostname: 'localhost', port: 3130, path: `/admin/students/${studentProfileAfterUpload._id}/remark`, method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Content-Length': Buffer.byteLength(remarkPostData),
@@ -189,8 +195,8 @@ async function run() {
     }
 
     // Verify in DB
-    const studentAfterRemark = await User.findById(studentId);
-    const hasRemark = studentAfterRemark.remarks.find(r => r.note === remarkNote);
+    const studentProfileAfterRemark = await Student.findById(studentProfileAfterUpload._id);
+    const hasRemark = studentProfileAfterRemark.remarks.find(r => r.note === remarkNote);
     if (!hasRemark) {
       throw new Error('Verification failed: Remark note was not found on student profile schema!');
     }
@@ -215,7 +221,7 @@ async function run() {
     const statusReason = 'Successfully completed term assignments and project evaluations.';
     const statusPostData = `status=complete&reason=${encodeURIComponent(statusReason)}`;
     const statusRes = await makeRequest({
-      hostname: 'localhost', port: 3130, path: `/admin/students/${studentId}/status`, method: 'POST',
+      hostname: 'localhost', port: 3130, path: `/admin/students/${studentProfileAfterUpload._id}/status`, method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Content-Length': Buffer.byteLength(statusPostData),
@@ -228,11 +234,12 @@ async function run() {
     }
 
     // Verify status and history in DB
-    const studentAfterStatus = await User.findById(studentId);
-    if (studentAfterStatus.status !== 'complete' || studentAfterStatus.isActive) {
-      throw new Error(`Verification failed: Status was not complete or isActive was true! status: ${studentAfterStatus.status}, active: ${studentAfterStatus.isActive}`);
+    const userAfterStatus = await User.findById(studentId);
+    const studentProfileAfterStatus = await Student.findById(studentProfileAfterUpload._id);
+    if (userAfterStatus.status !== 'complete' || userAfterStatus.isActive) {
+      throw new Error(`Verification failed: Status was not complete or isActive was true! status: ${userAfterStatus.status}, active: ${userAfterStatus.isActive}`);
     }
-    const hasHistory = studentAfterStatus.statusHistory.find(h => h.status === 'complete' && h.reason === statusReason);
+    const hasHistory = studentProfileAfterStatus.statusHistory.find(h => h.status === 'complete' && h.reason === statusReason);
     if (!hasHistory) {
       throw new Error('Verification failed: Status history logs are missing the completed state entry!');
     }
@@ -267,8 +274,8 @@ async function run() {
     }
 
     // Verify feedback values in DB
-    const studentAfterFeedback = await User.findById(studentId);
-    if (!studentAfterFeedback.feedback.submitted || studentAfterFeedback.feedback.teacherRating !== 5 || studentAfterFeedback.feedback.comments !== 'Absolutely loved the premiere faculties and project-based learning.') {
+    const studentProfileAfterFeedback = await Student.findById(studentProfileAfterUpload._id);
+    if (!studentProfileAfterFeedback.feedback.submitted || studentProfileAfterFeedback.feedback.teacherRating !== 5 || studentProfileAfterFeedback.feedback.comments !== 'Absolutely loved the premiere faculties and project-based learning.') {
       throw new Error('Verification failed: Feedback record did not save correctly!');
     }
     console.log('✅ Feedback successfully stored in student record.');
@@ -291,7 +298,7 @@ async function run() {
     // 9. Admin view displays feedback details
     console.log('\n📊 Step 9: Verifying Admin student profile tab displays feedback results...');
     const adminProfileRes = await makeRequest({
-      hostname: 'localhost', port: 3130, path: `/admin/students/${studentId}`, method: 'GET',
+      hostname: 'localhost', port: 3130, path: `/admin/students/${studentProfileAfterUpload._id}`, method: 'GET',
       headers: { 'Cookie': adminCookie }
     });
 

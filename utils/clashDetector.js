@@ -76,7 +76,7 @@ async function checkScheduleClash(date, startTime, endTime, classroomId, teacher
         return {
           clashed: true,
           type: 'classroom',
-          reason: `Classroom Clash: "${sched.classroom.name}" is already occupied by Batch "${sched.batch}" (${sched.subject}) from ${sched.startTime} to ${sched.endTime}.`
+          reason: `Classroom Clash: "${sched.classroom.name}" is already occupied from ${sched.startTime} to ${sched.endTime}.`
         };
       }
 
@@ -85,7 +85,7 @@ async function checkScheduleClash(date, startTime, endTime, classroomId, teacher
         return {
           clashed: true,
           type: 'teacher',
-          reason: `Teacher Clash: Instructor "${sched.teacher.name}" is already assigned to teach Batch "${sched.batch}" (${sched.subject}) from ${sched.startTime} to ${sched.endTime}.`
+         reason: `Teacher Clash: Instructor "${sched.teacher.name}" is already assigned from ${sched.startTime} to ${sched.endTime}.`
         };
       }
     }

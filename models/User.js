@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, default: '' },
   profilePic: { type: String, default: null },
   status: { type: String, enum: USER_STATUSES, default: 'active' },
+  isActive: { type: Boolean, default: true },
   address: { type: String, default: '' },
   city: { type: String, default: '' },
   dob: { type: Date, default: null },
@@ -18,7 +19,8 @@ const userSchema = new mongoose.Schema({
     linkedin: { type: String, default: '' }
   },
   lastLoginAt: { type: Date, default: null },
-  readNotifications: [{ type: String }]
+  readNotifications: [{ type: String }],
+  resetRequested: { type: Boolean, default: false }
 }, { timestamps: true });
 
 // HASH PASSWORD

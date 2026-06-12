@@ -1,6 +1,7 @@
 const User = require('../../models/User');
 const Fee = require('../../models/Fee');
 const Lead = require('../../models/Lead');
+const Student = require('../../models/Student');
 const Expense = require('../../models/Expense');
 const RevenueTarget = require('../../models/RevenueTarget');
 const Attendance = require('../../models/Attendance');
@@ -35,29 +36,6 @@ function convertToCSV(data) {
 }
 
 /**
- * GET /admin/attendance
- * Admin only. Renders daily attendance logs list with batch and date filters.
- */
-exports.getAttendanceOverview = async (req, res) => {
-  try {
-    const { batch, date } = req.query;
-    const today = date || todayIST();
-    const filter = { date: today };
-    if (batch) filter.batch = batch;
-
-    const records = await Attendance.find(filter)
-      .populate('student', 'name course batch')
-      .populate('teacher', 'name');
-
-    const batches = await User.distinct('batch', { role: 'student', isActive: true });
-    res.render('admin/attendance', { title: 'Attendance Overview', user: req.user, records, batches, date: today, batch });
-  } catch (err) {
-    logger.error('getAttendanceOverview Error', { err: err.message });
-    res.status(500).render('500', { title: 'Error', user: req.user, layout: 'main' });
-  }
-};
-
-/**
  * GET /admin/reports
  * Admin only. Advanced executive insights dashboard with Period, Batch, and Course filters, rich visualizations.
  */
@@ -90,18 +68,18 @@ exports.getReports = async (req, res) => {
     const compStartDate = new Date(startOfPeriod.getTime() - periodLengthMs - 1);
     const compEndDate = new Date(startOfPeriod.getTime() - 1);
     const periodLabel = 'previous period';
-    
+
     // 1. Get Distinct Filter Lists
     const [batches, courses] = await Promise.all([
-      User.distinct('batch', { role: 'student', batch: { $ne: null } }),
-      User.distinct('course', { role: 'student', course: { $ne: null } })
+      Student.distinct('batch', { batch: { $ne: null } }),
+      Student.distinct('course', { course: { $ne: null } })
     ]);
 
     // Build DB query filters
-    const studentQuery = { role: 'student' };
+    const studentQuery = {};
     if (batch !== 'all') studentQuery.batch = batch;
     if (course !== 'all') studentQuery.course = course;
-    
+
     // Filter students enrolled or created within the range
     studentQuery.$or = [
       { enrollmentDate: { $gte: startOfPeriod, $lte: endOfPeriod } },
@@ -109,17 +87,20 @@ exports.getReports = async (req, res) => {
     ];
 
     // Fetch filtered students
-    const dbStudents = await User.find(studentQuery);
+    const dbStudents = await Student.find(studentQuery)
+      .populate('userId', 'name status')
+      .populate('batch', 'name')
+      .populate('course', 'name code');
     const studentIds = dbStudents.map(s => s._id);
 
     // Active students count
-    const activeCount = dbStudents.filter(s => s.status === 'active').length;
+    const activeCount = dbStudents.filter(s => s.userId && s.userId.status === 'active').length;
     const newThisMonth = dbStudents.length;
 
     // Collections & Outstandings calculations
     const fees = await Fee.find({ student: { $in: studentIds } });
 
-    
+
     let currentPeriodCollection = 0;
     let compPeriodCollection = 0;
     let totalBilled = 0;
@@ -157,7 +138,7 @@ exports.getReports = async (req, res) => {
               paymentMethods.Other += p.amount;
             }
           }
-          
+
           if (compStartDate && compEndDate && payDate >= compStartDate && payDate <= compEndDate) {
             compPeriodCollection += p.amount;
           }
@@ -166,7 +147,7 @@ exports.getReports = async (req, res) => {
     });
 
     const outstandingAmount = Math.max(0, totalBilled - totalCollected);
-    
+
     // Outstanding trend percentage vs total billed
     let outstandingDiffPct = 0;
     if (totalBilled > 0) {
@@ -194,8 +175,8 @@ exports.getReports = async (req, res) => {
     if (course !== 'all') leadFilter.course = course;
     leadFilter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
     const leads = await Lead.find(leadFilter);
-    const openLeadsCount = leads.filter(l => ['new', 'contacted', 'interested'].includes(l.status)).length;
-    const convertedCount = leads.filter(l => l.status === 'converted').length;
+    const openLeadsCount = leads.filter(l => ['new', 'contacted', 'mentorship_scheduled', 'mentorship_attended', 'follow_up', 'joining_interested'].includes(l.status)).length;
+    const convertedCount = leads.filter(l => l.status === 'admission_completed').length;
     const totalLeads = leads.length;
     const cRate = totalLeads > 0 ? Math.round((convertedCount / totalLeads) * 100) : 0;
 
@@ -206,30 +187,30 @@ exports.getReports = async (req, res) => {
     // Format overview metrics
     const overviewStats = {
       activeStudents: { value: activeCount, trend: `▲ ${newThisMonth} in date range`, isPositive: true },
-      collection: { 
-        value: `₹${(currentPeriodCollection / 100000).toFixed(1)}L`, 
-        trend: collDiffPct >= 0 ? `▲ ${collDiffPct}% vs ${periodLabel}` : `▼ ${Math.abs(collDiffPct)}% vs ${periodLabel}`, 
-        isPositive: collDiffPct >= 0 
+      collection: {
+        value: `₹${(currentPeriodCollection / 100000).toFixed(1)}L`,
+        trend: collDiffPct >= 0 ? `▲ ${collDiffPct}% vs ${periodLabel}` : `▼ ${Math.abs(collDiffPct)}% vs ${periodLabel}`,
+        isPositive: collDiffPct >= 0
       },
-      outstanding: { 
-        value: `₹${(outstandingAmount / 100000).toFixed(1)}L`, 
-        trend: `▼ ${outstandingDiffPct}% of total billed`, 
-        isPositive: outstandingAmount === 0 
+      outstanding: {
+        value: `₹${(outstandingAmount / 100000).toFixed(1)}L`,
+        trend: `▼ ${outstandingDiffPct}% of total billed`,
+        isPositive: outstandingAmount === 0
       },
-      avgAttendance: { 
-        value: `${avgAtt}%`, 
-        trend: avgAtt >= 75 ? `▲ Above 75% threshold` : `▼ Below 75% threshold`, 
-        isPositive: avgAtt >= 75 
+      avgAttendance: {
+        value: `${avgAtt}%`,
+        trend: avgAtt >= 75 ? `▲ Above 75% threshold` : `▼ Below 75% threshold`,
+        isPositive: avgAtt >= 75
       },
-      openLeads: { 
-        value: openLeadsCount, 
-        trend: `▲ ${newLeadsThisWeek} new this week`, 
-        isPositive: true 
+      openLeads: {
+        value: openLeadsCount,
+        trend: `▲ ${newLeadsThisWeek} new this week`,
+        isPositive: true
       },
-      convRate: { 
-        value: `${cRate}%`, 
-        trend: `Converted ${convertedCount} leads`, 
-        isPositive: cRate >= 35 
+      convRate: {
+        value: `${cRate}%`,
+        trend: `Converted ${convertedCount} leads`,
+        isPositive: cRate >= 35
       },
       keyInsight: `Collection efficiency is ${totalBilled > 0 ? Math.round((totalCollected / totalBilled) * 100) : 0}% under the selected filters. Open leads volume stands at ${openLeadsCount} with a conversion rate of ${cRate}%. Average attendance is ${avgAtt}%.`
     };
@@ -260,7 +241,7 @@ exports.getReports = async (req, res) => {
         } else if (f.createdAt && f.createdAt.toISOString().slice(0, 7) === yearMonth) {
           billedInMonth += (f.totalAmount - (f.discount || 0));
         }
-        
+
         f.payments.forEach(p => {
           if (p.paidAt && p.paidAt.toISOString().slice(0, 7) === yearMonth) {
             collectedInMonth += p.amount;
@@ -294,7 +275,7 @@ exports.getReports = async (req, res) => {
       const dateKey = d.toISOString().slice(0, 10);
 
       attendanceTrendDays.push(dStr);
-      
+
       const dayRecs = attendanceRecords.filter(r => r.date === dateKey);
       if (dayRecs.length > 0) {
         const present = dayRecs.filter(r => r.status === 'present' || r.status === 'late').length;
@@ -307,9 +288,9 @@ exports.getReports = async (req, res) => {
     // 4. Lead Funnel Stage counts
     const funnelStages = {
       Leads: leads.length,
-      Contacted: leads.filter(l => ['contacted', 'interested', 'ready_to_convert', 'converted'].includes(l.status)).length,
-      Interested: leads.filter(l => ['interested', 'ready_to_convert', 'converted'].includes(l.status)).length,
-      Enrolled: leads.filter(l => l.status === 'converted').length
+      Contacted: leads.filter(l => ['contacted', 'mentorship_scheduled', 'mentorship_attended', 'follow_up', 'joining_interested', 'admission_completed'].includes(l.status)).length,
+      Interested: leads.filter(l => ['joining_interested', 'admission_completed'].includes(l.status)).length,
+      Enrolled: leads.filter(l => l.status === 'admission_completed').length
     };
 
     // 5. Lead Channels (Sources) distribution count
@@ -321,7 +302,7 @@ exports.getReports = async (req, res) => {
     // 6. Student distribution per batch
     const studentBatchDistribution = dbStudents.reduce((acc, s) => {
       if (s.batch) {
-        acc[s.batch] = (acc[s.batch] || 0) + 1;
+        acc[s.batch.name] = (acc[s.batch.name] || 0) + 1;
       }
       return acc;
     }, {});
@@ -336,7 +317,7 @@ exports.getReports = async (req, res) => {
       const yearMonth = d.toISOString().slice(0, 7);
 
       cumulativeBillingMonths.push(mStr);
-      
+
       let billedInMonth = 0;
       fees.forEach(f => {
         if (f.installments && f.installments.length > 0) {
@@ -357,15 +338,15 @@ exports.getReports = async (req, res) => {
     const weeklyHomeworkLabels = [];
     const weeklyHomeworkSubmitted = [];
     const weeklyHomeworkGraded = [];
-    
+
     // Fetch all assignments for batches in the student pool
     const weeklyAssignments = await Assignment.find({
-      batch: { $in: [...new Set(dbStudents.map(s => s.batch).filter(Boolean))] }
+      batch: { $in: [...new Set(dbStudents.map(s => s.batch?._id).filter(Boolean))] }
     });
 
     for (let i = 3; i >= 0; i--) {
       const startOfWeek = new Date(now.getTime() - (i + 1) * 7 * 24 * 60 * 60 * 1000);
-      const endOfWeek   = new Date(now.getTime() - i       * 7 * 24 * 60 * 60 * 1000);
+      const endOfWeek = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
       weeklyHomeworkLabels.push(`Wk -${i}`);
 
       let submissionsCount = 0;
@@ -459,7 +440,10 @@ exports.getReports = async (req, res) => {
     // ─── TAB: OVERVIEW ──────────────────────────────────────────────
     if (tab === 'overview') {
       const [allStudents, allFees, allLeads] = await Promise.all([
-        User.find(studentQuery).select('name course batch enrollmentDate'),
+        Student.find(studentQuery)
+          .populate('userId', 'name')
+          .populate('course', 'name')
+          .populate('batch', 'name').select('name course batch enrollmentDate'),
         Fee.find().populate('student'),
         Lead.find().select('status source course createdAt'),
       ]);
@@ -475,9 +459,9 @@ exports.getReports = async (req, res) => {
 
       if (exportType === 'csv') {
         reportData = allStudents.map(s => ({
-          Name: s.name,
-          Course: s.course,
-          Batch: s.batch,
+          Name: s.userId?.name || '',
+          Course: s.course?.name || '',
+          Batch: s.batch?.name || '',
           EnrollmentDate: s.enrollmentDate
         }));
       }
@@ -504,7 +488,7 @@ exports.getReports = async (req, res) => {
         monthlyExpenses[exp.month].total += exp.amount;
         monthlyExpenses[exp.month][exp.category] += exp.amount;
       });
-      
+
       fees.forEach(f => {
         if (f.installments && f.installments.length > 0) {
           f.installments.forEach(inst => {
@@ -605,14 +589,16 @@ exports.getReports = async (req, res) => {
     // ─── TAB: ENROLLMENT ────────────────────────────────────────────
     else if (tab === 'enrollment') {
       const stats = await Lead.aggregate([
-        { $group: {
-          _id: '$assignedTo',
-          total: { $sum: 1 },
-          converted: { $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] } },
-          contacted: { $sum: { $cond: [{ $eq: ['$status', 'contacted'] }, 1, 0] } },
-          interested: { $sum: { $cond: [{ $eq: ['$status', 'interested'] }, 1, 0] } },
-          lost: { $sum: { $cond: [{ $eq: ['$status', 'lost'] }, 1, 0] } }
-        }}
+        {
+          $group: {
+            _id: '$assignedTo',
+            total: { $sum: 1 },
+            converted: { $sum: { $cond: [{ $eq: ['$status', 'admission_completed'] }, 1, 0] } },
+            contacted: { $sum: { $cond: [{ $eq: ['$status', 'contacted'] }, 1, 0] } },
+            interested: { $sum: { $cond: [{ $eq: ['$status', 'joining_interested'] }, 1, 0] } },
+            lost: { $sum: { $cond: [{ $eq: ['$status', 'lost'] }, 1, 0] } }
+          }
+        }
       ]);
 
       const counsellors = await User.find({ role: 'counsellor' });
@@ -621,7 +607,7 @@ exports.getReports = async (req, res) => {
         const leads = await Lead.find({ assignedTo: c._id });
         const followUps = leads.reduce((sum, l) => sum + (l.followUpHistory ? l.followUpHistory.length : 0), 0);
 
-        const convertedLeads = leads.filter(l => l.status === 'converted' && l.createdAt);
+        const convertedLeads = leads.filter(l => l.status === 'admission_completed' && l.createdAt);
         let avgDays = 0;
         if (convertedLeads.length > 0) {
           const totalDays = convertedLeads.reduce((sum, l) => {
@@ -646,7 +632,7 @@ exports.getReports = async (req, res) => {
       }
 
       // Funnel Velocity
-      const convertedLeads = await Lead.find({ status: 'converted' });
+      const convertedLeads = await Lead.find({ status: 'admission_completed' });
       let newToContactedDays = [];
       let contactedToInterestedDays = [];
       let interestedToConvertedDays = [];
@@ -664,8 +650,8 @@ exports.getReports = async (req, res) => {
         let interestedDate = null;
 
         sortedHistory.forEach(h => {
-          if (h.status === 'contacted' && !contactedDate) contactedDate = new Date(h.date || h.createdAt);
-          if (h.status === 'interested' && !interestedDate) interestedDate = new Date(h.date || h.createdAt);
+          if (h.status === 'contacted' && !contactedDate) contactedDate = new Date(h.doneAt || h.createdAt);
+          if (h.status === 'joining_interested' && !interestedDate) interestedDate = new Date(h.doneAt || h.createdAt);
         });
 
         if (contactedDate) newToContactedDays.push((contactedDate - createdDate) / (1000 * 60 * 60 * 24));
@@ -698,10 +684,10 @@ exports.getReports = async (req, res) => {
       const todayISTStr = todayIST();
       const defaultMonth = todayISTStr.slice(0, 7);
       const selectedMonth = req.query.month || defaultMonth;
-      
+
       const [year, monthNum] = selectedMonth.split('-').map(Number);
       const daysInMonth = new Date(year, monthNum, 0).getDate();
-      
+
       const holidaysList = await Holiday.find({ date: { $regex: '^' + selectedMonth } });
       const holidayDates = new Set(holidaysList.map(h => h.date));
       const holidayMap = {};
@@ -726,8 +712,9 @@ exports.getReports = async (req, res) => {
       }
       renderData.calendarDays = calendarDays;
 
-      const students = await User.find(studentQuery).sort({ name: 1 });
-      
+      const students = await Student.find(studentQuery).populate('userId', 'name');
+      const studentIds = students.map(s => s._id);
+      students.sort((a, b) => (a.userId?.name || '').localeCompare(b.userId?.name || ''));
       if (students.length > 0) {
         const studentIds = students.map(s => s._id);
         const attendanceRecords = await Attendance.find({
@@ -759,12 +746,12 @@ exports.getReports = async (req, res) => {
 
             return {
               _id: student._id,
-              name: student.name,
+              name: student.userId?.name || '',
               attendanceByDate
             };
           });
           renderData.studentGrid = studentGrid;
-          
+
           const allBatchAttendanceRecords = await Attendance.find({ student: { $in: studentIds } });
           await calculateStudentsAttendance(students, allBatchAttendanceRecords);
           renderData.attendanceSummary = students;
@@ -778,9 +765,9 @@ exports.getReports = async (req, res) => {
     // ─── TAB: ACADEMIC ──────────────────────────────────────────────
     else if (tab === 'academic') {
       const activeBatches = batch === 'all' ? batches : [batch];
-      
+
       for (const b of activeBatches) {
-        const students = await User.find({ role: 'student', batch: b, isActive: true });
+        const students = await Student.find({ batch: b }).populate('userId', 'status');
         if (students.length === 0) continue;
 
         const studentIds = students.map(s => s._id);
@@ -831,8 +818,7 @@ exports.getReports = async (req, res) => {
       }
 
       // Populate At-Risk Students Alerts via aggregate queries (Issue 3.8)
-      const students = await User.find(studentQuery);
-      const studentIds = students.map(s => s._id);
+      const students = await Student.find(studentQuery).populate('userId', 'name'); const studentIds = students.map(s => s._id);
 
       // Fetch fees and progress in parallel
       const [feesList, progressList, allAssignments] = await Promise.all([
@@ -923,7 +909,7 @@ exports.getReports = async (req, res) => {
           Assignment.find({ teacher: t._id }),
           Attendance.aggregate([
             { $match: { teacher: t._id, date: { $gte: startDate, $lte: endDate } } },
-            { $group: { _id: { date: '$date', batch: '$batch', subject: '$subject' } } }
+            { $group: { _id: { date: '$date', batch: '$batch' } } }
           ]),
           Curriculum.find({ teacher: t._id })
         ]);

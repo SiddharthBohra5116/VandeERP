@@ -2,6 +2,7 @@ const DailyUpdate = require('../../models/DailyUpdate');
 const Progress = require('../../models/Progress');
 const Curriculum = require('../../models/Curriculum');
 const Fee = require('../../models/Fee');
+const Student = require('../../models/Student');
 
 // ─── DAILY UPDATES ────────────────────────────────────────────────────────────
 
@@ -42,7 +43,10 @@ exports.getDailyUpdates = async (req, res) => {
  */
 exports.getProgress = async (req, res) => {
   try {
-    const progressRecords = await Progress.find({ student: req.user._id }).populate('teacher', 'name');
+    const studentProfile = await Student.findOne({ userId: req.user._id });
+    const progressRecords = studentProfile
+      ? await Progress.find({ student: studentProfile._id }).populate('teacher', 'name')
+      : [];
     res.render('student/progress', { title: 'My Progress', user: req.user, progressRecords });
   } catch (err) {
     console.error('❌ Student Progress Fetch Error:', err);
@@ -59,12 +63,13 @@ exports.getProgress = async (req, res) => {
  */
 exports.getCurriculum = async (req, res) => {
   try {
-    const isKycIncomplete = !req.user.idProof || !req.user.fatherName || !req.user.guardianPhone;
+    const kycProfile = await Student.findOne({ userId: req.user._id });
+    const isKycIncomplete = !kycProfile;
     if (isKycIncomplete) {
-      return res.status(403).render('403', { 
-        title: 'Access Restricted', 
-        user: req.user, 
-        error: 'Complete your profile KYC (Identity proof, Father\'s Name, Guardian Phone) on the dashboard to access curriculum.' 
+      return res.status(403).render('403', {
+        title: 'Access Restricted',
+        user: req.user,
+        error: 'Complete your profile KYC (Identity proof, Father\'s Name, Guardian Phone) on the dashboard to access curriculum.'
       });
     }
 
@@ -89,9 +94,8 @@ exports.getCurriculum = async (req, res) => {
  */
 exports.getFees = async (req, res) => {
   try {
-    const fee = await Fee.findOne({ student: req.user._id })
-      .populate('student', 'name course batch phone email')
-      .populate('payments.receivedBy', 'name');
+    const sp = await Student.findOne({ userId: req.user._id });
+    const fee = sp ? await Fee.findOne({ student: sp._id }) : null;
     res.render('student/fees', { title: 'My Fees', user: req.user, fee });
   } catch (err) {
     console.error('❌ Student Fees Fetch Error:', err);

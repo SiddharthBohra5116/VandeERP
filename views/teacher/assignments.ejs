@@ -43,7 +43,7 @@
                 <% } %>
               </td>
               <td>
-                <div><%= assign.subject %></div>
+                <div><%= assign.course && assign.course.name ? assign.course.name : '—' %></div>
                 <div class="td-muted text-sm">Batch: <%= assign.batch %></div>
               </td>
               <td class="mono text-sm <%= isOverdue ? 'text-red' : 'text-sub' %>" style="<%= isOverdue ? 'font-weight:600;' : '' %>">

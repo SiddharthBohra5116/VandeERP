@@ -128,10 +128,8 @@
           <div>
             <div class="chat-header-name"><%= selectedContact.name %></div>
             <div class="chat-header-meta">
-              <span class="contact-role-badge" style="border-color: <%= roleColor %>20; color: <%= roleColor %>; background-color: <%= roleColor %>08; font-size: 10px; padding: 1px 6px;"><%= selectedContact.role %></span>
-              <% if (selectedContact.rollNumber) { %>
-                <span class="chat-header-roll"><%= selectedContact.rollNumber %></span>
-              <% } %>
+              <span class="contact-role-badge" style="border-color: <%= roleColor %>20; color: <%= roleColor %>; background-color: <%= roleColor %>08; font-size: 10px; padding: 1px 6px;">
+                <%= selectedContact.role %></span>
             </div>
           </div>
         </div>
@@ -227,6 +225,7 @@
 
       <!-- Message Form -->
       <form action="/auth/inbox/send" method="POST" class="chat-input-bar">
+        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
         <input type="hidden" name="recipientId" value="<%= selectedContact._id %>">
         <textarea name="content" id="chatMessageInput" placeholder="Type a message here... (Press Enter to send)" required></textarea>
         <button type="submit" class="btn btn-primary send-btn" aria-label="Send Message">
@@ -242,6 +241,7 @@
   <div class="modal-content" style="background: var(--bg-card, #121212); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; width: 90%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); position: relative;">
     <h3 style="margin-top: 0; margin-bottom: 1rem; color: var(--text);">Edit Message</h3>
     <form id="editMessageForm" method="POST">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
       <textarea id="editMessageTextarea" name="content" style="width: 100%; min-height: 100px; padding: 0.75rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-input); color: var(--text); font-family: inherit; font-size: 0.9rem; resize: vertical; margin-bottom: 1rem; outline: none; transition: border-color 0.2s;" required></textarea>
       <div style="display: flex; justify-content: flex-end; gap: 8px;">
         <button type="button" onclick="closeEditModal()" class="btn btn-ghost" style="padding: 6px 16px; border-radius: 6px; border: 1px solid var(--border); background: none; color: var(--text); cursor: pointer;">Cancel</button>

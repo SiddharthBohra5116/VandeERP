@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Student = require('../models/Student');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'vande_secret_key';
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
@@ -127,7 +128,8 @@ exports.updateProfile = async (req, res) => {
       if (req.file) {
         updateRequest.profilePic = `/files/${req.file.filename}`;
       }
-      await User.findByIdAndUpdate(req.user._id, {
+      const Student = require('../models/Student');
+      await Student.findOneAndUpdate({ userId: req.user._id }, {
         pendingProfileUpdate: updateRequest
       });
       console.log('✅ Profile update request submitted by student:', { userId: req.user._id });
@@ -213,40 +215,48 @@ exports.getInbox = async (req, res) => {
     let defaultContacts = [];
     if (req.user.role === 'admin') {
       defaultContacts = await User.find({ _id: { $ne: req.user._id } })
-        .select('name role profilePic rollNumber')
+        .select('name role profilePic')
         .sort({ name: 1 });
     } else if (req.user.role === 'teacher') {
       const Schedule = require('../models/Schedule');
       const assignedBatches = await Schedule.distinct('batch', { teacher: req.user._id });
+      const batchStudents = await Student.find({ batch: { $in: assignedBatches } }).select('userId');
+      const batchUserIds = batchStudents.map(s => s.userId);
       defaultContacts = await User.find({
         _id: { $ne: req.user._id },
         $or: [
           { role: 'admin' },
-          { role: 'student', batch: { $in: assignedBatches }, status: { $in: ['active', 'complete'] } }
+          { _id: { $in: batchUserIds } }
         ]
       })
-        .select('name role profilePic rollNumber')
+        .select('name role profilePic')
         .sort({ name: 1 });
     } else if (req.user.role === 'counsellor') {
+      const assignedStudents = await Student.find({ counsellor: req.user._id }).select('userId');
+      const assignedUserIds = assignedStudents.map(s => s.userId);
       defaultContacts = await User.find({
         _id: { $ne: req.user._id },
         $or: [
           { role: 'admin' },
-          { role: 'student', counsellor: req.user._id, status: { $in: ['active', 'complete'] } }
+          { _id: { $in: assignedUserIds } }
         ]
       })
-        .select('name role profilePic rollNumber')
+        .select('name role profilePic')
         .sort({ name: 1 });
     } else if (req.user.role === 'student') {
+      const myProfile = await Student.findOne({ userId: req.user._id }).select('teacher counsellor');
       const condition = [{ role: 'admin' }];
-      if (req.user.teacher) {
-        condition.push({ _id: req.user.teacher });
+      if (myProfile?.teacher) {
+        condition.push({ _id: myProfile.teacher });
+      }
+      if (myProfile?.counsellor) {
+        condition.push({ _id: myProfile.counsellor });
       }
       defaultContacts = await User.find({
         _id: { $ne: req.user._id },
         $or: condition
       })
-        .select('name role profilePic rollNumber')
+        .select('name role profilePic')
         .sort({ name: 1 });
     }
 
@@ -256,7 +266,7 @@ exports.getInbox = async (req, res) => {
 
     if (participantIds.size > 0) {
       const extraUsers = await User.find({ _id: { $in: Array.from(participantIds) } })
-        .select('name role profilePic rollNumber');
+        .select('name role profilePic');
       extraUsers.forEach(u => {
         if (!contactMap.has(u._id.toString()) && u._id.toString() !== req.user._id.toString()) {
           contactMap.set(u._id.toString(), u);
@@ -300,7 +310,7 @@ exports.getInbox = async (req, res) => {
     const selectedId = req.query.chat || (contacts.length > 0 ? contacts[0]._id.toString() : null);
 
     if (selectedId) {
-      selectedContact = await User.findById(selectedId).select('name role profilePic rollNumber');
+     selectedContact = await User.findById(selectedId).select('name role profilePic');
       if (selectedContact) {
         // Load history
         chatHistory = await Message.find({

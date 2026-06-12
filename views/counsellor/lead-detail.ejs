@@ -13,9 +13,11 @@
   const statusBadge = {
     new: 'badge-orange',
     contacted: 'badge-blue',
-    interested: 'badge-gold',
-    ready_to_convert: 'badge-gold',
-    converted: 'badge-green',
+    mentorship_scheduled: 'badge-blue',
+    mentorship_attended: 'badge-yellow',
+    follow_up: 'badge-yellow',
+    joining_interested: 'badge-gold',
+    admission_completed: 'badge-green',
     lost: 'badge-red'
   }[lead.status] || 'badge-grey';
 %>
@@ -89,7 +91,7 @@
         </div>
         <div style="display:flex; justify-content:space-between;">
           <span class="text-muted text-sm">Follow-up Date</span>
-          <% const isOverdue = lead.followUpDate && new Date(lead.followUpDate) < new Date() && lead.status !== 'converted' && lead.status !== 'lost'; %>
+         <% const isOverdue = lead.followUpDate && new Date(lead.followUpDate) < new Date() && lead.status !== 'admission_completed' && lead.status !== 'lost'; %>
           <span class="mono text-sm" style="color:<%= isOverdue ? 'var(--red)' : 'var(--text)' %>">
             <%= lead.followUpDate ? new Date(lead.followUpDate).toLocaleDateString('en-IN', {weekday:'short',day:'numeric',month:'short',year:'numeric'}) : '—' %>
             <% if (isOverdue) { %> ⚠️<% } %>
@@ -116,10 +118,11 @@
     <div class="card">
       <div class="card-title" style="margin-bottom:16px;">Log Follow-up & Update Status</div>
       <form action="/counsellor/leads/<%= lead._id %>/followup" method="POST">
+        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
         <div class="form-group">
           <label class="form-label" style="font-size: 10px;">New Status</label>
           <select name="status" class="form-control" required>
-            <% ['new','contacted','interested','ready_to_convert','converted','lost'].forEach(s => { %>
+            <% ['new','contacted','mentorship_scheduled','mentorship_attended','follow_up','joining_interested','admission_completed','lost'].forEach(s => { %>
               <option value="<%= s %>" <%= lead.status === s ? 'selected' : '' %>><%= s.replace(/_/g, ' ').charAt(0).toUpperCase() + s.replace(/_/g, ' ').slice(1) %></option>
             <% }); %>
           </select>
@@ -179,8 +182,8 @@
       document.addEventListener('DOMContentLoaded', toggleCallFields);
     </script>
 
-    <% if (lead.status !== 'converted') { %>
-      <% if (lead.status !== 'ready_to_convert') { %>
+    <% if (lead.status !== 'admission_completed') { %>
+      <% if (lead.status !== 'joining_interested') { %>
         <!-- Mark as Ready to Convert -->
         <div class="card" style="border-color:rgba(146,120,224,0.25); background: linear-gradient(180deg, rgba(146,120,224,0.02) 0%, rgba(0,0,0,0) 100%);">
           <div class="card-title" style="color:var(--gold); margin-bottom:4px;">
@@ -188,6 +191,7 @@
           </div>
           <div class="form-hint" style="margin-bottom:12px;">Flag this lead as ready to convert for Admin finalisation.</div>
           <form action="/counsellor/leads/<%= lead._id %>/ready" method="POST" style="margin:0;">
+            <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
             <button type="submit" class="btn btn-primary btn-block btn-sm">Mark as Ready to Convert</button>
           </form>
         </div>
@@ -323,8 +327,11 @@
               const fuBadge = {
                 new: 'badge-orange',
                 contacted: 'badge-blue',
-                interested: 'badge-gold',
-                converted: 'badge-green',
+                mentorship_scheduled: 'badge-blue',
+                mentorship_attended: 'badge-yellow',
+                follow_up: 'badge-yellow',
+                joining_interested: 'badge-gold',
+                admission_completed: 'badge-green',
                 lost: 'badge-red'
               }[fu.status] || 'badge-grey';
             %>

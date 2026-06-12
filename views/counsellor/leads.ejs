@@ -17,7 +17,7 @@
       <label class="form-label" style="font-size: 10px;">Status</label>
       <select name="status" class="form-control" style="padding: 0.45rem 0.75rem;">
         <option value="">All Statuses</option>
-        <% ['new','contacted','interested','converted','lost'].forEach(s => { %>
+        <% ['new','contacted','mentorship_scheduled','mentorship_attended','follow_up','joining_interested','admission_completed','lost'].forEach(s => { %>
           <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= s.charAt(0).toUpperCase() + s.slice(1) %></option>
         <% }); %>
       </select>
@@ -76,12 +76,15 @@
               const statusBadge = {
                 new: 'badge-orange',
                 contacted: 'badge-blue',
-                interested: 'badge-gold',
-                converted: 'badge-green',
+                mentorship_scheduled: 'badge-blue',
+                mentorship_attended: 'badge-yellow',
+                follow_up: 'badge-yellow',
+                joining_interested: 'badge-gold',
+                admission_completed: 'badge-green',
                 lost: 'badge-red'
               }[lead.status] || 'badge-grey';
 
-              const isOverdue = lead.followUpDate && new Date(lead.followUpDate) < new Date() && lead.status !== 'converted' && lead.status !== 'lost';
+              const isOverdue = lead.followUpDate && new Date(lead.followUpDate) < new Date() && lead.status !== 'admission_completed' && lead.status !== 'lost';
             %>
             <tr>
               <td class="td-mono text-muted"><%= i + 1 %></td>
@@ -103,6 +106,7 @@
                   <a href="/counsellor/leads/<%= lead._id %>/edit" class="btn btn-ghost btn-xs">Edit</a>
                   <form action="/counsellor/leads/<%= lead._id %>?_method=DELETE" method="POST"
                         onsubmit="return confirm('Delete this lead permanently? This cannot be undone.')" style="display:inline; margin:0;">
+                    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                     <button type="submit" class="btn btn-danger btn-xs">✕</button>
                   </form>
                 </div>

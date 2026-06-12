@@ -9,7 +9,7 @@
     <% if (user.profilePic) { %>
       <img src="<%= user.profilePic %>" alt="<%= user.name %>">
     <% } else { %>
-      <%= user.initials %>
+      <%= user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) %>
     <% } %>
   </div>
   <div>
@@ -43,6 +43,7 @@
       <% } %>
     <% } %>
     <form action="/auth/profile" method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
       <div class="form-group">
         <label class="form-label" for="name">Full Name</label>
         <input type="text" id="name" name="name" class="form-control" value="<%= user.name %>" required>
@@ -86,13 +87,14 @@
       <div class="card-title">Change Password</div>
     </div>
     <form action="/auth/change-password" method="POST">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
       <div class="form-group">
         <label class="form-label" for="currentPassword">Current Password</label>
         <input type="password" id="currentPassword" name="currentPassword" class="form-control" placeholder="••••••••" required>
       </div>
       <div class="form-group">
         <label class="form-label" for="newPassword">New Password</label>
-        <input type="password" id="newPassword" name="newPassword" class="form-control" placeholder="•••••••• (Min. 6 chars)" minlength="6" required>
+        <input type="password" id="newPassword" name="newPassword" class="form-control" placeholder="•••••••• (Min. 8 chars)" minlength="8" required>
       </div>
       <button type="submit" class="btn btn-ghost mt-2">Change Password</button>
     </form>
@@ -146,7 +148,7 @@
   </p>
 
   <form action="/student/profile/upload-id" method="POST" enctype="multipart/form-data">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     <div class="form-group" style="margin-bottom: 1rem;">
       <label class="form-label" for="idProof"><%= user.idProof ? 'Replace document' : 'Upload ID document' %></label>
       <input type="file" id="idProof" name="idProof" class="form-control" accept="image/jpeg,image/png,application/pdf" required>

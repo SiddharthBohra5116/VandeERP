@@ -1,917 +1,1238 @@
-<%
-  layout = 'main';
-  title = student.name;
-  subtitle = `Student · ${student.rollNumber || 'No Roll Number'}`;
-  page = 'users';
-
-  // Warnings calculations
-  const today = new Date();
-  const isFeeOverdue = fee && fee.dueAmount > 0 && fee.dueDate && new Date(fee.dueDate) < today;
-  
-  let attendancePct = 0;
-  if (attendance && attendance.length > 0) {
+<% layout='main' ; title=student.name; subtitle=`Student · ${student.rollNumber || 'No Roll Number' }`; page='users' ;
+  // Warnings calculations const today=new Date(); const isFeeOverdue=fee && (Math.max(0, fee.totalAmount -
+  (fee.discount || 0) - fee.paidAmount))> 0 && fee.dueDate && new Date(fee.dueDate) < today; let attendancePct=0; if
+    (attendance && attendance.length> 0) {
     const presentCount = attendance.filter(a => a.status === 'present').length;
     attendancePct = Math.round((presentCount / attendance.length) * 100);
-  }
-  const isAttendanceLow = attendance && attendance.length > 0 && attendancePct < 75;
+    }
+    const isAttendanceLow = attendance && attendance.length > 0 && attendancePct < 75; // Profile completeness
+      calculations let score=0; let maxScore=6; const missing=[]; if (student.profilePic) score++; else missing.push({
+      label: 'Photo' , link: `/admin/users/${student._id}/edit` }); if (student.phone) score++; else missing.push({
+      label: 'Phone' , link: `/admin/users/${student._id}/edit` }); if (student.batch) score++; else missing.push({
+      label: 'Batch' , link: `/admin/users/${student._id}/edit` }); if (fee) score++; else missing.push({
+      label: 'Fee Record' , link: `/admin/fees` }); if (student.idProof) score++; else missing.push({ label: 'ID Proof'
+      , link: '#' }); if (student.fatherName || student.motherName) score++; else missing.push({ label: 'Parents' ,
+      link: `/admin/users/${student._id}/edit` }); const completenessPct=Math.round((score / maxScore) * 100); %>
 
-  // Profile completeness calculations
-  let score = 0;
-  let maxScore = 6;
-  const missing = [];
-  if (student.profilePic) score++; else missing.push({ label: 'Photo', link: `/admin/users/${student._id}/edit` });
-  if (student.phone) score++; else missing.push({ label: 'Phone', link: `/admin/users/${student._id}/edit` });
-  if (student.batch) score++; else missing.push({ label: 'Batch', link: `/admin/users/${student._id}/edit` });
-  if (fee) score++; else missing.push({ label: 'Fee Record', link: `/admin/fees` });
-  if (student.idProof) score++; else missing.push({ label: 'ID Proof', link: '#' });
-  if (student.fatherName || student.motherName) score++; else missing.push({ label: 'Parents', link: `/admin/users/${student._id}/edit` });
-  
-  const completenessPct = Math.round((score / maxScore) * 100);
-%>
-
-<!-- Breadcrumbs -->
-<div class="breadcrumb" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-  <a href="/admin/dashboard" style="color: var(--text-sub); transition: color 0.2s;">Admin</a> &rsaquo; 
-  <a href="/admin/students" style="color: var(--text-sub); transition: color 0.2s;">Students</a> &rsaquo; 
-  <span style="color: var(--gold-light); font-weight: 500;"><%= student.name %></span>
-</div>
-
-<!-- Inline Contextual Warnings -->
-<% if (isFeeOverdue) { %>
-  <div class="alert alert-warn" style="margin-bottom: 1rem; position: static; max-width: none; animation: none;">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-    <span><strong>Fee Overdue Warning:</strong> Outstanding balance of ₹<%= fee.dueAmount.toLocaleString('en-IN') %> due since <%= new Date(fee.dueDate).toLocaleDateString() %>.</span>
-  </div>
-<% } %>
-
-<% if (isAttendanceLow) { %>
-  <div class="alert alert-error" style="margin-bottom: 1rem; position: static; max-width: none; animation: none;">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    <span><strong>Low Attendance Warning:</strong> Attendance rate is <%= attendancePct %>%, which is below the 75% limit.</span>
-  </div>
-<% } %>
-
-<% if (student.status === 'drop') { %>
-  <div class="alert alert-info" style="margin-bottom: 1rem; position: static; max-width: none; animation: none; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); color: var(--text-sub);">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    <span>This student profile is inactive (Status: Dropped).</span>
-  </div>
-<% } %>
-
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-  <a href="/admin/students" class="btn btn-ghost btn-sm">&larr; Back to Students</a>
-  <div style="display:flex; gap:0.5rem;">
-    <% if (student.status === 'complete') { %>
-      <a href="/admin/students/<%= student._id %>/certificate" target="_blank" class="btn btn-sm" style="background:var(--gold); color:black; font-weight:700; border-color:var(--gold);">🎓 View Completion Certificate</a>
-    <% } %>
-    <a href="/admin/users/<%= student._id %>/edit" class="btn btn-primary btn-sm">Edit Student Profile</a>
-  </div>
-</div>
-
-<!-- Pending Profile Changes Request Card -->
-<% if (student.pendingProfileUpdate && student.pendingProfileUpdate.requestedAt) { %>
-  <div class="card" style="margin-bottom: 1.5rem; border-color: var(--gold-border); background: linear-gradient(135deg, rgba(255,204,0,0.03) 0%, rgba(255,204,0,0.01) 100%);">
-    <div style="display: flex; align-items: flex-start; gap: 1rem;">
-      <div style="background: var(--gold-dim); border: 1px solid var(--gold-border); border-radius: var(--radius); padding: 0.5rem; display: flex; align-items: center; justify-content: center; color: var(--gold);">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-      </div>
-      <div style="flex: 1;">
-        <div style="font-size: 0.85rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">
-          Profile Update Request Pending
-        </div>
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-          Submitted on <%= new Date(student.pendingProfileUpdate.requestedAt).toLocaleString('en-IN', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %>
-        </p>
-        
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-hover); border-radius: var(--radius); border: 1px solid var(--border);">
-          <% if (student.pendingProfileUpdate.name && student.pendingProfileUpdate.name !== student.name) { %>
-            <div>
-              <div style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Full Name</div>
-              <div style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem;">
-                <span style="text-decoration: line-through; color: var(--text-muted);"><%= student.name %></span>
-                <span style="color: var(--text-muted);">&rarr;</span>
-                <strong style="color: var(--text);"><%= student.pendingProfileUpdate.name %></strong>
-              </div>
-            </div>
-          <% } %>
-          
-          <% if (student.pendingProfileUpdate.phone && student.pendingProfileUpdate.phone !== student.phone) { %>
-            <div>
-              <div style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Phone Number</div>
-              <div style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem;">
-                <span style="text-decoration: line-through; color: var(--text-muted);"><%= student.phone || '—' %></span>
-                <span style="color: var(--text-muted);">&rarr;</span>
-                <strong style="color: var(--text);"><%= student.pendingProfileUpdate.phone %></strong>
-              </div>
-            </div>
-          <% } %>
-
-          <% if (student.pendingProfileUpdate.fatherName && student.pendingProfileUpdate.fatherName !== student.fatherName) { %>
-            <div>
-              <div style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Father's Name</div>
-              <div style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem;">
-                <span style="text-decoration: line-through; color: var(--text-muted);"><%= student.fatherName || '—' %></span>
-                <span style="color: var(--text-muted);">&rarr;</span>
-                <strong style="color: var(--text);"><%= student.pendingProfileUpdate.fatherName %></strong>
-              </div>
-            </div>
-          <% } %>
-
-          <% if (student.pendingProfileUpdate.motherName && student.pendingProfileUpdate.motherName !== student.motherName) { %>
-            <div>
-              <div style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Mother's Name</div>
-              <div style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem;">
-                <span style="text-decoration: line-through; color: var(--text-muted);"><%= student.motherName || '—' %></span>
-                <span style="color: var(--text-muted);">&rarr;</span>
-                <strong style="color: var(--text);"><%= student.pendingProfileUpdate.motherName %></strong>
-              </div>
-            </div>
-          <% } %>
-
-          <% if (student.pendingProfileUpdate.address && student.pendingProfileUpdate.address !== student.address) { %>
-            <div>
-              <div style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Address</div>
-              <div style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem;">
-                <span style="text-decoration: line-through; color: var(--text-muted);"><%= student.address || '—' %></span>
-                <span style="color: var(--text-muted);">&rarr;</span>
-                <strong style="color: var(--text);"><%= student.pendingProfileUpdate.address %></strong>
-              </div>
-            </div>
-          <% } %>
-
-          <% if (student.pendingProfileUpdate.city && student.pendingProfileUpdate.city !== student.city) { %>
-            <div>
-              <div style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">City</div>
-              <div style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem;">
-                <span style="text-decoration: line-through; color: var(--text-muted);"><%= student.city || '—' %></span>
-                <span style="color: var(--text-muted);">&rarr;</span>
-                <strong style="color: var(--text);"><%= student.pendingProfileUpdate.city %></strong>
-              </div>
-            </div>
-          <% } %>
-
-          <% if (student.pendingProfileUpdate.dob && (!student.dob || new Date(student.pendingProfileUpdate.dob).getTime() !== new Date(student.dob).getTime())) { %>
-            <div>
-              <div style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Date of Birth</div>
-              <div style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem;">
-                <span style="text-decoration: line-through; color: var(--text-muted);"><%= student.dob ? new Date(student.dob).toLocaleDateString() : '—' %></span>
-                <span style="color: var(--text-muted);">&rarr;</span>
-                <strong style="color: var(--text);"><%= new Date(student.pendingProfileUpdate.dob).toLocaleDateString() %></strong>
-              </div>
-            </div>
-          <% } %>
-
-          <% if (student.pendingProfileUpdate.profilePic && student.pendingProfileUpdate.profilePic !== student.profilePic) { %>
-            <div>
-              <div style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">New Photo</div>
-              <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem;">
-                <img src="<%= student.pendingProfileUpdate.profilePic %>" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-light);" alt="New Profile Pic">
-                <span style="font-size: 0.75rem; color: var(--text-muted);">Uploaded</span>
-              </div>
-            </div>
-          <% } %>
-        </div>
-
-        <div style="display: flex; gap: 0.5rem;">
-          <form action="/admin/students/<%= student._id %>/approve-profile" method="POST" style="margin: 0;">
-            <button type="submit" class="btn btn-sm" style="background: var(--green); border-color: var(--green); color: white; padding: 0.4rem 1rem; font-weight:600;">
-              Approve Changes
-            </button>
-          </form>
-          <form action="/admin/students/<%= student._id %>/reject-profile" method="POST" style="margin: 0;">
-            <button type="submit" class="btn btn-ghost btn-sm" style="color: var(--red); border-color: rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05); padding: 0.4rem 1rem; font-weight:600;">
-              Reject Request
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-<% } %>
-
-<!-- Profile Completeness Indicator -->
-<div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-    <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-sub);">Profile Completeness</span>
-    <span style="font-size: 0.85rem; font-weight: bold; color: var(--gold);"><%= completenessPct %>%</span>
-  </div>
-  <div style="background: var(--bg-input); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
-    <div style="background: linear-gradient(90deg, var(--gold) 0%, var(--gold-hover) 100%); width: <%= completenessPct %>%; height: 100%;"></div>
-  </div>
-  <% if (missing.length > 0) { %>
-    <div style="font-size: 0.72rem; color: var(--text-muted);">
-      Missing fields: 
-      <% missing.forEach((item, idx) => { %>
-        <a href="<%= item.link %>" style="color: var(--gold-light); text-decoration: underline; margin-right: 6px;"><%= item.label %></a><%= idx < missing.length - 1 ? ',' : '' %>
-      <% }) %>
-    </div>
-  <% } %>
-</div>
-
-<div class="profile-header">
-  <%
-    let avatarColor = 'var(--gold-dark)';
-    if (student.role === 'admin') avatarColor = '#1e3a8a';
-    else if (student.role === 'teacher') avatarColor = '#065f46';
-    else if (student.role === 'counsellor') avatarColor = '#92400e';
-    else if (student.role === 'student') avatarColor = '#5b21b6';
-  %>
-  <div class="avatar-lg" style="<% if (!student.profilePic) { %>background-color: <%= avatarColor %>; color: #fff; font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 2.2rem;<% } %>">
-    <% if (student.profilePic) { %>
-      <img src="<%= student.profilePic %>" alt="<%= student.name %>">
-    <% } else { %>
-      <%= student.initials %>
-    <% } %>
-  </div>
-  <div style="flex:1;">
-    <h2 class="profile-name" style="font-size:1.5rem; font-weight:800; color:var(--text);"><%= student.name %></h2>
-    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:0.35rem; font-size:0.8rem; color:var(--text-sub);">
-      <span>Roll: <strong style="color:var(--gold);"><%= student.rollNumber || 'Not Generated' %></strong></span>
-      <span>&middot;</span>
-      <span>Course: <strong style="color:var(--text);"><%= student.course %></strong></span>
-      <span>&middot;</span>
-      <span>Batch: <strong style="color:var(--text);"><%= student.batch || 'Unassigned' %></strong></span>
-      <span>&middot;</span>
-      <span>Status: 
-        <% 
-          const statusVal = student.status || (student.isActive ? 'active' : 'inactive');
-          const statusBadgeClass = {
-            active: 'badge-green',
-            inactive: 'badge-grey',
-            drop: 'badge-red',
-            complete: 'badge-gold'
-          }[statusVal];
-        %>
-        <span class="badge <%= statusBadgeClass %>"><%= statusVal %></span>
-      </span>
-    </div>
-  </div>
-</div>
-
-<div class="two-col">
-  <!-- Left Side: Interactive Details Tabs -->
-  <div>
-    <!-- Tabs Navigation -->
-    <div class="card" style="padding: 0.5rem; margin-bottom: 1rem;">
-      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        <button class="btn btn-sm btn-primary tab-btn" onclick="openTab(event, 'ledger')">Fee Ledger</button>
-        <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'attendance')">Attendance</button>
-        <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'progress')">Progress & Tests</button>
-        <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'crm')">CRM Lead History</button>
-        <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'remarks_history')">Remarks & History</button>
-        <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'feedback')">Course Feedback</button>
-        <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'messages')">Admin Messenger</button>
-      </div>
-    </div>
-
-    <!-- Tab: Fee Ledger -->
-    <div id="ledger" class="tab-content card">
-      <div class="card-header" style="margin-bottom:1.25rem;">
-        <div class="card-title">Fee Ledger Summary</div>
-        <a href="/admin/fees/<%= student._id %>" class="btn btn-ghost btn-xs">Open Full Invoice</a>
+      <!-- Breadcrumbs -->
+      <div class="breadcrumb" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+        <a href="/admin/dashboard" style="color: var(--text-sub); transition: color 0.2s;">Admin</a> &rsaquo;
+        <a href="/admin/students" style="color: var(--text-sub); transition: color 0.2s;">Students</a> &rsaquo;
+        <span style="color: var(--gold-light); font-weight: 500;">
+          <%= student.name %>
+        </span>
       </div>
 
-      <% if (!fee) { %>
-        <div class="empty-state">
-          <p>No fee ledger configured for this student.</p>
+      <!-- Inline Contextual Warnings -->
+      <% if (isFeeOverdue) { %>
+        <div class="alert alert-warn" style="margin-bottom: 1rem; position: static; max-width: none; animation: none;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          <span><strong>Fee Overdue Warning:</strong> Outstanding balance of ₹<%= Math.max(0, fee.totalAmount -
+              (fee.discount || 0) - fee.paidAmount).toLocaleString('en-IN') %> due since <%= new
+                Date(fee.dueDate).toLocaleDateString() %>.</span>
         </div>
-      <% } else { %>
-        <% 
-          const actualTotal = fee.totalAmount - (fee.discount || 0);
-          const due = fee.dueAmount;
-          const pct = fee.totalAmount > 0 ? Math.round((fee.paidAmount / actualTotal) * 100) : 0;
-        %>
-        <div class="fee-summary" style="margin-bottom: 1.5rem;">
-          <div class="stat-card" style="padding: 10px 14px;">
-            <div class="stat-label">Total Course Fee</div>
-            <div class="stat-value" style="font-size:1.3rem;">₹<%= fee.totalAmount.toLocaleString('en-IN') %></div>
-          </div>
-          <div class="stat-card" style="padding: 10px 14px;">
-            <div class="stat-label">Discount Applied</div>
-            <div class="stat-value text-muted" style="font-size:1.3rem;">₹<%= (fee.discount || 0).toLocaleString('en-IN') %></div>
-          </div>
-          <div class="stat-card gold" style="padding: 10px 14px;">
-            <div class="stat-label">Net Payable</div>
-            <div class="stat-value" style="font-size:1.3rem; color:var(--gold);">₹<%= actualTotal.toLocaleString('en-IN') %></div>
-          </div>
-        </div>
+        <% } %>
 
-        <div class="fee-summary" style="margin-bottom: 1.5rem; grid-template-columns: 1fr 1fr;">
-          <div class="stat-card green" style="padding: 10px 14px;">
-            <div class="stat-label">Total Paid</div>
-            <div class="stat-value" style="font-size:1.3rem; color:var(--green);">₹<%= fee.paidAmount.toLocaleString('en-IN') %></div>
-          </div>
-          <div class="stat-card red" style="padding: 10px 14px;">
-            <div class="stat-label">Outstanding Dues</div>
-            <div class="stat-value" style="font-size:1.3rem; color:var(--red);">₹<%= due.toLocaleString('en-IN') %></div>
-            <div class="stat-sub" style="font-size:9px;">Includes ₹<%= (fee.totalFine || 0).toLocaleString('en-IN') %> late fines</div>
-          </div>
-        </div>
+          <% if (isAttendanceLow) { %>
+            <div class="alert alert-error"
+              style="margin-bottom: 1rem; position: static; max-width: none; animation: none;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <span><strong>Low Attendance Warning:</strong> Attendance rate is <%= attendancePct %>%, which is below
+                  the 75% limit.</span>
+            </div>
+            <% } %>
 
-        <!-- Installments Schedule -->
-        <div class="section-title" style="margin-top: 1.5rem; margin-bottom: 8px;">Installments Breakdown</div>
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem;">
-          <% if (fee.installments && fee.installments.length > 0) { %>
-            <% fee.installments.forEach(inst => { %>
-              <% 
-                const isPaid = inst.paidAmount >= inst.amount;
-                const isLate = !isPaid && inst.dueDate && new Date(inst.dueDate) < new Date();
-                
-                let fine = 0;
-                if (isLate) {
-                  const diffDays = Math.ceil(Math.abs(new Date() - new Date(inst.dueDate)) / (1000 * 60 * 60 * 24));
-                  if (diffDays > 60) fine = 1000;
-                  else if (diffDays > 30) fine = 500;
-                  else fine = 250;
-                }
-
-                const statusLabel = isPaid ? 'Paid' : isLate ? 'Overdue' : 'Pending';
-                const statusBadgeClass = isPaid ? 'badge-green' : isLate ? 'badge-red' : 'badge-orange';
-                const instPct = inst.amount > 0 ? Math.round((inst.paidAmount / inst.amount) * 100) : 0;
-              %>
-              <div style="background:var(--bg-input); border: 1px solid <%= isLate ? 'rgba(239,68,68,0.2)' : 'var(--border)' %>; border-radius:var(--radius); padding: 10px 12px; display:flex; flex-direction:column; gap:4px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                  <span style="font-size:11px; font-weight:700; color:var(--text);"><%= inst.name %></span>
-                  <span class="badge <%= statusBadgeClass %>" style="font-size:8px; padding:1px 4px;"><%= statusLabel %></span>
+              <% if (student.status==='drop' ) { %>
+                <div class="alert alert-info"
+                  style="margin-bottom: 1rem; position: static; max-width: none; animation: none; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); color: var(--text-sub);">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span>This student profile is inactive (Status: Dropped).</span>
                 </div>
-                <div style="font-size:14px; font-weight:800; color:var(--gold); font-family:var(--mono);">
-                  ₹<%= inst.amount.toLocaleString('en-IN') %>
-                </div>
-                <div style="font-size:10px; color:var(--text-muted);">
-                  Due: <span class="mono"><%= new Date(inst.dueDate).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %></span>
-                </div>
-                <% if (fine > 0) { %>
-                  <div style="font-size:10px; color:var(--red); font-weight:700; margin-top:2px;">
-                    ⚠️ Fine: +₹<%= fine %>
-                  </div>
                 <% } %>
-                <div style="margin-top:auto; padding-top:4px;">
-                  <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--text-muted); margin-bottom:2px;">
-                    <span>Paid: ₹<%= inst.paidAmount.toLocaleString('en-IN') %></span>
-                    <span><%= instPct %>%</span>
-                  </div>
-                  <div class="progress-bar" style="height:3px; background:rgba(255,255,255,0.05); border-radius: 4px;">
-                    <div class="progress-fill <%= isPaid ? 'green' : instPct > 0 ? 'orange' : 'red' %>" style="width: <%= instPct %>%"></div>
-                  </div>
-                </div>
-              </div>
-            <% }) %>
-          <% } %>
-        </div>
 
-        <div class="section-title">Payments Log</div>
-        <% if (!fee.payments || fee.payments.length === 0) { %>
-          <div class="empty-state" style="padding:1.5rem;">
-            <p>No payments recorded yet.</p>
-          </div>
-        <% } else { %>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Amount</th>
-                  <th>Method</th>
-                  <th>TXN ID</th>
-                  <th>Note</th>
-                  <th>Received By</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% fee.payments.forEach(p => { %>
-                  <tr>
-                    <td class="mono text-xs"><%= new Date(p.date).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %></td>
-                    <td class="mono text-green" style="font-weight:600;">₹<%= p.amount %></td>
-                    <td><span class="badge badge-grey"><%= p.method %></span></td>
-                    <td class="mono text-xs"><%= p.transactionId || '—' %></td>
-                    <td style="max-width:120px; font-size:12px;"><%= p.note || '—' %></td>
-                    <td style="font-size:12px;"><%= p.receivedBy ? p.receivedBy.name : 'System' %></td>
-                  </tr>
-                <% }) %>
-              </tbody>
-            </table>
-          </div>
-        <% } %>
-      <% } %>
-    </div>
-
-    <!-- Tab: Attendance -->
-    <div id="attendance" class="tab-content card" style="display:none;">
-      <div class="card-header" style="margin-bottom:1.25rem;">
-        <div class="card-title">Attendance Overview</div>
-        <% 
-          const totalClasses = attendance.length;
-          const presentCount = attendance.filter(a => a.status === 'present').length;
-          const lateCount = attendance.filter(a => a.status === 'late').length;
-          const absentCount = attendance.filter(a => a.status === 'absent').length;
-          const pct = totalClasses > 0 ? Math.round((presentCount / totalClasses) * 100) : 0;
-        %>
-        <span class="badge badge-gold"><%= pct %>% Presence Rate</span>
-      </div>
-
-      <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom:1.5rem;">
-        <div class="stat-card" style="padding:8px 12px;">
-          <div class="stat-label" style="font-size:10px;">Total Lectures</div>
-          <div class="stat-value" style="font-size:1.15rem;"><%= totalClasses %></div>
-        </div>
-        <div class="stat-card green" style="padding:8px 12px;">
-          <div class="stat-label" style="font-size:10px;">Present</div>
-          <div class="stat-value" style="font-size:1.15rem; color:var(--green);"><%= presentCount %></div>
-        </div>
-        <div class="stat-card orange" style="padding:8px 12px;">
-          <div class="stat-label" style="font-size:10px;">Late</div>
-          <div class="stat-value" style="font-size:1.15rem; color:var(--orange);"><%= lateCount %></div>
-        </div>
-        <div class="stat-card red" style="padding:8px 12px;">
-          <div class="stat-label" style="font-size:10px;">Absent</div>
-          <div class="stat-value" style="font-size:1.15rem; color:var(--red);"><%= absentCount %></div>
-        </div>
-      </div>
-
-      <div class="section-title">Attendance History Logs</div>
-      <% if (attendance.length === 0) { %>
-        <div class="empty-state">
-          <p>No attendance records logged for this student yet.</p>
-        </div>
-      <% } else { %>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Subject</th>
-                <th>Status</th>
-                <th>Instructor</th>
-                <th>Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% attendance.forEach(a => { %>
-                <tr>
-                  <td class="mono text-sm fw-600"><%= a.date %></td>
-                  <td><%= a.subject %></td>
-                  <td>
-                    <% 
-                      const statusClass = {
-                        present: 'badge-green',
-                        absent: 'badge-red',
-                        late: 'badge-orange'
-                      }[a.status] || 'badge-grey';
-                    %>
-                    <span class="badge <%= statusClass %>"><%= a.status %></span>
-                  </td>
-                  <td><%= a.teacher ? a.teacher.name : 'Faculty' %></td>
-                  <td style="font-size:12px; color:var(--text-sub);"><%= a.note || '—' %></td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } %>
-    </div>
-
-    <!-- Tab: Progress -->
-    <div id="progress" class="tab-content card" style="display:none;">
-      <div class="card-header" style="margin-bottom:1.25rem;">
-        <div class="card-title">Academic Progress & Test Scores</div>
-      </div>
-
-      <% if (!progress || !progress.testResults || progress.testResults.length === 0) { %>
-        <div class="empty-state">
-          <p>No test scores or progress records registered for this student.</p>
-        </div>
-      <% } else { %>
-        <div style="background:var(--bg3); padding:1rem; border-radius:var(--radius); margin-bottom:1.5rem;">
-          <div style="font-size:0.75rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.4rem;">Tutor Remarks</div>
-          <p style="font-size:0.85rem; color:var(--text-sub); line-height:1.5;"><%= progress.teacherRemark || 'No remarks recorded.' %></p>
-          <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.5rem; text-align:right;">Last Updated by: <%= progress.teacher ? progress.teacher.name : 'Faculty' %></div>
-        </div>
-
-        <div class="section-title">Test Performance</div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Test Name</th>
-                <th>Score</th>
-                <th>Percentage</th>
-                <th>Remarks</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% progress.testResults.forEach(test => { %>
-                <% const pct = test.totalMarks > 0 ? Math.round((test.score / test.totalMarks) * 100) : 0; %>
-                <tr>
-                  <td class="mono text-xs"><%= test.date %></td>
-                  <td><strong><%= test.testName %></strong></td>
-                  <td class="mono"><%= test.score %> / <%= test.totalMarks %></td>
-                  <td>
-                    <span class="badge <%= pct >= 75 ? 'badge-green' : pct >= 50 ? 'badge-blue' : 'badge-red' %>"><%= pct %>%</span>
-                  </td>
-                  <td style="font-size:12px; max-width:180px;"><%= test.remarks || '—' %></td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } %>
-    </div>
-
-    <!-- Tab: CRM Lead History -->
-    <div id="crm" class="tab-content card" style="display:none;">
-      <div class="card-header" style="margin-bottom:1.25rem;">
-        <div class="card-title">Admission & CRM Logs</div>
-      </div>
-
-      <% if (!lead) { %>
-        <div class="empty-state">
-          <p>No original Lead CRM profile found matching this student account.</p>
-        </div>
-      <% } else { %>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:1.5rem; background:var(--bg3); padding:1rem; border-radius:var(--radius);">
-          <div>
-            <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">original lead source</div>
-            <div style="font-size:0.9rem; font-weight:600; color:var(--gold); margin-top:0.15rem;"><%= lead.source %></div>
-          </div>
-          <div>
-            <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">converted student logic</div>
-            <div style="font-size:0.9rem; font-weight:600; color:var(--text); margin-top:0.15rem;">Counsellor: <%= lead.assignedTo ? lead.assignedTo.name : 'Unassigned' %></div>
-          </div>
-        </div>
-
-        <div class="section-title">Timeline of Lead Interactions</div>
-        <% if (!lead.followUpHistory || lead.followUpHistory.length === 0) { %>
-          <div class="empty-state" style="padding:1.5rem;">
-            <p>No followup timeline logged for this prospect lead.</p>
-          </div>
-        <% } else { %>
-          <div class="timeline" style="margin-left: 10px;">
-            <% lead.followUpHistory.slice().reverse().forEach(fu => { %>
-              <div class="tl-item">
-                <div style="font-weight:600; font-size:13px; color:var(--text);">Status change: <span class="badge badge-grey" style="font-size:10px;"><%= fu.status %></span></div>
-                <div class="tl-meta">
-                  <%= new Date(fu.doneAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) %> 
-                  at <%= new Date(fu.doneAt).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}) %>
-                </div>
-                <div class="tl-body" style="font-size:12px; margin-top:0.25rem;"><%= fu.note %></div>
-              </div>
-            <% }) %>
-          </div>
-        <% } %>
-      <% } %>
-    </div>
-
-    <!-- Tab: Remarks & History -->
-    <div id="remarks_history" class="tab-content card" style="display:none;">
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-        
-        <!-- Remarks Section -->
-        <div>
-          <div class="card-header" style="margin-bottom:1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
-            <div class="card-title">Staff Remarks & Timeline</div>
-          </div>
-          
-          <!-- Add Remark Form -->
-          <form action="/admin/students/<%= student._id %>/remark" method="POST" style="background:var(--bg3); padding:0.85rem; border-radius:var(--radius); margin-bottom:1rem;">
-            <div class="form-group">
-              <label class="form-label" style="font-size: 10px;">Post Profile Remark Note</label>
-              <textarea name="note" class="form-control" placeholder="Write a note about student progress, behavior or payments..." required style="min-height:60px; font-size:12px;"></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary btn-xs" style="margin-top:0.5rem;">Post Remark</button>
-          </form>
-
-          <!-- Remarks Timeline -->
-          <% if (!student.remarks || student.remarks.length === 0) { %>
-            <div class="empty-state" style="padding:1rem;">
-              <p style="font-size:12px;">No remarks posted on this student profile.</p>
-            </div>
-          <% } else { %>
-            <div class="timeline" style="padding-left:0.5rem;">
-              <% student.remarks.slice().reverse().forEach(rem => { %>
-                <div class="timeline-item">
-                  <div class="timeline-dot active"></div>
-                  <div class="timeline-body" style="padding: 0.35rem 0.5rem;">
-                    <div style="font-size:12px; font-weight:600; color:var(--text);"><%= rem.note %></div>
-                    <div style="font-size:10px; color:var(--text-muted); margin-top:0.2rem;">
-                      By: <span style="color:var(--gold);"><%= rem.role ? rem.role.toUpperCase() : 'STAFF' %></span> · 
-                      <%= new Date(rem.date).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                    <a href="/admin/students" class="btn btn-ghost btn-sm">&larr; Back to Students</a>
+                    <div style="display:flex; gap:0.5rem;">
+                      <% if (student.status==='complete' ) { %>
+                        <a href="/admin/students/<%= student._id %>/certificate" target="_blank" class="btn btn-sm"
+                          style="background:var(--gold); color:black; font-weight:700; border-color:var(--gold);">🎓
+                          View Completion Certificate</a>
+                        <% } %>
+                          <a href="/admin/users/<%= student._id %>/edit" class="btn btn-primary btn-sm">Edit Student
+                            Profile</a>
                     </div>
                   </div>
-                </div>
-              <% }) %>
-            </div>
-          <% } %>
-        </div>
 
-        <!-- Enrollment Status History Section -->
-        <div>
-          <div class="card-header" style="margin-bottom:1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
-            <div class="card-title">Status Control & Logs</div>
-          </div>
+                  <!-- Pending Profile Changes Request Card -->
+                  <% if (student.pendingProfileUpdate && student.pendingProfileUpdate.requestedAt) { %>
+                    <div class="card"
+                      style="margin-bottom: 1.5rem; border-color: var(--gold-border); background: linear-gradient(135deg, rgba(255,204,0,0.03) 0%, rgba(255,204,0,0.01) 100%);">
+                      <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                        <div
+                          style="background: var(--gold-dim); border: 1px solid var(--gold-border); border-radius: var(--radius); padding: 0.5rem; display: flex; align-items: center; justify-content: center; color: var(--gold);">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                            <circle cx="8.5" cy="7" r="4" />
+                            <line x1="20" y1="8" x2="20" y2="14" />
+                            <line x1="23" y1="11" x2="17" y2="11" />
+                          </svg>
+                        </div>
+                        <div style="flex: 1;">
+                          <div
+                            style="font-size: 0.85rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                            Profile Update Request Pending
+                          </div>
+                          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                            Submitted on <%= new Date(student.pendingProfileUpdate.requestedAt).toLocaleString('en-IN',
+                              {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %>
+                          </p>
 
-          <!-- Change Status Form -->
-          <form action="/admin/students/<%= student._id %>/status" method="POST" style="background:var(--bg3); padding:0.85rem; border-radius:var(--radius); margin-bottom:1rem;">
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label" style="font-size: 10px;">Set Status</label>
-                <select name="status" class="form-control" style="font-size:12px; height:32px; padding: 2px 8px;" required>
-                  <option value="active" <%= student.status === 'active' ? 'selected' : '' %>>Active</option>
-                  <option value="inactive" <%= student.status === 'inactive' ? 'selected' : '' %>>Inactive</option>
-                  <option value="drop" <%= student.status === 'drop' ? 'selected' : '' %>>Drop</option>
-                  <option value="complete" <%= student.status === 'complete' ? 'selected' : '' %>>Complete</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-group" style="margin-top:0.5rem;">
-              <label class="form-label" style="font-size: 10px;">Reason for Change</label>
-              <input type="text" name="reason" class="form-control" placeholder="e.g. Cleared all dues, left mid-term..." required style="height:32px; font-size:12px;">
-            </div>
-            <button type="submit" class="btn btn-primary btn-xs" style="margin-top:0.5rem;">Update Status</button>
-          </form>
+                          <div
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-hover); border-radius: var(--radius); border: 1px solid var(--border);">
+                            <% if (student.pendingProfileUpdate.name && student.pendingProfileUpdate.name
+                              !==student.name) { %>
+                              <div>
+                                <div
+                                  style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">
+                                  Full Name</div>
+                                <div
+                                  style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem;">
+                                  <span style="text-decoration: line-through; color: var(--text-muted);">
+                                    <%= student.name %>
+                                  </span>
+                                  <span style="color: var(--text-muted);">&rarr;</span>
+                                  <strong style="color: var(--text);">
+                                    <%= student.pendingProfileUpdate.name %>
+                                  </strong>
+                                </div>
+                              </div>
+                              <% } %>
 
-          <!-- Status History Log -->
-          <% if (!student.statusHistory || student.statusHistory.length === 0) { %>
-            <div class="empty-state" style="padding:1rem;">
-              <p style="font-size:12px;">No status changes recorded.</p>
-            </div>
-          <% } else { %>
-            <div class="table-wrap">
-              <table style="font-size:11px;">
-                <thead>
-                  <tr>
-                    <th>Status</th>
-                    <th>Reason</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% student.statusHistory.slice().reverse().forEach(hist => { %>
-                    <tr>
-                      <td>
-                        <span class="badge badge-xs <%= hist.status === 'active' ? 'badge-green' : hist.status === 'inactive' ? 'badge-grey' : hist.status === 'drop' ? 'badge-red' : 'badge-gold' %>">
-                          <%= hist.status %>
-                        </span>
-                      </td>
-                      <td><%= hist.reason %></td>
-                      <td class="mono"><%= new Date(hist.date).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %></td>
-                    </tr>
-                  <% }) %>
-                </tbody>
-              </table>
-            </div>
-          <% } %>
-        </div>
+                                <% if (student.pendingProfileUpdate.phone && student.pendingProfileUpdate.phone
+                                  !==student.phone) { %>
+                                  <div>
+                                    <div
+                                      style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">
+                                      Phone Number</div>
+                                    <div
+                                      style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem;">
+                                      <span style="text-decoration: line-through; color: var(--text-muted);">
+                                        <%= student.phone || '—' %>
+                                      </span>
+                                      <span style="color: var(--text-muted);">&rarr;</span>
+                                      <strong style="color: var(--text);">
+                                        <%= student.pendingProfileUpdate.phone %>
+                                      </strong>
+                                    </div>
+                                  </div>
+                                  <% } %>
 
-      </div>
-    </div>
+                                    <% if (student.pendingProfileUpdate.fatherName &&
+                                      student.pendingProfileUpdate.fatherName !==student.fatherName) { %>
+                                      <div>
+                                        <div
+                                          style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">
+                                          Father's Name</div>
+                                        <div
+                                          style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem;">
+                                          <span style="text-decoration: line-through; color: var(--text-muted);">
+                                            <%= student.fatherName || '—' %>
+                                          </span>
+                                          <span style="color: var(--text-muted);">&rarr;</span>
+                                          <strong style="color: var(--text);">
+                                            <%= student.pendingProfileUpdate.fatherName %>
+                                          </strong>
+                                        </div>
+                                      </div>
+                                      <% } %>
 
-    <!-- Tab: Course Feedback -->
-    <div id="feedback" class="tab-content card" style="display:none;">
-      <div class="card-header" style="margin-bottom:1.25rem;">
-        <div class="card-title">Course Completion Feedback</div>
-      </div>
-      
-      <% if (!student.feedback || !student.feedback.submitted) { %>
-        <div class="empty-state">
-          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.2; margin-bottom:0.5rem;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <p>This student has not submitted course feedback yet (feedback is requested upon status marking as "complete").</p>
-        </div>
-      <% } else { %>
-        <div style="background:var(--bg3); padding:1.25rem; border-radius:var(--radius); border:1px solid var(--border);">
-          <div class="fee-summary" style="margin-bottom: 1.5rem; grid-template-columns: repeat(3, 1fr);">
-            <div class="stat-card" style="padding: 10px 14px; text-align: center;">
-              <div class="stat-label">Instructor Rating</div>
-              <div class="stat-value" style="font-size:1.8rem; color:var(--gold);"><%= student.feedback.teacherRating %> / 5</div>
-            </div>
-            <div class="stat-card" style="padding: 10px 14px; text-align: center;">
-              <div class="stat-label">Content Rating</div>
-              <div class="stat-value" style="font-size:1.8rem; color:var(--gold);"><%= student.feedback.contentRating %> / 5</div>
-            </div>
-            <div class="stat-card" style="padding: 10px 14px; text-align: center;">
-              <div class="stat-label">Facilities Rating</div>
-              <div class="stat-value" style="font-size:1.8rem; color:var(--gold);"><%= student.feedback.facilitiesRating %> / 5</div>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label" style="font-size:11px; text-transform:uppercase; color:var(--text-muted);">Written Comments / Suggestions</label>
-            <blockquote style="font-style:italic; font-size:0.9rem; color:var(--text); background:var(--bg-input); padding:0.85rem; border-left:3px solid var(--gold); border-radius:4px; margin-top:0.35rem; line-height:1.5;">
-              "<%= student.feedback.comments || 'No written comments provided.' %>"
-            </blockquote>
-          </div>
-          
-          <div style="font-size:10px; color:var(--text-muted); margin-top:1rem; text-align:right;">
-            Submitted on: <%= new Date(student.feedback.submittedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) %>
-          </div>
-        </div>
-      <% } %>
-    </div>
+                                        <% if (student.pendingProfileUpdate.motherName &&
+                                          student.pendingProfileUpdate.motherName !==student.motherName) { %>
+                                          <div>
+                                            <div
+                                              style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">
+                                              Mother's Name</div>
+                                            <div
+                                              style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem;">
+                                              <span style="text-decoration: line-through; color: var(--text-muted);">
+                                                <%= student.motherName || '—' %>
+                                              </span>
+                                              <span style="color: var(--text-muted);">&rarr;</span>
+                                              <strong style="color: var(--text);">
+                                                <%= student.pendingProfileUpdate.motherName %>
+                                              </strong>
+                                            </div>
+                                          </div>
+                                          <% } %>
 
-    <!-- Tab: Admin Messenger -->
-    <div id="messages" class="tab-content card" style="display:none;">
-      <div class="card-header" style="margin-bottom:1.25rem;">
-        <div class="card-title">Student Inbox Notes</div>
-      </div>
-      <form action="/admin/messages/send" method="POST" style="background:var(--bg3); padding:1rem; border-radius:var(--radius); margin-bottom:1.5rem;">
-        <input type="hidden" name="recipientId" value="<%= student._id %>">
-        <input type="hidden" name="redirect" value="/admin/students/<%= student._id %>">
-        <div class="form-group">
-          <label class="form-label" for="msg_content">Send Notification / Message Note</label>
-          <textarea id="msg_content" name="content" class="form-control" placeholder="Type notification details or message to show on student dashboard..." required></textarea>
-        </div>
-        <button type="submit" class="btn btn-primary btn-sm">Send Note to Student</button>
-      </form>
-      <div class="section-title">Sent Logs</div>
-      <% if (messages.length === 0) { %>
-        <div class="empty-state" style="padding:1.5rem;">
-          <p>No messages sent to this student yet.</p>
-        </div>
-      <% } else { %>
-        <div style="display:flex; flex-direction:column; gap:10px;">
-          <% messages.forEach(msg => { %>
-            <div style="background:var(--bg2); border:1px solid var(--border); padding:10px 12px; border-radius:var(--radius-sm);">
-              <p style="font-size:13px; color:var(--text); line-height:1.5;"><%= msg.content %></p>
-              <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted); margin-top:5px;">
-                <span>By: <%= msg.sender ? msg.sender.name : 'Admin' %> (<%= msg.sender ? msg.sender.role : 'System' %>)</span>
-                <span><%= new Date(msg.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %> &nbsp;·&nbsp; <%= new Date(msg.createdAt).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}) %></span>
-              </div>
-            </div>
-          <% }) %>
-        </div>
-      <% } %>
-    </div>
-  </div>
+                                            <% if (student.pendingProfileUpdate.address &&
+                                              student.pendingProfileUpdate.address !==student.address) { %>
+                                              <div>
+                                                <div
+                                                  style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">
+                                                  Address</div>
+                                                <div
+                                                  style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem;">
+                                                  <span
+                                                    style="text-decoration: line-through; color: var(--text-muted);">
+                                                    <%= student.address || '—' %>
+                                                  </span>
+                                                  <span style="color: var(--text-muted);">&rarr;</span>
+                                                  <strong style="color: var(--text);">
+                                                    <%= student.pendingProfileUpdate.address %>
+                                                  </strong>
+                                                </div>
+                                              </div>
+                                              <% } %>
 
-  <!-- Right Side: Quick Contacts & Connections -->
-  <div>
-    <!-- Identity Verification -->
-    <div class="card" style="margin-bottom: 1rem;">
-      <div class="card-title" style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
-        <span>ID Verification</span>
-        <span class="badge <%= student.idVerified ? 'badge-green' : 'badge-red' %>" style="font-size: 9px;"><%= student.idVerified ? 'Verified' : 'Unverified' %></span>
-      </div>
-      <div style="display:flex; flex-direction:column; gap:10px;">
-        <% if (student.idProof) { %>
-          <div style="border: 1px solid var(--border); border-radius: 4px; overflow:hidden; background: var(--bg-input);">
-            <img src="<%= student.idProof %>" alt="ID Proof Doc" style="width:100%; height:auto; display:block; max-height: 120px; object-fit: contain;">
-          </div>
-          <a href="<%= student.idProof %>" target="_blank" class="btn btn-ghost btn-xs" style="text-align:center;">View Full Size Document</a>
-          
-          <% if (!student.idVerified) { %>
-            <form action="/admin/students/<%= student._id %>/verify-id" method="POST" style="margin:0;">
-              <button type="submit" class="btn btn-primary btn-xs btn-block">Verify ID Document</button>
-            </form>
-          <% } %>
-        <% } else { %>
-          <p style="font-size:0.75rem; color:var(--text-muted);">No identity document uploaded by the student yet.</p>
-        <% } %>
-      </div>
-    </div>
+                                                <% if (student.pendingProfileUpdate.city &&
+                                                  student.pendingProfileUpdate.city !==student.city) { %>
+                                                  <div>
+                                                    <div
+                                                      style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">
+                                                      City</div>
+                                                    <div
+                                                      style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem;">
+                                                      <span
+                                                        style="text-decoration: line-through; color: var(--text-muted);">
+                                                        <%= student.city || '—' %>
+                                                      </span>
+                                                      <span style="color: var(--text-muted);">&rarr;</span>
+                                                      <strong style="color: var(--text);">
+                                                        <%= student.pendingProfileUpdate.city %>
+                                                      </strong>
+                                                    </div>
+                                                  </div>
+                                                  <% } %>
 
-    <div class="card" style="margin-bottom: 1rem;">
-      <div class="card-title" style="margin-bottom:1rem;">Contact Card</div>
-      
-      <div style="display:flex; flex-direction:column; gap:12px;">
-        <div>
-          <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Email Address</div>
-          <div style="font-size:0.9rem; font-weight:500; word-break:break-all;"><%= student.email %></div>
-        </div>
-        <div>
-          <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Mobile Number</div>
-          <div style="font-size:0.9rem; font-weight:500; font-family:var(--mono);"><%= student.phone || '—' %></div>
-        </div>
-        <div>
-          <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Admission Date</div>
-          <div style="font-size:0.9rem; font-weight:500; font-family:var(--mono);">
-            <%= student.enrollmentDate ? new Date(student.enrollmentDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : new Date(student.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) %>
-          </div>
-        </div>
-      </div>
-    </div>
+                                                    <% if (student.pendingProfileUpdate.dob && (!student.dob || new
+                                                      Date(student.pendingProfileUpdate.dob).getTime() !==new
+                                                      Date(student.dob).getTime())) { %>
+                                                      <div>
+                                                        <div
+                                                          style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">
+                                                          Date of Birth</div>
+                                                        <div
+                                                          style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem;">
+                                                          <span
+                                                            style="text-decoration: line-through; color: var(--text-muted);">
+                                                            <%= student.dob ? new Date(student.dob).toLocaleDateString()
+                                                              : '—' %>
+                                                          </span>
+                                                          <span style="color: var(--text-muted);">&rarr;</span>
+                                                          <strong style="color: var(--text);">
+                                                            <%= new
+                                                              Date(student.pendingProfileUpdate.dob).toLocaleDateString()
+                                                              %>
+                                                          </strong>
+                                                        </div>
+                                                      </div>
+                                                      <% } %>
 
-    <!-- Parent / Guardian Information -->
-    <div class="card" style="margin-bottom: 1rem;">
-      <div class="card-title" style="margin-bottom:1rem;">Parent / Guardian Info</div>
-      <div style="display:flex; flex-direction:column; gap:12px;">
-        <% if (student.fatherName || student.motherName || student.guardianPhone) { %>
-          <% if (student.fatherName) { %>
-            <div>
-              <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Father's Name</div>
-              <div style="font-size:0.85rem; font-weight:500;"><%= student.fatherName %></div>
-            </div>
-          <% } %>
-          <% if (student.motherName) { %>
-            <div>
-              <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Mother's Name</div>
-              <div style="font-size:0.85rem; font-weight:500;"><%= student.motherName %></div>
-            </div>
-          <% } %>
-          <div>
-            <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Guardian Contact (<%= student.guardianRelation || 'Relation' %>)</div>
-            <div style="font-size:0.85rem; font-weight:600; font-family:var(--mono);">
-              <% if (student.guardianPhone) { %>
-                <a href="tel:<%= student.guardianPhone %>" style="color:var(--gold); display:flex; align-items:center; gap:4px;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                  <%= student.guardianPhone %>
-                </a>
-              <% } else { %>
-                —
-              <% } %>
-            </div>
-          </div>
-        <% } else { %>
-          <p style="font-size:0.75rem; color:var(--text-muted);">No parent/guardian details captured. Update profile to add.</p>
-        <% } %>
-      </div>
-    </div>
+                                                        <% if (student.pendingProfileUpdate.profilePic &&
+                                                          student.pendingProfileUpdate.profilePic !==student.profilePic)
+                                                          { %>
+                                                          <div>
+                                                            <div
+                                                              style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">
+                                                              New Photo</div>
+                                                            <div
+                                                              style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem;">
+                                                              <img src="<%= student.pendingProfileUpdate.profilePic %>"
+                                                                style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-light);"
+                                                                alt="New Profile Pic">
+                                                              <span
+                                                                style="font-size: 0.75rem; color: var(--text-muted);">Uploaded</span>
+                                                            </div>
+                                                          </div>
+                                                          <% } %>
+                          </div>
 
-    <!-- Extended Profile Information -->
-    <div class="card" style="margin-bottom: 1rem;">
-      <div class="card-title" style="margin-bottom:1rem;">Extended Profile</div>
-      <div style="display:flex; flex-direction:column; gap:10px; font-size:0.82rem;">
-        <div>
-          <span style="color:var(--text-muted);">DOB:</span> 
-          <strong class="mono"><%= student.dob ? new Date(student.dob).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '—' %></strong>
-        </div>
-        <div>
-          <span style="color:var(--text-muted);">Highest Qualification:</span> 
-          <strong><%= student.highestQualification || '—' %></strong>
-        </div>
-        <div>
-          <span style="color:var(--text-muted);">Lead Source:</span> 
-          <strong><%= student.referralSource || '—' %></strong>
-        </div>
-        <div>
-          <span style="color:var(--text-muted);">Social/Portfolio:</span> 
-          <strong>
-            <% if (student.socialHandle) { %>
-              <a href="<%= student.socialHandle.startsWith('http') ? student.socialHandle : 'https://' + student.socialHandle %>" target="_blank" style="color:var(--gold);"><%= student.socialHandle %></a>
-            <% } else { %>
-              —
-            <% } %>
-          </strong>
-        </div>
-        <div style="border-top: 1px dashed var(--border); padding-top: 8px; margin-top: 4px;">
-          <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase;">Permanent Address</div>
-          <div style="font-size:0.8rem; line-height:1.4; font-weight:500;">
-            <%= student.address || '—' %><% if (student.city) { %>, <%= student.city %><% } %>
-          </div>
-        </div>
-      </div>
-    </div>
+                          <div style="display: flex; gap: 0.5rem;">
+                            <form action="/admin/students/<%= student._id %>/approve-profile" method="POST"
+                              style="margin: 0;">
+                              <button type="submit" class="btn btn-sm"
+                                style="background: var(--green); border-color: var(--green); color: white; padding: 0.4rem 1rem; font-weight:600;">
+                                Approve Changes
+                              </button>
+                            </form>
+                            <form action="/admin/students/<%= student._id %>/reject-profile" method="POST"
+                              style="margin: 0;">
+                              <button type="submit" class="btn btn-ghost btn-sm"
+                                style="color: var(--red); border-color: rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05); padding: 0.4rem 1rem; font-weight:600;">
+                                Reject Request
+                              </button>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <% } %>
 
-    <!-- Assigned Teacher Profile -->
-    <div class="card" style="margin-bottom: 1rem;">
-      <div class="card-title" style="margin-bottom:1rem;">Primary Instructor</div>
-      <% if (student.teacher) { %>
-        <div style="display:flex; align-items:center; gap:10px;">
-          <div class="avatar" style="width:34px; height:34px; font-size:11px;">
-            <%= student.teacher.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) %>
+                      <!-- Profile Completeness Indicator -->
+                      <div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+                        <div
+                          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                          <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-sub);">Profile
+                            Completeness</span>
+                          <span style="font-size: 0.85rem; font-weight: bold; color: var(--gold);">
+                            <%= completenessPct %>%
+                          </span>
+                        </div>
+                        <div
+                          style="background: var(--bg-input); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
+                          <div
+                            style="background: linear-gradient(90deg, var(--gold) 0%, var(--gold-hover) 100%); width: <%= completenessPct %>%; height: 100%;">
+                          </div>
+                        </div>
+                        <% if (missing.length> 0) { %>
+                          <div style="font-size: 0.72rem; color: var(--text-muted);">
+                            Missing fields:
+                            <% missing.forEach((item, idx)=> { %>
+                              <a href="<%= item.link %>"
+                                style="color: var(--gold-light); text-decoration: underline; margin-right: 6px;">
+                                <%= item.label %>
+                              </a>
+                              <%= idx < missing.length - 1 ? ',' : '' %>
+                                <% }) %>
+                          </div>
+                          <% } %>
+                      </div>
+
+                      <div class="profile-header">
+                        <% let avatarColor='var(--gold-dark)' ; if (student.role==='admin' ) avatarColor='#1e3a8a' ;
+                          else if (student.role==='teacher' ) avatarColor='#065f46' ; else if
+                          (student.role==='counsellor' ) avatarColor='#92400e' ; else if (student.role==='student' )
+                          avatarColor='#5b21b6' ; %>
+                          <div class="avatar-lg"
+                            style="<% if (!student.profilePic) { %>background-color: <%= avatarColor %>; color: #fff; font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 2.2rem;<% } %>">
+                            <% if (student.profilePic) { %>
+                              <img src="<%= student.profilePic %>" alt="<%= student.name %>">
+                              <% } else { %>
+                                <%= student.initials %>
+                                  <% } %>
+                          </div>
+                          <div style="flex:1;">
+                            <h2 class="profile-name" style="font-size:1.5rem; font-weight:800; color:var(--text);">
+                              <%= student.name %>
+                            </h2>
+                            <div
+                              style="display:flex; flex-wrap:wrap; gap:12px; margin-top:0.35rem; font-size:0.8rem; color:var(--text-sub);">
+                              <span>Roll: <strong style="color:var(--gold);">
+                                  <%= student.rollNumber || 'Not Generated' %>
+                                </strong></span>
+                              <span>&middot;</span>
+                              <span>Course: <strong style="color:var(--text);">
+                                  <%= student.course %>
+                                </strong></span>
+                              <span>&middot;</span>
+                              <span>Batch: <strong style="color:var(--text);">
+                                  <%= student.batch || 'Unassigned' %>
+                                </strong></span>
+                              <span>&middot;</span>
+                              <span>Status:
+                                <% const statusVal=student.status || (student.isActive ? 'active' : 'inactive' ); const
+                                  statusBadgeClass={ active: 'badge-green' , inactive: 'badge-grey' , drop: 'badge-red'
+                                  , complete: 'badge-gold' }[statusVal]; %>
+                                  <span class="badge <%= statusBadgeClass %>">
+                                    <%= statusVal %>
+                                  </span>
+                              </span>
+                            </div>
+                          </div>
+                      </div>
+
+                      <div class="two-col">
+                        <!-- Left Side: Interactive Details Tabs -->
+                        <div>
+                          <!-- Tabs Navigation -->
+                          <div class="card" style="padding: 0.5rem; margin-bottom: 1rem;">
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                              <button class="btn btn-sm btn-primary tab-btn" onclick="openTab(event, 'ledger')">Fee
+                                Ledger</button>
+                              <button class="btn btn-sm btn-ghost tab-btn"
+                                onclick="openTab(event, 'attendance')">Attendance</button>
+                              <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'progress')">Progress
+                                & Tests</button>
+                              <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'crm')">CRM Lead
+                                History</button>
+                              <button class="btn btn-sm btn-ghost tab-btn"
+                                onclick="openTab(event, 'remarks_history')">Remarks & History</button>
+                              <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'feedback')">Course
+                                Feedback</button>
+                              <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'messages')">Admin
+                                Messenger</button>
+                            </div>
+                          </div>
+
+                          <!-- Tab: Fee Ledger -->
+                          <div id="ledger" class="tab-content card">
+                            <div class="card-header" style="margin-bottom:1.25rem;">
+                              <div class="card-title">Fee Ledger Summary</div>
+                              <a href="/admin/fees/<%= student._id %>" class="btn btn-ghost btn-xs">Open Full
+                                Invoice</a>
+                            </div>
+
+                            <% if (!fee) { %>
+                              <div class="empty-state">
+                                <p>No fee ledger configured for this student.</p>
+                              </div>
+                              <% } else { %>
+                                <% const actualTotal=fee.totalAmount - (fee.discount || 0); const due=Math.max(0,
+                                  fee.totalAmount - (fee.discount || 0) - fee.paidAmount); const pct=fee.totalAmount> 0
+                                  ? Math.round((fee.paidAmount / actualTotal) * 100) : 0;
+                                  %>
+                                  <div class="fee-summary" style="margin-bottom: 1.5rem;">
+                                    <div class="stat-card" style="padding: 10px 14px;">
+                                      <div class="stat-label">Total Course Fee</div>
+                                      <div class="stat-value" style="font-size:1.3rem;">₹<%=
+                                          fee.totalAmount.toLocaleString('en-IN') %>
+                                      </div>
+                                    </div>
+                                    <div class="stat-card" style="padding: 10px 14px;">
+                                      <div class="stat-label">Discount Applied</div>
+                                      <div class="stat-value text-muted" style="font-size:1.3rem;">₹<%= (fee.discount ||
+                                          0).toLocaleString('en-IN') %>
+                                      </div>
+                                    </div>
+                                    <div class="stat-card gold" style="padding: 10px 14px;">
+                                      <div class="stat-label">Net Payable</div>
+                                      <div class="stat-value" style="font-size:1.3rem; color:var(--gold);">₹<%=
+                                          actualTotal.toLocaleString('en-IN') %>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div class="fee-summary"
+                                    style="margin-bottom: 1.5rem; grid-template-columns: 1fr 1fr;">
+                                    <div class="stat-card green" style="padding: 10px 14px;">
+                                      <div class="stat-label">Total Paid</div>
+                                      <div class="stat-value" style="font-size:1.3rem; color:var(--green);">₹<%=
+                                          fee.paidAmount.toLocaleString('en-IN') %>
+                                      </div>
+                                    </div>
+                                    <div class="stat-card red" style="padding: 10px 14px;">
+                                      <div class="stat-label">Outstanding Dues</div>
+                                      <div class="stat-value" style="font-size:1.3rem; color:var(--red);">₹<%=
+                                          due.toLocaleString('en-IN') %>
+                                      </div>
+                                      <div class="stat-sub" style="font-size:9px;">Includes ₹<%= (fee.totalFine ||
+                                          0).toLocaleString('en-IN') %> late fines</div>
+                                    </div>
+                                  </div>
+
+                                  <!-- Installments Schedule -->
+                                  <div class="section-title" style="margin-top: 1.5rem; margin-bottom: 8px;">
+                                    Installments Breakdown</div>
+                                  <div
+                                    style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem;">
+                                    <% if (fee.installments && fee.installments.length> 0) { %>
+                                      <% fee.installments.forEach(inst=> { %>
+                                        <% const isPaid=inst.paidAmount>= inst.amount;
+                                          const isLate = !isPaid && inst.dueDate && new Date(inst.dueDate) < new Date();
+                                            let fine=0; if (isLate) { const diffDays=Math.ceil(Math.abs(new Date() - new
+                                            Date(inst.dueDate)) / (1000 * 60 * 60 * 24)); if (diffDays> 60) fine = 1000;
+                                            else if (diffDays > 30) fine = 500;
+                                            else fine = 250;
+                                            }
+
+                                            const statusLabel = isPaid ? 'Paid' : isLate ? 'Overdue' : 'Pending';
+                                            const statusBadgeClass = isPaid ? 'badge-green' : isLate ? 'badge-red' :
+                                            'badge-orange';
+                                            const instPct = inst.amount > 0 ? Math.round((inst.paidAmount / inst.amount)
+                                            * 100) : 0;
+                                            %>
+                                            <div
+                                              style="background:var(--bg-input); border: 1px solid <%= isLate ? 'rgba(239,68,68,0.2)' : 'var(--border)' %>; border-radius:var(--radius); padding: 10px 12px; display:flex; flex-direction:column; gap:4px;">
+                                              <div
+                                                style="display:flex; justify-content:space-between; align-items:center;">
+                                                <span style="font-size:11px; font-weight:700; color:var(--text);">
+                                                  <%= inst.name %>
+                                                </span>
+                                                <span class="badge <%= statusBadgeClass %>"
+                                                  style="font-size:8px; padding:1px 4px;">
+                                                  <%= statusLabel %>
+                                                </span>
+                                              </div>
+                                              <div
+                                                style="font-size:14px; font-weight:800; color:var(--gold); font-family:var(--mono);">
+                                                ₹<%= inst.amount.toLocaleString('en-IN') %>
+                                              </div>
+                                              <div style="font-size:10px; color:var(--text-muted);">
+                                                Due: <span class="mono">
+                                                  <%= new Date(inst.dueDate).toLocaleDateString('en-IN',
+                                                    {day:'numeric',month:'short'}) %>
+                                                </span>
+                                              </div>
+                                              <% if (fine> 0) { %>
+                                                <div
+                                                  style="font-size:10px; color:var(--red); font-weight:700; margin-top:2px;">
+                                                  ⚠️ Fine: +₹<%= fine %>
+                                                </div>
+                                                <% } %>
+                                                  <div style="margin-top:auto; padding-top:4px;">
+                                                    <div
+                                                      style="display:flex; justify-content:space-between; font-size:9px; color:var(--text-muted); margin-bottom:2px;">
+                                                      <span>Paid: ₹<%= inst.paidAmount.toLocaleString('en-IN') %></span>
+                                                      <span>
+                                                        <%= instPct %>%
+                                                      </span>
+                                                    </div>
+                                                    <div class="progress-bar"
+                                                      style="height:3px; background:rgba(255,255,255,0.05); border-radius: 4px;">
+                                                      <div
+                                                        class="progress-fill <%= isPaid ? 'green' : instPct > 0 ? 'orange' : 'red' %>"
+                                                        style="width: <%= instPct %>%"></div>
+                                                    </div>
+                                                  </div>
+                                            </div>
+                                            <% }) %>
+                                              <% } %>
+                                  </div>
+
+                                  <div class="section-title">Payments Log</div>
+                                  <% if (!fee.payments || fee.payments.length===0) { %>
+                                    <div class="empty-state" style="padding:1.5rem;">
+                                      <p>No payments recorded yet.</p>
+                                    </div>
+                                    <% } else { %>
+                                      <div class="table-wrap">
+                                        <table>
+                                          <thead>
+                                            <tr>
+                                              <th>Date</th>
+                                              <th>Amount</th>
+                                              <th>Method</th>
+                                              <th>TXN ID</th>
+                                              <th>Note</th>
+                                              <th>Received By</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            <% fee.payments.forEach(p=> { %>
+                                              <tr>
+                                                <td class="mono text-xs">
+                                                  <%= new Date(p.date).toLocaleDateString('en-IN',
+                                                    {day:'numeric',month:'short'}) %>
+                                                </td>
+                                                <td class="mono text-green" style="font-weight:600;">₹<%= p.amount %>
+                                                </td>
+                                                <td><span class="badge badge-grey">
+                                                    <%= p.method %>
+                                                  </span></td>
+                                                <td class="mono text-xs">
+                                                  <%= p.transactionId || '—' %>
+                                                </td>
+                                                <td style="max-width:120px; font-size:12px;">
+                                                  <%= p.note || '—' %>
+                                                </td>
+                                                <td style="font-size:12px;">
+                                                  <%= p.receivedBy ? p.receivedBy.name : 'System' %>
+                                                </td>
+                                              </tr>
+                                              <% }) %>
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                      <% } %>
+                                        <% } %>
+                          </div>
+
+                          <!-- Tab: Attendance -->
+                          <div id="attendance" class="tab-content card" style="display:none;">
+                            <div class="card-header" style="margin-bottom:1.25rem;">
+                              <div class="card-title">Attendance Overview</div>
+                              <% const totalClasses=attendance.length; const presentCount=attendance.filter(a=> a.status
+                                === 'present').length;
+                                const lateCount = attendance.filter(a => a.status === 'late').length;
+                                const absentCount = attendance.filter(a => a.status === 'absent').length;
+                                const pct = totalClasses > 0 ? Math.round((presentCount / totalClasses) * 100) : 0;
+                                %>
+                                <span class="badge badge-gold">
+                                  <%= pct %>% Presence Rate
+                                </span>
+                            </div>
+
+                            <div class="stats-grid"
+                              style="grid-template-columns: repeat(4, 1fr); margin-bottom:1.5rem;">
+                              <div class="stat-card" style="padding:8px 12px;">
+                                <div class="stat-label" style="font-size:10px;">Total Lectures</div>
+                                <div class="stat-value" style="font-size:1.15rem;">
+                                  <%= totalClasses %>
+                                </div>
+                              </div>
+                              <div class="stat-card green" style="padding:8px 12px;">
+                                <div class="stat-label" style="font-size:10px;">Present</div>
+                                <div class="stat-value" style="font-size:1.15rem; color:var(--green);">
+                                  <%= presentCount %>
+                                </div>
+                              </div>
+                              <div class="stat-card orange" style="padding:8px 12px;">
+                                <div class="stat-label" style="font-size:10px;">Late</div>
+                                <div class="stat-value" style="font-size:1.15rem; color:var(--orange);">
+                                  <%= lateCount %>
+                                </div>
+                              </div>
+                              <div class="stat-card red" style="padding:8px 12px;">
+                                <div class="stat-label" style="font-size:10px;">Absent</div>
+                                <div class="stat-value" style="font-size:1.15rem; color:var(--red);">
+                                  <%= absentCount %>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div class="section-title">Attendance History Logs</div>
+                            <% if (attendance.length===0) { %>
+                              <div class="empty-state">
+                                <p>No attendance records logged for this student yet.</p>
+                              </div>
+                              <% } else { %>
+                                <div class="table-wrap">
+                                  <table>
+                                    <thead>
+                                      <tr>
+                                        <th>Date</th>
+                                        <th>Subject</th>
+                                        <th>Status</th>
+                                        <th>Instructor</th>
+                                        <th>Notes</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      <% attendance.forEach(a=> { %>
+                                        <tr>
+                                          <td class="mono text-sm fw-600">
+                                            <%= a.date %>
+                                          </td>
+                                          <td>
+                                            <%= a.course && a.course.name ? a.course.name : '—' %>
+                                          </td>
+                                          <td>
+                                            <% const statusClass={ present: 'badge-green' , absent: 'badge-red' ,
+                                              late: 'badge-orange' }[a.status] || 'badge-grey' ; %>
+                                              <span class="badge <%= statusClass %>">
+                                                <%= a.status %>
+                                              </span>
+                                          </td>
+                                          <td>
+                                            <%= a.teacher ? a.teacher.name : 'Faculty' %>
+                                          </td>
+                                          <td style="font-size:12px; color:var(--text-sub);">
+                                            <%= a.note || '—' %>
+                                          </td>
+                                        </tr>
+                                        <% }) %>
+                                    </tbody>
+                                  </table>
+                                </div>
+                                <% } %>
+                          </div>
+
+                          <!-- Tab: Progress -->
+                          <div id="progress" class="tab-content card" style="display:none;">
+                            <div class="card-header" style="margin-bottom:1.25rem;">
+                              <div class="card-title">Academic Progress & Test Scores</div>
+                            </div>
+
+                            <% if (!progress || !progress.testResults || progress.testResults.length===0) { %>
+                              <div class="empty-state">
+                                <p>No test scores or progress records registered for this student.</p>
+                              </div>
+                              <% } else { %>
+                                <div
+                                  style="background:var(--bg3); padding:1rem; border-radius:var(--radius); margin-bottom:1.5rem;">
+                                  <div
+                                    style="font-size:0.75rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.4rem;">
+                                    Tutor Remarks</div>
+                                  <p style="font-size:0.85rem; color:var(--text-sub); line-height:1.5;">
+                                    <%= progress.teacherRemark || 'No remarks recorded.' %>
+                                  </p>
+                                  <div
+                                    style="font-size:0.7rem; color:var(--text-muted); margin-top:0.5rem; text-align:right;">
+                                    Last Updated by: <%= progress.teacher ? progress.teacher.name : 'Faculty' %>
+                                  </div>
+                                </div>
+
+                                <div class="section-title">Test Performance</div>
+                                <div class="table-wrap">
+                                  <table>
+                                    <thead>
+                                      <tr>
+                                        <th>Date</th>
+                                        <th>Test Name</th>
+                                        <th>Score</th>
+                                        <th>Percentage</th>
+                                        <th>Remarks</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      <% progress.testResults.forEach(test=> { %>
+                                        <% const pct=test.totalMarks> 0 ? Math.round((test.score / test.totalMarks) *
+                                          100) : 0; %>
+                                          <tr>
+                                            <td class="mono text-xs">
+                                              <%= test.date %>
+                                            </td>
+                                            <td><strong>
+                                                <%= test.testName %>
+                                              </strong></td>
+                                            <td class="mono">
+                                              <%= test.score %> / <%= test.totalMarks %>
+                                            </td>
+                                            <td>
+                                              <span
+                                                class="badge <%= pct >= 75 ? 'badge-green' : pct >= 50 ? 'badge-blue' : 'badge-red' %>">
+                                                <%= pct %>%
+                                              </span>
+                                            </td>
+                                            <td style="font-size:12px; max-width:180px;">
+                                              <%= test.remarks || '—' %>
+                                            </td>
+                                          </tr>
+                                          <% }) %>
+                                    </tbody>
+                                  </table>
+                                </div>
+                                <% } %>
+                          </div>
+
+                          <!-- Tab: CRM Lead History -->
+                          <div id="crm" class="tab-content card" style="display:none;">
+                            <div class="card-header" style="margin-bottom:1.25rem;">
+                              <div class="card-title">Admission & CRM Logs</div>
+                            </div>
+
+                            <% if (!lead) { %>
+                              <div class="empty-state">
+                                <p>No original Lead CRM profile found matching this student account.</p>
+                              </div>
+                              <% } else { %>
+                                <div
+                                  style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:1.5rem; background:var(--bg3); padding:1rem; border-radius:var(--radius);">
+                                  <div>
+                                    <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">
+                                      original lead source</div>
+                                    <div
+                                      style="font-size:0.9rem; font-weight:600; color:var(--gold); margin-top:0.15rem;">
+                                      <%= lead.source %>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">
+                                      converted student logic</div>
+                                    <div
+                                      style="font-size:0.9rem; font-weight:600; color:var(--text); margin-top:0.15rem;">
+                                      Counsellor: <%= lead.assignedTo ? lead.assignedTo.name : 'Unassigned' %>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div class="section-title">Timeline of Lead Interactions</div>
+                                <% if (!lead.followUpHistory || lead.followUpHistory.length===0) { %>
+                                  <div class="empty-state" style="padding:1.5rem;">
+                                    <p>No followup timeline logged for this prospect lead.</p>
+                                  </div>
+                                  <% } else { %>
+                                    <div class="timeline" style="margin-left: 10px;">
+                                      <% lead.followUpHistory.slice().reverse().forEach(fu=> { %>
+                                        <div class="tl-item">
+                                          <div style="font-weight:600; font-size:13px; color:var(--text);">Status
+                                            change: <span class="badge badge-grey" style="font-size:10px;">
+                                              <%= fu.status %>
+                                            </span></div>
+                                          <div class="tl-meta">
+                                            <%= new Date(fu.doneAt).toLocaleDateString('en-IN',
+                                              {day:'numeric',month:'short',year:'numeric'}) %>
+                                              at <%= new Date(fu.doneAt).toLocaleTimeString('en-IN',
+                                                {hour:'2-digit',minute:'2-digit'}) %>
+                                          </div>
+                                          <div class="tl-body" style="font-size:12px; margin-top:0.25rem;">
+                                            <%= fu.note %>
+                                          </div>
+                                        </div>
+                                        <% }) %>
+                                    </div>
+                                    <% } %>
+                                      <% } %>
+                          </div>
+
+                          <!-- Tab: Remarks & History -->
+                          <div id="remarks_history" class="tab-content card" style="display:none;">
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+
+                              <!-- Remarks Section -->
+                              <div>
+                                <div class="card-header"
+                                  style="margin-bottom:1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
+                                  <div class="card-title">Staff Remarks & Timeline</div>
+                                </div>
+
+                                <!-- Add Remark Form -->
+                                <form action="/admin/students/<%= student._id %>/remark" method="POST"
+                                  style="background:var(--bg3); padding:0.85rem; border-radius:var(--radius); margin-bottom:1rem;">
+                                  <div class="form-group">
+                                    <label class="form-label" style="font-size: 10px;">Post Profile Remark Note</label>
+                                    <textarea name="note" class="form-control"
+                                      placeholder="Write a note about student progress, behavior or payments..."
+                                      required style="min-height:60px; font-size:12px;"></textarea>
+                                  </div>
+                                  <button type="submit" class="btn btn-primary btn-xs" style="margin-top:0.5rem;">Post
+                                    Remark</button>
+                                </form>
+
+                                <!-- Remarks Timeline -->
+                                <% if (!student.remarks || student.remarks.length===0) { %>
+                                  <div class="empty-state" style="padding:1rem;">
+                                    <p style="font-size:12px;">No remarks posted on this student profile.</p>
+                                  </div>
+                                  <% } else { %>
+                                    <div class="timeline" style="padding-left:0.5rem;">
+                                      <% student.remarks.slice().reverse().forEach(rem=> { %>
+                                        <div class="timeline-item">
+                                          <div class="timeline-dot active"></div>
+                                          <div class="timeline-body" style="padding: 0.35rem 0.5rem;">
+                                            <div style="font-size:12px; font-weight:600; color:var(--text);">
+                                              <%= rem.note %>
+                                            </div>
+                                            <div style="font-size:10px; color:var(--text-muted); margin-top:0.2rem;">
+                                              By: <span style="color:var(--gold);">
+                                                <%= rem.role ? rem.role.toUpperCase() : 'STAFF' %>
+                                              </span> ·
+                                              <%= new Date(rem.date).toLocaleDateString('en-IN',
+                                                {day:'numeric',month:'short'}) %>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <% }) %>
+                                    </div>
+                                    <% } %>
+                              </div>
+
+                              <!-- Enrollment Status History Section -->
+                              <div>
+                                <div class="card-header"
+                                  style="margin-bottom:1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
+                                  <div class="card-title">Status Control & Logs</div>
+                                </div>
+
+                                <!-- Change Status Form -->
+                                <form action="/admin/students/<%= student._id %>/status" method="POST"
+                                  style="background:var(--bg3); padding:0.85rem; border-radius:var(--radius); margin-bottom:1rem;">
+                                  <div class="form-row">
+                                    <div class="form-group">
+                                      <label class="form-label" style="font-size: 10px;">Set Status</label>
+                                      <select name="status" class="form-control"
+                                        style="font-size:12px; height:32px; padding: 2px 8px;" required>
+                                        <option value="active" <%=student.status==='active' ? 'selected' : '' %>>Active
+                                        </option>
+                                        <option value="inactive" <%=student.status==='inactive' ? 'selected' : '' %>
+                                          >Inactive</option>
+                                        <option value="drop" <%=student.status==='drop' ? 'selected' : '' %>>Drop
+                                        </option>
+                                        <option value="complete" <%=student.status==='complete' ? 'selected' : '' %>
+                                          >Complete</option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                  <div class="form-group" style="margin-top:0.5rem;">
+                                    <label class="form-label" style="font-size: 10px;">Reason for Change</label>
+                                    <input type="text" name="reason" class="form-control"
+                                      placeholder="e.g. Cleared all dues, left mid-term..." required
+                                      style="height:32px; font-size:12px;">
+                                  </div>
+                                  <button type="submit" class="btn btn-primary btn-xs" style="margin-top:0.5rem;">Update
+                                    Status</button>
+                                </form>
+
+                                <!-- Status History Log -->
+                                <% if (!student.statusHistory || student.statusHistory.length===0) { %>
+                                  <div class="empty-state" style="padding:1rem;">
+                                    <p style="font-size:12px;">No status changes recorded.</p>
+                                  </div>
+                                  <% } else { %>
+                                    <div class="table-wrap">
+                                      <table style="font-size:11px;">
+                                        <thead>
+                                          <tr>
+                                            <th>Status</th>
+                                            <th>Reason</th>
+                                            <th>Date</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          <% student.statusHistory.slice().reverse().forEach(hist=> { %>
+                                            <tr>
+                                              <td>
+                                                <span
+                                                  class="badge badge-xs <%= hist.status === 'active' ? 'badge-green' : hist.status === 'inactive' ? 'badge-grey' : hist.status === 'drop' ? 'badge-red' : 'badge-gold' %>">
+                                                  <%= hist.status %>
+                                                </span>
+                                              </td>
+                                              <td>
+                                                <%= hist.reason %>
+                                              </td>
+                                              <td class="mono">
+                                                <%= new Date(hist.date).toLocaleDateString('en-IN',
+                                                  {day:'numeric',month:'short'}) %>
+                                              </td>
+                                            </tr>
+                                            <% }) %>
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                    <% } %>
+                              </div>
+
+                            </div>
+                          </div>
+
+                          <!-- Tab: Course Feedback -->
+                          <div id="feedback" class="tab-content card" style="display:none;">
+                            <div class="card-header" style="margin-bottom:1.25rem;">
+                              <div class="card-title">Course Completion Feedback</div>
+                            </div>
+
+                            <% if (!student.feedback || !student.feedback.submitted) { %>
+                              <div class="empty-state">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"
+                                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                  stroke-linejoin="round" style="opacity:0.2; margin-bottom:0.5rem;">
+                                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                </svg>
+                                <p>This student has not submitted course feedback yet (feedback is requested upon status
+                                  marking as "complete").</p>
+                              </div>
+                              <% } else { %>
+                                <div
+                                  style="background:var(--bg3); padding:1.25rem; border-radius:var(--radius); border:1px solid var(--border);">
+                                  <div class="fee-summary"
+                                    style="margin-bottom: 1.5rem; grid-template-columns: repeat(3, 1fr);">
+                                    <div class="stat-card" style="padding: 10px 14px; text-align: center;">
+                                      <div class="stat-label">Instructor Rating</div>
+                                      <div class="stat-value" style="font-size:1.8rem; color:var(--gold);">
+                                        <%= student.feedback.teacherRating %> / 5
+                                      </div>
+                                    </div>
+                                    <div class="stat-card" style="padding: 10px 14px; text-align: center;">
+                                      <div class="stat-label">Content Rating</div>
+                                      <div class="stat-value" style="font-size:1.8rem; color:var(--gold);">
+                                        <%= student.feedback.contentRating %> / 5
+                                      </div>
+                                    </div>
+                                    <div class="stat-card" style="padding: 10px 14px; text-align: center;">
+                                      <div class="stat-label">Facilities Rating</div>
+                                      <div class="stat-value" style="font-size:1.8rem; color:var(--gold);">
+                                        <%= student.feedback.facilitiesRating %> / 5
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div class="form-group">
+                                    <label class="form-label"
+                                      style="font-size:11px; text-transform:uppercase; color:var(--text-muted);">Written
+                                      Comments / Suggestions</label>
+                                    <blockquote
+                                      style="font-style:italic; font-size:0.9rem; color:var(--text); background:var(--bg-input); padding:0.85rem; border-left:3px solid var(--gold); border-radius:4px; margin-top:0.35rem; line-height:1.5;">
+                                      "<%= student.feedback.comments || 'No written comments provided.' %>"
+                                    </blockquote>
+                                  </div>
+
+                                  <div
+                                    style="font-size:10px; color:var(--text-muted); margin-top:1rem; text-align:right;">
+                                    Submitted on: <%= new Date(student.feedback.submittedAt).toLocaleDateString('en-IN',
+                                      {day:'numeric',month:'short',year:'numeric'}) %>
+                                  </div>
+                                </div>
+                                <% } %>
+                          </div>
+
+                          <!-- Tab: Admin Messenger -->
+                          <div id="messages" class="tab-content card" style="display:none;">
+                            <div class="card-header" style="margin-bottom:1.25rem;">
+                              <div class="card-title">Student Inbox Notes</div>
+                            </div>
+                            <form action="/admin/messages/send" method="POST"
+                              style="background:var(--bg3); padding:1rem; border-radius:var(--radius); margin-bottom:1.5rem;">
+                              <input type="hidden" name="recipientId" value="<%= student._id %>">
+                              <input type="hidden" name="redirect" value="/admin/students/<%= student._id %>">
+                              <div class="form-group">
+                                <label class="form-label" for="msg_content">Send Notification / Message Note</label>
+                                <textarea id="msg_content" name="content" class="form-control"
+                                  placeholder="Type notification details or message to show on student dashboard..."
+                                  required></textarea>
+                              </div>
+                              <button type="submit" class="btn btn-primary btn-sm">Send Note to Student</button>
+                            </form>
+                            <div class="section-title">Sent Logs</div>
+                            <% if (messages.length===0) { %>
+                              <div class="empty-state" style="padding:1.5rem;">
+                                <p>No messages sent to this student yet.</p>
+                              </div>
+                              <% } else { %>
+                                <div style="display:flex; flex-direction:column; gap:10px;">
+                                  <% messages.forEach(msg=> { %>
+                                    <div
+                                      style="background:var(--bg2); border:1px solid var(--border); padding:10px 12px; border-radius:var(--radius-sm);">
+                                      <p style="font-size:13px; color:var(--text); line-height:1.5;">
+                                        <%= msg.content %>
+                                      </p>
+                                      <div
+                                        style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted); margin-top:5px;">
+                                        <span>By: <%= msg.sender ? msg.sender.name : 'Admin' %> (<%= msg.sender ?
+                                              msg.sender.role : 'System' %>)</span>
+                                        <span>
+                                          <%= new Date(msg.createdAt).toLocaleDateString('en-IN',
+                                            {day:'numeric',month:'short'}) %> &nbsp;·&nbsp; <%= new
+                                              Date(msg.createdAt).toLocaleTimeString('en-IN',
+                                              {hour:'2-digit',minute:'2-digit'}) %>
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <% }) %>
+                                </div>
+                                <% } %>
+                          </div>
+                        </div>
+
+                        <!-- Right Side: Quick Contacts & Connections -->
+                        <div>
+                          <!-- Identity Verification -->
+                          <div class="card" style="margin-bottom: 1rem;">
+                            <div class="card-title"
+                              style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+                              <span>ID Verification</span>
+                              <span class="badge <%= student.idVerified ? 'badge-green' : 'badge-red' %>"
+                                style="font-size: 9px;">
+                                <%= student.idVerified ? 'Verified' : 'Unverified' %>
+                              </span>
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:10px;">
+                              <% if (student.idProof) { %>
+                                <div
+                                  style="border: 1px solid var(--border); border-radius: 4px; overflow:hidden; background: var(--bg-input);">
+                                  <img src="<%= student.idProof %>" alt="ID Proof Doc"
+                                    style="width:100%; height:auto; display:block; max-height: 120px; object-fit: contain;">
+                                </div>
+                                <a href="<%= student.idProof %>" target="_blank" class="btn btn-ghost btn-xs"
+                                  style="text-align:center;">View Full Size Document</a>
+
+                                <% if (!student.idVerified) { %>
+                                  <form action="/admin/students/<%= student._id %>/verify-id" method="POST"
+                                    style="margin:0;">
+                                    <button type="submit" class="btn btn-primary btn-xs btn-block">Verify ID
+                                      Document</button>
+                                  </form>
+                                  <% } %>
+                                    <% } else { %>
+                                      <p style="font-size:0.75rem; color:var(--text-muted);">No identity document
+                                        uploaded by the student yet.</p>
+                                      <% } %>
+                            </div>
+                          </div>
+
+                          <div class="card" style="margin-bottom: 1rem;">
+                            <div class="card-title" style="margin-bottom:1rem;">Contact Card</div>
+
+                            <div style="display:flex; flex-direction:column; gap:12px;">
+                              <div>
+                                <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Email
+                                  Address</div>
+                                <div style="font-size:0.9rem; font-weight:500; word-break:break-all;">
+                                  <%= student.email %>
+                                </div>
+                              </div>
+                              <div>
+                                <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Mobile
+                                  Number</div>
+                                <div style="font-size:0.9rem; font-weight:500; font-family:var(--mono);">
+                                  <%= student.phone || '—' %>
+                                </div>
+                              </div>
+                              <div>
+                                <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">
+                                  Admission Date</div>
+                                <div style="font-size:0.9rem; font-weight:500; font-family:var(--mono);">
+                                  <%= student.enrollmentDate ? new
+                                    Date(student.enrollmentDate).toLocaleDateString('en-IN',
+                                    {day:'numeric',month:'short',year:'numeric'}) : new
+                                    Date(student.createdAt).toLocaleDateString('en-IN',
+                                    {day:'numeric',month:'short',year:'numeric'}) %>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Parent / Guardian Information -->
+                          <div class="card" style="margin-bottom: 1rem;">
+                            <div class="card-title" style="margin-bottom:1rem;">Parent / Guardian Info</div>
+                            <div style="display:flex; flex-direction:column; gap:12px;">
+                              <% if (student.fatherName || student.motherName || student.guardianPhone) { %>
+                                <% if (student.fatherName) { %>
+                                  <div>
+                                    <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">
+                                      Father's Name</div>
+                                    <div style="font-size:0.85rem; font-weight:500;">
+                                      <%= student.fatherName %>
+                                    </div>
+                                  </div>
+                                  <% } %>
+                                    <% if (student.motherName) { %>
+                                      <div>
+                                        <div
+                                          style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">
+                                          Mother's Name</div>
+                                        <div style="font-size:0.85rem; font-weight:500;">
+                                          <%= student.motherName %>
+                                        </div>
+                                      </div>
+                                      <% } %>
+                                        <div>
+                                          <div
+                                            style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">
+                                            Guardian Contact (<%= student.guardianRelation || 'Relation' %>)</div>
+                                          <div style="font-size:0.85rem; font-weight:600; font-family:var(--mono);">
+                                            <% if (student.guardianPhone) { %>
+                                              <a href="tel:<%= student.guardianPhone %>"
+                                                style="color:var(--gold); display:flex; align-items:center; gap:4px;">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"
+                                                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                  stroke-linecap="round" stroke-linejoin="round">
+                                                  <path
+                                                    d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                                                </svg>
+                                                <%= student.guardianPhone %>
+                                              </a>
+                                              <% } else { %>
+                                                —
+                                                <% } %>
+                                          </div>
+                                        </div>
+                                        <% } else { %>
+                                          <p style="font-size:0.75rem; color:var(--text-muted);">No parent/guardian
+                                            details captured. Update profile to add.</p>
+                                          <% } %>
+                            </div>
+                          </div>
+
+                          <!-- Extended Profile Information -->
+                          <div class="card" style="margin-bottom: 1rem;">
+                            <div class="card-title" style="margin-bottom:1rem;">Extended Profile</div>
+                            <div style="display:flex; flex-direction:column; gap:10px; font-size:0.82rem;">
+                              <div>
+                                <span style="color:var(--text-muted);">DOB:</span>
+                                <strong class="mono">
+                                  <%= student.dob ? new Date(student.dob).toLocaleDateString('en-IN',
+                                    {day:'numeric',month:'short',year:'numeric'}) : '—' %>
+                                </strong>
+                              </div>
+                              <div>
+                                <span style="color:var(--text-muted);">Highest Qualification:</span>
+                                <strong>
+                                  <%= student.highestQualification || '—' %>
+                                </strong>
+                              </div>
+                              <div>
+                                <span style="color:var(--text-muted);">Lead Source:</span>
+                                <strong>
+                                  <%= student.referralSource || '—' %>
+                                </strong>
+                              </div>
+                              <div>
+                                <span style="color:var(--text-muted);">Social/Portfolio:</span>
+                                <strong>
+                                  <% if (student.socialHandle) { %>
+                                    <a href="<%= student.socialHandle.startsWith('http') ? student.socialHandle : 'https://' + student.socialHandle %>"
+                                      target="_blank" style="color:var(--gold);">
+                                      <%= student.socialHandle %>
+                                    </a>
+                                    <% } else { %>
+                                      —
+                                      <% } %>
+                                </strong>
+                              </div>
+                              <div style="border-top: 1px dashed var(--border); padding-top: 8px; margin-top: 4px;">
+                                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase;">
+                                  Permanent Address</div>
+                                <div style="font-size:0.8rem; line-height:1.4; font-weight:500;">
+                                  <%= student.address || '—' %>
+                                    <% if (student.city) { %>, <%= student.city %>
+                                        <% } %>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Assigned Teacher Profile -->
+                          <div class="card" style="margin-bottom: 1rem;">
+                            <div class="card-title" style="margin-bottom:1rem;">Primary Instructor</div>
+                            <% if (student.teacher) { %>
+                              <div style="display:flex; align-items:center; gap:10px;">
+                                <div class="avatar" style="width:34px; height:34px; font-size:11px;">
+                                  <%= student.teacher.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) %>
           </div>
           <div>
             <a href="/admin/teachers/<%= student.teacher._id %>" style="font-weight:600; color:var(--gold);"><%= student.teacher.name %></a>
-            <div style="font-size:0.7rem; color:var(--text-muted);">Roll: <%= student.teacher.rollNumber || '—' %></div>
-          </div>
-        </div>
-      <% } else { %>
-        <p style="font-size:0.8rem; color:var(--text-muted);">No primary teacher assigned. You can edit this user profile to assign one.</p>
-      <% } %>
-    </div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">Roll: <%= student.teacher.rollNumber || ' —' %>
+                                </div>
+                              </div>
+                          </div>
+                          <% } else { %>
+                            <p style="font-size:0.8rem; color:var(--text-muted);">No primary teacher assigned. You can
+                              edit this user profile to assign one.</p>
+                            <% } %>
+                        </div>
 
-    <!-- Assigned Counsellor Profile -->
-    <div class="card">
-      <div class="card-title" style="margin-bottom:1rem;">Assigned Counsellor</div>
-      <% if (student.counsellor) { %>
-        <div style="display:flex; align-items:center; gap:10px;">
-          <div class="avatar" style="width:34px; height:34px; font-size:11px;">
-            <%= student.counsellor.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) %>
+                        <!-- Assigned Counsellor Profile -->
+                        <div class="card">
+                          <div class="card-title" style="margin-bottom:1rem;">Assigned Counsellor</div>
+                          <% if (student.counsellor) { %>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                              <div class="avatar" style="width:34px; height:34px; font-size:11px;">
+                                <%= student.counsellor.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) %>
           </div>
           <div>
             <a href="/admin/counsellors/<%= student.counsellor._id %>" style="font-weight:600; color:var(--gold);"><%= student.counsellor.name %></a>
-            <div style="font-size:0.7rem; color:var(--text-muted);">Roll: <%= student.counsellor.rollNumber || '—' %></div>
-          </div>
-        </div>
-      <% } else { %>
-        <p style="font-size:0.8rem; color:var(--text-muted);">No counsellor mapped to this student.</p>
-      <% } %>
-    </div>
-  </div>
-</div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">Roll: <%= student.counsellor.rollNumber || ' —' %>
+                              </div>
+                            </div>
+                        </div>
+                        <% } else { %>
+                          <p style="font-size:0.8rem; color:var(--text-muted);">No counsellor mapped to this student.
+                          </p>
+                          <% } %>
+                      </div>
+                      </div>
+                      </div>
 
-<script>
-  function openTab(evt, tabId) {
-    const tabcontents = document.querySelectorAll(".tab-content");
-    tabcontents.forEach(tab => tab.style.display = "none");
+                      <script>
+                        function openTab(evt, tabId) {
+                          const tabcontents = document.querySelectorAll(".tab-content");
+                          tabcontents.forEach(tab => tab.style.display = "none");
 
-    const tablinks = document.querySelectorAll(".tab-btn");
-    tablinks.forEach(link => {
-      link.classList.remove("btn-primary");
-      link.classList.add("btn-ghost");
-    });
+                          const tablinks = document.querySelectorAll(".tab-btn");
+                          tablinks.forEach(link => {
+                            link.classList.remove("btn-primary");
+                            link.classList.add("btn-ghost");
+                          });
 
-    document.getElementById(tabId).style.display = "block";
-    evt.currentTarget.classList.remove("btn-ghost");
-    evt.currentTarget.classList.add("btn-primary");
-  }
-</script>
+                          document.getElementById(tabId).style.display = "block";
+                          evt.currentTarget.classList.remove("btn-ghost");
+                          evt.currentTarget.classList.add("btn-primary");
+                        }
+                      </script>

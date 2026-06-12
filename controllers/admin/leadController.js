@@ -1,137 +1,245 @@
 const User = require('../../models/User');
+const Student = require('../../models/Student');
+const Course = require('../../models/Course');
+const Batch = require('../../models/Batch');
 const Lead = require('../../models/Lead');
+const LeadActivity = require('../../models/LeadActivity');
 const Fee = require('../../models/Fee');
+const Message = require('../../models/Message');
+
 const { escapeRegex } = require('../../utils/sanitize');
 const { computeSourceStats } = require('../../utils/leadAnalytics');
 const logger = require('../../utils/logger');
 
-/**
- * GET /admin/leads
- * Admin only. Retrieves leads with filtering (status, course, source, search)
- * and generates global source quality stats.
- */
+async function resolveCourse(courseValue, fallbackCourseId = null) {
+  if (courseValue && courseValue.match && courseValue.match(/^[0-9a-fA-F]{24}$/)) {
+    return await Course.findById(courseValue);
+  }
+
+  if (courseValue) {
+    const course = await Course.findOne({
+      $or: [
+        { name: courseValue },
+        { code: String(courseValue).toUpperCase() }
+      ]
+    });
+
+    if (course) return course;
+  }
+
+  if (fallbackCourseId) {
+    return await Course.findById(fallbackCourseId);
+  }
+
+  return null;
+}
+
 exports.getLeads = async (req, res) => {
   try {
     const { status, course, source, search } = req.query;
+
     const filter = {};
+
     if (status) filter.status = status;
-    if (course) filter.course = course;
     if (source) filter.source = source;
+
+    if (course) {
+      const courseDoc = await resolveCourse(course);
+      if (courseDoc) filter.interestedCourse = courseDoc._id;
+    }
+
     if (search) {
       const escaped = escapeRegex(search);
       filter.$or = [
         { name: { $regex: escaped, $options: 'i' } },
-        { phone: { $regex: escaped, $options: 'i' } }
+        { phone: { $regex: escaped, $options: 'i' } },
+        { email: { $regex: escaped, $options: 'i' } }
       ];
     }
 
     const leads = await Lead.find(filter)
-      .populate('assignedTo', 'name')
+      .populate('assignedTo', 'name email phone')
+      .populate('interestedCourse', 'name code')
       .sort({ createdAt: -1 });
 
-    const counsellors = await User.find({ role: 'counsellor', isActive: true }).select('name');
+    const counsellors = await User.find({
+      role: 'counsellor',
+      isActive: true
+    }).select('name email phone');
 
-    // Global Lead Source Quality Analytics via DRY utility helper
-    const allLeadsAnalytics = await Lead.find({});
+    const courses = await Course.find({ isActive: true }).select('name code');
+
+    const allLeadsAnalytics = await Lead.find({}).populate('interestedCourse', 'name code');
     const sourceStatsMap = computeSourceStats(allLeadsAnalytics);
 
-    res.render('admin/leads', { 
-      title: 'Leads', 
-      user: req.user, 
-      leads, 
-      counsellors, 
+    res.render('admin/leads', {
+      title: 'Leads',
+      user: req.user,
+      leads,
+      counsellors,
+      courses,
       sourceStats: sourceStatsMap,
-      filter: req.query 
+      filter: req.query
     });
+
   } catch (err) {
-    logger.error('getLeads Error', { err: err.message });
-    res.status(500).render('500', { title: 'Error', user: req.user, layout: 'main' });
+    logger.error('getLeads Error', {
+      err: err.message,
+      stack: err.stack
+    });
+
+    res.status(500).render('500', {
+      title: 'Error',
+      user: req.user,
+      layout: 'main'
+    });
   }
 };
 
-/**
- * GET /admin/leads/:id
- * Admin only. Displays lead detailed details, follow-up history, and timeline.
- */
 exports.getLeadDetail = async (req, res) => {
   try {
     const lead = await Lead.findById(req.params.id)
       .populate('assignedTo', 'name email phone')
+      .populate('interestedCourse', 'name code durationMonths fees')
       .populate('followUpHistory.doneBy', 'name role')
-      .populate('convertedStudent', 'name');
+      .populate({
+        path: 'convertedStudent',
+        populate: [
+          { path: 'userId', select: 'name email phone status' },
+          { path: 'course', select: 'name code' },
+          { path: 'batch', select: 'name' }
+        ]
+      });
 
     if (!lead) return res.redirect('/admin/leads');
 
-    const counsellors = await User.find({ role: 'counsellor', isActive: true }).select('name');
-    res.render('admin/lead-detail', { title: lead.name, user: req.user, lead, counsellors, error: req.query.error });
+    const counsellors = await User.find({
+      role: 'counsellor',
+      isActive: true
+    }).select('name email phone');
+
+    res.render('admin/lead-detail', {
+      title: lead.name,
+      user: req.user,
+      lead,
+      counsellors,
+      error: req.query.error
+    });
+
   } catch (err) {
-    logger.error('Admin Lead Details Fetch Error', { err: err.message });
-    res.status(500).render('500', { title: 'Error', user: req.user, layout: 'main' });
+    logger.error('Admin Lead Details Fetch Error', {
+      err: err.message,
+      stack: err.stack
+    });
+
+    res.status(500).render('500', {
+      title: 'Error',
+      user: req.user,
+      layout: 'main'
+    });
   }
 };
 
-/**
- * POST /admin/leads/:id/assign
- * Admin only. Assigns a lead to a counsellor.
- */
 exports.postAssignLead = async (req, res) => {
-  try {
-    const assignedTo = req.body.counsellorId ? req.body.counsellorId : null;
-    await Lead.findByIdAndUpdate(req.params.id, { assignedTo });
-    logger.info('Lead assigned successfully', { leadId: req.params.id, counsellorId: assignedTo });
-    const redirectUrl = req.header('Referer') || '/admin/leads';
-    res.redirect(redirectUrl);
-  } catch (err) {
-    logger.error('postAssignLead Error', { err: err.message });
-    const redirectUrl = req.header('Referer') || '/admin/leads';
-    const cleanUrl = redirectUrl.split('?')[0];
-    res.redirect(`${cleanUrl}?error=${encodeURIComponent(err.message)}`);
-  }
-};
-
-/**
- * GET /admin/leads/:id/convert
- * Admin only. Renders the lead conversion page with auto-populated details and batch lists.
- */
-exports.getConvertLead = async (req, res) => {
   try {
     const lead = await Lead.findById(req.params.id);
     if (!lead) return res.redirect('/admin/leads');
 
-    const Batch = require('../../models/Batch');
-    const batches = await Batch.find({ isActive: true }).distinct('name');
+    const oldCounsellor = lead.assignedTo;
+    const assignedTo = req.body.counsellorId || null;
 
-    // Fetch active teachers
-    const teachers = await User.find({ role: 'teacher', isActive: true }).select('name');
+    lead.assignedTo = assignedTo;
+
+    if (assignedTo) {
+      lead.ownershipHistory.push({
+        counsellor: assignedTo,
+        assignedBy: req.user._id,
+        note: oldCounsellor ? 'Lead reassigned by admin' : 'Lead assigned by admin'
+      });
+    }
+
+    await lead.save();
+
+    await LeadActivity.create({
+      lead: lead._id,
+      type: oldCounsellor ? 'reassigned' : 'assigned',
+      title: oldCounsellor ? 'Lead Reassigned' : 'Lead Assigned',
+      note: assignedTo ? 'Lead assigned by admin.' : 'Lead unassigned by admin.',
+      counsellor: assignedTo || oldCounsellor || null,
+      doneBy: req.user._id
+    });
+
+    logger.info('Lead assigned successfully', {
+      leadId: lead._id,
+      counsellorId: assignedTo
+    });
+
+    res.redirect(req.header('Referer') || '/admin/leads');
+
+  } catch (err) {
+    logger.error('postAssignLead Error', {
+      err: err.message,
+      stack: err.stack
+    });
+
+    const redirectUrl = req.header('Referer') || '/admin/leads';
+    const cleanUrl = redirectUrl.split('?')[0];
+
+    res.redirect(`${cleanUrl}?error=${encodeURIComponent(err.message)}`);
+  }
+};
+
+exports.getConvertLead = async (req, res) => {
+  try {
+    const lead = await Lead.findById(req.params.id)
+      .populate('interestedCourse', 'name code durationMonths fees');
+
+    if (!lead) return res.redirect('/admin/leads');
+
+    const [batches, teachers, courses] = await Promise.all([
+      Batch.find({ isActive: true }).populate('course', 'name code').sort({ name: 1 }),
+      User.find({ role: 'teacher', isActive: true }).select('name email'),
+      Course.find({ isActive: true }).select('name code fees durationMonths').sort({ name: 1 })
+    ]);
 
     res.render('admin/convert', {
       title: `Convert: ${lead.name}`,
       user: req.user,
       lead,
-      batches,
-      teachers
+      batches: batches.map(batch => batch.name),
+      batchDocs: batches,
+      teachers,
+      courses
     });
+
   } catch (err) {
-    logger.error('Admin Get Convert Lead Error', { err: err.message });
+    logger.error('Admin Get Convert Lead Error', {
+      err: err.message,
+      stack: err.stack
+    });
+
     res.redirect(`/admin/leads/${req.params.id}?error=1`);
   }
 };
 
-/**
- * POST /admin/leads/:id/convert
- * Admin only. Converts a lead into a registered student, creates their fee ledger with explicit installments,
- * and updates their status to converted.
- */
 exports.postConvertLead = async (req, res) => {
-  logger.info('Convert lead request received', { leadId: req.params.id });
-  const Batch = require('../../models/Batch');
-  const batches = await Batch.find({ isActive: true }).distinct('name');
-  const teachers = await User.find({ role: 'teacher', isActive: true }).select('name');
+  logger.info('Convert lead request received', {
+    leadId: req.params.id
+  });
+
   let lead;
+  let studentUser;
+  let studentProfile;
 
   try {
-    lead = await Lead.findById(req.params.id);
+    lead = await Lead.findById(req.params.id).populate('interestedCourse');
     if (!lead) return res.redirect('/admin/leads');
+
+    const [batches, teachers, courses] = await Promise.all([
+      Batch.find({ isActive: true }).populate('course', 'name code').sort({ name: 1 }),
+      User.find({ role: 'teacher', isActive: true }).select('name email'),
+      Course.find({ isActive: true }).select('name code fees durationMonths').sort({ name: 1 })
+    ]);
 
     const email = req.body.email ? req.body.email.trim().toLowerCase() : '';
     const password = req.body.password ? req.body.password.trim() : '';
@@ -141,8 +249,10 @@ exports.postConvertLead = async (req, res) => {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
-        batches,
+        batches: batches.map(batch => batch.name),
+        batchDocs: batches,
         teachers,
+        courses,
         error: 'A valid student email address is required.'
       });
     }
@@ -152,8 +262,10 @@ exports.postConvertLead = async (req, res) => {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
-        batches,
+        batches: batches.map(batch => batch.name),
+        batchDocs: batches,
         teachers,
+        courses,
         error: 'Password must be at least 8 characters long.'
       });
     }
@@ -164,65 +276,93 @@ exports.postConvertLead = async (req, res) => {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
-        batches,
+        batches: batches.map(batch => batch.name),
+        batchDocs: batches,
         teachers,
+        courses,
         error: 'This email address is already registered.'
       });
     }
 
-    const totalFees = Number(req.body.fees_total) || 0;
-    const paidFees = Number(req.body.fees_paid) || 0;
-    const minDownPayment = totalFees * 0.5;
-    let discountReason = '';
-    if (paidFees < minDownPayment) {
-      discountReason = 'Admin bypassed 50% down payment requirement';
-    }
+    const selectedCourse = await resolveCourse(
+      req.body.course,
+      lead.interestedCourse?._id || lead.interestedCourse
+    );
 
-    let batchName = '';
-    if (req.body.customBatch && req.body.customBatch.trim()) {
-      batchName = req.body.customBatch.trim();
-    } else if (req.body.batch && req.body.batch.trim()) {
-      batchName = req.body.batch.trim();
-    } else {
-      batchName = 'General Batch';
-    }
-
-    if (!batchName || batchName.trim() === '') {
+    if (!selectedCourse) {
       return res.render('admin/convert', {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
-        batches,
+        batches: batches.map(batch => batch.name),
+        batchDocs: batches,
         teachers,
-        error: 'Batch selection or a custom batch name is required.'
+        courses,
+        error: 'Please select a valid course.'
       });
     }
 
-    // Dynamic Batch creation if it doesn't exist yet
-    let targetBatchObj = await Batch.findOne({ name: batchName });
-    if (!targetBatchObj) {
-      targetBatchObj = await Batch.create({
+    const totalFees = Number(req.body.fees_total) || selectedCourse.fees || 0;
+    const paidFees = Number(req.body.fees_paid) || 0;
+
+    let batchName = '';
+
+    if (req.body.customBatch && req.body.customBatch.trim()) {
+      batchName = req.body.customBatch.trim();
+    } else if (req.body.batch && req.body.batch.trim()) {
+      batchName = req.body.batch.trim();
+    }
+
+    if (!batchName) {
+      return res.render('admin/convert', {
+        title: `Convert: ${lead.name}`,
+        user: req.user,
+        lead,
+        batches: batches.map(batch => batch.name),
+        batchDocs: batches,
+        teachers,
+        courses,
+        error: 'Batch selection or custom batch name is required.'
+      });
+    }
+
+    let targetBatch = await Batch.findOne({ name: batchName });
+
+    if (!targetBatch) {
+      targetBatch = await Batch.create({
         name: batchName,
-        course: req.body.course || lead.course || 'Digital Marketing',
+        course: selectedCourse._id,
         capacity: 20,
         teachers: req.body.teacherId ? [req.body.teacherId] : [],
         isActive: true
       });
-      logger.info('Dynamically created missing batch during admin lead conversion', { batchName });
-    }
-    const enrollDate = req.body.enrollmentDate ? new Date(req.body.enrollmentDate) : new Date();
 
-    const student = await User.create({
+      logger.info('Dynamically created batch during lead conversion', {
+        batchId: targetBatch._id,
+        batchName
+      });
+    }
+
+    const enrollmentDate = req.body.enrollmentDate
+      ? new Date(req.body.enrollmentDate)
+      : new Date();
+
+    studentUser = await User.create({
       name: req.body.name || lead.name,
-      email: email,
-      password: password,
+      email,
+      password,
       role: 'student',
       phone: req.body.phone || lead.phone,
-      course: req.body.course || (lead.course === 'Both' ? 'Both' : lead.course),
-      batch: batchName,
-      counsellor: lead.assignedTo, 
+      status: 'active'
+    });
+
+    studentProfile = await Student.create({
+      userId: studentUser._id,
+      counsellor: lead.assignedTo || null,
       teacher: req.body.teacherId || null,
-      enrollmentDate: enrollDate,
+      course: selectedCourse._id,
+      batch: targetBatch._id,
+      enrollmentDate,
       fees_total: totalFees,
       fees_paid: paidFees,
       statusHistory: [{
@@ -232,96 +372,102 @@ exports.postConvertLead = async (req, res) => {
       }]
     });
 
-    let feeLedger;
-    try {
-      feeLedger = new Fee({
-        student: student._id,
-        course: student.course,
-        totalAmount: totalFees,
-        paidAmount: paidFees,
-        discountReason: discountReason,
-        payments: paidFees > 0 ? [{
-          amount: paidFees,
-          method: 'Cash',
-          note: 'Admission down payment',
-          receivedBy: req.user._id,
-          paidAt: new Date()
-        }] : []
-      });
+    const feeLedger = new Fee({
+      student: studentProfile._id,
+      course: selectedCourse._id,
+      batch: targetBatch._id,
+      totalAmount: totalFees,
+      paidAmount: paidFees,
+      courseDurationMonths: selectedCourse.durationMonths || 3,
+      discountReason: paidFees < totalFees * 0.5
+        ? 'Admin bypassed 50% down payment requirement'
+        : '',
+      payments: paidFees > 0 ? [{
+        amount: paidFees,
+        method: 'Cash',
+        note: 'Admission down payment',
+        receivedBy: req.user._id,
+        paidAt: new Date()
+      }] : []
+    });
 
-    // Parse custom installments if provided (support both instName and instName[])
     const instName = req.body.instName || req.body['instName[]'];
     const instAmount = req.body.instAmount || req.body['instAmount[]'];
     const instDueDate = req.body.instDueDate || req.body['instDueDate[]'];
 
     if (instName && Array.isArray(instName) && instName.length > 0) {
-      feeLedger.installments = instName.map((name, i) => ({
-        name: name.trim(),
-        amount: Number(instAmount[i]) || 0,
-        dueDate: instDueDate[i] ? new Date(instDueDate[i]) : new Date(),
-        paidAmount: 0
-      }));
-      // Update general dueDate to the last installment due date
+      feeLedger.installments = instName
+        .map((name, index) => ({
+          name: String(name || '').trim(),
+          amount: Number(instAmount[index]) || 0,
+          dueDate: instDueDate[index] ? new Date(instDueDate[index]) : new Date(),
+          paidAmount: 0
+        }))
+        .filter(installment => installment.name && installment.amount > 0);
+
       if (feeLedger.installments.length > 0) {
         feeLedger.dueDate = feeLedger.installments[feeLedger.installments.length - 1].dueDate;
       }
-    } else {
-      feeLedger.generateInstallments();
     }
 
-      feeLedger.allocatePayments();
-      await feeLedger.save();
-    } catch (dbErr) {
-      await User.findByIdAndDelete(student._id);
-      throw dbErr;
-    }
+    await feeLedger.save();
 
-    await User.findByIdAndUpdate(student._id, {
-      fees_total: feeLedger.totalAmount,
-      fees_paid: feeLedger.paidAmount
-    });
-
-    lead.status = 'converted';
-    lead.convertedStudent = student._id;
+    lead.status = 'admission_completed';
+    lead.convertedStudent = studentProfile._id;
     lead.convertedAt = new Date();
+
     lead.followUpHistory.push({
-      note: `Converted to student successfully by admin. Student ID: ${student.rollNumber || student._id}`,
-      status: 'converted',
+      note: `Converted to student successfully by admin. Student ID: ${studentProfile.rollNumber || studentProfile._id}`,
+      status: 'admission_completed',
       channel: 'In-person',
       doneBy: req.user._id,
       doneAt: new Date()
     });
+
     await lead.save();
 
-    logger.info('Lead converted to student successfully', { leadId: req.params.id, studentId: student._id });
-    res.redirect(`/admin/students/${student._id}`);
+    await LeadActivity.create({
+      lead: lead._id,
+      type: 'converted',
+      title: 'Admission Completed',
+      note: `Converted into student profile ${studentProfile.rollNumber || studentProfile._id}.`,
+      counsellor: lead.assignedTo || null,
+      doneBy: req.user._id,
+      newStatus: 'admission_completed'
+    });
+
+    logger.info('Lead converted successfully', {
+      leadId: lead._id,
+      studentId: studentProfile._id
+    });
+
+    res.redirect(`/admin/students/${studentProfile._id}`);
+
   } catch (err) {
-    logger.error('Convert Lead Error', { err: err.message });
-    let cleanErrMessage = err.message;
-    if (err.code === 11000 || (err.message && err.message.includes('E11000'))) {
-      cleanErrMessage = 'Database Conflict: A fee ledger index duplicate exists for this student profile.';
+    logger.error('Convert Lead Error', {
+      err: err.message,
+      stack: err.stack
+    });
+
+    if (studentProfile) {
+      await Student.findByIdAndDelete(studentProfile._id).catch(() => {});
     }
+
+    if (studentUser) {
+      await User.findByIdAndDelete(studentUser._id).catch(() => {});
+    }
+
     if (lead) {
-      return res.render('admin/convert', {
-        title: `Convert: ${lead.name}`,
-        user: req.user,
-        lead,
-        batches,
-        teachers,
-        error: cleanErrMessage
-      });
+      return res.redirect(`/admin/leads/${lead._id}?error=${encodeURIComponent(err.message)}`);
     }
+
     res.redirect('/admin/leads?error=1');
   }
 };
 
-/**
- * POST /admin/leads/:id/comment
- * Admin only. Appends a comment/follow-up log to a lead.
- */
 exports.postAddLeadComment = async (req, res) => {
   const { note } = req.body;
-  logger.info('Admin Lead Comment request received', { leadId: req.params.id, note });
+
   try {
     const lead = await Lead.findById(req.params.id);
     if (!lead) return res.redirect('/admin/leads');
@@ -329,13 +475,23 @@ exports.postAddLeadComment = async (req, res) => {
     lead.followUpHistory.push({
       note,
       status: lead.status,
+      channel: 'note',
       doneBy: req.user._id,
+      doneAt: new Date()
     });
+
     await lead.save();
 
-    // Send notification to counsellor (Issue 2.9)
+    await LeadActivity.create({
+      lead: lead._id,
+      type: 'note',
+      title: 'Admin Note Added',
+      note,
+      counsellor: lead.assignedTo || null,
+      doneBy: req.user._id
+    });
+
     if (lead.assignedTo) {
-      const Message = require('../../models/Message');
       await Message.create({
         sender: req.user._id,
         recipient: lead.assignedTo,
@@ -343,10 +499,14 @@ exports.postAddLeadComment = async (req, res) => {
       });
     }
 
-    logger.info('Admin Lead Comment posted successfully', { leadId: req.params.id });
     res.redirect(`/admin/leads/${req.params.id}?updated=1`);
+
   } catch (err) {
-    logger.error('Admin Add Lead Comment Error', { err: err.message });
+    logger.error('Admin Add Lead Comment Error', {
+      err: err.message,
+      stack: err.stack
+    });
+
     res.redirect(`/admin/leads/${req.params.id}?error=1`);
   }
 };

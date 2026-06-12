@@ -12,16 +12,34 @@ async function testInstallmentsAndFines() {
   const testEmail = 'installment.student@vandedigital.com';
   await User.deleteMany({ email: testEmail });
   
+  const Course = require('../models/Course');
+  const Batch = require('../models/Batch');
+  const Student = require('../models/Student');
+
+  let courseDoc = await Course.findOne({ name: 'Video Editing' });
+  if (!courseDoc) {
+    courseDoc = await Course.create({ name: 'Video Editing', code: 'VE', durationMonths: 3, fees: 25000 });
+  }
+
+  let batchDoc = await Batch.findOne({ name: 'VE-09AM-A1' });
+  if (!batchDoc) {
+    batchDoc = await Batch.create({ name: 'VE-09AM-A1', course: courseDoc._id, capacity: 20 });
+  }
+
   // 2. Create Student with base tuition fees
   console.log('👣 [1/5] Creating test student with ₹40,000 total fees...');
-  const student = await User.create({
+  const user = await User.create({
     name: 'Installment Test Student',
     email: testEmail,
     password: 'password123',
     role: 'student',
-    phone: '9876500001',
-    course: 'Video Editing',
-    batch: 'Morning Batch',
+    phone: '9876500001'
+  });
+
+  const student = await Student.create({
+    userId: user._id,
+    course: courseDoc._id,
+    batch: batchDoc._id,
     fees_total: 40000,
     fees_paid: 0
   });
@@ -29,7 +47,8 @@ async function testInstallmentsAndFines() {
   // Explicitly instantiate Fee ledger (equivalent to admin/counsellor controllers)
   await Fee.create({
     student: student._id,
-    course: student.course,
+    course: courseDoc._id,
+    batch: batchDoc._id,
     totalAmount: 40000,
   });
 
@@ -139,7 +158,8 @@ async function testInstallmentsAndFines() {
 
   // 6. Cleanup
   console.log('\n👣 [5/5] Cleaning up test records...');
-  await User.deleteOne({ _id: student._id });
+  await User.deleteOne({ _id: user._id });
+  await Student.deleteOne({ _id: student._id });
   await Fee.deleteOne({ student: student._id });
   serverProc.kill();
   

@@ -33,8 +33,17 @@ async function test() {
     // Fetch teachers & students for seeding test
     const teacher = await User.findOne({ role: 'teacher' });
     const otherTeacher = await User.findOne({ role: 'teacher', _id: { $ne: teacher._id } });
-    const students = await User.find({ role: 'student', batch: 'VE-09AM-A1' }).limit(3);
     const adminUser = await User.findOne({ role: 'admin' });
+    
+    const Batch = require('../models/Batch');
+    const Student = require('../models/Student');
+    const batchDoc = await Batch.findOne({ name: 'VE-09AM-A1' });
+    if (!batchDoc) {
+      throw new Error('Database is missing seeded batch VE-09AM-A1. Run seeder.js first.');
+    }
+
+    const studentProfiles = await Student.find({ batch: batchDoc._id }).limit(3);
+    const students = studentProfiles.map(s => s.userId);
     
     if (!teacher || !otherTeacher || !adminUser) {
       throw new Error('Database is missing seeded teacher or admin user. Please run seeder.js first.');
@@ -44,7 +53,7 @@ async function test() {
     console.log('\nStep 2: Scheduling initial session...');
     const sched1 = await Schedule.create({
       subject: 'Test Subject Basics',
-      batch: 'VE-09AM-A1',
+      batch: batchDoc._id,
       teacher: teacher._id,
       classroom: roomA._id,
       date: '2026-06-10',

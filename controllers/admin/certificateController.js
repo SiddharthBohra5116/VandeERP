@@ -26,10 +26,15 @@ exports.getStudentCertificate = async (req, res) => {
       student.updatedAt ||
       new Date();
 
+    const studentObj = student.toObject();
+    studentObj.name = student.userId?.name || '';
+    studentObj.course = student.course?.name || '';
+    studentObj.batch = student.batch?.name || '';
+
     res.render('admin/certificate', {
-      title: `${student.userId.name} — Graduation Certificate`,
+      title: `${studentObj.name} — Graduation Certificate`,
       layout: false,
-      student,
+      student: studentObj,
       completionDate
     });
 

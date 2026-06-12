@@ -27,6 +27,7 @@
 
   <div class="card">
     <form action="/counsellor/leads/<%= lead._id %>/convert" method="POST">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
 
       <div class="form-row">
         <div class="form-group">

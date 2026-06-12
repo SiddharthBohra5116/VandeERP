@@ -19,6 +19,7 @@
       <div class="card-title">Apply for Leave</div>
     </div>
     <form action="/counsellor/leaves/apply" method="POST" style="margin-top: 1rem;">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
       <div class="form-group">
         <label class="form-label" for="start_date">Start Date</label>
         <input type="date" id="start_date" name="startDate" class="form-control" required>

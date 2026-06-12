@@ -32,7 +32,7 @@
             <tr id="assignment-<%= assign._id %>">
               <td class="td-name">
                 <div style="font-weight:600;"><%= assign.title %></div>
-                <div class="td-muted text-sm">Subject: <%= assign.subject %></div>
+                <div class="td-muted text-sm">Course: <%= assign.course && assign.course.name ? assign.course.name : '—' %></div>
                 <% if (assign.fileUrl) { %>
                   <div style="margin-top:4px;">
                     <a href="<%= assign.fileUrl %>" class="btn btn-ghost btn-xs" target="_blank" download="<%= assign.fileName %>">

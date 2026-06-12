@@ -14,15 +14,14 @@
     <div class="profile-meta">
       Course: <strong><%= fee.course %></strong> &nbsp;·&nbsp; 
       Batch: <strong><%= fee.student.batch || '—' %></strong> &nbsp;·&nbsp; 
-      Phone: <strong><%= fee.student.phone || '—' %></strong>
-    </div>
+      Phone: <strong><%= fee.student.userId && fee.student.userId.phone ? fee.student.userId.phone : '—' %></strong>
   </div>
 </div>
 
 <!-- Ledger Calculation -->
 <% 
   const netFees = fee.totalAmount - (fee.discount || 0);
-  const balanceDue = fee.dueAmount;
+  const balanceDue = Math.max(0, fee.totalAmount - (fee.discount || 0) - fee.paidAmount);
   const paidPct = netFees > 0 ? Math.round((fee.paidAmount / netFees) * 100) : 0;
 %>
 

@@ -112,7 +112,7 @@ exports.postAddFollowUp = async (req, res) => {
     }
 
     // Server-side status validation guard (Issue 2.11 / 4.1)
-    const validStatuses = ['new', 'contacted', 'interested', 'ready_to_convert', 'lost'];
+    const validStatuses = ['new', 'contacted', 'joining_interested', 'admission_completed', 'lost'];
     if (!validStatuses.includes(status)) {
       logger.warn('Invalid status update parameter submitted', { status });
       return res.redirect(`/counsellor/leads/${req.params.id}?error=Invalid+status+action`);
@@ -192,7 +192,7 @@ exports.getFollowUps = async (req, res) => {
     const leads = await Lead.find({
       assignedTo: req.user._id,
       followUpDate: { $lte: new Date() },
-      status: { $nin: ['converted', 'lost'] },
+      status: { $nin: ['admission_completed', 'lost'] },
     }).sort({ followUpDate: 1 });
     res.render('counsellor/followups', { title: 'Follow-ups', user: req.user, leads });
   } catch (err) {
@@ -203,7 +203,7 @@ exports.getFollowUps = async (req, res) => {
 
 /**
  * POST /counsellor/leads/:id/ready
- * Flags a lead as ready_to_convert, signalling the admin to finalise admission.
+ * Flags a lead as joining_interested, signalling the admin to finalise admission.
  */
 exports.postMarkReady = async (req, res) => {
   try {
@@ -212,7 +212,7 @@ exports.postMarkReady = async (req, res) => {
       logger.warn('Unauthorized mark ready request by counsellor', { leadId: req.params.id });
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });
     }
-    lead.status = 'ready_to_convert';
+    lead.status = 'joining_interested';
     await lead.save();
     logger.info('Lead marked as ready to convert', { leadId: lead._id });
 

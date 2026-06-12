@@ -516,7 +516,7 @@
     </div>
 
     <div class="sidebar-user">
-      <div class="avatar"><%= user.initials %></div>
+      <div class="avatar"><%= user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) %></div>
       <div class="user-info">
         <div class="user-name"><%= user.name %></div>
         <div class="user-role">Counsellor</div>

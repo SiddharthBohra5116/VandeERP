@@ -66,7 +66,7 @@
           <% records.forEach(r => { %>
             <tr>
               <td class="mono text-sm fw-600"><%= r.date %></td>
-              <td><%= r.subject %></td>
+              <td><%= r.course && r.course.name ? r.course.name : '—' %></td>
               <td>
                 <% 
                   const badgeClass = {

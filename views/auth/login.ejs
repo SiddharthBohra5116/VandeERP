@@ -3,6 +3,7 @@
   title = 'Login';
 %>
 <form action="/auth/login" method="POST" style="margin-top: 1rem;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
   <div class="form-group">
     <label class="form-label" for="email">Email Address</label>
     <input type="email" id="email" name="email" class="form-control" placeholder="yourname@gmail.com" required>

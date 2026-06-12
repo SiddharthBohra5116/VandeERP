@@ -31,7 +31,8 @@ const curriculumSchema = new mongoose.Schema({
     required: true
   },
   batch: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Batch',
     required: true
   },
   teacher: {
@@ -46,14 +47,34 @@ const curriculumSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// One curriculum progress record per course + batch
 curriculumSchema.index({
   course: 1,
   batch: 1
 }, { unique: true });
 
-// Virtual: completed topic count
 curriculumSchema.virtual('completedCount').get(function() {
   return this.completedTopics.length;
+});
+
+curriculumSchema.virtual('completionPct').get(function() {
+  const courseDoc = this.course;
+
+  if (
+    !courseDoc ||
+    !Array.isArray(courseDoc.modules) ||
+    courseDoc.modules.length === 0
+  ) {
+    return 0;
+  }
+
+  const totalTopics = courseDoc.modules.reduce((total, module) => {
+    return total + (Array.isArray(module.topics) ? module.topics.length : 0);
+  }, 0);
+
+  if (totalTopics <= 0) return 0;
+
+  return Math.round((this.completedTopics.length / totalTopics) * 100);
 });
 
 curriculumSchema.set('toObject', { virtuals: true });

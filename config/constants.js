@@ -78,7 +78,7 @@ module.exports = {
 
   SCHEDULE_STATUSES: ['scheduled', 'completed', 'cancelled'],
 
-  ASSIGNMENT_SUBMISSION_STATUSES: ['submitted', 'graded', 'late'],
+  ASSIGNMENT_SUBMISSION_STATUSES: ['pending', 'submitted', 'late', 'graded', 'overdue'],
 
   ATTENDANCE_STATUSES: ['present', 'absent', 'late'],
 

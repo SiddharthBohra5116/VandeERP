@@ -19,9 +19,11 @@
       <option value="">All Statuses</option>
       <option value="new" <%= filter.status === 'new' ? 'selected' : '' %>>New</option>
       <option value="contacted" <%= filter.status === 'contacted' ? 'selected' : '' %>>Contacted</option>
-      <option value="interested" <%= filter.status === 'interested' ? 'selected' : '' %>>Interested</option>
-      <option value="ready_to_convert" <%= filter.status === 'ready_to_convert' ? 'selected' : '' %>>Ready to Convert</option>
-      <option value="converted" <%= filter.status === 'converted' ? 'selected' : '' %>>Converted</option>
+      <option value="mentorship_scheduled" <%= filter.status === 'mentorship_scheduled' ? 'selected' : '' %>>Mentorship Scheduled</option>
+      <option value="mentorship_attended" <%= filter.status === 'mentorship_attended' ? 'selected' : '' %>>Mentorship Attended</option>
+      <option value="follow_up" <%= filter.status === 'follow_up' ? 'selected' : '' %>>Follow Up</option>
+      <option value="joining_interested" <%= filter.status === 'joining_interested' ? 'selected' : '' %>>Joining Interested</option>
+      <option value="admission_completed" <%= filter.status === 'admission_completed' ? 'selected' : '' %>>Admission Completed</option>
       <option value="lost" <%= filter.status === 'lost' ? 'selected' : '' %>>Lost</option>
     </select>
 
@@ -71,12 +73,12 @@
         <tbody>
           <% leads.forEach(l => { %>
             <% 
-              const isOverdue = l.followUpDate && new Date(l.followUpDate) < new Date() && l.status !== 'converted' && l.status !== 'lost';
+              const isOverdue = l.followUpDate && new Date(l.followUpDate) < new Date() && l.status !== 'admission_completed' && l.status !== 'lost';
             %>
-            <tr style="<%= l.status === 'ready_to_convert' ? 'background: linear-gradient(90deg, rgba(212,175,55,0.08) 0%, rgba(0,0,0,0) 100%); border-left: 3px solid var(--gold);' : '' %>">
+            <trstyle="<%= l.status === 'joining_interested' ? 'background: linear-gradient(90deg, rgba(212,175,55,0.08) 0%, rgba(0,0,0,0) 100%); border-left: 3px solid var(--gold);' : '' %>"
               <td class="td-name">
                 <a href="/admin/leads/<%= l._id %>" style="color:var(--gold); font-weight:600;"><%= l.name %></a>
-                <% if (l.status === 'ready_to_convert') { %>
+                <% if (l.status === 'joining_interested') { %>
                   <span class="badge badge-gold" style="font-size: 9px; margin-left: 6px; vertical-align: middle; background: var(--gold-dim); border: 1px solid var(--gold-border); color: var(--gold); padding: 2px 6px; border-radius: 4px; font-weight: bold;">👑 Ready</span>
                 <% } %>
                 <div class="td-muted text-sm"><%= l.phone %> &nbsp;·&nbsp; <%= l.email || 'No email' %></div>
@@ -100,9 +102,11 @@
                   const badgeClass = {
                     new: 'badge-orange',
                     contacted: 'badge-blue',
-                    interested: 'badge-yellow',
-                    ready_to_convert: 'badge-gold',
-                    converted: 'badge-green',
+                    mentorship_scheduled: 'badge-blue',
+                    mentorship_attended: 'badge-yellow',
+                    follow_up: 'badge-yellow',
+                    joining_interested: 'badge-gold',
+                    admission_completed: 'badge-green',
                     lost: 'badge-red'
                   }[l.status] || 'badge-grey';
                 %>
@@ -112,11 +116,11 @@
                 <% } %>
               </td>
               <td>
-                <% if (l.status !== 'converted' && l.status !== 'lost') { %>
+                <% if (l.status !== 'admission_completed' && l.status !== 'lost') { %>
                   <a href="/admin/leads/<%= l._id %>/convert" class="btn btn-success btn-xs">
                     Convert to Student
                   </a>
-                <% } else if (l.status === 'converted') { %>
+                <% } else if (l.status === 'admission_completed') { %>
                   <span class="text-green text-sm" style="font-weight:600;">✓ Converted</span>
                 <% } else { %>
                   <span class="text-red text-sm" style="font-weight:600;">Lost</span>

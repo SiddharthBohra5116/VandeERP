@@ -49,8 +49,8 @@
   <form action="<%= isEdit ? '/admin/schedules/' + target._id + '/edit' : '/admin/schedules/create' %>" method="POST">
     
     <div class="form-group">
-      <label class="form-label" for="subject">Subject / Class Title *</label>
-      <input type="text" id="subject" name="subject" class="form-control" list="subject-list" value="<%= isEdit ? target.subject : '' %>" placeholder="e.g. Video Editing Basics - Premiere Pro" required>
+     <label class="form-label" for="note">Class Notes / Topic</label>
+      <input type="text" id="note" name="note" class="form-control" value="<%= isEdit ? target.note : '' %>" placeholder="e.g. Video Editing Basics - Premiere Pro">
       <datalist id="subject-list">
         <option value="Video Editing Basics"></option>
         <option value="Digital Marketing Mastery"></option>

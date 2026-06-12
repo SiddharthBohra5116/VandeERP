@@ -2,14 +2,16 @@ const { spawn } = require('child_process');
 const http = require('http');
 const mongoose = require('mongoose');
 const User = require('../models/User');
-const Lead = require('../models/Lead');
+const Student = require('../models/Student');
+const Course = require('../models/Course');
+const Batch = require('../models/Batch');
 const Fee = require('../models/Fee');
 const Attendance = require('../models/Attendance');
 const Assignment = require('../models/Assignment');
-const Progress = require('../models/Progress');
-const Schedule = require('../models/Schedule');
+const Lead = require('../models/Lead');
 const Expense = require('../models/Expense');
 const RevenueTarget = require('../models/RevenueTarget');
+const Schedule = require('../models/Schedule');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -26,7 +28,11 @@ function makeRequest(options, postData = null) {
         });
       });
     });
-    req.on('error', (e) => { reject(e); });
+
+    req.on('error', (e) => {
+      reject(e);
+    });
+
     if (postData) {
       req.write(postData);
     }
@@ -42,10 +48,13 @@ function getCookies(headers) {
 
 async function run() {
   console.log('🚀 Starting Verification for Day 8 Tasks...');
-  
-  // Start server on port 3132
-  const env = { ...process.env, PORT: '3132', NODE_ENV: 'test' };
+
+  const env = { ...process.env, PORT: '3132', NODE_ENV: 'development' };
   const serverProc = spawn('node', ['server.js'], { cwd: process.cwd(), env });
+
+  serverProc.stdout.on('data', (data) => {
+    // console.log(`[Server Out]: ${data.toString().trim()}`);
+  });
 
   serverProc.stderr.on('data', (data) => {
     console.error(`[Server Err]: ${data.toString().trim()}`);
@@ -64,13 +73,26 @@ async function run() {
     await Lead.deleteMany({ name: /Day8 Lead.*/ });
     await Fee.deleteMany({});
     await Attendance.deleteMany({ date: /2026-06.*/ });
-    await Assignment.deleteMany({ batch: 'Day8Batch' });
+    await Assignment.deleteMany({});
     await Progress.deleteMany({});
-    await Schedule.deleteMany({ batch: 'Day8Batch' });
+    await Schedule.deleteMany({});
     await Expense.deleteMany({ month: '2026-06' });
     await RevenueTarget.deleteMany({ month: '2026-06' });
+    await Student.deleteMany({});
+    await Batch.deleteMany({ name: 'Day8Batch' });
 
-    // 1. Create Counsellor, Teacher, and Student
+    // 1. Create Course and Batch
+    let courseDoc = await Course.findOne({ name: 'Video Editing' });
+    if (!courseDoc) {
+      courseDoc = await Course.create({
+        name: 'Video Editing',
+        code: 'VE',
+        durationMonths: 3,
+        fees: 25000
+      });
+    }
+
+    // 2. Create Counsellor, Teacher, and Student
     const counsellor = await User.create({
       name: 'Day8 Counsellor',
       email: 'day8counsellor@example.com',
@@ -89,27 +111,40 @@ async function run() {
       isActive: true
     });
 
-    const student = await User.create({
+    const batchDoc = await Batch.create({
+      name: 'Day8Batch',
+      course: courseDoc._id,
+      teachers: [teacher._id],
+      capacity: 20,
+      isActive: true
+    });
+
+    const user = await User.create({
       name: 'Day8 Student',
       email: 'day8student@example.com',
       password: 'password123',
       role: 'student',
       phone: '8881112223',
-      course: 'Video Editing',
-      batch: 'Day8Batch',
-      teacher: teacher._id,
-      counsellor: counsellor._id,
-      enrollmentDate: new Date('2026-06-05'),
       isActive: true
     });
 
-    // 2. Seed Financial & Operational details
+    const student = await Student.create({
+      userId: user._id,
+      course: courseDoc._id,
+      batch: batchDoc._id,
+      teacher: teacher._id,
+      counsellor: counsellor._id,
+      enrollmentDate: new Date('2026-06-05')
+    });
+
+    // 3. Seed Financial & Operational details
     await RevenueTarget.create({ month: '2026-06', amount: 50000 });
     await Expense.create({ month: '2026-06', category: 'staff', amount: 15000, date: new Date('2026-06-10') });
 
     const fee = await Fee.create({
       student: student._id,
-      course: 'Video Editing',
+      course: courseDoc._id,
+      batch: batchDoc._id,
       totalAmount: 40000,
       discount: 5000,
       paidAmount: 15000,
@@ -127,8 +162,8 @@ async function run() {
     await Attendance.create({
       student: student._id,
       teacher: teacher._id,
-      subject: 'Editing Basic',
-      batch: 'Day8Batch',
+      course: courseDoc._id,
+      batch: batchDoc._id,
       date: '2026-06-08',
       status: 'absent'
     });
@@ -136,19 +171,20 @@ async function run() {
     // Seed assignments and submissions to check teacher workload metrics
     const assignment = await Assignment.create({
       title: 'Day8 Color Grading',
-      subject: 'Editing Basic',
-      batch: 'Day8Batch',
+      course: courseDoc._id,
+      batch: batchDoc._id,
       teacher: teacher._id,
       dueDate: new Date('2026-06-12'),
+      totalMarks: 100,
       submissions: [
-        { student: student._id, status: 'graded', marks: 85, feedback: 'Great job!' }
+        { student: student._id, status: 'graded', marks: 85, feedback: 'Great job!', submittedAt: new Date('2026-06-09') }
       ]
     });
 
     await Lead.create({
       name: 'Day8 Lead A',
       phone: '9998887771',
-      course: 'Video Editing',
+      interestedCourse: courseDoc._id,
       source: 'Website',
       status: 'converted',
       assignedTo: counsellor._id,

@@ -58,7 +58,7 @@
               <td class="mono text-sm fw-600"><%= r.date %></td>
               <td class="td-name"><%= r.student ? r.student.name : 'Deleted Student' %></td>
               <td>
-                <div><%= r.subject %></div>
+                <div><%= r.course && r.course.name ? r.course.name : '—' %></div>
                 <div class="td-muted text-sm">Batch: <%= r.batch %></div>
               </td>
               <td>

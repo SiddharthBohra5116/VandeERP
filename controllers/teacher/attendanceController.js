@@ -3,6 +3,7 @@ const Attendance = require('../../models/Attendance');
 const Schedule = require('../../models/Schedule');
 const Holiday = require('../../models/Holiday');
 const { todayIST } = require('../../utils/dateHelper');
+const Course = require('../../models/Course');
 
 /**
  * GET /teacher/attendance
@@ -21,12 +22,12 @@ exports.getAttendancePage = async (req, res) => {
 
     if (batch && subject) {
       [students, existing] = await Promise.all([
-        User.find({ 
-          role: 'student', 
+        User.find({
+          role: 'student',
           batch: { $regex: new RegExp('^' + batch.trim() + '$', 'i') },
           status: { $in: ['active', 'inactive'] }
         }).sort({ name: 1 }),
-        Attendance.find({ batch, subject, date: today }),
+        Attendance.find({ batch, date: today }),
       ]);
       console.log('✅ Attendance page data fetched:', {
         batch, subject, date: today,
@@ -37,7 +38,7 @@ exports.getAttendancePage = async (req, res) => {
 
     // Fetch all active student batches across the academy
     const batches = await User.distinct('batch', { role: 'student', isActive: true });
-    
+
     // Fetch unique subjects
     let subjects = await Schedule.distinct('subject');
     if (!subjects) {
@@ -73,6 +74,8 @@ exports.getAttendancePage = async (req, res) => {
  */
 exports.postMarkAttendance = async (req, res) => {
   const { batch, subject, date, statuses, notes } = req.body;
+  const courseDoc = await Course.findOne({ name: subject });
+  const courseId = courseDoc ? courseDoc._id : null;
   console.log('📝 Mark Attendance request:', {
     teacherId: req.user._id, batch, subject, date,
     statusesCount: Object.keys(statuses || {}).length,
@@ -99,9 +102,9 @@ exports.postMarkAttendance = async (req, res) => {
 
     const ops = Object.entries(statuses).map(([studentId, status]) => ({
       updateOne: {
-        filter: { student: studentId, subject, date },
+        filter: { student: studentId, date },
         update: {
-          $set: { student: studentId, teacher: req.user._id, subject, batch, date, status, note: notes?.[studentId] || '' },
+          $set: { student: studentId, teacher: req.user._id, course: courseId, batch, date, status, note: notes?.[studentId] || '' },
         },
         upsert: true,
       },
@@ -130,7 +133,6 @@ exports.getAttendanceHistory = async (req, res) => {
   try {
     const filter = { teacher: req.user._id };
     if (batch) filter.batch = batch;
-    if (subject) filter.subject = subject;
     if (month) filter.date = { $regex: `^${month}` };
 
     const [records, batches] = await Promise.all([

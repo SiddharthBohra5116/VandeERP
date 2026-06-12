@@ -12,7 +12,7 @@ exports.getReports = async (req, res) => {
     // 1. Fetch leads metrics
     const [totalLeads, convertedLeads] = await Promise.all([
       Lead.countDocuments({ assignedTo: counsellorId }),
-      Lead.find({ assignedTo: counsellorId, status: 'converted' })
+      Lead.find({ assignedTo: counsellorId, status: 'admission_completed' })
     ]);
 
     const conversionRate = totalLeads > 0 ? Math.round((convertedLeads.length / totalLeads) * 100) : 0;

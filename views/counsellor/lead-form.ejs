@@ -10,6 +10,7 @@
 <div style="max-width:640px;">
   <div class="card">
     <form action="<%= isEdit ? `/counsellor/leads/${lead._id}/edit` : '/counsellor/leads/create' %>" method="POST">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
 
       <div class="form-row">
         <div class="form-group">
@@ -53,7 +54,7 @@
         <div class="form-group">
           <label class="form-label" style="font-size: 10px;">Status</label>
           <select name="status" class="form-control">
-            <% ['new','contacted','interested','converted','lost'].forEach(s => { %>
+            <% ['new','contacted','mentorship_scheduled','mentorship_attended','follow_up','joining_interested','admission_completed','lost'].forEach(s => { %>
               <option value="<%= s %>" <%= isEdit && lead.status === s ? 'selected' : (!isEdit && s === 'new' ? 'selected' : '') %>><%= s.charAt(0).toUpperCase() + s.slice(1) %></option>
             <% }); %>
           </select>

@@ -286,7 +286,7 @@
             %>
               <div class="calendar-event-card" 
                    data-id="<%= sched._id %>"
-                   data-subject="<%= sched.subject %>"
+                   data-subject="<%= sched.note || '—' %>"
                    data-batch="<%= sched.batch %>"
                    data-teacher="<%= sched.teacher ? sched.teacher._id : '' %>"
                    data-classroom="<%= sched.classroom ? sched.classroom._id : '' %>"
@@ -297,7 +297,7 @@
                    onclick="openEditDrawer(this)"
                    style="background: var(--bg-hover); border-left: 2px solid <%= isCancelled ? 'var(--red)' : (isCompleted ? 'var(--blue)' : 'var(--gold)') %>; border-radius: 4px; padding: 0.35rem 0.45rem; font-size: 0.65rem; color: var(--text-sub); cursor: pointer; display: flex; flex-direction: column; gap: 2px; transition: transform 0.1s; line-height: 1.2;"
                    onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='none';">
-                <div style="font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= sched.subject %></div>
+                <div style="font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= sched.note || '—' %></div>
                 <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.58rem;">
                   <span><%= sched.startTime.split(' ')[0] %>-<%= sched.endTime.split(' ')[0] %></span>
                   <span style="color: var(--gold-light); font-weight:600;"><%= sched.classroom ? sched.classroom.name.replace(/^(classroom|room)\s+/i, '') : 'Room' %></span>
@@ -347,7 +347,7 @@
               <% roomSchedules.forEach(sched => { %>
                 <div class="calendar-event-card"
                      data-id="<%= sched._id %>"
-                     data-subject="<%= sched.subject %>"
+                     data-subject="<%= sched.note || '—' %>"
                      data-batch="<%= sched.batch %>"
                      data-teacher="<%= sched.teacher ? sched.teacher._id : '' %>"
                      data-classroom="<%= sched.classroom ? sched.classroom._id : '' %>"
@@ -358,7 +358,7 @@
                      onclick="openEditDrawer(this)"
                      style="background: var(--bg-card); border-left: 3px solid var(--gold); border-radius: 4px; padding: 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.7rem; cursor: pointer; transition: border-color 0.15s, transform 0.15s;"
                      onmouseover="this.style.borderColor='var(--gold-hover)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--gold)'; this.style.transform='none'">
-                  <div style="font-weight: 700; color: var(--text);"><%= sched.subject %></div>
+                  <div style="font-weight: 700; color: var(--text);"><%= sched.note || '—' %></div>
                   <div style="font-size: 0.65rem; color: var(--text-sub); display: flex; flex-direction: column; gap: 1px; margin-top: auto; padding-top: 4px; border-top: 1px dashed var(--border-light);">
                     <span style="font-weight: 600;"><%= sched.batch %></span>
                     <% if (sched.teacher) { %>
@@ -452,7 +452,7 @@
                             <tbody>
                               <% batchSchedules.forEach(sched => { %>
                                 <tr>
-                                  <td><strong><%= sched.subject %></strong></td>
+                                  <td><strong><%= sched.note || '—' %></strong></td>
                                   <td><%= sched.teacher ? sched.teacher.name : '—' %></td>
 <<<<<<< HEAD
                                   <td><%= new Date(sched.date + "T00:00:00").toLocaleDateString('en-IN') %> &middot; <span class="text-gold"><%= sched.startTime %> - <%= sched.endTime %></span></td>
@@ -467,7 +467,7 @@
                                   <td>
                                     <button class="btn btn-ghost btn-xs"
                                             data-id="<%= sched._id %>"
-                                            data-subject="<%= sched.subject %>"
+                                            data-subject="<%= sched.note || '—' %>"
                                             data-batch="<%= sched.batch %>"
                                             data-teacher="<%= sched.teacher ? sched.teacher._id : '' %>"
                                             data-classroom="<%= sched.classroom ? sched.classroom._id : '' %>"
@@ -729,7 +729,7 @@
                     <% matchedClasses.forEach(sched => { %>
                       <div class="calendar-event-card"
                            data-id="<%= sched._id %>"
-                           data-subject="<%= sched.subject %>"
+                           data-subject="<%= sched.note || '—' %>"
                            data-batch="<%= sched.batch %>"
                            data-teacher="<%= sched.teacher ? sched.teacher._id : '' %>"
                            data-classroom="<%= sched.classroom ? sched.classroom._id : '' %>"
@@ -740,7 +740,7 @@
                            onclick="openEditDrawer(this)"
                            style="background: var(--bg-hover); border-left: 3px solid <%= matchedClasses.length > 1 ? 'var(--red)' : 'var(--gold)' %>; border-radius: 4px; padding: 0.4rem; text-align: left; cursor: pointer; transition: transform 0.1s; margin-bottom: 4px;"
                            onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='none';">
-                        <div style="font-weight: 700; color: var(--text);"><%= sched.subject %></div>
+                        <div style="font-weight: 700; color: var(--text);"><%= sched.note || '—' %></div>
                         <div style="color: var(--text-muted); font-size: 0.65rem; margin-top: 2px;">
                           👥 <%= sched.batch %><br>
                           👨‍🏫 <%= sched.teacher ? sched.teacher.name : 'No Teacher' %>

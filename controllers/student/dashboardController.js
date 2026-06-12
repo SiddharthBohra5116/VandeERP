@@ -1,4 +1,5 @@
 const User = require('../../models/User');
+const Student = require('../../models/Student');
 const Attendance = require('../../models/Attendance');
 const Assignment = require('../../models/Assignment');
 const DailyUpdate = require('../../models/DailyUpdate');
@@ -16,13 +17,15 @@ const { todayIST } = require('../../utils/dateHelper');
  */
 exports.getDashboard = async (req, res) => {
   try {
-    const student = await User.findById(req.user._id)
+    const studentProfile = await Student.findOne({ userId: req.user._id })
+      .populate('userId', 'name email phone status profilePic')
       .populate('teacher', 'name')
       .populate('counsellor', 'name');
 
-    if (!student.batch) {
+    if (!studentProfile || !studentProfile.batch) {
+      const fallbackUser = req.user.toObject ? req.user.toObject() : req.user;
       return res.render('student/dashboard', {
-        title: 'My Dashboard', user: student,
+        title: 'My Dashboard', user: fallbackUser,
         fee: null, pendingAssignments: [], attendancePct: null,
         totalClasses: 0, presentCount: 0, updates: [], admin: null, messages: [], schedules: [],
         daysTimetable: { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] },
@@ -30,6 +33,13 @@ exports.getDashboard = async (req, res) => {
         notEnrolled: true
       });
     }
+
+    const student = studentProfile.toObject();
+    student.name = studentProfile.userId?.name || '';
+    student.email = studentProfile.userId?.email || '';
+    student.phone = studentProfile.userId?.phone || '';
+    student.status = studentProfile.userId?.status || 'active';
+    student.profilePic = studentProfile.userId?.profilePic || null;
 
     if (student.status === 'complete' && (!student.feedback || !student.feedback.submitted)) {
       return res.render('student/feedback', {

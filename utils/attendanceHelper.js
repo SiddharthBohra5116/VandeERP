@@ -54,7 +54,7 @@ async function calculateStudentsAttendance(students, allAttendanceRecords, today
   
   const studentMap = {};
   students.forEach(u => {
-    const id = u.studentId ? u.studentId.toString() : (u._id ? u._id.toString() : '');
+    const id = u._id ? u._id.toString() : '';
     if (id) {
       studentMap[id] = { total: 0, present: 0, absent: 0, late: 0, lastAbsenceDate: null };
     }
@@ -82,7 +82,7 @@ async function calculateStudentsAttendance(students, allAttendanceRecords, today
   const markedTodaySet = new Set((todayRecords || []).map(r => r.student.toString()));
 
   students.forEach(u => {
-    const id = u.studentId ? u.studentId.toString() : (u._id ? u._id.toString() : '');
+    const id = u._id ? u._id.toString() : '';
     const stats = studentMap[id] || { total: 0, present: 0, absent: 0, late: 0, lastAbsenceDate: null };
     u.attendancePct = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 100;
     u.isMarkedToday = markedTodaySet.has(id);

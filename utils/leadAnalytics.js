@@ -22,9 +22,9 @@ function computeSourceStats(leads) {
     }
 
     sourceStatsMap[src].total++;
-    if (l.status === 'converted') {
+    if (l.status === 'admission_completed') {
       sourceStatsMap[src].converted++;
-      const convDate = l.convertedAt || l.updatedAt;
+      const convDate = l.updatedAt;
       if (l.createdAt && convDate) {
         const diffMs = new Date(convDate) - new Date(l.createdAt);
         sourceStatsMap[src].totalConvTimeMs += Math.max(0, diffMs);

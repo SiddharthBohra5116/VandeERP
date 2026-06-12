@@ -13,7 +13,7 @@ exports.getAdmissions = async (req, res) => {
   try {
     const query = {
       assignedTo: req.user._id,
-      status: 'converted',
+      status: 'admission_completed',
       convertedStudent: { $exists: true, $ne: null }
     };
     
@@ -287,12 +287,12 @@ exports.postConvertLead = async (req, res) => {
       fees_paid: feeLedger.paidAmount
     });
 
-    lead.status = 'converted';
+    lead.status = 'admission_completed';
     lead.convertedStudent = student._id;
     lead.convertedAt = new Date();
     lead.followUpHistory.push({
       note: `Lead converted to student by Counsellor. Student ID: ${student._id}`,
-      status: 'converted',
+      status: 'admission_completed',
       channel: 'In-person',
       doneBy: req.user._id,
       doneAt: new Date()

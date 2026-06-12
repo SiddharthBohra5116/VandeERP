@@ -1,4 +1,5 @@
 const Assignment = require('../../models/Assignment');
+const Student = require('../../models/Student');
 
 /**
  * GET /student/assignments
@@ -7,12 +8,13 @@ const Assignment = require('../../models/Assignment');
  */
 exports.getAssignments = async (req, res) => {
   try {
-    const isKycIncomplete = !req.user.idProof || !req.user.fatherName || !req.user.guardianPhone;
+    const studentProfile = await Student.findOne({ userId: req.user._id });
+    const isKycIncomplete = !studentProfile;
     if (isKycIncomplete) {
-      return res.status(403).render('403', { 
-        title: 'Access Restricted', 
-        user: req.user, 
-        error: 'Complete your profile KYC (Identity proof, Father\'s Name, Guardian Phone) on the dashboard to access assignments.' 
+      return res.status(403).render('403', {
+        title: 'Access Restricted',
+        user: req.user,
+        error: 'Complete your profile KYC (Identity proof, Father\'s Name, Guardian Phone) on the dashboard to access assignments.'
       });
     }
 
@@ -21,7 +23,7 @@ exports.getAssignments = async (req, res) => {
     }
 
     const assignments = await Assignment.find({ batch: req.user.batch, isActive: true }).sort({ dueDate: 1 });
-    const userId = req.user._id.toString();
+    const userId = studentProfile._id.toString();
 
     const enriched = assignments.map(a => ({
       ...a.toJSON(),
@@ -43,7 +45,7 @@ exports.getAssignments = async (req, res) => {
 exports.postSubmitAssignment = async (req, res) => {
   const { note } = req.body;
   console.log('📚 Student assignment submission request:', {
-    studentId: req.user._id,
+    studentId: studentProfile._id,
     assignmentId: req.params.id,
   });
   try {
@@ -51,11 +53,11 @@ exports.postSubmitAssignment = async (req, res) => {
     if (!assignment) return res.redirect('/student/assignments');
 
     const alreadySubmitted = assignment.submissions.find(
-      s => s.student.toString() === req.user._id.toString()
+      s => s.student.toString() === studentProfile._id.toString()
     );
     if (alreadySubmitted) {
       console.log('⚠️ Student assignment already submitted:', {
-        studentId: req.user._id,
+        studentId: studentProfile._id,
         assignmentId: req.params.id,
       });
       return res.redirect('/student/assignments?already=1');
@@ -65,7 +67,7 @@ exports.postSubmitAssignment = async (req, res) => {
     const isLate = now > new Date(assignment.dueDate);
 
     const sub = {
-      student: req.user._id,
+      student: studentProfile._id,
       note,
       submittedAt: now,
       status: isLate ? 'late' : 'submitted',
@@ -78,7 +80,7 @@ exports.postSubmitAssignment = async (req, res) => {
     assignment.submissions.push(sub);
     await assignment.save();
     console.log('✅ Student assignment submitted successfully:', {
-      studentId: req.user._id,
+      student: studentProfile._id,
       assignmentId: req.params.id,
     });
     res.redirect('/student/assignments?submitted=1');

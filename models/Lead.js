@@ -19,6 +19,13 @@ const leadSchema = new mongoose.Schema({
   status: { type: String, enum: LEAD_STATUSES, default: 'new' },
   assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   ownershipHistory: [ownershipSchema],
+  followUpHistory: [{
+    note: { type: String, default: '' },
+    status: { type: String, default: '' },
+    channel: { type: String, default: '' },
+    doneBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    doneAt: { type: Date, default: Date.now }
+  }],
   nextFollowUpAt: { type: Date, default: null },
   lastContactedAt: { type: Date, default: null },
   mentorship: {

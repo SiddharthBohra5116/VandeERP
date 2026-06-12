@@ -19,7 +19,7 @@ const populateCounsellorSidebar = async (req, res, next) => {
         Lead.countDocuments({
           assignedTo: req.user._id,
           followUpDate: { $lt: tomorrow },
-          status: { $nin: ['converted', 'lost'] }
+          status: { $nin: ['admission_completed', 'lost'] }
         })
       ]);
       res.locals.leadCount = leadCount;

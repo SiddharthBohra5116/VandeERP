@@ -36,17 +36,17 @@ exports.getDashboard = async (req, res) => {
       Lead.find({
         assignedTo: counsellorId,
         followUpDate: { $lt: tomorrow },
-        status: { $nin: ['converted', 'lost'] }
+        status: { $nin: ['admission_completed', 'lost'] }
       }).sort({ followUpDate: 1 }),
       Lead.find({
         assignedTo: counsellorId,
         followUpDate: { $lt: today },
-        status: { $nin: ['converted', 'lost'] }
+        status: { $nin: ['admission_completed', 'lost'] }
       }).sort({ followUpDate: 1 }),
       Lead.find({
         assignedTo: counsellorId,
         followUpDate: { $gte: today, $lt: tomorrow },
-        status: { $nin: ['converted', 'lost'] }
+        status: { $nin: ['admission_completed', 'lost'] }
       }).sort({ followUpDate: 1 }),
       User.find({ role: 'student', counsellor: counsellorId }),
       Lead.aggregate([
@@ -62,7 +62,7 @@ exports.getDashboard = async (req, res) => {
         assignedTo: counsellorId,
         createdAt: { $gte: today, $lt: tomorrow }
       }),
-      Lead.countDocuments({ assignedTo: counsellorId, status: 'converted' }),
+      Lead.countDocuments({ assignedTo: counsellorId, status: 'admission_completed' }),
       Lead.countDocuments({ assignedTo: counsellorId, status: 'lost' }),
       User.findOne({ role: 'admin' }),
       Message.find({ recipient: counsellorId })
@@ -88,7 +88,7 @@ exports.getDashboard = async (req, res) => {
     const allLeadsForAnalytics = await Lead.find({ assignedTo: counsellorId }).select('status source course createdAt followUpHistory');
     const sourceStatsMap = computeSourceStats(allLeadsForAnalytics);
 
-    const byStatus = { new: 0, contacted: 0, interested: 0, ready_to_convert: 0, converted: 0, lost: 0 };
+    const byStatus = { new: 0, contacted: 0, mentorship_scheduled: 0, mentorship_attended: 0, follow_up: 0, joining_interested: 0, admission_completed: 0, lost: 0 };
     statusStats.forEach(s => {
       byStatus[s._id] = s.count;
     });

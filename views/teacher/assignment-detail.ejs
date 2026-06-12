@@ -1,7 +1,7 @@
 <%
   layout = 'main';
   title = assignment.title;
-  subtitle = `Details and submissions for Subject: ${assignment.subject} (Batch: ${assignment.batch})`;
+  subtitle = `Details and submissions for Batch: ${assignment.batch && assignment.batch.name ? assignment.batch.name : assignment.batch}`;
   page = 'assignments';
 %>
 
@@ -74,7 +74,7 @@
             <tr id="submission-<%= sub.submissionId %>">
               <td class="td-name">
                 <%= sub.student ? sub.student.name : 'Deleted Student' %>
-                <div class="td-muted text-sm">Batch: <%= sub.student ? sub.student.batch : '—' %></div>
+                <div class="td-muted text-sm">Batch: <%= sub.student && sub.student.batch ? (sub.student.batch.name || sub.student.batch) : '—' %></div>
               </td>
               <td class="mono text-sm">
                 <%= sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—' %>

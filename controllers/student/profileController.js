@@ -1,4 +1,5 @@
 const User = require('../../models/User');
+const Student = require('../../models/Student');
 const Message = require('../../models/Message');
 const logger = require('../../utils/logger');
 
@@ -39,12 +40,13 @@ exports.postUploadIdProof = async (req, res) => {
   try {
     if (!req.file) return res.redirect('/auth/profile?error=1');
 
-    const student = await User.findById(req.user._id);
-    student.idProof = `/files/${req.file.filename}`;
-    student.idVerified = false;
-    await student.save();
+    const studentProfile = await Student.findOne({ userId: req.user._id });
+    if (!studentProfile) return res.redirect('/auth/profile?error=1');
+    studentProfile.documents.idProof = `/files/${req.file.filename}`;
+    studentProfile.idVerified = false;
+    await studentProfile.save();
 
-    logger.info('Student uploaded ID proof', { studentId: student._id, path: student.idProof });
+    logger.info('Student uploaded ID proof', { studentId: studentProfile._id, path: studentProfile.documents.idProof });
     res.redirect('/auth/profile?saved=1');
   } catch (err) {
     logger.error('Upload ID Proof Error', { error: err.message });
@@ -62,7 +64,8 @@ exports.postUploadIdProof = async (req, res) => {
 exports.postSubmitFeedback = async (req, res) => {
   try {
     const { teacherRating, contentRating, facilitiesRating, comments } = req.body;
-    const student = await User.findById(req.user._id);
+    const studentProfile = await Student.findOne({ userId: req.user._id });
+    if (!studentProfile) return res.redirect('/student/dashboard?error=1');
 
     const tRate = Number(teacherRating) || 0;
     const cRate = Number(contentRating) || 0;
@@ -72,7 +75,7 @@ exports.postSubmitFeedback = async (req, res) => {
       return res.redirect('/student/dashboard?error=Ratings+must+be+between+1+and+5');
     }
 
-    student.feedback = {
+    studentProfile.feedback = {
       submitted: true,
       teacherRating: tRate,
       contentRating: cRate,
@@ -81,8 +84,8 @@ exports.postSubmitFeedback = async (req, res) => {
       submittedAt: new Date(),
     };
 
-    await student.save();
-    logger.info('Student submitted course feedback', { studentId: student._id });
+    await studentProfile.save();
+    logger.info('Student submitted course feedback', { studentId: studentProfile._id });
     res.redirect('/student/dashboard?saved=1');
   } catch (err) {
     logger.error('Submit Feedback Error', { error: err.message });
@@ -99,13 +102,22 @@ exports.postSubmitFeedback = async (req, res) => {
  */
 exports.getCertificate = async (req, res) => {
   try {
-    const student = await User.findById(req.user._id);
-    if (!student || student.status !== 'complete' || !student.feedback?.submitted) {
+    const studentProfile = await Student.findOne({ userId: req.user._id })
+      .populate('userId', 'name status statusHistory')
+      .populate('course', 'name code')
+      .populate('batch', 'name');
+
+    if (!studentProfile || !studentProfile.userId || studentProfile.userId.status !== 'complete' || !studentProfile.feedback?.submitted) {
       return res.redirect('/student/dashboard?error=Certificate not unlocked yet');
     }
 
-    const completeEntry = student.statusHistory.find(h => h.status === 'complete');
-    const completionDate = completeEntry ? completeEntry.date : student.updatedAt || new Date();
+    const completeEntry = studentProfile.statusHistory.find(h => h.status === 'complete');
+    const completionDate = completeEntry ? completeEntry.date : studentProfile.updatedAt || new Date();
+
+    const student = studentProfile.toObject();
+    student.name = studentProfile.userId.name;
+    student.course = studentProfile.course?.name || '';
+    student.batch = studentProfile.batch?.name || '';
 
     res.render('admin/certificate', {
       title: `${student.name} — Graduation Certificate`,

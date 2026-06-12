@@ -66,7 +66,7 @@
               <td class="td-name">
                 <div class="d-flex align-center gap-2">
                   <div class="avatar" style="width:30px; height:30px; font-size:10px;">
-                    <%= s.initials %>
+                    <%= s.name ? s.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?' %>
                   </div>
                   <%= s.name %>
                 </div>

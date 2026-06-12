@@ -22,7 +22,23 @@ async function run() {
       throw new Error('Teacher or Classroom not found in DB. Run seed first.');
     }
 
-    const testBatch = 'Test Propagation Batch';
+    const Batch = require('../models/Batch');
+    const Course = require('../models/Course');
+    let course = await Course.findOne();
+    if (!course) {
+      course = await Course.create({ name: 'Test Course', code: 'TC', durationMonths: 3, fees: 10000 });
+    }
+    let batchDoc = await Batch.findOne({ name: 'Test Propagation Batch' });
+    if (!batchDoc) {
+      batchDoc = await Batch.create({
+        name: 'Test Propagation Batch',
+        course: course._id,
+        teachers: [teacher._id],
+        capacity: 10,
+        isActive: true
+      });
+    }
+    const testBatch = batchDoc._id;
 
     // Clean up any existing records for test batch
     await Timetable.deleteOne({ batch: testBatch });

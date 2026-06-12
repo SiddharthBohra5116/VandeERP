@@ -1,13 +1,13 @@
 <%
   layout = 'main';
   title = 'My Dashboard';
-  subtitle = `Welcome, ${user.name}! Keep track of your learning stats &middot; Roll: ${user.rollNumber || 'Not Generated'}`;
+  subtitle = `Welcome, ${user.name}! Track your learning stats`;
   page = 'dashboard';
 %>
 
 <!-- Stats Calculation -->
 <% 
-  const netDue = fee ? fee.dueAmount : 0;
+  const netDue = fee ? Math.max(0, fee.totalAmount - (fee.discount || 0) - fee.paidAmount) : 0;
   
   const missingFields = [];
   if (!user.phone) missingFields.push('Phone Number');
@@ -280,7 +280,7 @@
           <tbody>
             <% todaySchedules.forEach(sched => { %>
               <tr>
-                <td><strong><%= sched.subject %></strong></td>
+                <td><strong><%= sched.note || '—' %></strong></td>
                 <td><%= sched.classroom ? sched.classroom.name : '—' %></td>
                 <td class="mono text-xs"><%= sched.startTime %> - <%= sched.endTime %></td>
                 <td><%= sched.teacher ? sched.teacher.name : '—' %></td>
@@ -328,7 +328,7 @@
             <% pendingAssignments.forEach(assign => { %>
               <tr>
                 <td class="td-name"><a href="/student/assignments" style="color:var(--gold);"><%= assign.title %></a></td>
-                <td><%= assign.subject %></td>
+                <td><%= assign.course && assign.course.name ? assign.course.name : '—' %></td>
                 <td class="mono text-sm text-red fw-600">
                   <%= new Date(assign.dueDate).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %>
                 </td>

@@ -9,7 +9,7 @@ const submissionSchema = new mongoose.Schema({
   submittedAt: { type: Date, default: Date.now },
   marks: { type: Number, default: null },
   feedback: { type: String, default: '' },
-  status: { type: String, enum: ASSIGNMENT_SUBMISSION_STATUSES, default: 'submitted' }
+  status: { type: String, enum: ASSIGNMENT_SUBMISSION_STATUSES, default: 'pending' }
 });
 
 const assignmentSchema = new mongoose.Schema({
