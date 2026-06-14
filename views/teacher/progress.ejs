@@ -478,6 +478,12 @@
   function updateTotalMarksLabel(val) {
     const label = document.getElementById('bulkTotalMarksVal');
     if (label) label.innerText = val || '50';
+    
+    const maxVal = val ? Number(val) : 50;
+    const scoreInputs = document.querySelectorAll('input[id^="bulk_score_"]');
+    scoreInputs.forEach(input => {
+      input.max = maxVal;
+    });
   }
 
   function openTestModal(studentId, studentName, course, batch) {
@@ -485,6 +491,11 @@
     document.getElementById('testCourse').value = course;
     document.getElementById('testBatch').value = batch;
     document.getElementById('testStudentName').innerText = studentName;
+    
+    // Set max limit on score input dynamically based on current totalMarks
+    const totalMarksVal = document.getElementById('totalMarks').value || 50;
+    document.getElementById('score').max = totalMarksVal;
+    
     document.getElementById('testModal').classList.add('open');
   }
   function closeTestModal() {
@@ -577,11 +588,32 @@
     }
   };
 
+  const initMaxMarksValidation = () => {
+    const totalMarksInput = document.getElementById('totalMarks');
+    const scoreInput = document.getElementById('score');
+    if (totalMarksInput && scoreInput) {
+      totalMarksInput.addEventListener('input', () => {
+        scoreInput.max = totalMarksInput.value || 50;
+      });
+    }
+  };
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupDependentDropdowns);
+    document.addEventListener('DOMContentLoaded', () => {
+      setupDependentDropdowns();
+      initMaxMarksValidation();
+    });
   } else {
     setupDependentDropdowns();
+    initMaxMarksValidation();
   }
-  document.addEventListener('resultsUpdated', setupDependentDropdowns);
+  document.addEventListener('resultsUpdated', () => {
+    setupDependentDropdowns();
+    // Re-initialize bulk max limits on results update
+    const bulkMarksInput = document.getElementById('bulkTotalMarks');
+    if (bulkMarksInput) {
+      updateTotalMarksLabel(bulkMarksInput.value);
+    }
+  });
 </script>
 <script src="/js/instant-filter.js"></script>
