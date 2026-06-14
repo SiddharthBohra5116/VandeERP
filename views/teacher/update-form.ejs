@@ -7,26 +7,21 @@
 
 <div class="card" style="max-width: 650px; margin: 0 auto;">
   <form action="/teacher/updates/create" method="POST" enctype="multipart/form-data">
-    <div class="form-row-3">
+    <div class="form-row">
       <div class="form-group">
         <label class="form-label" for="batch">Select Batch</label>
         <select id="batch" name="batch" class="form-control" required>
           <option value="" disabled selected>Select Batch</option>
           <% batches.forEach(b => { %>
-            <option value="<%= b %>"><%= b %></option>
+            <option value="<%= b._id %>"><%= b.name %></option>
           <% }) %>
         </select>
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="subject">Subject</label>
-        <input type="text" id="subject" name="subject" class="form-control" placeholder="e.g. Color Grading" required>
-      </div>
-
-      <div class="form-group">
         <label class="form-label" for="date">Class Date</label>
         <% const today = new Date().toISOString().split('T')[0]; %>
-        <input type="date" id="date" name="date" class="form-control" value="<%= today %>" required>
+        <input type="date" id="date" name="date" class="form-control" value="<%= today %>" max="<%= today %>" required>
       </div>
     </div>
 

@@ -6,34 +6,59 @@
 %>
 
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
-  <form method="GET" action="/teacher/progress" class="filter-bar" style="margin:0;">
-    <div class="form-group" style="margin:0; min-width:140px;">
-      <label class="form-label" style="margin-bottom:0.25rem;">Batch</label>
-      <select name="batch" class="form-control" style="padding:0.45rem 0.75rem;" required>
-        <option value="" disabled selected>Select Batch</option>
-        <% batches.forEach(b => { %>
-          <option value="<%= b %>" <%= filter.batch === b ? 'selected' : '' %>><%= b %></option>
+  <form method="GET" action="/teacher/progress" class="filter-bar" style="margin:0; display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+    
+    <!-- Course select first -->
+    <div class="form-group" style="margin:0; min-width:160px; flex: 1;">
+      <label class="form-label" for="progressCourseSelect" style="margin-bottom:0.25rem;">Course</label>
+      <select name="course" id="progressCourseSelect" class="form-control" style="padding:0.45rem 0.75rem;" required>
+        <option value="" disabled <%= !filter.course ? 'selected' : '' %>>Select Course</option>
+        <% courses.forEach(c => { %>
+          <option value="<%= c._id %>" <%= String(filter.course) === String(c._id) ? 'selected' : '' %>><%= c.name %></option>
         <% }) %>
       </select>
     </div>
-    
-    <div class="form-group" style="margin:0; min-width:160px;">
-      <label class="form-label" style="margin-bottom:0.25rem;">Subject Name</label>
-      <input type="text" name="subject" class="form-control" style="padding:0.45rem 0.75rem;" placeholder="e.g. Video Editing Basics" value="<%= filter.subject || '' %>" required>
+
+    <!-- Batch select second -->
+    <div class="form-group" style="margin:0; min-width:140px; flex: 1;">
+      <label class="form-label" for="progressBatchSelect" style="margin-bottom:0.25rem;">Batch</label>
+      <select name="batch" id="progressBatchSelect" class="form-control" style="padding:0.45rem 0.75rem;" required>
+        <option value="" disabled <%= !filter.batch ? 'selected' : '' %>>Select Batch</option>
+        <% batches.forEach(b => { %>
+          <option value="<%= b._id %>" <%= String(filter.batch) === String(b._id) ? 'selected' : '' %>><%= b.name %></option>
+        <% }) %>
+      </select>
     </div>
 
     <div style="display:flex; gap:0.5rem; align-items:flex-end;">
-      <button type="submit" class="btn btn-primary btn-sm">Load Progress Board</button>
       <a href="/teacher/progress" class="btn btn-ghost btn-sm">Reset</a>
     </div>
   </form>
 </div>
 
-<% if (filter.batch && filter.subject) { %>
+<div id="results-container" style="width: 100%;">
+<% if (filter.batch && filter.course) { %>
   <div class="card">
-    <div class="card-header">
-      <div class="card-title">
-        Progress Board: Batch <span style="color:var(--gold);"><%= filter.batch %></span> &nbsp;·&nbsp; Subject <span style="color:var(--gold);"><%= filter.subject %></span>
+    <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0px; display: flex; flex-direction: column; gap: 0.75rem;">
+      <div class="card-title" style="margin-bottom: 0.25rem;">
+        <% 
+          const currentBatchDoc = batches.find(b => String(b._id) === String(filter.batch));
+          const currentCourseDoc = courses.find(c => String(c._id) === String(filter.course));
+        %>
+        Progress Board: Batch <span style="color:var(--gold);"><%= currentBatchDoc ? currentBatchDoc.name : '—' %></span> &nbsp;·&nbsp; Course <span style="color:var(--gold);"><%= currentCourseDoc ? currentCourseDoc.name : '—' %></span>
+      </div>
+      
+      <!-- Tab Buttons -->
+      <div class="tab-buttons-container" style="display: flex; gap: 0.5rem; border-bottom: 1px solid transparent; margin-bottom: -1px;">
+        <button type="button" class="tab-btn" data-tab="board" id="tab-btn-board" style="background: none; border: none; border-bottom: 2px solid var(--gold); padding: 0.5rem 1rem; color: var(--gold); font-weight: 600; cursor: pointer; font-size: 0.85rem; font-family: var(--font-display);">
+          Students Progress
+        </button>
+        <button type="button" class="tab-btn" data-tab="bulk" id="tab-btn-bulk" style="background: none; border: none; border-bottom: 2px solid transparent; padding: 0.5rem 1rem; color: var(--text-sub); font-weight: 500; cursor: pointer; font-size: 0.85rem; font-family: var(--font-display); transition: all 0.2s;">
+          Bulk Log Test Scores
+        </button>
+        <button type="button" class="tab-btn" data-tab="history" id="tab-btn-history" style="background: none; border: none; border-bottom: 2px solid transparent; padding: 0.5rem 1rem; color: var(--text-sub); font-weight: 500; cursor: pointer; font-size: 0.85rem; font-family: var(--font-display); transition: all 0.2s;">
+          Test History (<%= uniqueTests.length %>)
+        </button>
       </div>
     </div>
     
@@ -42,83 +67,216 @@
         <p>No active students found in Batch: <strong><%= filter.batch %></strong>.</p>
       </div>
     <% } else { %>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Student Name</th>
-              <th>Overall Score</th>
-              <th>Test Results History</th>
-              <th>Teacher's Remarks</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% students.forEach(student => { %>
-              <% 
-                const record = progressRecords.find(pr => pr.student && pr.student._id.toString() === student._id.toString());
-                const overall = record ? record.overallScore : 0;
-                const remarks = record ? record.teacherRemark : '';
-                const tests = record ? record.testResults : [];
-              %>
+      
+      <!-- Tab 1: Students Progress Board -->
+      <div id="tab-content-board" class="tab-content">
+        <div class="table-wrap">
+          <table>
+            <thead>
               <tr>
-                <td class="td-name"><%= student.name %></td>
-                <td>
-                  <div style="min-width: 80px;">
-                    <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:600; margin-bottom: 2px;">
-                      <span class="<%= overall >= 75 ? 'text-green' : overall >= 40 ? 'text-gold' : 'text-red' %>">
-                        <%= overall %>%
-                      </span>
-                    </div>
-                    <div class="progress-bar">
-                      <div class="progress-fill <%= overall >= 75 ? 'green' : 'gold' %>" <%= `style="width: ${overall}%"` %>></div>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <% if (tests.length === 0) { %>
-                    <span class="td-muted text-sm">No tests recorded yet</span>
-                  <% } else { %>
-                    <div style="display:flex; flex-direction:column; gap:4px; max-height:100px; overflow-y:auto; padding-right:5px;">
-                      <% tests.forEach(t => { %>
-                        <div class="text-xs" style="background:var(--bg-hover); padding:3px 6px; border-radius:4px; border:1px solid var(--border);">
-                          <strong><%= t.testName %></strong>: <span class="text-gold"><%= t.score %>/<%= t.totalMarks %></span>
-                          <span class="td-muted" style="float:right;"><%= t.date %></span>
-                        </div>
-                      <% }) %>
-                    </div>
-                  <% } %>
-                </td>
-                <td class="text-sm" style="max-width: 200px; white-space: normal; line-height: 1.4;">
-                  <%= remarks || '—' %>
-                </td>
-                <td>
-                  <div class="d-flex gap-1">
-                    <button class="btn btn-primary btn-xs" 
-                            onclick="openTestModal('<%= student._id %>', '<%= student.name %>', '<%= filter.subject %>', '<%= filter.batch %>')">
-                      + Test
-                    </button>
-                    <button class="btn btn-ghost btn-xs" 
-                            onclick="openRemarkModal('<%= student._id %>', '<%= student.name %>', '<%= filter.subject %>', '<%= filter.batch %>', '<%= remarks %>')">
-                      Remark
-                    </button>
-                  </div>
-                </td>
+                <th>Student Name</th>
+                <th>Overall Score</th>
+                <th>Test Results History</th>
+                <th>Teacher's Remarks</th>
+                <th>Actions</th>
               </tr>
-            <% }) %>
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              <% students.forEach(student => { %>
+                <% 
+                  const record = progressRecords.find(pr => pr.student && pr.student._id.toString() === student._id.toString());
+                  const overall = record ? record.overallScore : 0;
+                  const remarks = record ? record.teacherRemark : '';
+                  const tests = record ? record.testResults : [];
+                %>
+                <tr>
+                  <td class="td-name"><strong><%= student.name %></strong></td>
+                  <td>
+                    <div style="min-width: 80px;">
+                      <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:600; margin-bottom: 2px;">
+                        <span class="<%= overall >= 75 ? 'text-green' : overall >= 40 ? 'text-gold' : 'text-red' %>">
+                          <%= overall %>%
+                        </span>
+                      </div>
+                      <div class="progress-bar">
+                        <div class="progress-fill <%= overall >= 75 ? 'green' : 'gold' %>" <%= `style="width: ${overall}%"` %>></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <% if (tests.length === 0) { %>
+                      <span class="td-muted text-sm">No tests recorded yet</span>
+                    <% } else { %>
+                      <div style="display:flex; flex-direction:column; gap:4px; max-height:100px; overflow-y:auto; padding-right:5px;">
+                        <% tests.forEach(t => { %>
+                          <div class="text-xs" style="background:var(--bg-hover); padding:3px 6px; border-radius:4px; border:1px solid var(--border);">
+                            <strong><%= t.testName %></strong>: <span class="text-gold"><%= t.score %>/<%= t.totalMarks %></span>
+                            <span class="td-muted" style="float:right;"><%= t.date %></span>
+                          </div>
+                        <% }) %>
+                      </div>
+                    <% } %>
+                  </td>
+                  <td class="text-sm" style="max-width: 200px; white-space: normal; line-height: 1.4;">
+                    <%= remarks || '—' %>
+                  </td>
+                  <td>
+                    <div class="d-flex gap-1">
+                      <button class="btn btn-primary btn-xs" 
+                              onclick="openTestModal('<%= student._id %>', '<%= student.name %>', '<%= filter.course %>', '<%= filter.batch %>')">
+                        + Test
+                      </button>
+                      <button class="btn btn-ghost btn-xs" 
+                              onclick="openRemarkModal('<%= student._id %>', '<%= student.name %>', '<%= filter.course %>', '<%= filter.batch %>', '<%= remarks %>')">
+                        Remark
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      <!-- Tab 2: Bulk Log Test Scores -->
+      <div id="tab-content-bulk" class="tab-content" style="display: none; padding: 1.5rem;">
+        <form action="/teacher/progress/bulk-test" method="POST" id="bulkTestForm">
+          <input type="hidden" name="course" value="<%= filter.course %>">
+          <input type="hidden" name="batch" value="<%= filter.batch %>">
+          <input type="hidden" name="oldTestName" id="bulkOldTestName" value="">
+          
+          <h4 id="bulkFormTitle" style="color: var(--gold); font-family: var(--font-display); margin-top: 0; margin-bottom: 0.5rem; font-size: 1.1rem;">
+            Log New Test Scores
+          </h4>
+          <p style="font-size: 0.78rem; color: var(--text-sub); margin-bottom: 1.25rem;">
+            Specify test metrics at the top, then enter marks for each student in the roster below. Left blank, a student will not have this test score recorded.
+          </p>
+          
+          <div class="form-row-3" style="margin-bottom: 1.25rem;">
+            <div class="form-group">
+              <label class="form-label" for="bulkTestName">Test / Exam Title</label>
+              <input type="text" id="bulkTestName" name="testName" class="form-control" placeholder="e.g. Photoshop Selection Basics" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="bulkTotalMarks">Total Marks</label>
+              <input type="number" id="bulkTotalMarks" name="totalMarks" class="form-control" value="50" oninput="updateTotalMarksLabel(this.value)" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="bulkTestDate">Date of Exam</label>
+              <% const todayStr = new Date().toISOString().split('T')[0]; %>
+              <input type="date" id="bulkTestDate" name="date" class="form-control" value="<%= todayStr %>" required>
+            </div>
+          </div>
+          
+          <div class="table-wrap" style="margin-bottom: 1.5rem; border: 1px solid var(--border);">
+            <table>
+              <thead>
+                <tr>
+                  <th>Student Name</th>
+                  <th style="width: 150px;">Marks Obtained (<span id="bulkTotalMarksVal">50</span>)</th>
+                  <th>Remarks / Performance feedback</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% students.forEach(student => { %>
+                  <tr>
+                    <td class="td-name"><strong><%= student.name %></strong></td>
+                    <td>
+                      <input type="number" name="scores[<%= student.studentProfileId %>]" id="bulk_score_<%= student.studentProfileId %>" class="form-control text-xs" style="padding: 0.35rem 0.5rem;" min="0" placeholder="—">
+                    </td>
+                    <td>
+                      <input type="text" name="remarks[<%= student.studentProfileId %>]" id="bulk_remark_<%= student.studentProfileId %>" class="form-control text-xs" style="padding: 0.35rem 0.5rem;" placeholder="Optional comment">
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          
+          <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <button type="submit" class="btn btn-primary btn-sm">Save Test Scores</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="bulkCancelEditBtn" style="display: none;" onclick="cancelBulkEdit()">
+              Cancel Edit
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Tab 3: Test History -->
+      <div id="tab-content-history" class="tab-content" style="display: none; padding: 1.5rem;">
+        <h4 style="color: var(--gold); font-family: var(--font-display); margin-top: 0; margin-bottom: 0.5rem; font-size: 1.1rem;">
+          Past Test Records
+        </h4>
+        <p style="font-size: 0.78rem; color: var(--text-sub); margin-bottom: 1.25rem;">
+          List of all recorded tests for this batch & course. You can bulk-edit marks or delete the test entirely.
+        </p>
+        
+        <% if (uniqueTests.length === 0) { %>
+          <div class="empty-state" style="padding: 2rem 1rem;">
+            <p style="font-size: 0.82rem; color: var(--text-muted);">No tests have been recorded for this course & batch yet.</p>
+          </div>
+        <% } else { %>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Test Title</th>
+                  <th>Date of Exam</th>
+                  <th>Total Marks</th>
+                  <th>Avg Score %</th>
+                  <th>Graded Count</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% uniqueTests.forEach(test => { %>
+                  <tr>
+                    <td><strong><%= test.testName %></strong></td>
+                    <td class="mono text-xs"><%= test.date %></td>
+                    <td><%= test.totalMarks %></td>
+                    <td>
+                      <span class="<%= test.avgScore >= 75 ? 'text-green' : test.avgScore >= 40 ? 'text-gold' : 'text-red' %>" style="font-weight: 600;">
+                        <%= test.avgScore %>%
+                      </span>
+                    </td>
+                    <td><%= test.scoresCount %> students</td>
+                    <td>
+                      <div style="display: flex; gap: 0.5rem;">
+                        <button type="button" class="btn btn-primary btn-xs edit-test-btn" 
+                                data-test-name="<%= test.testName %>" 
+                                data-test-date="<%= test.date %>" 
+                                data-test-marks="<%= test.totalMarks %>" 
+                                data-test-scores='<%- JSON.stringify(test.studentScores) %>'>
+                          Edit Scores
+                        </button>
+                        <form action="/teacher/progress/delete-test" method="POST" style="margin: 0;" onsubmit="return confirm('Are you sure you want to delete the test &quot;<%= test.testName %>&quot;? This will remove scores for all students.');">
+                          <input type="hidden" name="course" value="<%= filter.course %>">
+                          <input type="hidden" name="batch" value="<%= filter.batch %>">
+                          <input type="hidden" name="testName" value="<%= test.testName %>">
+                          <button type="submit" class="btn btn-red btn-xs">Delete</button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
+
     <% } %>
   </div>
 <% } else { %>
   <div class="card">
     <div class="empty-state">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-      <p>Select a Batch and specify the Subject above to query student gradeboards.</p>
+      <p>Select a Course and its Batch above to load the student progress list.</p>
     </div>
   </div>
 <% } %>
+</div>
 
 <!-- Add Test Result Modal -->
 <div id="testModal" class="modal-overlay">
@@ -129,7 +287,7 @@
     </div>
     <form action="/teacher/progress/test" method="POST">
       <input type="hidden" id="testStudentId" name="studentId">
-      <input type="hidden" id="testSubject" name="subject">
+      <input type="hidden" id="testCourse" name="course">
       <input type="hidden" id="testBatch" name="batch">
       
       <p style="font-size:13px; color:var(--text-sub); margin-bottom:1.25rem;">
@@ -178,7 +336,7 @@
       <button class="modal-close" onclick="closeRemarkModal()">&times;</button>
     </div>
     <form id="remarkForm" method="POST">
-      <input type="hidden" id="remarkSubject" name="subject">
+      <input type="hidden" id="remarkCourse" name="course">
       <input type="hidden" id="remarkBatch" name="batch">
       
       <p style="font-size:13px; color:var(--text-sub); margin-bottom:1.25rem;">
@@ -199,9 +357,132 @@
 </div>
 
 <script>
-  function openTestModal(studentId, studentName, subject, batch) {
+  // Robust click handler for dynamic elements
+  document.addEventListener('click', function(e) {
+    const tabBtn = e.target.closest('.tab-btn');
+    if (tabBtn) {
+      const tabName = tabBtn.getAttribute('data-tab');
+      if (tabName) {
+        switchProgressTab(tabName);
+      }
+      return;
+    }
+
+    const editBtn = e.target.closest('.edit-test-btn');
+    if (editBtn) {
+      const testName = editBtn.getAttribute('data-test-name');
+      const date = editBtn.getAttribute('data-test-date');
+      const totalMarks = Number(editBtn.getAttribute('data-test-marks'));
+      const studentScores = JSON.parse(editBtn.getAttribute('data-test-scores') || '{}');
+      editPastTest(testName, date, totalMarks, studentScores);
+      return;
+    }
+  });
+
+  function switchProgressTab(tabName) {
+    // Hide all contents
+    const board = document.getElementById('tab-content-board');
+    const bulk = document.getElementById('tab-content-bulk');
+    const history = document.getElementById('tab-content-history');
+    
+    if (board) board.style.display = 'none';
+    if (bulk) bulk.style.display = 'none';
+    if (history) history.style.display = 'none';
+    
+    // Deactivate all buttons
+    const btnBoard = document.getElementById('tab-btn-board');
+    const btnBulk = document.getElementById('tab-btn-bulk');
+    const btnHistory = document.getElementById('tab-btn-history');
+    
+    if (btnBoard) {
+      btnBoard.style.borderBottomColor = 'transparent';
+      btnBoard.style.color = 'var(--text-sub)';
+      btnBoard.style.fontWeight = '500';
+    }
+    if (btnBulk) {
+      btnBulk.style.borderBottomColor = 'transparent';
+      btnBulk.style.color = 'var(--text-sub)';
+      btnBulk.style.fontWeight = '500';
+    }
+    if (btnHistory) {
+      btnHistory.style.borderBottomColor = 'transparent';
+      btnHistory.style.color = 'var(--text-sub)';
+      btnHistory.style.fontWeight = '500';
+    }
+    
+    // Show active content
+    const activeContent = document.getElementById('tab-content-' + tabName);
+    if (activeContent) activeContent.style.display = 'block';
+    
+    // Activate clicked button
+    const activeBtn = document.getElementById('tab-btn-' + tabName);
+    if (activeBtn) {
+      activeBtn.style.borderBottomColor = 'var(--gold)';
+      activeBtn.style.color = 'var(--gold)';
+      activeBtn.style.fontWeight = '600';
+    }
+  }
+
+  function editPastTest(testName, date, totalMarks, studentScores) {
+    // Set form title and inputs
+    document.getElementById('bulkFormTitle').innerText = 'Edit Test: ' + testName;
+    document.getElementById('bulkTestName').value = testName;
+    document.getElementById('bulkTotalMarks').value = totalMarks;
+    document.getElementById('bulkTestDate').value = date;
+    document.getElementById('bulkOldTestName').value = testName;
+    
+    // Update total marks labels
+    updateTotalMarksLabel(totalMarks);
+    
+    // Clear all inputs first
+    <% if (students && students.length > 0) { %>
+      <% students.forEach(student => { %>
+        document.getElementById('bulk_score_<%= student.studentProfileId %>').value = '';
+        document.getElementById('bulk_remark_<%= student.studentProfileId %>').value = '';
+      <% }) %>
+    <% } %>
+    
+    // Populate existing scores
+    for (const studentId in studentScores) {
+      const scoreInput = document.getElementById('bulk_score_' + studentId);
+      if (scoreInput) {
+        scoreInput.value = studentScores[studentId];
+      }
+    }
+    
+    // Show cancel edit button
+    document.getElementById('bulkCancelEditBtn').style.display = 'inline-block';
+    
+    // Switch to bulk tab
+    switchProgressTab('bulk');
+  }
+  
+  function cancelBulkEdit() {
+    document.getElementById('bulkFormTitle').innerText = 'Log New Test Scores';
+    document.getElementById('bulkTestName').value = '';
+    document.getElementById('bulkTotalMarks').value = '50';
+    document.getElementById('bulkOldTestName').value = '';
+    
+    // Clear all inputs
+    <% if (students && students.length > 0) { %>
+      <% students.forEach(student => { %>
+        document.getElementById('bulk_score_<%= student.studentProfileId %>').value = '';
+        document.getElementById('bulk_remark_<%= student.studentProfileId %>').value = '';
+      <% }) %>
+    <% } %>
+    
+    updateTotalMarksLabel(50);
+    document.getElementById('bulkCancelEditBtn').style.display = 'none';
+  }
+  
+  function updateTotalMarksLabel(val) {
+    const label = document.getElementById('bulkTotalMarksVal');
+    if (label) label.innerText = val || '50';
+  }
+
+  function openTestModal(studentId, studentName, course, batch) {
     document.getElementById('testStudentId').value = studentId;
-    document.getElementById('testSubject').value = subject;
+    document.getElementById('testCourse').value = course;
     document.getElementById('testBatch').value = batch;
     document.getElementById('testStudentName').innerText = studentName;
     document.getElementById('testModal').classList.add('open');
@@ -210,11 +491,11 @@
     document.getElementById('testModal').classList.remove('open');
   }
 
-  function openRemarkModal(studentId, studentName, subject, batch, currentRemark) {
+  function openRemarkModal(studentId, studentName, course, batch, currentRemark) {
     const form = document.getElementById('remarkForm');
     form.action = '/teacher/progress/' + studentId + '/remark';
     
-    document.getElementById('remarkSubject').value = subject;
+    document.getElementById('remarkCourse').value = course;
     document.getElementById('remarkBatch').value = batch;
     document.getElementById('remarkStudentName').innerText = studentName;
     document.getElementById('remark').value = currentRemark;
@@ -228,4 +509,79 @@
   // Close modals on overlay clicks
   document.getElementById('testModal').addEventListener('click', function(e) { if (e.target === this) closeTestModal(); });
   document.getElementById('remarkModal').addEventListener('click', function(e) { if (e.target === this) closeRemarkModal(); });
+
+  // Dependent dropdown config
+  const teacherSchedules = <%- JSON.stringify(teacherSchedules || []) %>;
+
+  const setupDependentDropdowns = () => {
+    const courseSelect = document.getElementById('progressCourseSelect');
+    const batchSelect = document.getElementById('progressBatchSelect');
+
+    if (!courseSelect || !batchSelect) return;
+
+    if (!batchSelect.dataset.originalOptions) {
+      const opts = Array.from(batchSelect.options).map(opt => ({
+        value: opt.value,
+        text: opt.textContent
+      }));
+      batchSelect.dataset.originalOptions = JSON.stringify(opts);
+    }
+
+    const allBatchOptions = JSON.parse(batchSelect.dataset.originalOptions);
+
+    courseSelect.addEventListener('change', () => {
+      const selectedCourse = courseSelect.value;
+      if (!selectedCourse) {
+        batchSelect.innerHTML = '<option value="">Select Batch</option>';
+        allBatchOptions.forEach(opt => {
+          if (opt.value) {
+            batchSelect.add(new Option(opt.text, opt.value));
+          }
+        });
+        return;
+      }
+
+      const validBatchIds = teacherSchedules
+        .filter(s => s.course && s.course._id === selectedCourse)
+        .map(s => s.batch ? s.batch._id : null)
+        .filter(Boolean);
+
+      const currentSelectedBatch = batchSelect.value;
+      batchSelect.innerHTML = '<option value="">Select Batch</option>';
+
+      allBatchOptions.forEach(opt => {
+        if (opt.value && validBatchIds.includes(opt.value)) {
+          const newOpt = new Option(opt.text, opt.value);
+          if (opt.value === currentSelectedBatch) newOpt.selected = true;
+          batchSelect.add(newOpt);
+        }
+      });
+    });
+
+    batchSelect.addEventListener('change', () => {
+      const selectedBatch = batchSelect.value;
+      if (!selectedBatch) return;
+
+      const match = teacherSchedules.find(s => s.batch && s.batch._id === selectedBatch);
+      if (match && match.course) {
+        const targetCourseId = match.course._id;
+        if (courseSelect.value !== targetCourseId) {
+          courseSelect.value = targetCourseId;
+          courseSelect.dispatchEvent(new Event('change'));
+        }
+      }
+    });
+
+    if (courseSelect.value) {
+      courseSelect.dispatchEvent(new Event('change'));
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupDependentDropdowns);
+  } else {
+    setupDependentDropdowns();
+  }
+  document.addEventListener('resultsUpdated', setupDependentDropdowns);
 </script>
+<script src="/js/instant-filter.js"></script>

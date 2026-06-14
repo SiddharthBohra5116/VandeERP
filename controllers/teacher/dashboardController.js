@@ -26,13 +26,15 @@ exports.getDashboard = async (req, res) => {
         .populate('batch', 'name')
         .sort({ dueDate: 1 }).limit(5),
       Attendance.countDocuments({ teacher: req.user.teacherProfileId, date: today }),
-      DailyUpdate.find({ teacher: req.user.teacherProfileId }).populate('batch', 'name').sort({ createdAt: -1 }).limit(5),
+      DailyUpdate.find({ teacher: req.user.teacherProfileId }).populate('course', 'name code').populate('batch', 'name').sort({ createdAt: -1 }).limit(5),
       Message.find({ recipient: req.user._id }).populate('sender', 'name role').sort({ createdAt: -1 }).limit(5),
       Schedule.find({ teacher: req.user.teacherProfileId, date: { $gte: today } })
+        .populate('course', 'name code')
         .populate('batch', 'name')
         .populate('classroom', 'name location').sort({ date: 1, startTime: 1 }).limit(5),
       User.findOne({ role: 'admin' }),
       Schedule.find({ teacher: req.user.teacherProfileId, date: today })
+        .populate('course', 'name code')
         .populate('batch', 'name')
         .populate('classroom', 'name location').sort({ startTime: 1 }),
     ]);
@@ -63,7 +65,11 @@ exports.getDashboard = async (req, res) => {
       teacher: req.user.teacherProfileId,
       date: { $in: dateStrings },
       status: { $ne: 'cancelled' },
-    }).populate('classroom', 'name location').sort({ startTime: 1 });
+    })
+      .populate('course', 'name code')
+      .populate('batch', 'name')
+      .populate('classroom', 'name location')
+      .sort({ startTime: 1 });
 
     const daysTimetable = { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] };
     const { parseTimeToMinutes } = require('../../utils/clashDetector');

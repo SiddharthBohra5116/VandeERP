@@ -1,5 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
-  // Find search/filter form and the results target container
+const initInstantFilter = () => {
   const filterForm = document.querySelector('form.filter-bar') || document.querySelector('form[action][method="GET"]');
   const resultsContainer = document.getElementById('results-container');
 
@@ -34,6 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (newResults) {
         resultsContainer.innerHTML = newResults.innerHTML;
+        // Dispatch custom event for page scripts
+        document.dispatchEvent(new CustomEvent('resultsUpdated'));
       }
     } catch (err) {
       console.error('❌ Error updating search results:', err);
@@ -48,9 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Instant handler for dropdown options changes
+  // Instant handler for dropdown options, date, and month changes
   filterForm.addEventListener('change', (e) => {
-    if (e.target.tagName === 'SELECT') {
+    if (e.target.tagName === 'SELECT' || (e.target.tagName === 'INPUT' && e.target.type !== 'text')) {
       updateResults();
     }
   });
@@ -60,4 +61,11 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     updateResults();
   });
-});
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initInstantFilter);
+} else {
+  initInstantFilter();
+}
+

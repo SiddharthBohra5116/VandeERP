@@ -11,7 +11,10 @@ exports.getAssignments = async (req, res) => {
   console.log('📚 Teacher Assignments list load:', { teacherId: req.user._id });
   try {
     const filter = req.user.role === 'admin' ? {} : { teacher: req.user.teacherProfileId };
-    const assignments = await Assignment.find(filter).sort({ createdAt: -1 });
+    const assignments = await Assignment.find(filter)
+      .populate('course', 'name code')
+      .populate('batch', 'name')
+      .sort({ createdAt: -1 });
     console.log('✅ Assignments fetched:', { count: assignments.length });
     res.render('teacher/assignments', { title: 'Assignments', user: req.user, assignments });
   } catch (err) {
@@ -27,7 +30,9 @@ exports.getAssignments = async (req, res) => {
 exports.getCreateAssignment = async (req, res) => {
   console.log('📝 Create Assignment form load:', { teacherId: req.user._id });
   try {
-    const batches = await Batch.find({ isActive: true });
+    const Schedule = require('../../models/Schedule');
+    const assignedBatches = await Schedule.distinct('batch', { teacher: req.user.teacherProfileId });
+    const batches = await Batch.find({ _id: { $in: assignedBatches }, isActive: true });
     res.render('teacher/assignment-form', { title: 'New Assignment', user: req.user, target: null, batches });
   } catch (err) {
     console.error('❌ Create Assignment Form Load Error:', { teacherId: req.user._id, error: err.message });
@@ -186,6 +191,28 @@ exports.postGradeSubmission = async (req, res) => {
     res.redirect(`/teacher/assignments/${req.params.id}?graded=1`);
   } catch (err) {
     console.error('❌ Grade Submission Error:', { submissionId: req.params.subId, error: err.message });
+    res.redirect(`/teacher/assignments/${req.params.id}?error=1`);
+  }
+};
+
+/**
+ * POST /teacher/assignments/:id/extend
+ * Extends the due date of a specific assignment.
+ */
+exports.postExtendDueDate = async (req, res) => {
+  const { dueDate } = req.body;
+  console.log('📅 Extend Assignment Deadline request:', { teacherId: req.user._id, assignmentId: req.params.id, dueDate });
+  try {
+    const assignment = await Assignment.findOne({ _id: req.params.id, teacher: req.user.teacherProfileId });
+    if (!assignment) {
+      return res.redirect('/teacher/assignments');
+    }
+    assignment.dueDate = new Date(dueDate);
+    await assignment.save();
+    console.log('✅ Assignment due date extended:', { assignmentId: assignment._id, newDueDate: assignment.dueDate });
+    res.redirect(`/teacher/assignments/${assignment._id}?extended=1`);
+  } catch (err) {
+    console.error('❌ Extend Due Date Error:', err);
     res.redirect(`/teacher/assignments/${req.params.id}?error=1`);
   }
 };

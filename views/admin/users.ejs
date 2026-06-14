@@ -30,7 +30,6 @@
       </select>
     <% } %>
     
-    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
     <a href="<%= typeof roleActive !== 'undefined' ? '/admin/' + roleActive + 's' : '/admin/users' %>" class="btn btn-ghost btn-sm">Clear</a>
     
     <a href="/admin/users/create<%= typeof roleActive !== 'undefined' ? '?role=' + roleActive : '' %>" class="btn btn-primary btn-sm" style="margin-left: auto;">+ Add <%= roleName %></a>

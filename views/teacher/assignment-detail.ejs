@@ -5,14 +5,20 @@
   page = 'assignments';
 %>
 
+<div style="margin-bottom: 1.25rem;">
+  <a href="/teacher/assignments" class="btn btn-ghost btn-sm" style="display: inline-flex; align-items: center; gap: 6px; padding: 0.45rem 0.75rem; border-color: var(--border); border-radius: var(--radius);">
+    ← Back to Assignments
+  </a>
+</div>
+
 <div class="grid-3" style="margin-bottom:1.25rem;">
   <div class="stat-card gold">
     <div class="stat-label">Max Marks</div>
     <div class="stat-value"><%= assignment.totalMarks %></div>
   </div>
   <div class="stat-card green">
-    <div class="stat-label">Submissions</div>
-    <div class="stat-value"><%= assignment.submissions.length %></div>
+    <div class="stat-label">Handed In</div>
+    <div class="stat-value"><%= (counts.submitted + counts.graded + counts.late) %> / <%= counts.all %></div>
   </div>
   <div class="stat-card blue">
     <div class="stat-label">Due Date</div>
@@ -23,13 +29,18 @@
 </div>
 
 <div class="card" style="margin-bottom:1.25rem;">
-  <div class="card-header">
+  <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
     <div class="card-title">Assignment Description</div>
-    <% if (assignment.fileUrl) { %>
-      <a href="<%= assignment.fileUrl %>" class="btn btn-ghost btn-sm" download="<%= assignment.fileName %>">
-        📥 Download Reference File
-      </a>
-    <% } %>
+    <div style="display: flex; gap: 0.5rem;">
+      <button onclick="openExtendModal()" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 4px; font-weight: 600; cursor: pointer;">
+        📅 Extend Deadline
+      </button>
+      <% if (assignment.fileUrl) { %>
+        <a href="<%= assignment.fileUrl %>" class="btn btn-ghost btn-sm" download="<%= assignment.fileName %>">
+          📥 Download Reference File
+        </a>
+      <% } %>
+    </div>
   </div>
   <p style="white-space: pre-line; line-height: 1.6; color: var(--text-sub);"><%= assignment.description || 'No detailed instructions provided.' %></p>
 </div>
@@ -171,6 +182,37 @@
   </div>
 </div>
 
+<!-- Extend Due Date Modal -->
+<div id="extendModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Extend Assignment Due Date</div>
+      <button class="modal-close" onclick="closeExtendModal()">&times;</button>
+    </div>
+    <form action="/teacher/assignments/<%= assignment._id %>/extend" method="POST">
+      <p style="font-size:13px; color:var(--text-sub); margin-bottom:1.25rem;">
+        Choose a new deadline for this coursework hand-in.
+      </p>
+
+      <div class="form-group">
+        <label class="form-label" for="dueDate">New Due Date & Time</label>
+        <% 
+          // Format current dueDate for datetime-local input field
+          const d = new Date(assignment.dueDate);
+          const offset = d.getTimezoneOffset() * 60000;
+          const localIso = new Date(d.getTime() - offset).toISOString().slice(0, 16);
+        %>
+        <input type="datetime-local" id="dueDate" name="dueDate" class="form-control" value="<%= localIso %>" required>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeExtendModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm">Extend Deadline</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
   function triggerGradingModal(assignId, subId, studentName, marks, feedback, status) {
     const form = document.getElementById('gradeForm');
@@ -191,6 +233,21 @@
   document.getElementById('gradeModal').addEventListener('click', function(e) {
     if (e.target === this) {
       closeGradeModal();
+    }
+  });
+
+  // Extend Modal script
+  function openExtendModal() {
+    document.getElementById('extendModal').classList.add('open');
+  }
+
+  function closeExtendModal() {
+    document.getElementById('extendModal').classList.remove('open');
+  }
+
+  document.getElementById('extendModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeExtendModal();
     }
   });
 </script>

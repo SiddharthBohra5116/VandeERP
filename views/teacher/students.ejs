@@ -5,6 +5,264 @@
   page = 'students';
 %>
 
+<style>
+  tr.student-row {
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  tr.student-row:hover td {
+    background: rgba(255, 204, 0, 0.03) !important;
+  }
+
+  /* Profile Modal Styles */
+  .profile-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(5px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    padding: 1.5rem;
+  }
+  .profile-modal-overlay.open {
+    display: flex;
+    opacity: 1;
+  }
+  .profile-modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 760px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.6), 0 0 0 1px var(--border-light);
+    transform: translateY(20px);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+  }
+  .profile-modal-overlay.open .profile-modal {
+    transform: translateY(0);
+  }
+  
+  .profile-modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    position: relative;
+    background: linear-gradient(135deg, rgba(255, 204, 0, 0.03), transparent);
+  }
+  .profile-modal-close {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .profile-modal-close:hover {
+    color: var(--text);
+    background: var(--bg-hover);
+  }
+
+  .profile-modal-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0, 0, 0, 0.2);
+  }
+  .profile-modal-tab {
+    flex: 1;
+    padding: 1rem 0.5rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s ease;
+    border-bottom: 2px solid transparent;
+  }
+  .profile-modal-tab:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.01);
+  }
+  .profile-modal-tab.active {
+    color: var(--gold);
+    border-bottom-color: var(--gold);
+    background: rgba(255, 204, 0, 0.02);
+  }
+
+  .profile-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+    background: var(--bg-card);
+  }
+
+  .profile-tab-content {
+    display: none;
+  }
+  .profile-tab-content.active {
+    display: block;
+    animation: tabFadeIn 0.2s ease forwards;
+  }
+
+  @keyframes tabFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Grid metrics cards */
+  .profile-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 1.5rem;
+  }
+  .profile-info-box {
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+  }
+  .profile-info-box-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+  .profile-info-box-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-top: 0.2rem;
+  }
+
+  /* Status Tags in Modal */
+  .p-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 50px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .p-badge.present { background: rgba(34, 197, 94, 0.08); color: var(--green); border: 1px solid rgba(34, 197, 94, 0.15); }
+  .p-badge.absent { background: rgba(239, 68, 68, 0.08); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.15); }
+  .p-badge.late { background: rgba(249, 115, 22, 0.08); color: var(--orange); border: 1px solid rgba(249, 115, 22, 0.15); }
+  .p-badge.graded { background: rgba(34, 197, 94, 0.08); color: var(--green); border: 1px solid rgba(34, 197, 94, 0.15); }
+  .p-badge.submitted { background: rgba(59, 130, 246, 0.08); color: var(--blue); border: 1px solid rgba(59, 130, 246, 0.15); }
+  .p-badge.pending { background: rgba(239, 68, 68, 0.08); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.15); }
+
+  .p-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .p-badge.present .p-dot, .p-badge.graded .p-dot { background: var(--green); }
+  .p-badge.absent .p-dot, .p-badge.pending .p-dot { background: var(--red); }
+  .p-badge.late .p-dot { background: var(--orange); }
+  .p-badge.submitted .p-dot { background: var(--blue); }
+
+  /* Subtitle Meta */
+  .student-meta-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+  }
+  .student-meta-subtitle span::after {
+    content: "·";
+    margin-left: 0.75rem;
+  }
+  .student-meta-subtitle span:last-child::after {
+    content: "";
+  }
+
+  /* Lists */
+  .list-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .list-item-card {
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.95rem 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    transition: border-color 0.2s ease;
+  }
+  .list-item-card:hover {
+    border-color: var(--border-light);
+  }
+  .list-item-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+  .list-item-sub {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.15rem;
+  }
+  .list-item-score {
+    text-align: right;
+  }
+  .list-item-score-val {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--gold);
+    font-family: var(--mono);
+  }
+  .list-item-score-lbl {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+
+  .remarks-block {
+    background: rgba(255, 204, 0, 0.02);
+    border-left: 3px solid var(--gold);
+    padding: 0.75rem 1rem;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    margin-top: 0.75rem;
+    font-size: 0.82rem;
+    color: var(--text-sub);
+    line-height: 1.4;
+  }
+
+  .remarks-title {
+    font-weight: 700;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+    margin-bottom: 0.2rem;
+  }
+</style>
+
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
   <form method="GET" action="/teacher/students" class="filter-bar" style="margin:0; gap:0.75rem;">
     <div class="form-group" style="margin:0; flex:1; min-width:200px;">
@@ -34,15 +292,14 @@
     </div>
 
     <div style="display:flex; gap:0.5rem; align-items:flex-end;">
-      <button type="submit" class="btn btn-primary btn-sm">Filter Directory</button>
       <a href="/teacher/students" class="btn btn-ghost btn-sm">Clear</a>
     </div>
   </form>
 </div>
 
-<div id="results-container" class="card">
+<div id="results-container" class="card" style="padding:0; overflow:hidden;">
   <% if (students.length === 0) { %>
-    <div class="empty-state">
+    <div class="empty-state" style="padding:4rem 2rem;">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
       <p>No active students enrolled in the selected batch.</p>
     </div>
@@ -62,13 +319,13 @@
         </thead>
         <tbody>
           <% students.forEach(s => { %>
-            <tr>
+            <tr class="student-row" data-student-id="<%= s.studentId %>">
               <td class="td-name">
                 <div class="d-flex align-center gap-2">
                   <div class="avatar" style="width:30px; height:30px; font-size:10px;">
                     <%= s.name ? s.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?' %>
                   </div>
-                  <%= s.name %>
+                  <div style="font-weight:600;"><%= s.name %></div>
                 </div>
               </td>
               <td class="text-sm td-muted">
@@ -112,7 +369,7 @@
               <td>
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                   <a href="/teacher/assignments" class="btn btn-ghost btn-xs" style="font-size: 10px; text-decoration: none; padding: 2px 6px; text-align: center;">Grade Tasks</a>
-                  <a href="/teacher/progress?batch=<%= encodeURIComponent(s.batch) %>&subject=<%= encodeURIComponent(s.course === 'Both' ? 'Video Editing' : s.course) %>" class="btn btn-primary btn-xs" style="font-size: 10px; text-decoration: none; padding: 2px 6px; text-align: center; color: #fff;">Add test result</a>
+                  <a href="/teacher/progress?batch=<%= s.batchId %>&course=<%= s.courseId %>" class="btn btn-primary btn-xs" style="font-size: 10px; text-decoration: none; padding: 2px 6px; text-align: center; color: #fff;">Add test result</a>
                 </div>
               </td>
             </tr>
@@ -123,5 +380,283 @@
   <% } %>
 </div>
 
-<script src="/js/instant-filter.js"></script>
+<!-- Student Profile Pop-up Modal -->
+<div id="studentProfileModal" class="profile-modal-overlay">
+  <div class="profile-modal">
+    <div class="profile-modal-header">
+      <div class="avatar" id="modalStudentAvatar" style="width:48px; height:48px; font-size:16px;">SP</div>
+      <div>
+        <h3 id="modalStudentName" style="margin: 0; font-size: 1.15rem; font-family: var(--font-display);">Student Name</h3>
+        <div class="student-meta-subtitle">
+          <span>Roll No: <strong id="modalStudentRoll" style="color: var(--text);">—</strong></span>
+          <span>Batch: <strong id="modalStudentBatch" style="color: var(--text);">—</strong></span>
+          <span>Main Course: <strong id="modalStudentCourse" style="color: var(--gold);">—</strong></span>
+        </div>
+      </div>
+      <button class="profile-modal-close" onclick="closeStudentProfileModal()">&times;</button>
+    </div>
 
+    <div class="profile-modal-tabs">
+      <button class="profile-modal-tab active" onclick="switchProfileTab(event, 'tab-attendance')">📅 Attendance</button>
+      <button class="profile-modal-tab" onclick="switchProfileTab(event, 'tab-assignments')">📝 Assignments</button>
+      <button class="profile-modal-tab" onclick="switchProfileTab(event, 'tab-grades')">📊 Test Marks</button>
+    </div>
+
+    <div class="profile-modal-body">
+      <!-- Attendance Tab Content -->
+      <div id="tab-attendance" class="profile-tab-content active">
+        <div class="profile-info-grid">
+          <div class="profile-info-box">
+            <div class="profile-info-box-label">Attendance Rate</div>
+            <div class="profile-info-box-value" id="modalAttendancePct" style="color: var(--green);">0%</div>
+          </div>
+          <div class="profile-info-box">
+            <div class="profile-info-box-label">Total Classes</div>
+            <div class="profile-info-box-value" id="modalAttendanceTotal">0</div>
+          </div>
+          <div class="profile-info-box">
+            <div class="profile-info-box-label">Present</div>
+            <div class="profile-info-box-value text-green" id="modalAttendancePresent">0</div>
+          </div>
+          <div class="profile-info-box">
+            <div class="profile-info-box-label">Late</div>
+            <div class="profile-info-box-value text-orange" id="modalAttendanceLate">0</div>
+          </div>
+          <div class="profile-info-box">
+            <div class="profile-info-box-label">Absent</div>
+            <div class="profile-info-box-value text-red" id="modalAttendanceAbsent">0</div>
+          </div>
+        </div>
+
+        <h4 style="margin: 0 0 0.75rem 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Recent Logs (Last 10 Days)</h4>
+        <div class="list-wrapper" id="modalAttendanceHistory">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Assignments Tab Content -->
+      <div id="tab-assignments" class="profile-tab-content">
+        <div class="list-wrapper" id="modalAssignmentsList">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Grades Tab Content -->
+      <div id="tab-grades" class="profile-tab-content">
+        <div id="modalGradesArea">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openStudentProfileModal(studentId) {
+    const overlay = document.getElementById('studentProfileModal');
+    
+    // Clear lists & show loading placeholder
+    document.getElementById('modalStudentName').textContent = 'Loading Student Info...';
+    document.getElementById('modalStudentRoll').textContent = '—';
+    document.getElementById('modalStudentBatch').textContent = '—';
+    document.getElementById('modalStudentCourse').textContent = '—';
+    
+    document.getElementById('modalAttendanceHistory').innerHTML = '<div class="td-muted text-center text-sm" style="padding: 2rem;">Loading logs...</div>';
+    document.getElementById('modalAssignmentsList').innerHTML = '<div class="td-muted text-center text-sm" style="padding: 2rem;">Loading tasks...</div>';
+    document.getElementById('modalGradesArea').innerHTML = '<div class="td-muted text-center text-sm" style="padding: 2rem;">Loading grades...</div>';
+
+    overlay.classList.add('open');
+
+    fetch('/teacher/students/' + studentId + '/profile-summary')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.ok) {
+          alert('Error loading profile: ' + (data.error || 'Unknown error'));
+          return;
+        }
+
+        // Student Basic Meta
+        const s = data.student;
+        document.getElementById('modalStudentName').textContent = s.name;
+        document.getElementById('modalStudentRoll').textContent = s.rollNumber;
+        document.getElementById('modalStudentBatch').textContent = s.batchName;
+        document.getElementById('modalStudentCourse').textContent = s.courseName;
+        document.getElementById('modalStudentAvatar').textContent = s.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+        // Attendance stats
+        const att = data.attendance;
+        const pctEl = document.getElementById('modalAttendancePct');
+        pctEl.textContent = att.pct + '%';
+        pctEl.style.color = att.pct < 75 ? 'var(--red)' : att.pct >= 85 ? 'var(--green)' : 'var(--orange)';
+        document.getElementById('modalAttendanceTotal').textContent = att.total;
+        document.getElementById('modalAttendancePresent').textContent = att.present;
+        document.getElementById('modalAttendanceLate').textContent = att.late;
+        document.getElementById('modalAttendanceAbsent').textContent = att.absent;
+
+        // Attendance history logs
+        let attHtml = '';
+        if (att.history.length === 0) {
+          attHtml = '<div class="td-muted text-center text-sm" style="padding: 1.5rem;">No attendance logs found for this student.</div>';
+        } else {
+          att.history.forEach(log => {
+            const badgeClass = log.status === 'present' ? 'present' : log.status === 'absent' ? 'absent' : 'late';
+            attHtml += `
+              <div class="list-item-card">
+                <div>
+                  <div class="list-item-title">${log.date}</div>
+                  <div class="list-item-sub">Course: ${log.course}</div>
+                  ${log.note ? `<div class="list-item-sub text-gold" style="margin-top:0.25rem;">Note: ${log.note}</div>` : ''}
+                </div>
+                <div>
+                  <div class="p-badge ${badgeClass}"><div class="p-dot"></div>${log.status}</div>
+                </div>
+              </div>
+            `;
+          });
+        }
+        document.getElementById('modalAttendanceHistory').innerHTML = attHtml;
+
+        // Assignments
+        let assHtml = '';
+        if (data.assignments.length === 0) {
+          assHtml = '<div class="td-muted text-center text-sm" style="padding: 2rem;">No assignments published for this batch yet.</div>';
+        } else {
+          data.assignments.forEach(ass => {
+            const badgeClass = ass.status === 'graded' ? 'graded' : ass.status === 'submitted' ? 'submitted' : 'pending';
+            const displayDate = new Date(ass.dueDate).toISOString().split('T')[0];
+            
+            assHtml += `
+              <div class="list-item-card">
+                <div>
+                  <div class="list-item-title">${ass.assignmentTitle}</div>
+                  <div class="list-item-sub">Course: ${ass.courseName} &nbsp;·&nbsp; Due: ${displayDate}</div>
+                  ${ass.feedback ? `
+                    <div class="remarks-block">
+                      <div class="remarks-title">Teacher Feedback</div>
+                      <div>${ass.feedback}</div>
+                    </div>
+                  ` : ''}
+                </div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:0.5rem; min-width:110px;">
+                  <div class="p-badge ${badgeClass}"><div class="p-dot"></div>${ass.status}</div>
+                  ${ass.marks !== null ? `
+                    <div class="list-item-score">
+                      <span class="list-item-score-val">${ass.marks}</span>
+                      <span class="list-item-score-lbl"> / ${ass.totalMarks}</span>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            `;
+          });
+        }
+        document.getElementById('modalAssignmentsList').innerHTML = assHtml;
+
+        // Grades & Test Results
+        let gradesHtml = '';
+        if (data.progress.length === 0) {
+          gradesHtml = '<div class="td-muted text-center text-sm" style="padding: 2rem;">No test marks log boards generated yet.</div>';
+        } else {
+          data.progress.forEach(prog => {
+            let testsListHtml = '';
+            if (prog.testResults.length === 0) {
+              testsListHtml = '<div class="list-item-sub" style="padding:0.5rem 0;">No single test scores registered under this course yet.</div>';
+            } else {
+              prog.testResults.forEach(test => {
+                testsListHtml += `
+                  <div style="padding:0.6rem 0; border-bottom:1px solid rgba(255,255,255,0.03); display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                      <div style="font-size:0.85rem; font-weight:600; color:var(--text);">${test.testName}</div>
+                      <div style="font-size:0.75rem; color:var(--text-muted);">${test.date}</div>
+                      ${test.remarks ? `<div style="font-size:0.75rem; color:var(--gold); margin-top:0.15rem;">Note: ${test.remarks}</div>` : ''}
+                    </div>
+                    <div style="text-align:right;">
+                      <span style="font-size:0.9rem; font-weight:700; color:var(--gold); font-family:var(--mono);">${test.score}</span>
+                      <span style="font-size:0.75rem; color:var(--text-muted);"> / ${test.totalMarks}</span>
+                    </div>
+                  </div>
+                `;
+              });
+            }
+
+            gradesHtml += `
+              <div class="list-item-card" style="flex-direction:column; align-items:stretch; margin-bottom:1rem; gap:1rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <h4 style="margin:0; font-size:0.95rem; font-weight:700; color:var(--gold);">${prog.courseName}</h4>
+                    <div class="list-item-sub">Course grade performance tracking</div>
+                  </div>
+                  <div style="text-align:right;">
+                    <div style="font-size:1.4rem; font-weight:800; color:var(--green); font-family:var(--mono);">${prog.overallScore}%</div>
+                    <div class="list-item-score-lbl">OVERALL SCORE</div>
+                  </div>
+                </div>
+
+                ${prog.teacherRemark && prog.teacherRemark !== '—' ? `
+                  <div class="remarks-block" style="margin:0 0 0.5rem 0;">
+                    <div class="remarks-title">Instructor's Performance Remark</div>
+                    <div>${prog.teacherRemark}</div>
+                  </div>
+                ` : ''}
+
+                <div style="margin-top:0.25rem;">
+                  <h5 style="margin:0 0 0.5rem 0; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.04em;">Recorded Exams & Tests</h5>
+                  <div style="background:rgba(0,0,0,0.15); border:1px solid rgba(255,255,255,0.03); border-radius:var(--radius); padding:0 1rem;">
+                    ${testsListHtml}
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+        }
+        document.getElementById('modalGradesArea').innerHTML = gradesHtml;
+      })
+      .catch(err => {
+        console.error('Fetch student error:', err);
+        alert('Failed to fetch student profile summary details.');
+      });
+  }
+
+  function closeStudentProfileModal() {
+    document.getElementById('studentProfileModal').classList.remove('open');
+  }
+
+  function switchProfileTab(event, tabId) {
+    // Tab toggling
+    const modal = document.getElementById('studentProfileModal');
+    modal.querySelectorAll('.profile-modal-tab').forEach(btn => btn.classList.remove('active'));
+    modal.querySelectorAll('.profile-tab-content').forEach(content => content.classList.remove('active'));
+
+    event.currentTarget.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+  }
+
+  // Close modal on background overlay click
+  document.getElementById('studentProfileModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeStudentProfileModal();
+    }
+  });
+
+  // Attach click delegate to row actions
+  document.addEventListener('DOMContentLoaded', () => {
+    const bindRowClicks = () => {
+      document.querySelectorAll('tr.student-row').forEach(row => {
+        row.addEventListener('click', (e) => {
+          // Ignore clicks on anchor links or actions
+          if (e.target.closest('a') || e.target.closest('button')) return;
+          const studentId = row.dataset.studentId;
+          if (studentId) {
+            openStudentProfileModal(studentId);
+          }
+        });
+      });
+    };
+
+    bindRowClicks();
+    
+    // Re-bind when AJAX finishes instant filtering
+    document.addEventListener('resultsUpdated', bindRowClicks);
+  });
+</script>
+<script src="/js/instant-filter.js"></script>

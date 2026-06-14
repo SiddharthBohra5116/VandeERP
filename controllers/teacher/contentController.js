@@ -26,19 +26,16 @@ exports.getDailyUpdates = async (req, res) => {
   }
 };
 
-/**
- * Shows the daily update creation form with available batches.
- * Admins see all batches; teachers see only batches from their schedule.
- */
 exports.getCreateUpdate = async (req, res) => {
   console.log('📝 Create Update form load:', { teacherId: req.user._id });
   try {
-    let batches;
+    let batchIds;
     if (req.user.role === 'admin') {
-      batches = await User.distinct('batch', { role: 'student', isActive: true });
+      batchIds = await Student.distinct('batch');
     } else {
-      batches = await Schedule.distinct('batch', { teacher: req.user.teacherProfileId });
+      batchIds = await Schedule.distinct('batch', { teacher: req.user.teacherProfileId });
     }
+    const batches = await Batch.find({ _id: { $in: batchIds }, isActive: true }).select('name');
     res.render('teacher/update-form', { title: 'Post Update', user: req.user, batches });
   } catch (err) {
     console.error('❌ Create Update Form Load Error:', { teacherId: req.user._id, error: err.message });
@@ -56,6 +53,12 @@ exports.postCreateUpdate = async (req, res) => {
     batch: req.body.batch, date: req.body.date, hasFile: !!req.file,
   });
   try {
+    const today = todayIST();
+    if (req.body.date > today) {
+      console.warn(`⚠️ Attempted daily update for a future date: ${req.body.date}`);
+      return res.redirect('/teacher/updates?error=Cannot post updates for future dates');
+    }
+
     if (req.user.role !== 'admin') {
       const validBatch = await Schedule.findOne({ teacher: req.user.teacherProfileId, batch: req.body.batch });
       if (!validBatch) {
@@ -100,9 +103,10 @@ exports.postCreateUpdate = async (req, res) => {
 exports.getCurriculum = async (req, res) => {
   console.log('📚 Curriculum list load:', { teacherId: req.user._id });
   try {
+    const assignedBatches = await Schedule.distinct('batch', { teacher: req.user.teacherProfileId });
     const [curricula, batches] = await Promise.all([
       Curriculum.find({ teacher: req.user.teacherProfileId }).populate('course').populate('batch'),
-      Batch.find({ teachers: req.user._id, isActive: true }),
+      Batch.find({ _id: { $in: assignedBatches }, isActive: true }),
     ]);
     res.render('teacher/curriculum', { title: 'Curriculum', user: req.user, curricula, batches });
   } catch (err) {

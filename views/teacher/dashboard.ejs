@@ -49,7 +49,7 @@
         <tbody>
           <% todaySchedules.forEach(sched => { %>
             <tr>
-              <td><strong><%= sched.subject || sched.note || '—' %></strong></td>
+              <td><strong><%= (sched.course && sched.course.name) || sched.note || '—' %></strong></td>
               <td><span class="badge badge-grey"><%= sched.batch && sched.batch.name ? sched.batch.name : (sched.batch || '—') %></span></td>
               <td><%= sched.classroom ? sched.classroom.name : '—' %></td>
               <td class="mono text-xs"><%= sched.startTime %> - <%= sched.endTime %></td>
@@ -60,7 +60,7 @@
               </td>
               <td>
                 <% if (sched.status === 'scheduled') { %>
-                  <button type="button" class="btn btn-primary btn-xs" onclick="openCompleteScheduleModal('<%= sched._id %>', '<%= sched.note || '' %>')">Mark Complete</button>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="openCompleteScheduleModal('<%= sched._id %>', '<%= (sched.course && sched.course.name) || sched.note || 'Class' %>')">Mark Complete</button>
                 <% } else { %>
                   <span style="opacity: 0.5; font-style: italic;">Completed</span>
                 <% } %>
@@ -172,7 +172,7 @@
             <div class="timeline-item">
               <div class="timeline-dot <%= index === 0 ? 'active' : '' %>"></div>
               <div class="timeline-body">
-                <div style="font-size:13px; font-weight:600;"><%= up.subject %> &nbsp;·&nbsp; <span class="badge badge-grey" style="font-size:9px; padding:1px 4px;"><%= up.batch && up.batch.name ? up.batch.name : (up.batch || '—') %></span></div>
+                <div style="font-size:13px; font-weight:600;"><%= (up.course && up.course.name) || up.subject || '—' %> &nbsp;·&nbsp; <span class="badge badge-grey" style="font-size:9px; padding:1px 4px;"><%= up.batch && up.batch.name ? up.batch.name : (up.batch || '—') %></span></div>
                 <div class="timeline-meta"><%= new Date(up.date).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %></div>
                 <div class="mt-1 text-sm text-sub" style="line-height:1.4;"><%= up.homework ? 'Homework: ' + up.homework : 'Topics: ' + (up.topics ? up.topics.join(', ') : 'No topics details') %></div>
               </div>
@@ -224,14 +224,14 @@
 </div>
 
 <script>
-  function openCompleteScheduleModal(scheduleId, subject) {
+  function openCompleteScheduleModal(scheduleId, courseName) {
     const modal = document.getElementById('completeScheduleModal');
     const form = document.getElementById('completeScheduleForm');
     const info = document.getElementById('modal_schedule_info');
     
     if (modal && form && info) {
       form.action = `/teacher/schedules/${scheduleId}/complete`;
-      info.innerText = `Mark the class "${subject}" as completed.`;
+      info.innerText = `Mark the class "${courseName}" as completed.`;
       modal.style.display = 'flex';
     }
   }

@@ -33,7 +33,7 @@
               <td class="td-name">
                 <div style="font-weight:600;"><%= assign.title %></div>
                 <div class="td-muted text-sm">Course: <%= assign.course && assign.course.name ? assign.course.name : '—' %></div>
-                <% if (assign.fileUrl) { %>
+                <% if (assign.fileUrl && !(isOverdue && !sub)) { %>
                   <div style="margin-top:4px;">
                     <a href="<%= assign.fileUrl %>" class="btn btn-ghost btn-xs" target="_blank" download="<%= assign.fileName %>">
                       📥 Reference Document
@@ -42,14 +42,22 @@
                 <% } %>
               </td>
               <td class="text-sm" style="max-width: 200px; white-space: normal; line-height:1.4;">
-                <%= assign.description || 'No instruction details' %>
+                <% if (isOverdue && !sub) { %>
+                  <span class="text-red fw-600">Assignment is closed.</span>
+                <% } else { %>
+                  <%= assign.description || 'No instruction details' %>
+                <% } %>
               </td>
               <td class="mono text-sm <%= (isOverdue && !sub) ? 'text-red fw-600' : 'text-sub' %>">
                 <%= new Date(assign.dueDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) %>
               </td>
               <td>
                 <% if (!sub) { %>
-                  <span class="badge badge-red">Pending</span>
+                  <% if (isOverdue) { %>
+                    <span class="badge badge-red">Closed</span>
+                  <% } else { %>
+                    <span class="badge badge-red">Pending</span>
+                  <% } %>
                 <% } else { %>
                   <% 
                     const badgeClass = {
@@ -66,9 +74,13 @@
               </td>
               <td>
                 <% if (!sub) { %>
-                  <button class="btn btn-primary btn-xs" onclick="openSubmitModal('<%= assign._id %>', '<%= assign.title %>')">
-                    Submit Homework
-                  </button>
+                  <% if (isOverdue) { %>
+                    <span class="badge badge-red" style="padding: 4px 8px;">Closed</span>
+                  <% } else { %>
+                    <button class="btn btn-primary btn-xs" onclick="openSubmitModal('<%= assign._id %>', '<%= assign.title %>')">
+                      Submit Homework
+                    </button>
+                  <% } %>
                 <% } else { %>
                   <div style="display:flex; flex-direction:column; gap:4px; max-width: 220px;">
                     <% if (sub.fileUrl) { %>

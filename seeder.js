@@ -1,870 +1,1041 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
+
 const User = require('./models/User');
 const Student = require('./models/Student');
 const Teacher = require('./models/Teacher');
 const Counsellor = require('./models/Counsellor');
 const Course = require('./models/Course');
 const Batch = require('./models/Batch');
-const Lead = require('./models/Lead');
-const LeadActivity = require('./models/LeadActivity');
-const Fee = require('./models/Fee');
-const Curriculum = require('./models/Curriculum');
-const Progress = require('./models/Progress');
-const Schedule = require('./models/Schedule');
-const Message = require('./models/Message');
-const DailyUpdate = require('./models/DailyUpdate');
-const Assignment = require('./models/Assignment');
 const Classroom = require('./models/Classroom');
-const Holiday = require('./models/Holiday');
-const LeaveRequest = require('./models/LeaveRequest');
-const Attendance = require('./models/Attendance');
-const connectDB = require('./config/db');
-const Counter = require('./models/Counter');
-const Expense = require('./models/Expense');
-const RevenueTarget = require('./models/RevenueTarget');
-const Announcement = require('./models/Announcement');
 const Timetable = require('./models/Timetable');
+const Schedule = require('./models/Schedule');
+const Attendance = require('./models/Attendance');
+const Assignment = require('./models/Assignment');
+const Fee = require('./models/Fee');
+const Lead = require('./models/Lead');
+const Progress = require('./models/Progress');
+const Curriculum = require('./models/Curriculum');
+const DailyUpdate = require('./models/DailyUpdate');
+const Holiday = require('./models/Holiday');
+const Counter = require('./models/Counter');
+
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/vande-academy';
+const PASSWORD = '123456';
+
+// ─────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────
+
+const rand   = arr => arr[Math.floor(Math.random() * arr.length)];
+const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+function dateStr(d) { return new Date(d).toISOString().slice(0, 10); }
+
+function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function makePhone(seed) {
+  // deterministic but looks like a real Indian mobile
+  const base = 7000000000 + seed * 97;
+  return String(base).slice(0, 10);
+}
+
+// ─────────────────────────────────────────────
+// NAME DATA
+// ─────────────────────────────────────────────
+
+const maleFirstNames = [
+  'Aarav','Vivaan','Aditya','Vihaan','Arjun','Sai','Reyansh','Ayaan','Krishna','Ishaan',
+  'Kabir','Yash','Dev','Harsh','Nikhil','Rohan','Kunal','Manav','Tanish','Daksh',
+  'Dhruv','Rishabh','Pranav','Shubham','Varun','Karan','Ankit','Akash','Rahul','Deepak'
+];
+const femaleFirstNames = [
+  'Anaya','Diya','Myra','Kiara','Anika','Riya','Avni','Sara','Ira','Pari',
+  'Priya','Sneha','Pooja','Neha','Simran','Divya','Meera','Kavya','Tanvi','Ishika'
+];
+const lastNames = [
+  'Sharma','Verma','Patel','Singh','Mehta','Jain','Bohra','Rathore','Choudhary','Khan',
+  'Gupta','Soni','Joshi','Purohit','Bansal','Agarwal','Vyas','Trivedi','Kapoor','Malhotra',
+  'Bishnoi','Gehlot','Bhati','Rajpurohit','Pareek','Swami','Mathur','Saxena','Yadav','Sisodia'
+];
+
+const localities = [
+  'Sardarpura','Ratanada','Paota','Shastri Nagar','Mandore','Pal Road','Chopasni Housing Board',
+  'Residency Road','Sojati Gate','Mahamandir','Jalori Gate','Basni','Bhagat Ki Kothi'
+];
+
+const cities = ['Jodhpur','Bikaner','Jaipur','Phalodi','Nagaur','Pali','Barmer','Jaisalmer','Sikar'];
+
+const qualifications = [
+  'B.Tech in Computer Science','BCA Graduate','BSc IT','MBA in Marketing',
+  'B.Com with Digital Media','Mass Communication Graduate','B.Des in Visual Communication'
+];
+
+let _nameIdx = 0;
+function makeName(gender = null) {
+  const g    = gender || (Math.random() < 0.55 ? 'male' : 'female');
+  const first = g === 'male' ? maleFirstNames[_nameIdx % maleFirstNames.length]
+                             : femaleFirstNames[_nameIdx % femaleFirstNames.length];
+  const last  = lastNames[_nameIdx % lastNames.length];
+  _nameIdx++;
+  return { name: `${first} ${last}`, gender: g };
+}
+
+function makeAddress() {
+  return `House No. ${randInt(10, 500)}, ${rand(localities)}, ${rand(cities)}`;
+}
+
+// ─────────────────────────────────────────────
+// COURSE MODULES
+// ─────────────────────────────────────────────
+
+const videoEditingModules = [
+  {
+    title: 'Video Editing Fundamentals',
+    order: 1,
+    description: 'Core editing concepts, software basics, and workflow setup.',
+    topics: [
+      { title: 'Introduction to Video Editing',     order: 1, description: 'Overview of video editing landscape and career scope.' },
+      { title: 'Editing Workflow & File Management', order: 2, description: 'Organising footage, proxy files, and project folder structure.' },
+      { title: 'Timeline Basics in Premiere Pro',   order: 3, description: 'Understanding sequences, tracks, and the timeline panel.' },
+      { title: 'Cutting & Trimming Techniques',     order: 4, description: 'Razor tool, ripple edit, roll edit, and slip trim.' },
+      { title: 'Transitions & Motion Effects',      order: 5, description: 'Smooth cut transitions, zoom-ins, and keyframe basics.' }
+    ]
+  },
+  {
+    title: 'Audio & Color Correction',
+    order: 2,
+    description: 'Professional audio cleanup and cinematic color grading.',
+    topics: [
+      { title: 'Audio Sync & Mixing',            order: 1, description: 'Syncing dual-system audio, EQ, noise reduction.' },
+      { title: 'Color Correction in Lumetri',    order: 2, description: 'Basic exposure and white balance correction.' },
+      { title: 'Color Grading & LUT Application', order: 3, description: 'Cinematic grading, skin tone management, LUTs.' },
+      { title: 'Text, Titles & Lower Thirds',     order: 4, description: 'Essential and Motion Graphics templates.' },
+      { title: 'Export Settings & Delivery',      order: 5, description: 'Export presets for YouTube, Instagram, and client delivery.' }
+    ]
+  },
+  {
+    title: 'Reels, Shorts & Commercial Editing',
+    order: 3,
+    description: 'Short-form and commercial content for social media platforms.',
+    topics: [
+      { title: 'Short-Form Editing for Reels',    order: 1, description: 'Hook-first editing, beat-sync, and retention tricks.' },
+      { title: 'Motion Text & Kinetic Typography', order: 2, description: 'Animated text for social-first content.' },
+      { title: 'Wedding & Event Highlight Reel',   order: 3, description: 'Storytelling, music sync, and emotional pacing.' },
+      { title: 'Client Revision Workflow',         order: 4, description: 'Frame.io reviews, version control, and delivery.' }
+    ]
+  }
+];
+
+const digitalMarketingModules = [
+  {
+    title: 'Digital Marketing Foundations',
+    order: 1,
+    description: 'Core marketing principles adapted for the digital world.',
+    topics: [
+      { title: 'Marketing Funnel & Customer Journey', order: 1, description: 'TOFU/MOFU/BOFU, buyer personas, and intent mapping.' },
+      { title: 'Audience & Competitor Research',      order: 2, description: 'SimilarWeb, SpyFu, and manual research techniques.' },
+      { title: 'Content Strategy & Planning',         order: 3, description: 'Content calendar, pillar-cluster model, and repurposing.' },
+      { title: 'Landing Page Design & Copywriting',   order: 4, description: 'CTA optimisation, headline formulas, A/B testing basics.' },
+      { title: 'Email Marketing Basics',              order: 5, description: 'Mailchimp setup, sequences, open-rate optimisation.' }
+    ]
+  },
+  {
+    title: 'SEO & Organic Social Media',
+    order: 2,
+    description: 'Building sustainable organic traffic and social presence.',
+    topics: [
+      { title: 'On-Page SEO',              order: 1, description: 'Title tags, meta descriptions, schema markup, and internal links.' },
+      { title: 'Keyword Research',         order: 2, description: 'Ahrefs, Google Search Console, and long-tail strategy.' },
+      { title: 'Technical SEO Basics',     order: 3, description: 'Sitemap, robots.txt, Core Web Vitals.' },
+      { title: 'Instagram Growth Strategy', order: 4, description: 'Reels strategy, hashtag research, and profile optimisation.' },
+      { title: 'LinkedIn B2B Content',     order: 5, description: 'Thought leadership posts, outreach, and company pages.' }
+    ]
+  },
+  {
+    title: 'Paid Ads & Analytics',
+    order: 3,
+    description: 'Running and measuring paid campaigns across major platforms.',
+    topics: [
+      { title: 'Meta Ads Manager – Structure & Setup', order: 1, description: 'Campaign/Ad Set/Ad hierarchy, objectives, and pixel setup.' },
+      { title: 'Meta Ads – Targeting & Creatives',     order: 2, description: 'Custom audiences, LAL audiences, and creative best practices.' },
+      { title: 'Google Ads – Search & Display',        order: 3, description: 'Keyword match types, Quality Score, and bidding strategies.' },
+      { title: 'GA4 & Conversion Tracking',            order: 4, description: 'Events, goals, funnels, and attribution models in GA4.' },
+      { title: 'Reporting & Client Communication',     order: 5, description: 'Looker Studio dashboards, KPI reporting, and client decks.' }
+    ]
+  }
+];
+
+// ─────────────────────────────────────────────
+// ATTENDANCE LOGIC
+// ─────────────────────────────────────────────
+
+// Each student gets a personal target attendance % (40–100)
+function attendanceStatus(targetPct) {
+  const roll = Math.random() * 100;
+  if (roll <= targetPct) {
+    return Math.random() < 0.07 ? 'late' : 'present';
+  }
+  return 'absent';
+}
+
+// ─────────────────────────────────────────────
+// DB CLEAR
+// ─────────────────────────────────────────────
+
+async function dropStaleIndexes() {
+  const staleIndexes = [
+    { collection: 'teachers',    index: 'userId_1' },
+    { collection: 'students',    index: 'userId_1' },
+    { collection: 'counsellors', index: 'userId_1' },
+  ];
+  for (const { collection, index } of staleIndexes) {
+    try {
+      await mongoose.connection.collection(collection).dropIndex(index);
+      console.log(`  dropped stale index ${index} on ${collection}`);
+    } catch (_) {
+      // index didn't exist — fine
+    }
+  }
+}
+
+async function clearDatabase() {
+  await dropStaleIndexes();
+  await Promise.all([
+    User.deleteMany({}),
+    Student.deleteMany({}),
+    Teacher.deleteMany({}),
+    Counsellor.deleteMany({}),
+    Course.deleteMany({}),
+    Batch.deleteMany({}),
+    Classroom.deleteMany({}),
+    Timetable.deleteMany({}),
+    Schedule.deleteMany({}),
+    Attendance.deleteMany({}),
+    Assignment.deleteMany({}),
+    Fee.deleteMany({}),
+    Lead.deleteMany({}),
+    Progress.deleteMany({}),
+    Curriculum.deleteMany({}),
+    DailyUpdate.deleteMany({}),
+    Holiday.deleteMany({}),
+    Counter.deleteMany({})
+  ]);
+  console.log('✓ Cleared existing data');
+}
+
+// ─────────────────────────────────────────────
+// MAIN SEED
+// ─────────────────────────────────────────────
 
 async function seed() {
-  await connectDB();
-  
-  console.log('🧹 Clearing database collections...');
-  await User.deleteMany({});
-  await Student.deleteMany({});
-  await Teacher.deleteMany({});
-  await Counsellor.deleteMany({});
-  await Course.deleteMany({});
-  await Batch.deleteMany({});
-  await Lead.deleteMany({});
-  await LeadActivity.deleteMany({});
-  await Fee.deleteMany({});
-  await Curriculum.deleteMany({});
-  await Progress.deleteMany({});
-  await Schedule.deleteMany({});
-  await Message.deleteMany({});
-  await DailyUpdate.deleteMany({});
-  await Assignment.deleteMany({});
-  await Holiday.deleteMany({});
-  await LeaveRequest.deleteMany({});
-  await Attendance.deleteMany({});
-  await Classroom.deleteMany({});
-  await Counter.deleteMany({});
-  await Expense.deleteMany({});
-  await RevenueTarget.deleteMany({});
-  await Announcement.deleteMany({});
-  await Timetable.deleteMany({});
+  await mongoose.connect(MONGO_URI);
+  console.log('✓ MongoDB connected');
 
-  console.log('📚 Seeding 10 Courses with Modules & Topics...');
-  const courseTemplates = [
-    { name: 'Video Editing', code: 'VE', durationMonths: 3, fees: 25000 },
-    { name: 'Digital Marketing', code: 'DM', durationMonths: 3, fees: 20000 },
-    { name: 'Both (VE & DM)', code: 'BT', durationMonths: 6, fees: 45000 },
-    { name: 'Graphic Design', code: 'GD', durationMonths: 3, fees: 18000 },
-    { name: 'UI/UX Design', code: 'UI', durationMonths: 3, fees: 22000 },
-    { name: 'Full Stack Development', code: 'FSD', durationMonths: 6, fees: 50000 },
-    { name: 'Data Analytics', code: 'DA', durationMonths: 3, fees: 30000 },
-    { name: 'Python Programming', code: 'PY', durationMonths: 2, fees: 12000 },
-    { name: 'Motion Graphics', code: 'MG', durationMonths: 3, fees: 28000 },
-    { name: 'Cyber Security', code: 'CS', durationMonths: 4, fees: 35000 }
-  ];
+  await clearDatabase();
 
-  const courses = [];
-  for (const c of courseTemplates) {
-    const doc = await Course.create({
-      name: c.name,
-      code: c.code,
-      durationMonths: c.durationMonths,
-      fees: c.fees,
-      modules: [
-        {
-          title: 'Module 1: Foundations',
-          order: 1,
-          topics: [
-            { title: 'Core Concepts & Terminology', order: 1 },
-            { title: 'Industry Best Practices', order: 2 },
-            { title: 'Software & Tool Installation', order: 3 }
-          ]
-        },
-        {
-          title: 'Module 2: Practical Implementation',
-          order: 2,
-          topics: [
-            { title: 'Working with Real Projects', order: 1 },
-            { title: 'Intermediate Hands-on Labs', order: 2 },
-            { title: 'Troubleshooting & Testing', order: 3 }
-          ]
-        },
-        {
-          title: 'Module 3: Advanced Concepts & Delivery',
-          order: 3,
-          topics: [
-            { title: 'Performance Optimization', order: 1 },
-            { title: 'Final Assessments & Evaluation', order: 2 }
-          ]
-        }
-      ]
-    });
-    courses.push(doc);
-  }
-
-  console.log('🏫 Seeding 10 Classrooms...');
-  const classrooms = await Classroom.create([
-    { name: 'Room A (Video Suite)', capacity: 15, location: 'First Floor, Left Wing' },
-    { name: 'Room B (Marketing Hub)', capacity: 25, location: 'First Floor, Right Wing' },
-    { name: 'Room C (Resolve Lab)', capacity: 12, location: 'Second Floor, Room 202' },
-    { name: 'Room D (Design Studio)', capacity: 20, location: 'Second Floor, Room 205' },
-    { name: 'Room E (Web Lab)', capacity: 30, location: 'Ground Floor, Lab 101' },
-    { name: 'Room F (Data Den)', capacity: 18, location: 'Ground Floor, Lab 102' },
-    { name: 'Room G (Python Pod)', capacity: 15, location: 'Third Floor, Room 301' },
-    { name: 'Room H (VFX Arena)', capacity: 22, location: 'Third Floor, Studio B' },
-    { name: 'Room I (Cyber Cell)', capacity: 16, location: 'Fourth Floor, Room 405' },
-    { name: 'Room J (Seminar Hall)', capacity: 50, location: 'Ground Floor, Auditorium' }
-  ]);
-
-  console.log('👑 Seeding default Admin...');
+  // ── ADMIN ──────────────────────────────────
   const admin = await User.create({
-    name: 'Vande Admin',
-    email: 'admin@vandedigital.com',
-    password: 'password123',
+    name: 'Admin User',
+    email: 'admin@vandeacademy.com',
+    password: PASSWORD,
     role: 'admin',
-    phone: '9999999999'
+    phone: '9999999999',
+    city: 'Jodhpur',
+    status: 'active'
   });
 
-  console.log('👥 Seeding 10 Teachers...');
+  // ── COURSES ────────────────────────────────
+  const videoCourse = await Course.create({
+    name: 'Video Editing',
+    code: 'VE',
+    description: 'A comprehensive 2-month practical course covering Premiere Pro editing, color grading, audio mixing, and short-form content creation for social media and client delivery.',
+    durationMonths: 2,
+    fees: 30000,
+    modules: videoEditingModules
+  });
+
+  const dmCourse = await Course.create({
+    name: 'Digital Marketing',
+    code: 'DM',
+    description: 'A 2-month hands-on program covering SEO, social media marketing, paid ads (Meta & Google), GA4 analytics, and client reporting — designed for results-driven digital careers.',
+    durationMonths: 2,
+    fees: 35000,
+    modules: digitalMarketingModules
+  });
+
+  // ── CLASSROOMS ─────────────────────────────
+  // Classroom A → Slot 1 (10:30–12:30 VE) and Slot 3 (16:30–18:30 DM)
+  // Classroom B → Slot 2 (14:00–16:00 DM) and Slot 4 (19:00–21:00 VE)
+  const classrooms = await Classroom.insertMany([
+    { name: 'Classroom A', capacity: 40, location: 'Ground Floor, Main Building', isActive: true },
+    { name: 'Classroom B', capacity: 40, location: 'First Floor, Main Building', isActive: true }
+  ]);
+  const [clsA, clsB] = classrooms;
+
+  // ── TEACHERS (4) ────────────────────────────
+  // 2 VE teachers + 2 DM teachers
   const teacherData = [
-    { name: 'Rohan Sharma', email: 'rohan.teacher@gmail.com', phone: '8888888801', subject: 'Video Editing', qualification: 'M.Sc. in Film Editing', exp: 6 },
-    { name: 'Priya Patel', email: 'priya.teacher@gmail.com', phone: '8888888802', subject: 'Digital Marketing', qualification: 'MBA in Marketing', exp: 8 },
-    { name: 'Amit Verma', email: 'amit.teacher@gmail.com', phone: '8888888803', subject: 'Video Editing', qualification: 'BFA in Cinema Studies', exp: 4 },
-    { name: 'Sneha Kapoor', email: 'sneha.teacher@gmail.com', phone: '8888888804', subject: 'Digital Marketing', qualification: 'MA in Communication', exp: 5 },
-    { name: 'Gaurav Sen', email: 'gaurav.teacher@gmail.com', phone: '8888888805', subject: 'Digital Marketing', qualification: 'Certified Google Ads Spec', exp: 7 },
-    { name: 'Vikram Malhotra', email: 'vikram.teacher@gmail.com', phone: '8888888806', subject: 'Graphic Design', qualification: 'M.Des in Graphic Design', exp: 6 },
-    { name: 'Kavita Reddy', email: 'kavita.teacher@gmail.com', phone: '8888888807', subject: 'Full Stack Development', qualification: 'B.Tech in Computer Science', exp: 9 },
-    { name: 'Manish Pandey', email: 'manish.teacher@gmail.com', phone: '8888888808', subject: 'Data Analytics', qualification: 'M.Stat in Data Science', exp: 5 },
-    { name: 'Ananya Roy', email: 'ananya.teacher@gmail.com', phone: '8888888809', subject: 'UI/UX Design', qualification: 'B.Des in Interaction Design', exp: 4 },
-    { name: 'Kunal Bahl', email: 'kunal.teacher@gmail.com', phone: '8888888810', subject: 'Cyber Security', qualification: 'Certified Ethical Hacker (CEH)', exp: 7 }
+    {
+      name: 'Rohan Sharma',
+      email: 'rohan.sharma@vandeacademy.com',
+      phone: makePhone(1001),
+      qualification: 'B.Tech in Computer Science – 5 yrs Premiere Pro & After Effects experience',
+      experienceYears: 5,
+      salary: 45000,
+      courses: [videoCourse._id],
+      gender: 'male'
+    },
+    {
+      name: 'Amit Rathore',
+      email: 'amit.rathore@vandeacademy.com',
+      phone: makePhone(1002),
+      qualification: 'Mass Communication Graduate – 4 yrs in Film & Commercial Editing',
+      experienceYears: 4,
+      salary: 40000,
+      courses: [videoCourse._id],
+      gender: 'male'
+    },
+    {
+      name: 'Priya Mehta',
+      email: 'priya.mehta@vandeacademy.com',
+      phone: makePhone(1003),
+      qualification: 'MBA in Marketing – 6 yrs Digital Marketing & Performance Ads',
+      experienceYears: 6,
+      salary: 50000,
+      courses: [dmCourse._id],
+      gender: 'female'
+    },
+    {
+      name: 'Sneha Kapoor',
+      email: 'sneha.kapoor@vandeacademy.com',
+      phone: makePhone(1004),
+      qualification: 'BCA Graduate – 3 yrs SEO, Social Media & Google Ads specialist',
+      experienceYears: 3,
+      salary: 38000,
+      courses: [dmCourse._id],
+      gender: 'female'
+    }
   ];
 
   const teachers = [];
-  for (const t of teacherData) {
+  for (const td of teacherData) {
     const user = await User.create({
-      name: t.name,
-      email: t.email,
-      password: 'password123',
+      name: td.name,
+      email: td.email,
+      password: PASSWORD,
       role: 'teacher',
-      phone: t.phone
+      phone: td.phone,
+      city: 'Jodhpur',
+      address: makeAddress(),
+      status: 'active'
     });
-    const teacherProfile = await Teacher.create({
-      userId: user._id,
-      subjects: [t.subject],
-      qualification: t.qualification,
-      experienceYears: t.exp
+    const teacher = await Teacher.create({
+      user: user._id,
+      courses: td.courses,
+      qualification: td.qualification,
+      experienceYears: td.experienceYears,
+      salary: td.salary,
+      joiningDate: addDays(new Date(), -randInt(90, 300)),
+      status: 'Active'
     });
-    teachers.push(user);
+    teachers.push(teacher);
   }
+  // teachers[0] = Rohan  → VE Slot 1 (morning)
+  // teachers[1] = Amit   → VE Slot 4 (night)
+  // teachers[2] = Priya  → DM Slot 2 (afternoon)
+  // teachers[3] = Sneha  → DM Slot 3 (evening)
+  console.log('✓ Teachers created');
 
-  console.log('🤝 Seeding 10 Counsellors...');
-  const counsellorData = [
-    { name: 'Anjali Verma', email: 'counsellor@gmail.com', phone: '7777777771' },
-    { name: 'Karan Johar', email: 'karan.counsellor@gmail.com', phone: '7777777772' },
-    { name: 'Pooja Hegde', email: 'pooja.counsellor@gmail.com', phone: '7777777773' },
-    { name: 'Rahul Bose', email: 'rahul.counsellor@gmail.com', phone: '7777777774' },
-    { name: 'Tanya Joshi', email: 'tanya.counsellor@gmail.com', phone: '7777777775' },
-    { name: 'Kiara Sen', email: 'kiara.counsellor@gmail.com', phone: '7777777776' },
-    { name: 'Sanya Gill', email: 'sanya.counsellor@gmail.com', phone: '7777777777' },
-    { name: 'Dev Shah', email: 'dev.counsellor@gmail.com', phone: '7777777778' },
-    { name: 'Rohit Roy', email: 'rohit.counsellor@gmail.com', phone: '7777777779' },
-    { name: 'Shikha Goel', email: 'shikha.counsellor@gmail.com', phone: '7777777780' }
+  // ── COUNSELLORS (6) ─────────────────────────
+  const counsellorNames = [
+    { name: 'Kavya Joshi',   email: 'kavya.joshi@vandeacademy.com',   phone: makePhone(2001) },
+    { name: 'Deepak Verma',  email: 'deepak.verma@vandeacademy.com',  phone: makePhone(2002) },
+    { name: 'Ankita Singh',  email: 'ankita.singh@vandeacademy.com',  phone: makePhone(2003) },
+    { name: 'Rahul Gupta',   email: 'rahul.gupta@vandeacademy.com',   phone: makePhone(2004) },
+    { name: 'Pooja Trivedi', email: 'pooja.trivedi@vandeacademy.com', phone: makePhone(2005) },
+    { name: 'Varun Bansal',  email: 'varun.bansal@vandeacademy.com',  phone: makePhone(2006) }
   ];
 
   const counsellors = [];
-  for (const c of counsellorData) {
+  for (const cd of counsellorNames) {
     const user = await User.create({
-      name: c.name,
-      email: c.email,
-      password: 'password123',
+      name: cd.name,
+      email: cd.email,
+      password: PASSWORD,
       role: 'counsellor',
-      phone: c.phone
+      phone: cd.phone,
+      city: 'Jodhpur',
+      status: 'active'
     });
-    await Counsellor.create({
-      userId: user._id
-    });
-    counsellors.push(user);
+    const counsellor = await Counsellor.create({ user: user._id });
+    counsellors.push(counsellor);
+  }
+  console.log('✓ Counsellors created');
+
+  // ── DATES ──────────────────────────────────
+  const today     = new Date();
+  today.setHours(0, 0, 0, 0);
+  const startDate = addDays(today, -34);   // 34 days ago
+  const endDate   = addDays(startDate, 59); // 2-month course
+
+  // ── BATCHES ────────────────────────────────
+  // Slot 1: 10:30–12:30 → VE Morning  → Classroom A → teacher[0] Rohan
+  // Slot 2: 14:00–16:00 → DM Afternoon → Classroom B → teacher[2] Priya
+  // Slot 3: 16:30–18:30 → DM Evening   → Classroom A → teacher[3] Sneha
+  // Slot 4: 19:00–21:00 → VE Night     → Classroom B → teacher[1] Amit
+
+  const batches = await Batch.insertMany([
+    {
+      name: 'VE Morning Batch',
+      course: videoCourse._id,
+      capacity: 40,
+      teachers: [teachers[0]._id],
+      startDate,
+      endDate
+    },
+    {
+      name: 'DM Afternoon Batch',
+      course: dmCourse._id,
+      capacity: 40,
+      teachers: [teachers[2]._id],
+      startDate,
+      endDate
+    },
+    {
+      name: 'DM Evening Batch',
+      course: dmCourse._id,
+      capacity: 40,
+      teachers: [teachers[3]._id],
+      startDate,
+      endDate
+    },
+    {
+      name: 'VE Night Batch',
+      course: videoCourse._id,
+      capacity: 40,
+      teachers: [teachers[1]._id],
+      startDate,
+      endDate
+    }
+  ]);
+  const [veMorning, dmAfternoon, dmEvening, veNight] = batches;
+  console.log('✓ Batches created');
+
+  // ── TIMETABLES ─────────────────────────────
+  // Each batch runs Mon/Wed/Fri (3 days/week)
+  // Progress through modules topics across 8 weeks
+  function buildSlots(batchCourse, teacher, classroom, startTime, endTime, days) {
+    const slots = [];
+    let modIdx = 0, topIdx = 0;
+    for (const day of days) {
+      const mod   = batchCourse.modules[modIdx];
+      const topic = mod.topics[topIdx];
+      slots.push({
+        dayOfWeek: day,
+        teacher: teacher._id,
+        classroom: classroom._id,
+        startTime,
+        endTime,
+        moduleId: mod._id,
+        topicId: topic._id
+      });
+      topIdx++;
+      if (topIdx >= mod.topics.length) { topIdx = 0; modIdx = (modIdx + 1) % batchCourse.modules.length; }
+    }
+    return slots;
   }
 
-  console.log('🗂️ Seeding 12 Batches...');
-  const batchTemplates = [
-    { name: 'VE-09AM-A1', courseCode: 'VE', teachersIdx: [0, 2] },
-    { name: 'VE-03PM-A1', courseCode: 'VE', teachersIdx: [0, 2] },
-    { name: 'DM-11AM-A1', courseCode: 'DM', teachersIdx: [1, 3, 4] },
-    { name: 'DM-05PM-A1', courseCode: 'DM', teachersIdx: [1, 3, 4] },
-    { name: 'BT-09AM-A1', courseCode: 'BT', teachersIdx: [0, 1, 2, 3] },
-    { name: 'GD-03PM-A1', courseCode: 'GD', teachersIdx: [5] },
-    { name: 'GD-09AM-A1', courseCode: 'GD', teachersIdx: [5, 8] },
-    { name: 'UI-11AM-A1', courseCode: 'UI', teachersIdx: [8, 5] },
-    { name: 'UI-05PM-A1', courseCode: 'UI', teachersIdx: [8] },
-    { name: 'FSD-09AM-A1', courseCode: 'FSD', teachersIdx: [6] },
-    { name: 'DA-11AM-A1', courseCode: 'DA', teachersIdx: [7] },
-    { name: 'CS-05PM-A1', courseCode: 'CS', teachersIdx: [9] }
+  const mwfDays  = ['Monday', 'Wednesday', 'Friday'];
+  const ttsDays  = ['Tuesday', 'Thursday', 'Saturday'];
+
+  await Timetable.insertMany([
+    {
+      course: videoCourse._id,
+      batch: veMorning._id,
+      startDate,
+      endDate,
+      slots: buildSlots(videoCourse, teachers[0], clsA, '10:30', '12:30', mwfDays)
+    },
+    {
+      course: dmCourse._id,
+      batch: dmAfternoon._id,
+      startDate,
+      endDate,
+      slots: buildSlots(dmCourse, teachers[2], clsB, '14:00', '16:00', mwfDays)
+    },
+    {
+      course: dmCourse._id,
+      batch: dmEvening._id,
+      startDate,
+      endDate,
+      slots: buildSlots(dmCourse, teachers[3], clsA, '16:30', '18:30', ttsDays)
+    },
+    {
+      course: videoCourse._id,
+      batch: veNight._id,
+      startDate,
+      endDate,
+      slots: buildSlots(videoCourse, teachers[1], clsB, '19:00', '21:00', ttsDays)
+    }
+  ]);
+  console.log('✓ Timetables created');
+
+  // ── STUDENTS (70 total) ─────────────────────
+  // DM: 60% = 42 students → DM Afternoon 40%, DM Evening 60%
+  //   DM Afternoon = 42 * 0.40 = 17 students
+  //   DM Evening   = 42 * 0.60 = 25 students
+  // VE: 40% = 28 students → VE Morning 60%, VE Night 40%
+  //   VE Morning = 28 * 0.60 = 17 students
+  //   VE Night   = 28 * 0.40 = 11 students
+
+  const batchPlan = [
+    { batch: veMorning,   course: videoCourse, teacher: teachers[0], count: 17 },
+    { batch: dmAfternoon, course: dmCourse,    teacher: teachers[2], count: 17 },
+    { batch: dmEvening,   course: dmCourse,    teacher: teachers[3], count: 25 },
+    { batch: veNight,     course: videoCourse, teacher: teachers[1], count: 11 }
   ];
 
-  const batches = [];
-  for (const b of batchTemplates) {
-    const courseDoc = courses.find(c => c.code === b.courseCode);
-    const batchTeachers = b.teachersIdx.map(idx => teachers[idx]._id);
-    
-    const batchDoc = await Batch.create({
-      name: b.name,
-      course: courseDoc._id,
-      capacity: 25,
-      teachers: batchTeachers,
-      isActive: true,
-      startDate: new Date(2024, 0, 15),
-      endDate: new Date(2024, 0, 15 + courseDoc.durationMonths * 30)
-    });
-    batches.push(batchDoc);
-  }
-
-  console.log('🗓️ Seeding Historical Holidays (3 Years)...');
-  const holidayTemplates = [
-    { name: "New Year's Day", monthDay: "01-01", type: "public" },
-    { name: "Republic Day", monthDay: "01-26", type: "public" },
-    { name: "Independence Day", monthDay: "08-15", type: "public" },
-    { name: "Gandhi Jayanti", monthDay: "10-02", type: "public" },
-    { name: "Christmas Day", monthDay: "12-25", type: "festival" }
+  const admissionSources = ['Instagram','Facebook','Referral','Walk-in','WhatsApp','Advertisement','Manual','Other'];
+  const remarkTemplates = [
+    'Student showed strong interest during the demo session. Enrolled after brief negotiation on fees.',
+    'Referred by a current student. Enrolled on the same day without hesitation.',
+    'Came via Instagram ad, attended a free demo class, and enrolled the following week.',
+    'Walk-in enquiry converted after a 30-minute counselling session.',
+    'Student was comparing with another institute. Offered course demo and fee breakdown; converted.',
+    'Enrolled after attending the Saturday open house. Very enthusiastic about placements.',
+    'Parent accompanied. Both were impressed by the lab infrastructure and practical approach.',
+    'Needed one follow-up call after the demo. Enrolled post parent approval.',
+    'Switched from a competitor institute. Cited better curriculum and lab access.',
+    'Online inquiry converted in 2 follow-up calls by counsellor.'
   ];
 
-  const holidayDates = new Set();
-  for (let year = 2023; year <= 2026; year++) {
-    for (const h of holidayTemplates) {
-      const dateStr = `${year}-${h.monthDay}`;
-      await Holiday.create({ name: `${h.name} ${year}`, date: dateStr, type: h.type });
-      holidayDates.add(dateStr);
-    }
-  }
+  const students = [];
+  let phoneIdx  = 3000;
 
-  console.log('✉️ Seeding 12 Teacher Leave Requests...');
-  const leaveRequests = [];
-  for (let i = 0; i < 12; i++) {
-    const t = teachers[i % teachers.length];
-    const leave = await LeaveRequest.create({
-      user: t._id,
-      startDate: `2025-0${(i % 9) + 1}-10`,
-      endDate: `2025-0${(i % 9) + 1}-12`,
-      reason: `Family event / Personal health care review ${i + 1}`,
-      status: i % 4 === 0 ? 'pending' : (i % 3 === 0 ? 'rejected' : 'approved')
-    });
-    leaveRequests.push(leave);
-  }
+  for (const plan of batchPlan) {
+    for (let i = 0; i < plan.count; i++) {
+      const { name, gender } = makeName();
+      const counsellor       = rand(counsellors);
+      const phone            = makePhone(phoneIdx++);
+      const studentNum       = students.length + 1;
+      const email            = `student${studentNum}@demo.com`;
+      const admSource        = rand(admissionSources);
+      const feePaid          = randInt(8000, plan.course.fees);
+      const discount         = rand([0, 0, 1000, 2000, 3000, 5000]);
+      const targetAttendance = randInt(40, 100); // variety 40%–100%
 
-  console.log('👨‍🎓 Seeding 45 Students with 3-Year intake timelines...');
-  const studentNames = [
-    'Siddharth Patel', 'Aarav Mehta', 'Ananya Roy', 'Vihaan Sharma', 'Diya Nair',
-    'Ishaan Gupta', 'Kiara Sen', 'Kabir Das', 'Meera Rao', 'Aditya Mishra',
-    'Riya Kapoor', 'Arjun Saxena', 'Sanya Gill', 'Dev Shah', 'Tanya Joshi',
-    'Rohan Bajaj', 'Isha Singhal', 'Rahul Bose', 'Sneha Reddy', 'Vivek Dubey',
-    'Neha Choudhury', 'Yash Singhania', 'Aditi Kulkarni', 'Manish Pandey', 'Prisha Desai',
-    'Abhishek Kumar', 'Shreya Ghoshal', 'Nikhil Kamath', 'Kriti Sanon', 'Kunal Bahl',
-    'Rajiv Bajaj', 'Geeta Johar', 'Sonam Kapoor', 'Ranbir Kapoor', 'Katrina Kaif',
-    'Deepika Padukone', 'Ranveer Singh', 'Alia Bhatt', 'Sid Malhotra', 'Varun Dhawan',
-    'Shraddha Kapoor', 'Tiger Shroff', 'Karthik Aryan', 'Sara Ali Khan', 'Janhvi Kapoor'
-  ];
+      const dob = new Date(
+        randInt(2000, 2005),
+        randInt(0, 11),
+        randInt(1, 28)
+      );
 
-  const studentList = [];
-
-  for (let i = 0; i < studentNames.length; i++) {
-    const name = studentNames[i];
-    const email = i === 0 ? 'student@gmail.com' : `${name.toLowerCase().replace(/ /g, '.')}@gmail.com`;
-    
-    // Distribute students across batches
-    const batchDoc = batches[i % batches.length];
-    const courseDoc = courses.find(c => c._id.toString() === batchDoc.course.toString());
-    
-    let enrollmentDate;
-    let status = 'active';
-    let feedback = { submitted: false };
-    
-    if (i < 15) {
-      // Completed students (2023 or early 2024 intakes)
-      enrollmentDate = new Date(2023, 2 + (i % 8), 10 + i);
-      status = 'complete';
-      const durationMonths = courseDoc.durationMonths || 3;
-      const completionDate = new Date(enrollmentDate);
-      completionDate.setMonth(completionDate.getMonth() + durationMonths);
-
-      feedback = {
-        submitted: true,
-        teacherRating: 5 - (i % 2),
-        contentRating: 4 + (i % 2),
-        facilitiesRating: 5,
-        comments: 'Outstanding practical reviews, extremely professional teachers.',
-        submittedAt: completionDate
-      };
-    } else if (i < 35) {
-      // Active students
-      enrollmentDate = new Date(2025, 4 + (i % 6), 5 + i);
-      status = 'active';
-    } else {
-      // Dropped students
-      enrollmentDate = new Date(Date.now() - (i * 3 * 24 * 60 * 60 * 1000));
-      status = 'drop';
-    }
-
-    const fees_total = courseDoc.fees;
-    const discount = i % 5 === 0 ? 2000 : 0;
-    const netFees = fees_total - discount;
-    
-    let fees_paid = 0;
-    if (status === 'complete') {
-      fees_paid = netFees;
-    } else if (status === 'active') {
-      fees_paid = Math.floor(netFees / (1.5 + (i % 3)));
-    } else {
-      fees_paid = Math.floor(netFees * 0.25); // Paid registration only
-    }
-
-    // Assign teacher from the batch
-    const teacherId = batchDoc.teachers[i % batchDoc.teachers.length];
-    const counsellorId = counsellors[i % counsellors.length]._id;
-
-    const user = await User.create({
-      name,
-      email,
-      password: 'password123',
-      role: 'student',
-      phone: `98765432${String(i).padStart(2, '0')}`,
-      status
-    });
-
-    const completionDateVal = new Date(enrollmentDate);
-    completionDateVal.setMonth(completionDateVal.getMonth() + (courseDoc.durationMonths || 3));
-
-    const student = await Student.create({
-      userId: user._id,
-      counsellor: counsellorId,
-      teacher: teacherId,
-      course: courseDoc._id,
-      batch: batchDoc._id,
-      enrollmentDate,
-      fees_total,
-      fees_paid,
-      family: {
-        father: { name: 'Father of ' + name, phone: '9988776655' },
-        mother: { name: 'Mother of ' + name, phone: '9988776644' },
-        guardian: { name: 'Guardian of ' + name, relation: 'Uncle', phone: '9988776633' }
-      },
-      documents: {
-        profilePic: null,
-        idProof: i % 3 === 0 ? `/uploads/dummy_id_${i}.jpg` : null
-      },
-      idVerified: i % 3 === 0,
-      feedback,
-      statusHistory: [
-        { status: 'active', changedBy: admin._id, date: enrollmentDate, reason: 'Initial intake' },
-        ...(status === 'complete' ? [{ status: 'complete', changedBy: admin._id, date: completionDateVal, reason: 'Completed requirements' }] : []),
-        ...(status === 'drop' ? [{ status: 'drop', changedBy: admin._id, date: new Date(enrollmentDate.getTime() + 45 * 24 * 60 * 60 * 1000), reason: 'Unavoidable circumstances' }] : [])
-      ]
-    });
-
-    studentList.push(student);
-
-    // Create Fee ledger record
-    const payments = [];
-    if (fees_paid > 0) {
-      const numInstallments = status === 'complete' ? 3 : 1;
-      const amountPerInst = Math.floor(fees_paid / numInstallments);
-      for (let j = 0; j < numInstallments; j++) {
-        payments.push({
-          amount: amountPerInst,
-          method: j % 2 === 0 ? 'UPI' : 'Bank Transfer',
-          transactionId: `TXN889${i}${j}`,
-          note: `Installment ${j + 1}`,
-          receivedBy: admin._id,
-          paidAt: new Date(enrollmentDate.getTime() + j * 30 * 24 * 60 * 60 * 1000)
-        });
-      }
-    }
-
-    await Fee.create({
-      student: student._id,
-      course: courseDoc._id,
-      batch: batchDoc._id,
-      totalAmount: fees_total,
-      paidAmount: fees_paid,
-      discount,
-      discountReason: discount > 0 ? 'Scholastic intake grant' : '',
-      dueDate: new Date(enrollmentDate.getTime() + 90 * 24 * 60 * 60 * 1000),
-      courseDurationMonths: courseDoc.durationMonths,
-      payments,
-      createdAt: enrollmentDate
-    });
-  }
-
-  console.log('📈 Seeding Student Progress records...');
-  for (const s of studentList) {
-    await Progress.create({
-      student: s._id,
-      course: s.course,
-      batch: s.batch,
-      teacher: s.teacher,
-      testResults: [
-        { testName: 'Mid-term Assessment', score: 80 + Math.floor(Math.random() * 18), totalMarks: 100, date: s.enrollmentDate.toISOString().split('T')[0], remarks: 'Excellent performance.' },
-        { testName: 'Final Theory Exam', score: 75 + Math.floor(Math.random() * 22), totalMarks: 100, date: new Date(s.enrollmentDate.getTime() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], remarks: 'Well prepared.' }
-      ],
-      teacherRemark: 'Good progress overall, highly participative in classroom tasks.'
-    });
-  }
-
-  console.log('📈 Seeding 30 CRM Leads and separate LeadActivity timelines...');
-  const leadNames = [
-    'Vikram Malhotra', 'Siddarth Roy', 'Pooja Sharma', 'Abhay Deol', 'Nisha Rawat',
-    'Rajesh Koothrapali', 'Howard Wolowitz', 'Leonard Hofstadter', 'Penny Hofstadter', 'Sheldon Cooper',
-    'Monica Geller', 'Chandler Bing', 'Joey Tribbiani', 'Rachel Green', 'Phoebe Buffay',
-    'Bruce Wayne', 'Clark Kent', 'Diana Prince', 'Barry Allen', 'Hal Jordan',
-    'Tony Stark', 'Steve Rogers', 'Natasha Romanoff', 'Bruce Banner', 'Clint Barton',
-    'Wanda Maximoff', 'Peter Parker', 'Stephen Strange', 'Sam Wilson', 'Bucky Barnes'
-  ];
-  const leadSources = ['Walk-in', 'Website', 'Referral', 'Instagram', 'Advertisement', 'WhatsApp', 'Other'];
-  const leadStatuses = ['new', 'contacted', 'mentorship_scheduled', 'admission_completed', 'lost'];
-  const lostReasons = ['Fees Issue', 'No Response', 'Joined Another Institute', 'Financial Issue', 'Other'];
-  const leadCategories = ['hot', 'warm', 'cold'];
-  const automationProviders = ['instagram', 'facebook', 'website', 'whatsapp', 'zapier'];
-
-  for (let i = 0; i < leadNames.length; i++) {
-    const status = leadStatuses[i % leadStatuses.length];
-    const assignedCounsellor = counsellors[i % counsellors.length]._id;
-    const createdDate = new Date(Date.now() - (15 * i * 24 * 60 * 60 * 1000));
-    const courseDoc = courses[i % courses.length];
-    const category = leadCategories[i % leadCategories.length];
-    const leadType = i % 2 === 0 ? 'manual' : 'automation';
-    
-    let lostReason = '';
-    if (status === 'lost') {
-      lostReason = lostReasons[i % lostReasons.length];
-    }
-    
-    let automation = {
-      provider: 'none',
-      externalLeadId: '',
-      campaignName: '',
-      formName: '',
-      adName: '',
-      rawPayload: null
-    };
-    
-    if (leadType === 'automation') {
-      automation = {
-        provider: automationProviders[i % automationProviders.length],
-        externalLeadId: `ext_id_${i}`,
-        campaignName: `Campaign - ${courseDoc.code} Promo`,
-        formName: `Lead Form - ${courseDoc.name}`,
-        adName: `Ad Creative - ${i}`,
-        rawPayload: { generatedAt: createdDate, platform: 'Meta Ads' }
-      };
-    }
-
-    const lead = await Lead.create({
-      name: leadNames[i],
-      phone: `90909090${String(i).padStart(2, '0')}`,
-      email: `${leadNames[i].toLowerCase().replace(/ /g, '.')}@gmail.com`,
-      interestedCourse: courseDoc._id,
-      source: leadSources[i % leadSources.length],
-      leadType,
-      category,
-      status: status,
-      assignedTo: assignedCounsellor,
-      nextFollowUpAt: status !== 'admission_completed' && status !== 'lost' ? new Date(Date.now() + ((i - 2) * 24 * 60 * 60 * 1000)) : null,
-      convertedStudent: status === 'admission_completed' ? studentList[i % studentList.length]._id : null,
-      convertedAt: status === 'admission_completed' ? new Date(createdDate.getTime() + 72 * 3600000) : null,
-      lostReason,
-      lostNote: status === 'lost' ? 'Prospect mentioned they did not have time or funds for intake.' : '',
-      automation,
-      createdAt: createdDate
-    });
-
-    // Seed activities in LeadActivity
-    await LeadActivity.create({
-      lead: lead._id,
-      type: 'lead_created',
-      title: 'Lead Registered',
-      note: `Prospect joined via ${lead.source}.`,
-      counsellor: assignedCounsellor,
-      doneBy: assignedCounsellor,
-      createdAt: createdDate
-    });
-
-    if (status !== 'new') {
-      await LeadActivity.create({
-        lead: lead._id,
-        type: 'status_changed',
-        title: 'Status: Contacted',
-        note: `Contacted lead. Discussed course parameters.`,
-        counsellor: assignedCounsellor,
-        doneBy: assignedCounsellor,
-        oldStatus: 'new',
-        newStatus: 'contacted',
-        createdAt: new Date(createdDate.getTime() + 24 * 3600000)
+      const user = await User.create({
+        name,
+        email,
+        password: PASSWORD,
+        role: 'student',
+        phone,
+        address: makeAddress(),
+        city: rand(cities),
+        dob,
+        status: 'active'
       });
-    }
 
-    if (status === 'mentorship_scheduled' || status === 'admission_completed') {
-      await LeadActivity.create({
-        lead: lead._id,
-        type: 'mentorship_scheduled',
-        title: 'Mentorship Scheduled',
-        note: `Scheduled guidance demo on ${courseDoc.name}.`,
-        counsellor: assignedCounsellor,
-        doneBy: assignedCounsellor,
-        createdAt: new Date(createdDate.getTime() + 48 * 3600000)
-      });
-    }
-
-    if (status === 'admission_completed') {
-      await LeadActivity.create({
-        lead: lead._id,
-        type: 'converted',
-        title: 'Admission Finalized',
-        note: `Registered student, set up payment milestones.`,
-        counsellor: assignedCounsellor,
-        doneBy: assignedCounsellor,
-        createdAt: new Date(createdDate.getTime() + 72 * 3600000)
-      });
-    } else if (status === 'lost') {
-      await LeadActivity.create({
-        lead: lead._id,
-        type: 'lost',
-        title: 'Intake Deferred',
-        note: `Student opted for another track. Marked lost.`,
-        counsellor: assignedCounsellor,
-        doneBy: assignedCounsellor,
-        createdAt: new Date(createdDate.getTime() + 72 * 3600000)
-      });
-    }
-  }
-
-  console.log('📚 Seeding Assignments & Submissions...');
-  for (const b of batches) {
-    const courseDoc = courses.find(c => c._id.toString() === b.course.toString());
-    const primaryTeacher = b.teachers[0];
-
-    for (let j = 1; j <= 5; j++) {
-      let dueDate;
-      if (j <= 3) {
-        dueDate = new Date(Date.now() - (j * 45 * 24 * 60 * 60 * 1000));
-      } else {
-        dueDate = new Date(Date.now() + ((j - 3) * 10 * 24 * 60 * 60 * 1000));
-      }
-
-      const creationDate = new Date(dueDate.getTime() - 14 * 24 * 60 * 60 * 1000);
-      const submissions = [];
-
-      const batchStudents = studentList.filter(s => s.batch.toString() === b._id.toString() && s.enrollmentDate <= creationDate);
-
-      batchStudents.forEach((s, idx) => {
-        if (dueDate < new Date()) {
-          if (idx % 7 === 0) return; // Didn't submit
-          const isLate = idx % 11 === 0;
-          const isGraded = idx % 3 !== 0;
-
-          submissions.push({
-            student: s._id,
-            fileUrl: `/uploads/submission_${s._id}_${j}.zip`,
-            fileName: `homework_project_${j}.zip`,
-            note: isLate ? 'Late submission due to personal emergency.' : 'Completed all exercises.',
-            submittedAt: isLate ? new Date(dueDate.getTime() + 12 * 3600000) : new Date(creationDate.getTime() + 4 * 24 * 60 * 60 * 1000),
-            marks: isGraded ? (75 + (idx % 20)) : null,
-            feedback: isGraded ? 'Well structured work, code looks clean.' : '',
-            status: isGraded ? 'graded' : (isLate ? 'late' : 'submitted')
-          });
-        } else {
-          if (idx % 3 === 0) {
-            submissions.push({
-              student: s._id,
-              fileUrl: `/uploads/submission_${s._id}_${j}.zip`,
-              fileName: `homework_project_${j}.zip`,
-              note: 'Submitting ahead of deadline.',
-              submittedAt: new Date(creationDate.getTime() + 2 * 24 * 60 * 60 * 1000),
-              marks: null,
-              feedback: '',
-              status: 'submitted'
-            });
+      const student = await Student.create({
+        user: user._id,
+        counsellor: counsellor._id,
+        teacher: plan.teacher._id,
+        course: plan.course._id,
+        batch: plan.batch._id,
+        enrollmentDate: startDate,
+        fees_total: plan.course.fees,
+        fees_paid: feePaid,
+        family: {
+          father: {
+            name: `${maleFirstNames[randInt(0, maleFirstNames.length - 1)]} ${rand(lastNames)}`,
+            phone: makePhone(phoneIdx++)
+          },
+          mother: {
+            name: `${femaleFirstNames[randInt(0, femaleFirstNames.length - 1)]} ${rand(lastNames)}`,
+            phone: makePhone(phoneIdx++)
           }
-        }
-      });
-
-      await Assignment.create({
-        title: `${courseDoc.name} - Practice Assignment ${j}`,
-        description: `This is the practice assignment task ${j} designed to test batch knowledge in ${courseDoc.name}.`,
-        course: b.course,
-        batch: b._id,
-        teacher: primaryTeacher,
-        dueDate,
-        totalMarks: 100,
-        submissions,
-        isActive: true,
-        createdAt: creationDate
-      });
-    }
-  }
-
-  console.log('⏰ Seeding 12 Weekly Timetable Templates...');
-  for (const b of batches) {
-    const slots = [
-      { dayOfWeek: 'Monday', teacher: b.teachers[0], classroom: classrooms[batches.indexOf(b) % classrooms.length]._id, startTime: '09:00 AM', endTime: '10:30 AM', note: 'Core theory session' },
-      { dayOfWeek: 'Wednesday', teacher: b.teachers[0], classroom: classrooms[batches.indexOf(b) % classrooms.length]._id, startTime: '09:00 AM', endTime: '10:30 AM', note: 'Studio lab work' },
-      { dayOfWeek: 'Friday', teacher: b.teachers[0], classroom: classrooms[batches.indexOf(b) % classrooms.length]._id, startTime: '09:00 AM', endTime: '10:30 AM', note: 'Project evaluation and grading' }
-    ];
-
-    await Timetable.create({
-      course: b.course,
-      batch: b._id,
-      startDate: new Date(2024, 0, 15),
-      endDate: new Date(2026, 11, 31),
-      slots
-    });
-  }
-
-  console.log('🗓️ Seeding Class Schedules & Attendance (Historical)...');
-  const currentDate = new Date();
-  
-  for (const b of batches) {
-    const primaryTeacher = b.teachers[0];
-    const batchStudents = studentList.filter(s => s.batch.toString() === b._id.toString());
-    if (batchStudents.length === 0) continue;
-
-    // Find earliest enrollment date for students in this batch
-    const earliestEnroll = new Date(Math.min(...batchStudents.map(s => s.enrollmentDate)));
-    let runner = new Date(earliestEnroll);
-    
-    // Only generate ~30 schedules per batch to keep execution speed realistic
-    let schedulesCreated = 0;
-    
-    while (runner < currentDate && schedulesCreated < 30) {
-      const dayOfWeek = runner.getDay();
-      const dateStr = runner.toISOString().split('T')[0];
-      
-      // Seed on Mon/Wed/Fri (excluding holidays)
-      if ((dayOfWeek === 1 || dayOfWeek === 3 || dayOfWeek === 5) && !holidayDates.has(dateStr)) {
-        const schedule = await Schedule.create({
-          course: b.course,
-          batch: b._id,
-          teacher: primaryTeacher,
-          classroom: classrooms[batches.indexOf(b) % classrooms.length]._id,
-          date: dateStr,
-          startTime: '09:00 AM',
-          endTime: '10:30 AM',
-          status: 'completed',
-          note: courses.find(c => c._id.toString() === b.course.toString()).name
-        });
-
-        // Seed Attendance for this schedule
-        for (const s of batchStudents) {
-          if (s.enrollmentDate <= runner) {
-            const isCompletedAtDate = s.statusHistory.some(sh => sh.status === 'complete' && runner > sh.date);
-            const isDroppedAtDate = s.statusHistory.some(sh => sh.status === 'drop' && runner > sh.date);
-            if (isCompletedAtDate || isDroppedAtDate) continue;
-
-            const rand = Math.random();
-            const status = rand > 0.88 ? 'absent' : (rand > 0.78 ? 'late' : 'present');
-
-            await Attendance.create({
-              student: s._id,
-              teacher: primaryTeacher,
-              course: b.course,
-              batch: b._id,
-              date: dateStr,
-              status,
-              note: status !== 'present' ? 'Automated daily register mark' : ''
-            });
+        },
+        remarks: [
+          {
+            postedBy: admin._id,
+            role: 'admin',
+            note: `Enrolled via ${admSource}. ${rand(remarkTemplates)}`
           }
-        }
+        ]
+      });
 
-        // Daily Class Update
-        const courseDoc = courses.find(c => c._id.toString() === b.course.toString());
-        const firstModule = courseDoc.modules[0];
-        const coveredTopics = firstModule ? [{
-          moduleId: firstModule._id,
-          topicId: firstModule.topics[0]._id,
-          title: firstModule.topics[0].title
-        }] : [];
+      await Fee.create({
+        student: student._id,
+        course: plan.course._id,
+        batch: plan.batch._id,
+        totalAmount: plan.course.fees,
+        paidAmount: feePaid,
+        discount,
+        discountReason: discount > 0 ? rand(['Sibling discount','Early bird offer','Referral bonus','Scholarship']) : '',
+        courseDurationMonths: 2,
+        payments: [
+          {
+            amount: Math.round(feePaid * 0.6),
+            method: rand(['Cash', 'UPI', 'Bank Transfer']),
+            receivedBy: admin._id,
+            note: 'Admission down payment',
+            paidAt: startDate
+          },
+          ...(feePaid > Math.round(plan.course.fees * 0.5) ? [{
+            amount: feePaid - Math.round(feePaid * 0.6),
+            method: rand(['Cash', 'UPI', 'Bank Transfer']),
+            receivedBy: admin._id,
+            note: 'Second installment',
+            paidAt: addDays(startDate, randInt(10, 20))
+          }] : [])
+        ]
+      });
 
-        await DailyUpdate.create({
-          title: `Session covered: ${firstModule ? firstModule.title : 'Overview'}`,
-          course: b.course,
-          batch: b._id,
-          content: `Lectured on foundational concepts. Done practical exercises.`,
-          homework: `Solve practice sheet ${schedulesCreated + 1}`,
-          teacher: primaryTeacher,
-          date: dateStr,
-          coveredTopics
+      students.push({
+        doc: student,
+        plan,
+        targetAttendance
+      });
+    }
+  }
+  console.log(`✓ ${students.length} students created`);
+
+  // ── SCHEDULES ──────────────────────────────
+  // Generate one schedule entry per class session from startDate to today
+  const timetableDocs = await Timetable.find({});
+  const scheduleInserts = [];
+
+  for (const tt of timetableDocs) {
+    let cur = new Date(startDate);
+    // Generate schedules up to 7 days in the future
+    while (cur <= addDays(today, 7)) {
+      const dayName = cur.toLocaleDateString('en-US', { weekday: 'long' });
+      const slots   = tt.slots.filter(s => s.dayOfWeek === dayName);
+      for (const slot of slots) {
+        // Only mark past schedules as completed
+        const isPast = cur < today;
+        scheduleInserts.push({
+          course: tt.course,
+          batch: tt.batch,
+          teacher: slot.teacher,
+          classroom: slot.classroom,
+          date: dateStr(cur),
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          moduleId: slot.moduleId || null,
+          topicId: slot.topicId || null,
+          status: isPast ? 'completed' : 'scheduled'
         });
-
-        schedulesCreated++;
       }
-      runner.setDate(runner.getDate() + 2); // Jump forward
+      cur = addDays(cur, 1);
     }
   }
 
-  console.log('📚 Seeding Curriculums for all Batches...');
-  for (const b of batches) {
-    const primaryTeacher = b.teachers[0];
-    const courseDoc = courses.find(c => c._id.toString() === b.course.toString());
-    
+  // Manually ensure each batch has a schedule session scheduled for today (to facilitate QA testing on any day of the week)
+  for (const tt of timetableDocs) {
+    if (tt.slots.length > 0) {
+      const slot = tt.slots[0];
+      // Check if we already added a schedule for today
+      const alreadyHasToday = scheduleInserts.some(s => s.batch.toString() === tt.batch.toString() && s.date === dateStr(today));
+      if (!alreadyHasToday) {
+        scheduleInserts.push({
+          course: tt.course,
+          batch: tt.batch,
+          teacher: slot.teacher,
+          classroom: slot.classroom,
+          date: dateStr(today),
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          moduleId: slot.moduleId || null,
+          topicId: slot.topicId || null,
+          status: 'scheduled'
+        });
+      }
+    }
+  }
+
+  const createdSchedules = await Schedule.insertMany(scheduleInserts);
+  console.log(`✓ ${createdSchedules.length} schedule sessions created`);
+
+  // ── ATTENDANCE ─────────────────────────────
+  const attendanceRecords = [];
+  for (const schedule of createdSchedules) {
+    // Skip today and future schedules so they can be marked during testing
+    if (schedule.date >= dateStr(today)) continue;
+
+    const batchStudents = students.filter(
+      s => String(s.doc.batch) === String(schedule.batch)
+    );
+    for (const s of batchStudents) {
+      attendanceRecords.push({
+        student: s.doc._id,
+        teacher: schedule.teacher,
+        course: schedule.course,
+        batch: schedule.batch,
+        date: schedule.date,
+        status: attendanceStatus(s.targetAttendance),
+        note: ''
+      });
+    }
+  }
+  await Attendance.insertMany(attendanceRecords);
+  console.log(`✓ ${attendanceRecords.length} attendance records created`);
+
+  // ── CURRICULUM & DAILY UPDATES ─────────────
+  // Mark realistic topic completion: 34 days into a 60-day course ≈ 57% progress
+  for (const plan of batchPlan) {
+    const course = plan.course;
+    const batch  = plan.batch;
+    const teacher = plan.teacher;
+
+    // Collect all topics with progressive completion dates
     const completedTopics = [];
-    const firstModule = courseDoc.modules[0];
-    if (firstModule && primaryTeacher) {
-      firstModule.topics.forEach(t => {
-        completedTopics.push({
-          moduleId: firstModule._id,
-          topicId: t._id,
-          completedBy: primaryTeacher,
-          completedDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          note: 'Covered in detail with classroom activities.'
-        });
-      });
+    let dayOffset = 2;
+
+    for (const mod of course.modules) {
+      for (const topic of mod.topics) {
+        if (dayOffset <= 32) {  // topics covered in ~32 of the 34 days elapsed
+          completedTopics.push({
+            moduleId: mod._id,
+            topicId: topic._id,
+            completedBy: admin._id,
+            completedDate: dateStr(addDays(startDate, dayOffset)),
+            note: rand([
+              'Practical demonstration completed with live project.',
+              'Students practised on their own files post explanation.',
+              'Q&A session held after topic completion.',
+              'Short quiz taken at end of class.',
+              'Hands-on lab session completed.',
+              'Recording shared in batch WhatsApp group for revision.'
+            ])
+          });
+          dayOffset += randInt(2, 4);
+        }
+      }
     }
 
     await Curriculum.create({
-      course: b.course,
-      batch: b._id,
-      teacher: primaryTeacher,
+      course: course._id,
+      batch: batch._id,
+      teacher: teacher._id,
       completedTopics,
-      description: `Curriculum tracking for batch ${b.name}`
-    });
-  }
-
-  console.log('📣 Seeding 10 Announcements...');
-  const announcementTemplates = [
-    { title: 'Welcome to Vande Academy', content: 'We are thrilled to start the new academic year. Check your timetables.', type: 'all' },
-    { title: 'DaVinci Resolve License Access', content: 'Students can request Resolve studio licenses from the admin panel.', type: 'course', courseIdx: 0 },
-    { title: 'Google Analytics GA4 Workshop', content: 'Join the free workshop on Google Analytics tracking this Saturday.', type: 'course', courseIdx: 1 },
-    { title: 'Timetable Adjustment', content: 'Friday class timings are adjusted to 10:00 AM this week.', type: 'batch', batchIdx: 0 },
-    { title: 'Leave Application Reminder', content: 'Teachers must apply for leaves at least 3 days in advance.', type: 'role', role: 'teacher' },
-    { title: 'Intake Target Reviews', content: 'Counsellors are requested to update lead records by every Friday.', type: 'role', role: 'counsellor' },
-    { title: 'Campus Maintenance Work', content: 'Power grid maintenance scheduled for Sunday. Campus will be closed.', type: 'all' },
-    { title: 'Placement Drive registrations', content: 'Registrations are open for the upcoming digital agency placement drive.', type: 'all' },
-    { title: 'Final Project Submission Guidelines', content: 'Ensure all projects are bundled correctly before submitting.', type: 'role', role: 'student' },
-    { title: 'Graphic Design Software Access', content: 'Adobe Creative Suite licenses are now available for student logins.', type: 'course', courseIdx: 3 }
-  ];
-
-  for (const a of announcementTemplates) {
-    let course = null;
-    let batch = null;
-    if (a.type === 'course') course = courses[a.courseIdx]._id;
-    if (a.type === 'batch') batch = batches[a.batchIdx]._id;
-
-    const attachments = a.title.includes('Adobe') || a.title.includes('DaVinci') ? [
-      { url: '/uploads/software_guide.pdf', fileName: 'software_guide.pdf', fileType: 'application/pdf', fileSize: 1048576 }
-    ] : [];
-
-    await Announcement.create({
-      title: a.title,
-      content: a.content,
-      attachments,
-      createdBy: admin._id,
-      audienceType: a.type === 'role' ? 'role' : (a.type === 'all' ? 'all' : a.type),
-      course,
-      batch,
-      role: a.type === 'role' ? a.role : ''
-    });
-  }
-
-  console.log('✉️ Seeding 25 Messages (Inbox/Outbox communication)...');
-  for (let i = 0; i < 25; i++) {
-    const studentUser = studentList[i % studentList.length].userId;
-    const teacherUser = teachers[i % teachers.length]._id;
-    const counsellorUser = counsellors[i % counsellors.length]._id;
-
-    // Student to Teacher query
-    await Message.create({
-      sender: studentUser,
-      recipient: teacherUser,
-      content: `Hello Sir, regarding assignment ${ (i % 3) + 1 }, could you explain the evaluation criteria?`,
-      read: i % 2 === 0,
-      readAt: i % 2 === 0 ? new Date(Date.now() - i * 3600000) : null
+      description: `Active curriculum progress for ${batch.name}. ${completedTopics.length} topics completed so far.`
     });
 
-    // Counsellor to Student query
-    await Message.create({
-      sender: counsellorUser,
-      recipient: studentUser,
-      content: `Hello, please verify your uploaded Aadhaar card ID proof so we can finalize registration.`,
-      read: i % 3 === 0,
-      readAt: i % 3 === 0 ? new Date(Date.now() - i * 7200000) : null
-    });
-  }
+    // Daily updates for the last 10 class days
+    const classSchedules = createdSchedules
+      .filter(s => String(s.batch) === String(batch._id))
+      .slice(-10);
 
-  console.log('💰 Seeding Financial Targets & Expenses (3 Years)...');
-  const startYear = 2023;
-  const endYear = 2026;
-  const monthsList = [];
-  for (let year = startYear; year <= endYear; year++) {
-    const maxMonth = (year === 2026) ? 6 : 12;
-    for (let month = 1; month <= maxMonth; month++) {
-      const monthStr = `${year}-${String(month).padStart(2, '0')}`;
-      monthsList.push(monthStr);
+    for (const sch of classSchedules) {
+      const topicsForDay = completedTopics.slice(0, 2);
+      await DailyUpdate.create({
+        title: `${batch.name} – Class Update`,
+        course: course._id,
+        batch: batch._id,
+        teacher: teacher._id,
+        content: rand([
+          'Class conducted successfully. Topic explained with live project walkthrough. Students practised on their own files.',
+          'Interactive session with Q&A. Practical task assigned and reviewed in class.',
+          'Revision of previous topic followed by new concept introduction. Lab session completed.',
+          'Guest mentor joined for 20 minutes. Practical demonstration and doubt-clearing done.',
+          'Assessment quiz conducted. Results shared with students individually.'
+        ]),
+        homework: rand([
+          'Complete the practical task assigned today and submit on the portal.',
+          'Revise the topic covered and watch the reference video shared.',
+          'Create a mini-project using today\'s skill and bring it to the next class.',
+          'Practice the technique 3 times before the next session.',
+          'Watch the case study video shared in the WhatsApp group.'
+        ]),
+        date: sch.date,
+        coveredTopics: topicsForDay.map(ct => ({
+          moduleId: ct.moduleId,
+          topicId: ct.topicId,
+          title: 'Class topic',
+          note: 'Covered in regular class session.'
+        }))
+      });
     }
   }
+  console.log('✓ Curriculum & daily updates created');
 
-  for (const m of monthsList) {
-    const targetAmt = 120000 + Math.floor(Math.random() * 80000);
-    await RevenueTarget.create({
-      month: m,
-      amount: targetAmt
-    });
+  // ── ASSIGNMENTS (4 per batch) ───────────────
+  const assignmentTitles = {
+    VE: [
+      { title: 'Basic Timeline Edit',        desc: 'Create a 60-second edited video from raw footage provided. Focus on pacing, cuts, and transitions.' },
+      { title: 'Audio Sync & Color Grading', desc: 'Sync dual-system audio and apply a cinematic LUT. Submit Premiere Pro project file and exported MP4.' },
+      { title: 'Reels Edit – Brand Promo',   desc: 'Edit a 30-second Instagram Reel for a fictional brand using motion text and beat-sync.' },
+      { title: 'Final Client Project',        desc: 'End-to-end edit for a wedding highlight reel. Include colour grade, music sync, and lower-thirds.' }
+    ],
+    DM: [
+      { title: 'Marketing Funnel Audit',          desc: 'Analyse a real brand\'s digital funnel and present a 10-slide deck with improvement recommendations.' },
+      { title: 'SEO Keyword Research Report',     desc: 'Perform keyword research for a given niche using Ahrefs/Google. Submit a prioritised keyword list.' },
+      { title: 'Meta Ads Campaign Blueprint',     desc: 'Design a full Meta Ads campaign (objective, audience, creatives, budget) for a local business.' },
+      { title: 'GA4 Analytics Report',            desc: 'Connect GA4 to a demo site, set up events and conversions, and deliver a 5-page analytics report.' }
+    ]
+  };
 
-    await Expense.create({
-      month: m,
-      category: 'rent',
-      amount: 35000,
-      description: 'Monthly classroom & office space rent',
-      paymentMethod: 'Bank Transfer',
-      loggedBy: admin._id,
-      date: new Date(`${m}-01`)
-    });
+  const feedbackOptions = [
+    'Excellent work! Great attention to detail.',
+    'Good effort. Need to improve pacing in the middle section.',
+    'Well structured. Clean execution.',
+    'Creative approach. A few technical errors to fix.',
+    'Solid submission. Practical skills clearly improving.',
+    'Needs improvement. Revisit the topic and resubmit.',
+    'Above average. Client-ready quality.'
+  ];
 
-    const elecAmount = 5000 + Math.floor(Math.random() * 4500);
-    await Expense.create({
-      month: m,
-      category: 'electricity',
-      amount: elecAmount,
-      description: 'Electricity utility bill',
-      paymentMethod: 'UPI',
-      loggedBy: admin._id,
-      date: new Date(`${m}-10`)
-    });
+  for (const plan of batchPlan) {
+    const course   = plan.course;
+    const batch    = plan.batch;
+    const teacher  = plan.teacher;
+    const key      = course.code; // 'VE' or 'DM'
+    const titles   = assignmentTitles[key];
+    const batchStudents = students.filter(s => String(s.doc.batch) === String(batch._id));
 
-    await Expense.create({
-      month: m,
-      category: 'staff',
-      amount: 60000,
-      description: 'Salaries for teaching assistant and admin support staff',
-      paymentMethod: 'Bank Transfer',
-      loggedBy: admin._id,
-      date: new Date(`${m}-05`)
-    });
+    for (let a = 0; a < 4; a++) {
+      // Spread assignments over 12 days to push the last two assignments into the future
+      const dueDate  = addDays(startDate, 8 + a * 12); 
+      const isPast   = dueDate <= today;
 
-    const miscAmount = 1500 + Math.floor(Math.random() * 5000);
-    await Expense.create({
-      month: m,
-      category: 'miscellaneous',
-      amount: miscAmount,
-      description: 'Internet, printing, supplies, refreshments',
-      paymentMethod: Math.random() > 0.5 ? 'Cash' : 'Card',
-      loggedBy: admin._id,
-      date: new Date(`${m}-15`)
+      await Assignment.create({
+        title: titles[a].title,
+        description: titles[a].desc,
+        course: course._id,
+        batch: batch._id,
+        teacher: teacher._id,
+        dueDate,
+        totalMarks: 100,
+        submissions: batchStudents.map(s => {
+          if (!isPast) return { student: s.doc._id, status: 'pending' };
+
+          // Submission probability varies by assignment number
+          const subProb = [0.95, 0.85, 0.75, 0.65][a];
+          const submitted = Math.random() < subProb;
+
+          if (!submitted) return { student: s.doc._id, status: 'pending' };
+
+          const graded  = a < 2 || Math.random() < 0.7; // early assignments fully graded
+          const marks   = graded ? randInt(45, 98) : null;
+
+          return {
+            student: s.doc._id,
+            fileUrl: `/uploads/assignments/${batch.name.toLowerCase().replace(/ /g, '-')}/a${a + 1}-${s.doc._id}.pdf`,
+            fileName: `assignment-${a + 1}-submission.pdf`,
+            note: rand(['Submitted on time.', 'Submitted 1 day late.', 'Resubmission after feedback.']),
+            marks,
+            feedback: graded ? rand(feedbackOptions) : '',
+            status: graded ? 'graded' : 'submitted'
+          };
+        })
+      });
+    }
+  }
+  console.log('✓ Assignments with submissions created');
+
+  // ── PROGRESS (test results per student) ─────
+  const testNames = {
+    VE: ['Module 1 Practical Quiz', 'Mid-Course Edit Test', 'Color Grading Assessment'],
+    DM: ['SEO & Content Quiz', 'Mid-Course Campaign Test', 'Analytics & Ads Assessment']
+  };
+
+  for (const plan of batchPlan) {
+    const course = plan.course;
+    const batch  = plan.batch;
+    const teacher = plan.teacher;
+    const key    = course.code;
+    const batchStudents = students.filter(s => String(s.doc.batch) === String(batch._id));
+
+    for (const s of batchStudents) {
+      const attendance = s.targetAttendance;
+
+      // Students with higher attendance tend to score better
+      const scoreBonus = Math.round((attendance - 60) / 5);
+
+      await Progress.create({
+        student: s.doc._id,
+        course: course._id,
+        batch: batch._id,
+        teacher: teacher._id,
+        testResults: testNames[key].slice(0, 2).map((testName, idx) => ({
+          testName,
+          score: Math.min(100, Math.max(25, randInt(40, 90) + scoreBonus)),
+          totalMarks: 100,
+          date: dateStr(addDays(startDate, 12 + idx * 10)),
+          remarks: rand([
+            'Strong conceptual understanding demonstrated.',
+            'Practical output was above average.',
+            'Needs more practice on advanced topics.',
+            'Good improvement from previous test.',
+            'Consistent performance maintained.'
+          ])
+        })),
+        teacherRemark: rand([
+          'Hardworking student. Steady improvement visible.',
+          'Attendance needs to improve for better outcomes.',
+          'Very creative and quick to grasp concepts.',
+          'Strong practical skills. Theoretical understanding needs more work.',
+          'Regular practitioner. Will do well in industry.',
+          'Participates actively in class. Good attitude.',
+          'Improvement needed in assignment submission discipline.',
+          'Outstanding student. On track for full marks.'
+        ])
+      });
+    }
+  }
+  console.log('✓ Progress & test results created');
+
+  // ── LEADS (30 leads: 20 active, 10 converted/lost) ──
+  const leadNames = [
+    'Suresh Pareek','Lalita Bohra','Mohan Bishnoi','Geeta Rathore','Vikram Jain',
+    'Sunita Sharma','Alok Vyas','Rekha Singh','Manoj Patel','Nisha Gupta',
+    'Farhan Khan','Divya Soni','Harish Agarwal','Meena Purohit','Tarun Bansal',
+    'Anita Trivedi','Sanjay Kapoor','Ritu Malhotra','Bharat Yadav','Komal Gehlot',
+    'Girish Bhati','Swati Rajpurohit','Naresh Mathur','Preeti Saxena','Dinesh Choudhary',
+    'Vandana Swami','Praveen Joshi','Sunita Mehta','Rajan Verma','Heena Patel'
+  ];
+
+  const leadStatuses   = ['new','contacted','follow_up','mentorship_scheduled','mentorship_attended','joining_interested','admission_completed','lost'];
+  const lostReasons    = ['Fees Issue','No Response','Joined Another Institute','Parent Not Interested','Financial Issue','Other'];
+  const leadSources    = ['Instagram','Facebook','Referral','Walk-in','WhatsApp','Website','Advertisement','Manual','Other'];
+  const callOutcomes   = ['answered','callback','no-answer','busy'];
+  const followUpNotes  = [
+    'Student showed interest in Digital Marketing. Needs parent approval.',
+    'Enquired about batch timings and fees. Will discuss with family.',
+    'Visited the academy. Liked the labs. Might enrol next week.',
+    'Asked for EMI option. Counsellor explained fee structure.',
+    'Comparison with XYZ Institute. Shared USPs and placement records.',
+    'Parent on call – satisfied with course content. Awaiting decision.',
+    'Demo class attended. Positive feedback. Follow-up in 2 days.',
+    'Needs time. Asked to call back on weekend.',
+    'Very hot lead. Expected to enrol by end of week.',
+    'Cold lead – not responding to calls. Trying WhatsApp.',
+    'Referred by student Aarav Sharma. High intent.',
+    'Called twice. Will try once more before marking lost.',
+    'Interested in both courses. Counsellor to send comparison sheet.',
+    'Free demo scheduled for Saturday morning.',
+    'Agreed on fees. Paperwork pending.'
+  ];
+
+  for (let i = 0; i < 30; i++) {
+    const counsellor    = rand(counsellors);
+    const intCourse     = Math.random() < 0.62 ? dmCourse : videoCourse;
+    const status        = rand(leadStatuses);
+    const isLost        = status === 'lost';
+    const followUps     = randInt(1, 4);
+    const category      = rand(['hot','warm','warm','cold']);
+
+    const followUpHistory = Array.from({ length: followUps }, (_, fi) => ({
+      note: rand(followUpNotes),
+      status: fi === followUps - 1 ? status : 'contacted',
+      channel: rand(['call', 'whatsapp', 'call']),
+      callOutcome: rand(callOutcomes),
+      callDuration: `${randInt(1, 8)}:${String(randInt(0, 59)).padStart(2, '0')}`,
+      callAttemptNumber: fi + 1,
+      doneBy: admin._id,
+      doneAt: addDays(today, -(followUps - fi) * randInt(1, 3))
+    }));
+
+    await Lead.create({
+      name: leadNames[i] || `Lead ${makeName().name}`,
+      phone: makePhone(9000 + i),
+      email: `lead${i + 1}@demo.com`,
+      interestedCourse: intCourse._id,
+      source: rand(leadSources),
+      leadType: Math.random() < 0.35 ? 'automation' : 'manual',
+      category,
+      status,
+      assignedTo: counsellor._id,
+      ownershipHistory: [
+        {
+          counsellor: counsellor._id,
+          assignedBy: admin._id,
+          note: `Assigned on intake from ${rand(leadSources)} campaign.`
+        }
+      ],
+      followUpHistory,
+      nextFollowUpAt: isLost ? null : addDays(today, randInt(1, 5)),
+      lastContactedAt: addDays(today, -randInt(0, 5)),
+      lostReason: isLost ? rand(lostReasons) : '',
+      lostNote: isLost ? rand(['Did not respond to multiple follow-ups.', 'Joined competitor institute.', 'Budget constraint.']) : '',
+      mentorship: status === 'mentorship_scheduled' ? {
+        scheduledAt: addDays(today, randInt(1, 3)),
+        takenBy: admin._id,
+        feedback: ''
+      } : {},
+      createdBy: admin._id
     });
   }
+  console.log('✓ 30 leads created');
 
-  console.log('✅ 3-Year historical database seeded successfully with highly realistic data!');
+  // ── HOLIDAYS ────────────────────────────────
+  await Holiday.insertMany([
+    {
+      name: 'Independence Day',
+      date: '2025-08-15',
+      type: 'public',
+      note: 'National holiday. No classes.'
+    },
+    {
+      name: 'Diwali',
+      date: '2025-10-20',
+      type: 'public',
+      note: 'Diwali holiday. Academy closed.'
+    },
+    {
+      name: 'Academy Foundation Day',
+      date: dateStr(addDays(today, 7)),
+      type: 'academy',
+      note: 'Academy Anniversary. Special event planned. No regular classes.'
+    },
+    {
+      name: 'Eid al-Adha',
+      date: '2025-06-07',
+      type: 'public',
+      note: 'Public holiday.'
+    }
+  ]);
+  console.log('✓ Holidays created');
+
+  // ── SUMMARY ────────────────────────────────
+  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('✅  SEED COMPLETED SUCCESSFULLY');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log(`Admin:            admin@vandeacademy.com / ${PASSWORD}`);
+  console.log(`Teachers (4):     rohan.sharma@..., amit.rathore@..., priya.mehta@..., sneha.kapoor@vandeacademy.com`);
+  console.log(`Counsellors (6):  kavya.joshi@... to varun.bansal@vandeacademy.com`);
+  console.log(`Students (70):    student1@demo.com to student70@demo.com / ${PASSWORD}`);
+  console.log('\nBatch Breakdown:');
+  console.log('  Slot 1 – VE Morning   10:30–12:30  Classroom A  Mon/Wed/Fri  →  17 students');
+  console.log('  Slot 2 – DM Afternoon 14:00–16:00  Classroom B  Mon/Wed/Fri  →  17 students');
+  console.log('  Slot 3 – DM Evening   16:30–18:30  Classroom A  Tue/Thu/Sat  →  25 students');
+  console.log('  Slot 4 – VE Night     19:00–21:00  Classroom B  Tue/Thu/Sat  →  11 students');
+  console.log('\nCourse Split:');
+  console.log('  Digital Marketing: 42 students (60%)');
+  console.log('  Video Editing:     28 students (40%)');
+  console.log('\nAttendance range: 40%–100% (varied per student)');
+  console.log(`Schedules seeded: ${createdSchedules.length} sessions`);
+  console.log(`Attendance records: ${attendanceRecords.length}`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
   await mongoose.disconnect();
+  process.exit(0);
 }
 
-if (require.main === module) {
-  seed().catch(err => {
-    console.error('❌ Seeder script failed:', err);
-    process.exit(1);
-  });
-}
-
-module.exports = seed;
+seed().catch(async err => {
+  console.error('Seeder failed:', err);
+  await mongoose.disconnect();
+  process.exit(1);
+});

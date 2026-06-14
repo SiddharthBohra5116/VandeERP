@@ -21,7 +21,7 @@
         <thead>
           <tr>
             <th>Date</th>
-            <th>Batch & Subject</th>
+            <th>Batch & Course</th>
             <th>Topics Covered</th>
             <th>Homework assigned</th>
             <th>Material</th>
@@ -32,7 +32,7 @@
             <tr>
               <td class="mono text-sm fw-600"><%= up.date %></td>
               <td>
-                <div style="font-weight:600;"><%= up.subject %></div>
+                <div style="font-weight:600;"><%= up.course && up.course.name ? up.course.name : '—' %></div>
                 <div class="td-muted text-xs">Batch: <%= up.batch && up.batch.name ? up.batch.name : '—' %></div>
               </td>
               <td>

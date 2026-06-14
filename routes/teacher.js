@@ -21,6 +21,7 @@ router.get('/assignments', ...guard, ctrl.getAssignments);
 router.get('/assignments/create', ...guard, ctrl.getCreateAssignment);
 router.post('/assignments/create', ...guard, upload.single('file'), ctrl.postCreateAssignment);
 router.get('/assignments/:id', ...guard, ctrl.getAssignmentDetail);
+router.post('/assignments/:id/extend', ...guard, ctrl.postExtendDueDate);
 router.post('/assignments/:id/grade/:subId', ...guard, ctrl.postGradeSubmission);
 
 // Daily updates
@@ -38,10 +39,13 @@ router.post('/curriculum/:id/topics/:topicId/toggle', ...guard, ctrl.postToggleT
 // Progress
 router.get('/progress', ...guard, ctrl.getProgress);
 router.post('/progress/test', ...guard, ctrl.postAddTestResult);
+router.post('/progress/bulk-test', ...guard, ctrl.postBulkAddTestResult);
+router.post('/progress/delete-test', ...guard, ctrl.postDeleteTest);
 router.post('/progress/:studentId/remark', ...guard, ctrl.postUpdateRemark);
 
 // Students
 router.get('/students', ...guard, ctrl.getMyStudents);
+router.get('/students/:id/profile-summary', ...guard, ctrl.getStudentProfileSummary);
 
 // Messaging
 router.post('/messages/send', ...guard, ctrl.postSendMessage);

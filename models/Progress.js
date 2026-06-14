@@ -18,7 +18,7 @@ const progressSchema = new mongoose.Schema({
   teacherRemark: { type: String, default: '' }
 }, { timestamps: true });
 
-progressSchema.index({ student: 1, batch: 1 }, { unique: true });
+progressSchema.index({ student: 1, course: 1 }, { unique: true });
 progressSchema.index({ teacher: 1 });
 
 progressSchema.pre('save', function(next) {
