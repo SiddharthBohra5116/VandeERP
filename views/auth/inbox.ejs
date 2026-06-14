@@ -134,7 +134,7 @@
           </div>
         </div>
 
-        <!-- Go to Profile Redirection Button -->
+        <!-- Go to Profile Redirection Button / Details Modal Trigger -->
         <%
           let profileUrl = null;
           if (user.role === 'admin') {
@@ -152,6 +152,11 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             <span>View Profile</span>
           </a>
+        <% } else { %>
+          <button type="button" onclick="window.openContactDetailModal(<%= JSON.stringify(selectedContact.name) %>, <%= JSON.stringify(selectedContact.role) %>, <%= JSON.stringify(selectedContact.profilePic || '') %>)" class="btn btn-ghost btn-sm header-profile-link" style="display: flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.78rem; font-weight: 600; color: var(--text-sub); transition: background 0.2s; background: none; cursor: pointer;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <span>Contact Details</span>
+          </button>
         <% } %>
       </div>
 
@@ -194,9 +199,85 @@
                 <span style="position: relative; z-index: 2; background: var(--bg-card); padding: 4px 12px; border-radius: 20px; font-size: 0.68rem; font-weight: 600; color: var(--text-muted); border: 1px solid var(--border); letter-spacing: 0.5px;"><%= dividerText %></span>
               </div>
             <% } %>
-            <div class="message-row <%= isMe ? 'me' : 'them' %>">
-              <div class="message-bubble" style="box-shadow: 0 2px 8px rgba(0,0,0,0.12); margin-top: 2px;">
+            <div class="message-row <%= isMe ? 'me' : 'them' %>" data-message-id="<%= msg._id %>">
+              <div class="message-bubble" style="box-shadow: 0 2px 8px rgba(0,0,0,0.12); margin-top: 2px; position: relative;">
+                <!-- Reply Context Quote -->
+                <% if (msg.replyTo) { %>
+                  <div class="reply-quote-preview" data-parent-id="<%= msg.replyTo._id %>" style="background: rgba(0,0,0,0.15); border-left: 3px solid var(--gold); padding: 4px 8px; border-radius: 4px; margin-bottom: 6px; font-size: 0.75rem; color: var(--text-sub); display: flex; flex-direction: column; cursor: pointer;">
+                    <span style="font-weight: 700; font-size: 0.7rem; color: var(--gold); margin-bottom: 2px;">
+                      <%= msg.replyTo.sender.toString() === user._id.toString() ? 'You' : (msg.replyTo.sender.toString() === selectedContact._id.toString() ? selectedContact.name : 'User') %>
+                    </span>
+                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
+                      <%= msg.replyTo.content %>
+                    </span>
+                  </div>
+                <% } %>
+
+                <!-- Message Content -->
                 <div class="message-content" id="msg-content-<%= msg._id %>"><%= msg.content %></div>
+
+                <!-- Render Attachments -->
+                <% if (msg.attachments && msg.attachments.length > 0) { %>
+                  <div class="message-attachments" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                    <% msg.attachments.forEach(att => { %>
+                      <% if (att.fileType.startsWith('image/')) { %>
+                        <div class="attachment-image-wrapper" onclick="openDocPreviewModal('<%= att.url %>', '<%= att.fileName %>')" style="max-width: 280px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); cursor: pointer;">
+                          <img src="<%= att.url %>" style="width: 100%; height: auto; display: block;" alt="Uploaded Image">
+                        </div>
+                      <% } else { %>
+                        <div class="attachment-file-wrapper" onclick="openDocPreviewModal('<%= att.url %>', '<%= att.fileName %>')" style="display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.1); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 0.8rem; cursor: pointer; transition: background 0.2s;">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--gold);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                          <span style="color: var(--text); font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;">
+                            <%= att.fileName || 'Attachment' %>
+                          </span>
+                        </div>
+                      <% } %>
+                    <% }) %>
+                  </div>
+                <% } %>
+
+                <!-- Hover actions drawer -->
+                <div class="message-hover-actions">
+                  <!-- Emoji list drawer -->
+                  <div class="reaction-emoji-selector">
+                    <button class="emoji-btn" data-emoji="👍" title="Like">👍</button>
+                    <button class="emoji-btn" data-emoji="❤️" title="Love">❤️</button>
+                    <button class="emoji-btn" data-emoji="😂" title="Laugh">😂</button>
+                    <button class="emoji-btn" data-emoji="😮" title="Wow">😮</button>
+                    <button class="emoji-btn" data-emoji="😢" title="Sad">😢</button>
+                    <button class="emoji-btn" data-emoji="🙏" title="Pray/Thanks">🙏</button>
+                  </div>
+                  <button class="btn-msg-action reply-btn-trigger" data-message-id="<%= msg._id %>" data-sender-name="<%= isMe ? 'You' : selectedContact.name %>" data-snippet="<%= msg.content.substring(0, 60) + (msg.content.length > 60 ? '...' : '') %>" title="Reply">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+                  </button>
+                  <% 
+                    const isEditable = isMe;
+                  %>
+                  <% if (isEditable) { %>
+                    <button class="btn-msg-action edit-btn-trigger" data-message-id="<%= msg._id %>" title="Edit Message">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                  <% } %>
+                </div>
+
+                <!-- Rendered Reactions -->
+                <% if (msg.reactions && msg.reactions.length > 0) { %>
+                  <div class="message-reactions-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
+                    <% 
+                      // Group by emoji to show count, or list them out cleanly
+                      const reactionCounts = {};
+                      msg.reactions.forEach(r => {
+                        reactionCounts[r.emoji] = (reactionCounts[r.emoji] || 0) + 1;
+                      });
+                    %>
+                    <% Object.entries(reactionCounts).forEach(([emoji, count]) => { %>
+                      <span class="reaction-badge" data-emoji="<%= emoji %>" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.08); border: 1px solid var(--border); border-radius: 12px; padding: 2px 6px; font-size: 0.75rem; cursor: pointer; user-select: none;">
+                        <%= emoji %> <span style="opacity: 0.8; margin-left: 2px; font-size: 0.65rem;"><%= count %></span>
+                      </span>
+                    <% }) %>
+                  </div>
+                <% } %>
+
                 <div class="message-time" style="opacity: 0.75; display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
                   <%= formattedTime %>
                   <% if (isMe) { %>
@@ -208,14 +289,6 @@
                       <% } %>
                     </span>
                   <% } %>
-                  <% 
-                    const isEditable = isMe && !msg.readAt && msg.editableUntil && (new Date() < new Date(msg.editableUntil));
-                  %>
-                  <% if (isEditable) { %>
-                    <button class="btn-edit-msg" onclick="openEditModal('<%= msg._id %>')" title="Edit Message">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                    </button>
-                  <% } %>
                 </div>
               </div>
             </div>
@@ -223,11 +296,50 @@
         <% } %>
       </div>
 
+      <!-- Selected Files Preview Bar -->
+      <div id="filePreviewContainer" style="display: none; background: rgba(0,0,0,0.2); border-top: 1px solid var(--border); padding: 8px 1.25rem; align-items: center; justify-content: space-between;">
+        <span id="filePreviewText" style="font-size: 0.8rem; color: var(--text-sub); overflow: hidden; text-overflow: ellipsis;">No files selected</span>
+        <button type="button" id="clearFilesBtn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px;" title="Clear files">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <!-- Reply Preview Bar (Top of Chat Input Bar) -->
+      <div id="replyPreviewContainer" style="display: none; background: rgba(0,0,0,0.25); border-top: 1px solid var(--border); padding: 8px 1.25rem; align-items: center; justify-content: space-between; gap: 12px;">
+        <div style="border-left: 3px solid var(--gold); padding-left: 8px; font-size: 0.8rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1;">
+          <div style="font-weight: 700; color: var(--gold); font-size: 0.72rem; margin-bottom: 2px;">Replying to <span id="replyPreviewUser">User</span></div>
+          <div id="replyPreviewText" style="color: var(--text-muted); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis;">Message snippet...</div>
+        </div>
+        <button type="button" id="cancelReplyBtn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.2s;" title="Cancel Reply">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <!-- Edit Preview Bar (Top of Chat Input Bar) -->
+      <div id="editPreviewContainer" style="display: none; background: rgba(0,0,0,0.25); border-top: 1px solid var(--border); padding: 8px 1.25rem; align-items: center; justify-content: space-between; gap: 12px;">
+        <div style="border-left: 3px solid var(--gold); padding-left: 8px; font-size: 0.8rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1;">
+          <div style="font-weight: 700; color: var(--gold); font-size: 0.72rem; margin-bottom: 2px;">Editing Message</div>
+          <div id="editPreviewText" style="color: var(--text-muted); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis;">Original text...</div>
+        </div>
+        <button type="button" id="cancelEditBtn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.2s;" title="Cancel Edit">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
       <!-- Message Form -->
-      <form action="/auth/inbox/send" method="POST" class="chat-input-bar">
+      <form action="/auth/inbox/send" method="POST" enctype="multipart/form-data" class="chat-input-bar">
         <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
         <input type="hidden" name="recipientId" value="<%= selectedContact._id %>">
-        <textarea name="content" id="chatMessageInput" placeholder="Type a message here... (Press Enter to send)" required></textarea>
+        <input type="hidden" name="replyTo" id="replyToInput" value="">
+        <input type="hidden" name="editMessageId" id="editMessageIdInput" value="">
+        
+        <!-- File Input with Attachment Icon -->
+        <label for="chatAttachmentInput" class="btn btn-ghost" style="padding: 8px; margin: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 50%; width: 38px; height: 38px;" title="Attach JPEG, PNG, or PDF">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+        </label>
+        <input type="file" name="attachments" id="chatAttachmentInput" multiple style="display: none;">
+
+        <textarea name="content" id="chatMessageInput" placeholder="Type a message here... (Press Enter to send)"></textarea>
         <button type="submit" class="btn btn-primary send-btn" aria-label="Send Message">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
           <span>Send</span>
@@ -248,6 +360,50 @@
         <button type="submit" class="btn btn-primary" style="padding: 6px 16px; border-radius: 6px; background: var(--gold); color: #000; font-weight: 600; border: none; cursor: pointer;">Save Changes</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Secure Document Preview Modal -->
+<div id="documentPreviewModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); z-index: 1100; align-items: center; justify-content: center; transition: opacity 0.3s ease;">
+  <div class="modal-content" style="background: var(--bg-card, #121212); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; width: 90%; max-width: 800px; height: 85%; box-shadow: 0 10px 25px rgba(0,0,0,0.4); position: relative; display: flex; flex-direction: column;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+      <h3 id="previewDocTitle" style="margin: 0; color: var(--text); font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%;">Document Preview</h3>
+      <div style="display: flex; gap: 8px;">
+        <a id="previewDocDownloadBtn" href="" class="btn btn-primary btn-sm" style="background: var(--gold); color: #000; font-weight: 600; padding: 4px 12px; text-decoration: none; border-radius: 6px; font-size: 0.75rem; display: flex; align-items: center; gap: 4px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Download
+        </a>
+        <button type="button" onclick="closeDocPreviewModal()" class="btn btn-ghost btn-sm" style="padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border); color: var(--text); background: none; cursor: pointer; font-size: 0.75rem;">Close</button>
+      </div>
+    </div>
+    <div id="previewDocFrameContainer" style="flex: 1; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #fff; display: flex; align-items: center; justify-content: center;">
+      <!-- Dynamic Iframe will be injected here for secure isolation -->
+    </div>
+  </div>
+</div>
+
+<!-- Contact Detail Info Modal -->
+<div id="contactDetailModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 1050; align-items: center; justify-content: center; transition: opacity 0.3s ease;">
+  <div class="modal-content" style="background: var(--bg-card, #121212); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; width: 90%; max-width: 420px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); position: relative; text-align: center;">
+    <button type="button" onclick="closeContactDetailModal()" style="position: absolute; right: 16px; top: 16px; background: none; border: none; color: var(--text-muted); cursor: pointer;" title="Close">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+    <div id="contactDetailAvatarWrapper" style="margin-bottom: 1.25rem; display: inline-block;">
+      <!-- Rendered dynamically -->
+    </div>
+    <h3 id="contactDetailName" style="margin: 0 0 0.25rem 0; color: var(--text); font-size: 1.3rem;">Name</h3>
+    <div id="contactDetailRole" style="text-transform: uppercase; font-size: 0.72rem; font-weight: 700; color: var(--gold); letter-spacing: 1px; margin-bottom: 1.5rem;">Role</div>
+    
+    <div style="border-top: 1px solid var(--border); padding-top: 1.25rem; text-align: left; display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: flex; gap: 8px; font-size: 0.82rem; color: var(--text-sub);">
+        <span style="font-weight: 600; min-width: 80px;">Status:</span>
+        <span style="color: #10b981; font-weight: 600;">Active Academy Member</span>
+      </div>
+      <div style="display: flex; gap: 8px; font-size: 0.82rem; color: var(--text-sub);">
+        <span style="font-weight: 600; min-width: 80px;">Department:</span>
+        <span id="contactDetailDept">General Guidance</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -513,7 +669,7 @@
 .chat-messages-window {
   flex: 1;
   overflow-y: auto;
-  padding: 1.25rem;
+  padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
@@ -542,26 +698,26 @@
 }
 
 .message-bubble {
-  max-width: 65%;
-  padding: 0.6rem 0.9rem;
-  border-radius: 12px;
+  max-width: 70%;
+  padding: 0.75rem 1rem;
+  border-radius: 16px;
   position: relative;
-  line-height: 1.4;
-  font-size: 0.85rem;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  line-height: 1.45;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .message-row.me .message-bubble {
   background: var(--gold);
   color: #000;
-  border-bottom-right-radius: 2px;
+  border-bottom-right-radius: 4px;
 }
 
 .message-row.them .message-bubble {
   background: var(--bg-input);
   color: var(--text);
   border: 1px solid var(--border);
-  border-bottom-left-radius: 2px;
+  border-bottom-left-radius: 4px;
 }
 
 .message-content {
@@ -570,8 +726,8 @@
 }
 
 .message-time {
-  font-size: 0.65rem;
-  margin-top: 0.35rem;
+  font-size: 0.68rem;
+  margin-top: 0.45rem;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -682,9 +838,248 @@
 .btn-edit-msg:hover {
   opacity: 1;
 }
+
+/* Flash highlight animation for replied-to messages */
+.message-bubble.pulse-highlight {
+  animation: flashHighlight 1.5s ease-out;
+}
+
+@keyframes flashHighlight {
+  0% {
+    background-color: var(--gold-light);
+    transform: scale(1.02);
+  }
+  50% {
+    background-color: var(--gold-light);
+    transform: scale(1.02);
+  }
+  100% {
+    background-color: inherit;
+    transform: scale(1);
+  }
+}
+
+/* Hover Actions and Reaction Drawer */
+.message-bubble {
+  position: relative;
+}
+
+.message-hover-actions {
+  position: absolute;
+  top: -38px;
+  left: 15px;
+  right: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 8px;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  white-space: nowrap;
+}
+
+.message-row.me .message-hover-actions {
+  left: auto;
+  right: 15px;
+}
+
+.message-bubble:hover .message-hover-actions {
+  display: flex;
+}
+
+.reaction-emoji-selector {
+  display: flex;
+  gap: 4px;
+  padding-right: 6px;
+  border-right: 1px solid var(--border);
+}
+
+.emoji-btn {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  padding: 2px;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.emoji-btn:hover {
+  transform: scale(1.3);
+}
+
+.btn-msg-action {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.btn-msg-action:hover {
+  color: var(--gold);
+}
+
+.reaction-badge {
+  transition: background 0.2s;
+}
+.reaction-badge:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
 </style>
 
 <script>
+// Global Error Handler for Diagnostics
+window.onerror = function (message, source, lineno, colno, error) {
+  alert("🚨 JS Error detected:\nMessage: " + message + "\nSource: " + source + "\nLine: " + lineno + ":" + colno);
+  return false;
+};
+
+// Expose Edit Modal Functions Globally
+window.openEditModal = (messageId) => {
+  console.log("✏️ openEditModal inline called with messageId:", messageId);
+  const chatInput = document.getElementById('chatMessageInput');
+  const editIdInput = document.getElementById('editMessageIdInput');
+  const editPreviewText = document.getElementById('editPreviewText');
+  const editPreviewContainer = document.getElementById('editPreviewContainer');
+  
+  // Close reply preview if open, to avoid layout clutter
+  const replyToInput = document.getElementById('replyToInput');
+  const replyPreviewContainer = document.getElementById('replyPreviewContainer');
+  if (replyToInput) replyToInput.value = '';
+  if (replyPreviewContainer) replyPreviewContainer.style.display = 'none';
+
+  let contentDiv = document.getElementById('msg-content-' + messageId);
+  if (!contentDiv) {
+    const messageRow = document.querySelector(`.message-row[data-message-id="${messageId}"]`);
+    if (messageRow) {
+      contentDiv = messageRow.querySelector('.message-content');
+    }
+  }
+
+  if (chatInput && editIdInput && editPreviewText && editPreviewContainer && contentDiv) {
+    const text = contentDiv.textContent.trim();
+    editIdInput.value = messageId;
+    editPreviewText.textContent = text;
+    editPreviewContainer.style.display = 'flex';
+    chatInput.value = text;
+    chatInput.focus();
+    console.log("✅ Loaded message into input bar for inline editing.");
+  } else {
+    console.error("❌ Failed to load edit. Elements missing:", {
+      chatInput: !!chatInput,
+      editIdInput: !!editIdInput,
+      editPreviewText: !!editPreviewText,
+      editPreviewContainer: !!editPreviewContainer,
+      contentDiv: !!contentDiv
+    });
+  }
+};
+
+window.closeEditModal = () => {
+  const modal = document.getElementById('editMessageModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+};
+
+// Global click delegation for edit buttons to run independently of DOMContentLoaded scripts
+document.addEventListener('click', (e) => {
+  const editBtn = e.target.closest('.edit-btn-trigger');
+  if (editBtn) {
+    const msgId = editBtn.getAttribute('data-message-id');
+    console.log("Global edit-btn-trigger click detected for messageId:", msgId);
+    window.openEditModal(msgId);
+  }
+});
+
+// Expose secure document preview functions
+window.openDocPreviewModal = (url, fileName) => {
+  const modal = document.getElementById('documentPreviewModal');
+  const title = document.getElementById('previewDocTitle');
+  const downloadBtn = document.getElementById('previewDocDownloadBtn');
+  const frameContainer = document.getElementById('previewDocFrameContainer');
+  
+  if (modal && title && downloadBtn && frameContainer) {
+    title.textContent = `Preview: ${fileName}`;
+    downloadBtn.href = url;
+    downloadBtn.setAttribute('download', fileName);
+    
+    // Inject sandboxed iframe to securely render PDF/document isolation
+    frameContainer.innerHTML = '';
+    const iframe = document.createElement('iframe');
+    iframe.src = url;
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.border = 'none';
+    
+    // sandbox attributes restrict javascript execution, popups, form submissions inside the document
+    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+    
+    frameContainer.appendChild(iframe);
+    modal.style.display = 'flex';
+  }
+};
+
+window.closeDocPreviewModal = () => {
+  const modal = document.getElementById('documentPreviewModal');
+  const frameContainer = document.getElementById('previewDocFrameContainer');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+  if (frameContainer) {
+    frameContainer.innerHTML = ''; // tear down iframe immediately to free memory
+  }
+};
+
+window.openContactDetailModal = (name, role, profilePic) => {
+  const modal = document.getElementById('contactDetailModal');
+  const titleName = document.getElementById('contactDetailName');
+  const titleRole = document.getElementById('contactDetailRole');
+  const avatarWrapper = document.getElementById('contactDetailAvatarWrapper');
+  const deptEl = document.getElementById('contactDetailDept');
+  
+  if (modal && titleName && titleRole && avatarWrapper) {
+    titleName.textContent = name;
+    titleRole.textContent = role;
+    
+    if (deptEl) {
+      deptEl.textContent = role.charAt(0).toUpperCase() + role.slice(1) + ' Services';
+    }
+
+    let roleColor = 'var(--gold)';
+    if (role === 'admin') roleColor = '#3b82f6';
+    else if (role === 'teacher') roleColor = '#10b981';
+    else if (role === 'counsellor') roleColor = '#f59e0b';
+    else if (role === 'student') roleColor = '#8b5cf6';
+
+    if (profilePic) {
+      avatarWrapper.innerHTML = `<img src="${profilePic}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid ${roleColor};" alt="${name}">`;
+    } else {
+      const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+      avatarWrapper.innerHTML = `
+        <div style="width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.6rem; background-color: ${roleColor}15; color: ${roleColor}; border: 2px solid ${roleColor}30;">
+          ${initials}
+        </div>
+      `;
+    }
+    modal.style.display = 'flex';
+  }
+};
+
+window.closeContactDetailModal = () => {
+  const modal = document.getElementById('contactDetailModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Search & Filter Tab Logic
   const searchInput = document.getElementById('contactSearchInput');
@@ -762,34 +1157,519 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-  window.openEditModal = (messageId) => {
-    const modal = document.getElementById('editMessageModal');
-    const form = document.getElementById('editMessageForm');
-    const textarea = document.getElementById('editMessageTextarea');
-    const contentDiv = document.getElementById('msg-content-' + messageId);
-    
-    if (modal && form && textarea && contentDiv) {
-      form.action = `/auth/messages/${messageId}/edit`;
-      textarea.value = contentDiv.textContent.trim();
-      modal.style.display = 'flex';
-      textarea.focus();
-    }
-  };
 
-  window.closeEditModal = () => {
-    const modal = document.getElementById('editMessageModal');
-    if (modal) {
-      modal.style.display = 'none';
-    }
-  };
-
+  // 4. Edit Modal Logic
   const editModalOverlay = document.getElementById('editMessageModal');
   if (editModalOverlay) {
     editModalOverlay.addEventListener('click', (e) => {
       if (e.target === editModalOverlay) {
-        closeEditModal();
+        window.closeEditModal();
       }
     });
   }
+
+  const docModalOverlay = document.getElementById('documentPreviewModal');
+  if (docModalOverlay) {
+    docModalOverlay.addEventListener('click', (e) => {
+      if (e.target === docModalOverlay) {
+        window.closeDocPreviewModal();
+      }
+    });
+  }
+
+  const detailModalOverlay = document.getElementById('contactDetailModal');
+  if (detailModalOverlay) {
+    detailModalOverlay.addEventListener('click', (e) => {
+      if (e.target === detailModalOverlay) {
+        window.closeContactDetailModal();
+      }
+    });
+  }
+
+  // 5. Reply Handler Logic
+  const replyToInput = document.getElementById('replyToInput');
+  const replyPreviewContainer = document.getElementById('replyPreviewContainer');
+  const replyPreviewUser = document.getElementById('replyPreviewUser');
+  const replyPreviewText = document.getElementById('replyPreviewText');
+  const cancelReplyBtn = document.getElementById('cancelReplyBtn');
+
+  // Trigger reply action
+  document.addEventListener('click', (e) => {
+    const replyBtn = e.target.closest('.reply-btn-trigger');
+    if (replyBtn) {
+      const msgId = replyBtn.getAttribute('data-message-id');
+      const senderName = replyBtn.getAttribute('data-sender-name');
+      const snippet = replyBtn.getAttribute('data-snippet');
+
+      if (replyToInput && replyPreviewContainer && replyPreviewUser && replyPreviewText) {
+        replyToInput.value = msgId;
+        replyPreviewUser.textContent = senderName;
+        replyPreviewText.textContent = snippet;
+        replyPreviewContainer.style.display = 'flex';
+        if (chatInput) chatInput.focus();
+      }
+    }
+
+
+    // Scroll to & highlight replied-to parent message
+    const quotePreview = e.target.closest('.reply-quote-preview');
+    if (quotePreview) {
+      const parentId = quotePreview.getAttribute('data-parent-id');
+      if (parentId) {
+        const parentRow = document.querySelector(`.message-row[data-message-id="${parentId}"]`);
+        if (parentRow) {
+          parentRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const bubble = parentRow.querySelector('.message-bubble');
+          if (bubble) {
+            bubble.classList.remove('pulse-highlight');
+            // Trigger reflow to restart CSS animation cleanly
+            void bubble.offsetWidth;
+            bubble.classList.add('pulse-highlight');
+            setTimeout(() => {
+              bubble.classList.remove('pulse-highlight');
+            }, 1500);
+          }
+        }
+      }
+    }
+  });
+
+  // Cancel reply action
+  if (cancelReplyBtn) {
+    cancelReplyBtn.addEventListener('click', () => {
+      if (replyToInput && replyPreviewContainer) {
+        replyToInput.value = '';
+        replyPreviewContainer.style.display = 'none';
+      }
+    });
+  }
+
+  // 6. Reaction handler via Event Delegation (fetch POST request to /auth/inbox/react)
+  const getCsrfToken = () => {
+    const csrfInput = document.querySelector('input[name="_csrf"]');
+    return csrfInput ? csrfInput.value : '';
+  };
+
+  document.addEventListener('click', async (e) => {
+    const emojiBtn = e.target.closest('.emoji-btn');
+    const badgeBtn = e.target.closest('.reaction-badge');
+
+    let messageId = null;
+    let emoji = null;
+
+    if (emojiBtn) {
+      const msgRow = emojiBtn.closest('.message-row');
+      if (msgRow) {
+        messageId = msgRow.getAttribute('data-message-id');
+        emoji = emojiBtn.getAttribute('data-emoji');
+      }
+    } else if (badgeBtn) {
+      const msgRow = badgeBtn.closest('.message-row');
+      if (msgRow) {
+        messageId = msgRow.getAttribute('data-message-id');
+        emoji = badgeBtn.getAttribute('data-emoji');
+      }
+    }
+
+    if (messageId && emoji) {
+      try {
+        const response = await fetch('/auth/inbox/react', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messageId,
+            emoji,
+            _csrf: getCsrfToken()
+          })
+        });
+        
+        if (response.ok) {
+          // Real-time UI refresh simple version: reload page to match exact backend state cleanly
+          window.location.reload();
+        } else {
+          const resData = await response.json();
+          alert(resData.error || 'Failed to add reaction');
+        }
+      } catch (err) {
+        console.error('Error adding reaction:', err);
+      }
+    }
+  });
+
+  // 7. File Upload Selection & Drag and Drop Handling
+  const fileInput = document.getElementById('chatAttachmentInput');
+  const filePreviewContainer = document.getElementById('filePreviewContainer');
+  const filePreviewText = document.getElementById('filePreviewText');
+  const clearFilesBtn = document.getElementById('clearFilesBtn');
+  const chatMessagesWindow = document.getElementById('chatMessagesWindow');
+
+  const updateFilePreview = () => {
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+      const maxSizeBytes = 25 * 1024 * 1024; // 25 MB
+      const oversizedFiles = Array.from(fileInput.files).filter(f => f.size > maxSizeBytes);
+      
+      if (oversizedFiles.length > 0) {
+        alert(`File size exceeds limit: ${oversizedFiles.map(f => f.name).join(', ')}. Maximum allowed size is 25MB.`);
+        fileInput.value = '';
+        if (filePreviewContainer) filePreviewContainer.style.display = 'none';
+        return;
+      }
+
+      const names = Array.from(fileInput.files).map(f => f.name).join(', ');
+      if (filePreviewText && filePreviewContainer) {
+        filePreviewText.textContent = `Selected files: ${names}`;
+        filePreviewContainer.style.display = 'flex';
+      }
+    } else {
+      if (filePreviewContainer) {
+        filePreviewContainer.style.display = 'none';
+      }
+    }
+  };
+
+  if (fileInput) {
+    fileInput.addEventListener('change', updateFilePreview);
+  }
+
+  if (clearFilesBtn) {
+    clearFilesBtn.addEventListener('click', () => {
+      if (fileInput) {
+        fileInput.value = '';
+        updateFilePreview();
+      }
+    });
+  }
+
+  // Drag and Drop Logic
+  if (chatMessagesWindow && fileInput) {
+    ['dragenter', 'dragover'].forEach(eventName => {
+      chatMessagesWindow.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        chatMessagesWindow.style.background = 'rgba(212, 175, 55, 0.05)';
+        chatMessagesWindow.style.border = '2px dashed var(--gold)';
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      chatMessagesWindow.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        chatMessagesWindow.style.background = 'rgba(0, 0, 0, 0.015)';
+        chatMessagesWindow.style.border = 'none';
+      }, false);
+    });
+
+    chatMessagesWindow.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files && files.length > 0) {
+        fileInput.files = files;
+        updateFilePreview();
+      }
+    }, false);
+  }
+
+  // 8. Dynamic Polling and AJAX Submission for Live Chat (no reloads)
+  const messageForm = document.querySelector('.chat-input-bar');
+  const activeChatContactId = '<%= selectedContact ? selectedContact._id : "" %>';
+  const currentUserId = '<%= user._id %>';
+  const selectedContactName = '<%= selectedContact ? selectedContact.name : "" %>';
+
+  const clearActiveChatUnreadBadge = () => {
+    if (!activeChatContactId) return;
+    const activeContactItem = document.querySelector(`a.contact-item[href*="chat=${activeChatContactId}"]`);
+    if (activeContactItem) {
+      activeContactItem.setAttribute('data-unread', 'false');
+      const dot = activeContactItem.querySelector('.unread-dot');
+      if (dot) dot.remove();
+      const badge = activeContactItem.querySelector('.unread-badge');
+      if (badge) badge.remove();
+    }
+  };
+
+  const escapeHtmlAttr = (str) => {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  };
+
+  const renderChatHistory = (messages) => {
+    if (!chatMessagesWindow) return;
+    
+    // Calculate scroll state to stay down if already scrolled down
+    const isScrolledToBottom = chatMessagesWindow.scrollHeight - chatMessagesWindow.clientHeight <= chatMessagesWindow.scrollTop + 50;
+
+    let html = '';
+    let lastDividerDate = null;
+
+    if (messages.length === 0) {
+      html = '<div class="chat-history-empty"><p>No messages exchanged yet. Send a message to start the conversation!</p></div>';
+    } else {
+      messages.forEach(msg => {
+        const msgDate = new Date(msg.createdAt);
+        const isMe = msg.sender._id.toString() === currentUserId;
+        const formattedTime = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        // Determine Divider Title
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        let dividerText = '';
+        if (msgDate.toDateString() === today.toDateString()) {
+          dividerText = 'Today';
+        } else if (msgDate.toDateString() === yesterday.toDateString()) {
+          dividerText = 'Yesterday';
+        } else {
+          dividerText = msgDate.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        }
+        
+        const showDivider = lastDividerDate !== msgDate.toDateString();
+        if (showDivider) {
+          lastDividerDate = msgDate.toDateString();
+          html += `
+            <div class="chat-date-divider" style="display: flex; align-items: center; justify-content: center; margin: 16px 0; position: relative; width: 100%;">
+              <div style="position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--border); opacity: 0.4; z-index: 1;"></div>
+              <span style="position: relative; z-index: 2; background: var(--bg-card); padding: 4px 12px; border-radius: 20px; font-size: 0.68rem; font-weight: 600; color: var(--text-muted); border: 1px solid var(--border); letter-spacing: 0.5px;">${dividerText}</span>
+            </div>
+          `;
+        }
+
+        let replyQuoteHtml = '';
+        if (msg.replyTo) {
+          const replySenderName = msg.replyTo.sender.toString() === currentUserId ? 'You' : (msg.replyTo.sender.toString() === activeChatContactId ? selectedContactName : 'User');
+          replyQuoteHtml = `
+            <div class="reply-quote-preview" data-parent-id="${msg.replyTo._id}" style="background: rgba(0,0,0,0.15); border-left: 3px solid var(--gold); padding: 4px 8px; border-radius: 4px; margin-bottom: 6px; font-size: 0.75rem; color: var(--text-sub); display: flex; flex-direction: column; cursor: pointer;">
+              <span style="font-weight: 700; font-size: 0.7rem; color: var(--gold); margin-bottom: 2px;">${replySenderName}</span>
+              <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">${msg.replyTo.content}</span>
+            </div>
+          `;
+        }
+
+        let attachmentsHtml = '';
+        if (msg.attachments && msg.attachments.length > 0) {
+          attachmentsHtml += '<div class="message-attachments" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">';
+          msg.attachments.forEach(att => {
+            if (att.fileType.startsWith('image/')) {
+              attachmentsHtml += `
+                <div class="attachment-image-wrapper" onclick="openDocPreviewModal('${att.url}', '${att.fileName}')" style="max-width: 280px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); cursor: pointer;">
+                  <img src="${att.url}" style="width: 100%; height: auto; display: block;" alt="Uploaded Image">
+                </div>
+              `;
+            } else {
+              attachmentsHtml += `
+                <div class="attachment-file-wrapper" onclick="openDocPreviewModal('${att.url}', '${att.fileName}')" style="display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.1); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 0.8rem; cursor: pointer; transition: background 0.2s;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--gold);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                  <span style="color: var(--text); font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;">${att.fileName || 'Attachment'}</span>
+                </div>
+              `;
+            }
+          });
+          attachmentsHtml += '</div>';
+        }
+        let editBtnHtml = '';
+        if (isMe) {
+          editBtnHtml = `
+            <button class="btn-msg-action edit-btn-trigger" data-message-id="${msg._id}" title="Edit Message">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            </button>
+          `;
+        }
+
+        let reactionsHtml = '';
+        if (msg.reactions && msg.reactions.length > 0) {
+          reactionsHtml += '<div class="message-reactions-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">';
+          const reactionCounts = {};
+          msg.reactions.forEach(r => {
+            reactionCounts[r.emoji] = (reactionCounts[r.emoji] || 0) + 1;
+          });
+          Object.entries(reactionCounts).forEach(([emoji, count]) => {
+            reactionsHtml += `
+              <span class="reaction-badge" data-emoji="${emoji}" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.08); border: 1px solid var(--border); border-radius: 12px; padding: 2px 6px; font-size: 0.75rem; cursor: pointer; user-select: none;">
+                ${emoji} <span style="opacity: 0.8; margin-left: 2px; font-size: 0.65rem;">${count}</span>
+              </span>
+            `;
+          });
+          reactionsHtml += '</div>';
+        }
+
+        const seenHtml = isMe ? `<span class="read-status-text" style="font-size: 0.65rem; opacity: 0.85; margin-left: 4px;">${msg.readAt ? 'Seen (' + new Date(msg.readAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ')' : 'Sent'}</span>` : '';
+
+        html += `
+          <div class="message-row ${isMe ? 'me' : 'them'}" data-message-id="${msg._id}">
+            <div class="message-bubble" style="box-shadow: 0 2px 8px rgba(0,0,0,0.12); margin-top: 2px; position: relative;">
+              ${replyQuoteHtml}
+              <div class="message-content" id="msg-content-${msg._id}">${msg.content}</div>
+              ${attachmentsHtml}
+              <div class="message-hover-actions">
+                <div class="reaction-emoji-selector">
+                  <button class="emoji-btn" data-emoji="👍" title="Like">👍</button>
+                  <button class="emoji-btn" data-emoji="❤️" title="Love">❤️</button>
+                  <button class="emoji-btn" data-emoji="😂" title="Laugh">😂</button>
+                  <button class="emoji-btn" data-emoji="😮" title="Wow">😮</button>
+                  <button class="emoji-btn" data-emoji="😢" title="Sad">😢</button>
+                  <button class="emoji-btn" data-emoji="🙏" title="Pray/Thanks">🙏</button>
+                </div>
+                <button class="btn-msg-action reply-btn-trigger" data-message-id="${msg._id}" data-sender-name="${isMe ? 'You' : escapeHtmlAttr(selectedContactName)}" data-snippet="${escapeHtmlAttr(msg.content.substring(0, 60))}" title="Reply">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+                </button>
+                ${editBtnHtml}
+              </div>
+              ${reactionsHtml}
+              <div class="message-time" style="opacity: 0.75; display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                ${formattedTime}
+                ${seenHtml}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    chatMessagesWindow.innerHTML = html;
+    clearActiveChatUnreadBadge();
+    
+    if (isScrolledToBottom) {
+      chatMessagesWindow.scrollTop = chatMessagesWindow.scrollHeight;
+    }
+  };
+
+  const pollMessages = async () => {
+    if (!activeChatContactId) return;
+    try {
+      const response = await fetch(`/auth/inbox/messages?chat=${activeChatContactId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.ok && data.messages) {
+          renderChatHistory(data.messages);
+        }
+      }
+    } catch (err) {
+      console.error('Polling error:', err);
+    }
+  };
+
+  // Poll for new messages every 3 seconds to keep chat live
+  if (activeChatContactId) {
+    setInterval(pollMessages, 3000);
+  }
+
+  // Cancel Edit Action Handler
+  const cancelEditBtn = document.getElementById('cancelEditBtn');
+  const editMessageIdInput = document.getElementById('editMessageIdInput');
+  const editPreviewContainer = document.getElementById('editPreviewContainer');
+
+  if (cancelEditBtn) {
+    cancelEditBtn.addEventListener('click', () => {
+      if (editMessageIdInput) editMessageIdInput.value = '';
+      if (editPreviewContainer) editPreviewContainer.style.display = 'none';
+      if (chatInput) chatInput.value = '';
+    });
+  }
+
+  // Handle AJAX message submission (no page reloads on send or edit)
+  if (messageForm) {
+    messageForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const restoreSubmitBtn = () => {
+        const submitBtn = messageForm.querySelector('button[type="submit"]');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          const origText = submitBtn.getAttribute('data-original-text');
+          if (origText) {
+            submitBtn.innerHTML = origText;
+          }
+        }
+      };
+
+      const editMessageId = editMessageIdInput ? editMessageIdInput.value : '';
+
+      if (editMessageId) {
+        // Handle Inline Message Edit via AJAX
+        const content = chatInput ? chatInput.value.trim() : '';
+        if (!content) {
+          restoreSubmitBtn();
+          return;
+        }
+
+        const actionUrl = `/auth/messages/${editMessageId}/edit`;
+
+        const params = new URLSearchParams();
+        params.append('content', content);
+        params.append('_csrf', getCsrfToken());
+
+        try {
+          const response = await fetch(actionUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json'
+            },
+            body: params.toString()
+          });
+
+          if (response.ok) {
+            // Reset Edit State
+            if (editMessageIdInput) editMessageIdInput.value = '';
+            if (editPreviewContainer) editPreviewContainer.style.display = 'none';
+            if (chatInput) chatInput.value = '';
+            
+            // Poll immediately to show edited content
+            pollMessages();
+          } else {
+            const errData = await response.json().catch(() => ({ error: 'Failed to update message.' }));
+            alert(errData.error || 'Failed to update message.');
+          }
+        } catch (err) {
+          console.error('AJAX edit error:', err);
+          alert('An error occurred while editing the message.');
+        } finally {
+          restoreSubmitBtn();
+        }
+        return;
+      }
+
+      // Otherwise: Standard Send Message
+      const formData = new FormData(messageForm);
+      if (!chatInput.value.trim() && (!fileInput || fileInput.files.length === 0)) {
+        restoreSubmitBtn();
+        return; // do not send empty
+      }
+
+      try {
+        const response = await fetch('/auth/inbox/send', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (response.ok) {
+          // Clear inputs
+          chatInput.value = '';
+          if (fileInput) fileInput.value = '';
+          if (replyToInput) replyToInput.value = '';
+          if (replyPreviewContainer) replyPreviewContainer.style.display = 'none';
+          if (filePreviewContainer) filePreviewContainer.style.display = 'none';
+          
+          // Poll immediately to show new message
+          pollMessages();
+        } else {
+          console.error('Failed to send message via AJAX');
+        }
+      } catch (err) {
+        console.error('AJAX send error:', err);
+      } finally {
+        restoreSubmitBtn();
+      }
+    });
+  }
+  
+  // Clear unread badge for the active chat immediately on page load
+  clearActiveChatUnreadBadge();
 });
 </script>

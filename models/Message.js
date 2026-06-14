@@ -11,6 +11,10 @@ const messageSchema = new mongoose.Schema({
   sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
+  reactions: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    emoji: { type: String, required: true }
+  }],
   content: { type: String, trim: true, default: '' },
   attachments: [attachmentSchema],
   read: { type: Boolean, default: false },

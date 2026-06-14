@@ -40,7 +40,9 @@ router.post('/change-password', protect, ctrl.changePassword);
 
 // Messaging Inbox
 router.get('/inbox', protect, ctrl.getInbox);
-router.post('/inbox/send', protect, ctrl.postInboxSend);
+router.get('/inbox/messages', protect, ctrl.getInboxMessages);
+router.post('/inbox/send', protect, upload.array('attachments', 5), ctrl.postInboxSend);
+router.post('/inbox/react', protect, ctrl.postAddReaction);
 
 // Notifications
 router.post('/notifications/:id/read', protect, ctrl.postReadNotification);

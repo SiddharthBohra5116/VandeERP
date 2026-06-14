@@ -220,29 +220,45 @@ exports.getInbox = async (req, res) => {
     } else if (req.user.role === 'teacher') {
       const Schedule = require('../models/Schedule');
       const Teacher = require('../models/Teacher');
+      const Counsellor = require('../models/Counsellor');
       const teacherProfile = await Teacher.findOne({ user: req.user._id });
       const assignedBatches = teacherProfile ? await Schedule.distinct('batch', { teacher: teacherProfile._id }) : [];
-      const batchStudents = await Student.find({ batch: { $in: assignedBatches } }).select('user');
+      const batchStudents = await Student.find({ batch: { $in: assignedBatches } }).select('user counsellor');
       const batchUserIds = batchStudents.map(s => s.user).filter(Boolean);
+      
+      const counsellorProfileIds = batchStudents.map(s => s.counsellor).filter(Boolean);
+      const counsellors = await Counsellor.find({ _id: { $in: counsellorProfileIds } }).select('user');
+      const counsellorUserIds = counsellors.map(c => c.user).filter(Boolean);
+
       defaultContacts = await User.find({
         _id: { $ne: req.user._id },
         $or: [
           { role: 'admin' },
-          { _id: { $in: batchUserIds } }
+          { role: 'teacher' },
+          { _id: { $in: batchUserIds } },
+          { _id: { $in: counsellorUserIds } }
         ]
       })
         .select('name role profilePic')
         .sort({ name: 1 });
     } else if (req.user.role === 'counsellor') {
       const Counsellor = require('../models/Counsellor');
+      const Teacher = require('../models/Teacher');
       const counsellorProfile = await Counsellor.findOne({ user: req.user._id });
-      const assignedStudents = counsellorProfile ? await Student.find({ counsellor: counsellorProfile._id }).select('user') : [];
+      const assignedStudents = counsellorProfile ? await Student.find({ counsellor: counsellorProfile._id }).select('user teacher') : [];
       const assignedUserIds = assignedStudents.map(s => s.user).filter(Boolean);
+
+      const teacherProfileIds = assignedStudents.map(s => s.teacher).filter(Boolean);
+      const teachers = await Teacher.find({ _id: { $in: teacherProfileIds } }).select('user');
+      const teacherUserIds = teachers.map(t => t.user).filter(Boolean);
+
       defaultContacts = await User.find({
         _id: { $ne: req.user._id },
         $or: [
           { role: 'admin' },
-          { _id: { $in: assignedUserIds } }
+          { role: 'counsellor' },
+          { _id: { $in: assignedUserIds } },
+          { _id: { $in: teacherUserIds } }
         ]
       })
         .select('name role profilePic')
@@ -332,6 +348,7 @@ exports.getInbox = async (req, res) => {
           ]
         })
           .populate('sender recipient', 'name role profilePic')
+          .populate('replyTo')
           .sort({ createdAt: 1 });
 
         // Find the unread message IDs before marking them read
@@ -387,18 +404,75 @@ exports.getInbox = async (req, res) => {
   }
 };
 
-// POST /auth/inbox/send
-exports.postInboxSend = async (req, res) => {
-  const { recipientId, content } = req.body;
+// GET /auth/inbox/messages (AJAX polling helper returning JSON list of messages)
+exports.getInboxMessages = async (req, res) => {
+  const contactId = req.query.chat;
+  if (!contactId) {
+    return res.status(400).json({ error: 'Missing chat parameter' });
+  }
   try {
     const Message = require('../models/Message');
     const { validateAndSanitizeMessage } = require('../utils/messageValidator');
-    const { cleanContent } = await validateAndSanitizeMessage(req.user, recipientId, content);
+    
+    // Auth check first
+    await validateAndSanitizeMessage(req.user, contactId, 'check');
+
+    const chatHistory = await Message.find({
+      $or: [
+        { sender: req.user._id, recipient: contactId },
+        { sender: contactId, recipient: req.user._id }
+      ]
+    })
+      .populate('sender recipient', 'name role profilePic')
+      .populate('replyTo')
+      .sort({ createdAt: 1 });
+
+    // Mark received messages from this contact as read
+    await Message.updateMany(
+      { sender: contactId, recipient: req.user._id, read: false },
+      { $set: { read: true, readAt: new Date() } }
+    );
+
+    res.json({ ok: true, messages: chatHistory });
+  } catch (err) {
+    console.error('❌ getInboxMessages Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /auth/inbox/send
+exports.postInboxSend = async (req, res) => {
+  const { recipientId, content, replyTo } = req.body;
+  try {
+    const Message = require('../models/Message');
+    const { validateAndSanitizeMessage } = require('../utils/messageValidator');
+    
+    let validateContent = content;
+    const hasFiles = req.files && req.files.length > 0;
+    if (!validateContent && hasFiles) {
+      validateContent = 'attachment_only';
+    }
+
+    const { cleanContent } = await validateAndSanitizeMessage(req.user, recipientId, validateContent);
+
+    const attachments = [];
+    if (hasFiles) {
+      req.files.forEach(f => {
+        attachments.push({
+          url: `/files/${f.filename}`,
+          fileName: f.originalname || '',
+          fileType: f.mimetype || '',
+          fileSize: f.size || 0
+        });
+      });
+    }
 
     await Message.create({
       sender: req.user._id,
       recipient: recipientId,
-      content: cleanContent
+      content: cleanContent,
+      replyTo: replyTo || null,
+      attachments
     });
 
     res.redirect(`/auth/inbox?chat=${recipientId}`);
@@ -482,26 +556,20 @@ exports.editMessage = async (req, res) => {
     const Message = require('../models/Message');
     const msg = await Message.findById(id);
     if (!msg) {
+      if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
+        return res.status(404).json({ error: 'Message not found' });
+      }
       return res.status(404).render('404', { title: 'Not Found', user: req.user, layout: 'main' });
     }
 
     // Authorization: only the sender can edit
     if (msg.sender.toString() !== req.user._id.toString()) {
+      if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
+        return res.status(403).json({ error: 'You are not authorized to edit this message.' });
+      }
       return res.status(403).render('403', { title: 'Access Restricted', user: req.user, error: 'You are not authorized to edit this message.' });
     }
 
-    // Constraints: must be unread and within the 10-minute window
-    const now = new Date();
-    const hasBeenRead = msg.read || msg.readAt !== null;
-    const isPastWindow = msg.editableUntil && now > new Date(msg.editableUntil);
-
-    if (hasBeenRead || isPastWindow) {
-      return res.status(400).render('400', {
-        title: 'Bad Request',
-        user: req.user,
-        error: 'Messages can only be edited if they are unread and within 10 minutes of being sent.'
-      });
-    }
 
     // Sanitize content (strip HTML, limit length)
     let cleanContent = (content || '').trim();
@@ -511,6 +579,9 @@ exports.editMessage = async (req, res) => {
     cleanContent = cleanContent.replace(/<[^>]*>/g, '');
 
     if (!cleanContent) {
+      if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
+        return res.status(400).json({ error: 'Message content cannot be empty.' });
+      }
       return res.status(400).render('400', { title: 'Bad Request', user: req.user, error: 'Message content cannot be empty after sanitization.' });
     }
 
@@ -518,12 +589,66 @@ exports.editMessage = async (req, res) => {
     await msg.save();
 
     console.log('✅ Message edited successfully:', { messageId: msg._id });
+    if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
+      return res.json({ ok: true, message: msg });
+    }
     res.redirect(`/auth/inbox?chat=${msg.recipient}`);
   } catch (err) {
     console.error('❌ editMessage Error:', err);
+    if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
     res.status(500).render('500', { title: 'Error', user: req.user, layout: 'main' });
   }
 };
+
+/**
+ * POST /auth/inbox/react
+ * Handles emoji reactions. Only allows participants to react.
+ */
+exports.postAddReaction = async (req, res) => {
+  const { messageId, emoji } = req.body;
+  try {
+    const Message = require('../models/Message');
+    const msg = await Message.findById(messageId);
+    if (!msg) {
+      return res.status(404).json({ ok: false, error: 'Message not found' });
+    }
+
+    // Auth check: user must be sender or recipient
+    const userIdStr = req.user._id.toString();
+    if (msg.sender.toString() !== userIdStr && msg.recipient.toString() !== userIdStr) {
+      return res.status(403).json({ ok: false, error: 'Access Denied' });
+    }
+
+    if (!msg.reactions) {
+      msg.reactions = [];
+    }
+
+    const existingReactionIndex = msg.reactions.findIndex(r => r.user.toString() === userIdStr);
+
+    if (existingReactionIndex > -1) {
+      const existingReaction = msg.reactions[existingReactionIndex];
+      if (existingReaction.emoji === emoji) {
+        msg.reactions.splice(existingReactionIndex, 1);
+      } else {
+        existingReaction.emoji = emoji;
+      }
+    } else {
+      msg.reactions.push({
+        user: req.user._id,
+        emoji
+      });
+    }
+
+    await msg.save();
+    res.json({ ok: true, reactions: msg.reactions });
+  } catch (err) {
+    console.error('❌ postAddReaction Error:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+};
+
 // GET /auth/guide
 exports.getGuide = async (req, res) => {
   try {
