@@ -389,9 +389,11 @@ a.stat-card:hover, .stat-card:hover {
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
 .two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
+/* Prevent child content from expanding past grid cell width */
+.grid-2 > *, .grid-3 > *, .two-col > * { min-width: 0; }
 .installments-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
   padding-top: 0.5rem;
 }
@@ -1267,14 +1269,16 @@ body.light-theme .slide-over-drawer {
     right: 0;
   }
 
-  /* Tables always scroll horizontally */
+  /* Tables: scrollable wrapper. Table itself does NOT get a min-width on mobile. */
   .table-wrap,
   .table-responsive {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  table {
-    min-width: 600px;
+  /* Only give tables a min-width at tablet+ where there's more space */
+  .table-wrap table,
+  .table-responsive table {
+    min-width: 540px;
   }
 }
 
@@ -1329,6 +1333,10 @@ body.light-theme .slide-over-drawer {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
+  }
+  /* When there are exactly 3 cards, last one spans full width to avoid orphan */
+  .stats-grid > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
   .stat-card {
     padding: 0.85rem 0.75rem;

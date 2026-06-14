@@ -46,7 +46,7 @@
         <span class="badge badge-red" style="font-size: 11px;">⚠️ Total Late Fines: +₹<%= fee.totalFine.toLocaleString('en-IN') %></span>
       <% } %>
     </div>
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; padding-top: 0.5rem;">
+    <div class="installments-grid">
       <% if (fee.installments && fee.installments.length > 0) { %>
         <% fee.installments.forEach(inst => { %>
           <% 
@@ -127,7 +127,7 @@
           <tbody>
             <% fee.payments.forEach(p => { %>
               <tr>
-                <td class="mono text-sm"><%= new Date(p.paidAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %></td>
+                <td class="mono text-sm" style="white-space: nowrap;"><%= new Date(p.paidAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) %></td>
                 <td class="mono text-green fw-600">₹<%= p.amount.toLocaleString('en-IN') %></td>
                 <td><span class="badge badge-grey"><%= p.method %></span></td>
                 <td class="mono text-xs"><%= p.transactionId || '—' %></td>

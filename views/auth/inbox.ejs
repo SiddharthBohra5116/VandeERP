@@ -5,7 +5,7 @@
   page = 'inbox';
 %>
 
-<div class="inbox-container <%= selectedContact ? 'has-selection' : '' %>">
+<div class="inbox-container <%= selectedContact ? 'has-selection' : '' %>" id="inboxContainer">
   <!-- Contacts Panel (Left) -->
   <div class="inbox-contacts-panel">
     <div class="contacts-search-box">
@@ -110,6 +110,9 @@
       <!-- Chat Header -->
       <div class="chat-header-bar">
         <div class="chat-header-info">
+          <button type="button" class="inbox-back-btn" onclick="document.getElementById('inboxContainer').classList.remove('has-selection')" aria-label="Back to contacts" title="Back to contacts">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          </button>
           <% 
             let roleColor = 'var(--gold)';
             if (selectedContact.role === 'admin') roleColor = '#3b82f6';
@@ -798,6 +801,26 @@
   color: var(--text) !important;
 }
 
+/* Mobile “back to contacts” button inside chat header */
+.inbox-back-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.inbox-back-btn:hover {
+  background: var(--bg-input);
+}
+
 @media (max-width: 900px) {
   .inbox-container {
     grid-template-columns: 1fr;
@@ -813,6 +836,9 @@
     display: none;
   }
   .inbox-container.has-selection .inbox-chat-panel {
+    display: flex;
+  }
+  .inbox-back-btn {
     display: flex;
   }
 }

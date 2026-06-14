@@ -116,13 +116,13 @@
 <!-- Tuition Installments Schedule (Student View) -->
 <% if (fee && fee.installments && fee.installments.length > 0) { %>
   <div class="card" style="margin-bottom: 1.5rem;">
-    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div class="card-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.5rem;">
       <div class="card-title" style="display:flex; align-items:center; gap:0.4rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gold);">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gold"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
         Tuition Fee Installment Schedule
       </div>
       <% if (fee.totalFine > 0) { %>
-        <span class="badge badge-red" style="font-size: 10px;">⚠️ Late Fines Accrued: +₹<%= fee.totalFine.toLocaleString('en-IN') %></span>
+        <span class="badge badge-red" style="font-size: 10px; white-space: normal; text-align: right;">⚠️ Late Fines Accrued: +₹<%= fee.totalFine.toLocaleString('en-IN') %></span>
       <% } %>
     </div>
     <div class="installments-grid">
@@ -248,7 +248,7 @@
     const todaySchedules = schedules.filter(s => s.date === today);
   %>
   <!-- Today's Schedule Card -->
-  <div style="grid-column: span 2; margin-bottom: 1rem;" class="card">
+  <div style="grid-column: 1 / -1; margin-bottom: 1rem;" class="card">
     <div class="card-header card-header--divided">
       <div class="card-title" style="display:flex; align-items:center; gap:0.4rem;">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gold"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -292,7 +292,7 @@
   </div>
 
   <!-- Class Schedules / Batch Timetable (Weekly Grid) -->
-  <div style="grid-column: span 2; margin-bottom: 0.5rem;">
+  <div style="grid-column: 1 / -1; margin-bottom: 0.5rem;">
     <%- include('../partials/_weekly_timetable', { daysTimetable, weekDates, weekOffset, viewType: 'student' }) %>
   </div>
 
@@ -365,7 +365,7 @@
 
   <!-- Staff Remarks Timeline -->
   <% if (user.remarks && user.remarks.length > 0) { %>
-    <div class="card" style="margin-top: 1rem; grid-column: span 2;">
+    <div class="card" style="margin-top: 1rem; grid-column: 1 / -1;">
       <div class="card-header card-header--divided">
         <div class="card-title" style="display:flex; align-items:center; gap:0.4rem;">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gold"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
