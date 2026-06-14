@@ -23,60 +23,54 @@
 %>
 
 <!-- Greeting Header -->
-<h2 id="dashboardGreeting" style="font-family: var(--font-display); font-weight: 800; font-size: 1.6rem; color: var(--gold); margin-bottom: 1.5rem;">Welcome back!</h2>
+<h2 id="dashboardGreeting" class="dashboard-greeting">Welcome back!</h2>
 
 <!-- Document Verification Banner -->
 <% if (isKycIncomplete) { %>
-  <div class="card" style="border: 2px solid var(--red); background: rgba(239, 68, 68, 0.06); margin-bottom: 1.5rem; padding: 1.25rem 1.5rem;">
-    <div style="display: flex; align-items: flex-start; gap: 1rem;">
-      <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--radius); padding: 0.55rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--red);">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="13" y2="13"/></svg>
-      </div>
-      <div style="flex: 1;">
-        <h3 style="font-size: 1rem; font-weight: 700; color: var(--red); margin-bottom: 0.4rem;">
-          Document Verification Pending
-        </h3>
-        <p style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 0.85rem; line-height: 1.5;">
-          Please complete the following to activate your full account. This is required for attendance, assignments, and your completion certificate.
-        </p>
-        <ul style="margin: 0 0 1rem 0; padding-left: 1.2rem; font-size: 0.84rem; color: var(--text); line-height: 1.7;">
-          <% if (hasNoIdProof) { %>
-            <li><strong>Upload your ID document</strong> — a government-issued photo ID (e.g. Aadhaar, passport, or school ID).</li>
-          <% } %>
-          <% if (!user.fatherName) { %>
-            <li><strong>Add your parent / guardian name</strong> — required for enrollment records.</li>
-          <% } %>
-          <% if (!user.guardianPhone) { %>
-            <li><strong>Add a guardian contact number</strong> — required for emergency contact.</li>
-          <% } %>
-        </ul>
-        <a href="/auth/profile#document-verification" class="btn btn-red btn-sm" style="font-weight: 600;">Complete Document Verification &rarr;</a>
-      </div>
+  <div class="alert-card danger">
+    <div class="alert-card-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="13" y2="13"/></svg>
+    </div>
+    <div style="flex: 1;">
+      <h3 style="font-size: 1rem; font-weight: 700; color: var(--red); margin-bottom: 0.4rem;">
+        Document Verification Pending
+      </h3>
+      <p style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 0.85rem; line-height: 1.5;">
+        Please complete the following to activate your full account. This is required for attendance, assignments, and your completion certificate.
+      </p>
+      <ul style="margin: 0 0 1rem 0; padding-left: 1.2rem; font-size: 0.84rem; color: var(--text); line-height: 1.7;">
+        <% if (hasNoIdProof) { %>
+          <li><strong>Upload your ID document</strong> — a government-issued photo ID (e.g. Aadhaar, passport, or school ID).</li>
+        <% } %>
+        <% if (!user.fatherName) { %>
+          <li><strong>Add your parent / guardian name</strong> — required for enrollment records.</li>
+        <% } %>
+        <% if (!user.guardianPhone) { %>
+          <li><strong>Add a guardian contact number</strong> — required for emergency contact.</li>
+        <% } %>
+      </ul>
+      <a href="/auth/profile#document-verification" class="btn btn-red btn-sm" style="font-weight: 600;">Complete Document Verification &rarr;</a>
     </div>
   </div>
 <% } else if (isIdNotVerified) { %>
-  <div class="card" style="border: 1px solid rgba(195,155,52,0.5); background: rgba(195,155,52,0.05); margin-bottom: 1.5rem; padding: 1rem 1.25rem;">
-    <div style="display: flex; align-items: center; gap: 0.85rem;">
-      <div style="color: var(--gold); flex-shrink: 0;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      </div>
-      <div>
-        <span style="font-size: 0.87rem; font-weight: 600; color: var(--gold);">Document Verification in progress</span>
-        <span style="font-size: 0.82rem; color: var(--text-sub); margin-left: 0.5rem;">— Your document has been uploaded and is being reviewed by the academy. No further action needed.</span>
-      </div>
+  <div class="alert-card warning">
+    <div class="alert-card-icon" style="color: var(--gold);">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <div>
+      <span style="font-size: 0.87rem; font-weight: 600; color: var(--gold);">Document Verification in progress</span>
+      <span style="font-size: 0.82rem; color: var(--text-sub); margin-left: 0.5rem;">— Your document has been uploaded and is being reviewed by the academy. No further action needed.</span>
     </div>
   </div>
 <% } else if (hasMissingFields) { %>
-  <div class="card" style="border: 1px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.04); margin-bottom: 1.5rem; padding: 1rem 1.25rem;">
-    <div style="display: flex; align-items: flex-start; gap: 0.85rem;">
-      <div style="color: var(--red); flex-shrink: 0; margin-top: 2px;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      </div>
-      <div>
-        <span style="font-size: 0.87rem; font-weight: 600; color: var(--red);">Profile incomplete</span>
-        <span style="font-size: 0.82rem; color: var(--text-sub); margin-left: 0.4rem;">— Missing: <strong><%= missingFields.join(', ') %></strong>.</span>
-        <a href="/auth/profile" style="font-size: 0.82rem; color: var(--gold); text-decoration: underline; margin-left: 0.5rem;">Update profile &rarr;</a>
-      </div>
+  <div class="alert-card danger">
+    <div class="alert-card-icon" style="color: var(--red); padding: 0.25rem;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </div>
+    <div>
+      <span style="font-size: 0.87rem; font-weight: 600; color: var(--red);">Profile incomplete</span>
+      <span style="font-size: 0.82rem; color: var(--text-sub); margin-left: 0.4rem;">— Missing: <strong><%= missingFields.join(', ') %></strong>.</span>
+      <a href="/auth/profile" style="font-size: 0.82rem; color: var(--gold); text-decoration: underline; margin-left: 0.5rem;">Update profile &rarr;</a>
     </div>
   </div>
 <% } %>
@@ -92,17 +86,17 @@
 
 <% if (typeof notEnrolled === 'undefined' || !notEnrolled) { %>
 <div class="stats-grid">
-  <a href="/student/attendance" class="stat-card green" style="display: block; text-decoration: none; transition: transform 0.2s;">
+  <a href="/student/attendance" class="stat-card green">
     <div class="stat-label">Attendance Rate</div>
     <div class="stat-value"><%= (attendancePct !== null && attendancePct !== undefined) ? attendancePct + '%' : '—' %></div>
     <div class="stat-sub">Attended: <%= presentCount %> / <%= totalClasses %> sessions</div>
   </a>
-  <a href="/student/assignments" class="stat-card gold" style="display: block; text-decoration: none; transition: transform 0.2s;">
+  <a href="/student/assignments" class="stat-card gold">
     <div class="stat-label">Pending Homework</div>
     <div class="stat-value"><%= pendingAssignments.length %></div>
     <div class="stat-sub">Assignments requiring submission</div>
   </a>
-  <a href="/student/fees" class="stat-card red" style="display: block; text-decoration: none; transition: transform 0.2s;">
+  <a href="/student/fees" class="stat-card red">
     <div class="stat-label">Outstanding Fees Due</div>
     <div class="stat-value">₹<%= netDue.toLocaleString('en-IN') %></div>
     <div class="stat-sub">
@@ -182,8 +176,8 @@
 
 <!-- Admin & Faculty Alerts -->
 <div class="card" style="margin-bottom: 1.5rem; border-color: var(--gold-border); background: linear-gradient(180deg, rgba(255,204,0,0.02) 0%, rgba(0,0,0,0) 100%);">
-  <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
-    <div class="card-title" style="color:var(--gold); font-size:0.75rem; letter-spacing:0.05em; display:flex; align-items:center; gap:0.4rem; text-transform: uppercase;">
+  <div class="card-header card-header--divided">
+    <div class="card-title" style="color:var(--gold);">
       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       Direct Messages & Notifications
     </div>
@@ -210,8 +204,8 @@
 
 <!-- Identity Verification Status -->
 <div class="card" style="margin-bottom: 1.5rem;">
-  <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
-    <div class="card-title" style="display:flex; align-items:center; gap:0.4rem;">
+  <div class="card-header card-header--divided">
+    <div class="card-title">
       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gold"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
       Identity Verification Document (Aadhaar / PAN Card)
     </div>
@@ -255,7 +249,7 @@
   %>
   <!-- Today's Schedule Card -->
   <div style="grid-column: span 2; margin-bottom: 1rem;" class="card">
-    <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+    <div class="card-header card-header--divided">
       <div class="card-title" style="display:flex; align-items:center; gap:0.4rem;">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gold"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         Today's Schedule & Classes
@@ -372,7 +366,7 @@
   <!-- Staff Remarks Timeline -->
   <% if (user.remarks && user.remarks.length > 0) { %>
     <div class="card" style="margin-top: 1rem; grid-column: span 2;">
-      <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+      <div class="card-header card-header--divided">
         <div class="card-title" style="display:flex; align-items:center; gap:0.4rem;">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gold"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           Academy Faculty & Staff Remarks
