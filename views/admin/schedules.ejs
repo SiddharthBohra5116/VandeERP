@@ -284,7 +284,8 @@
               <div class="calendar-event-card" 
                    data-id="<%= sched._id %>"
                    data-subject="<%= sched.note || '—' %>"
-                   data-batch="<%= sched.batch %>"
+                   data-batch="<%= sched.batch && sched.batch._id ? sched.batch._id : sched.batch %>"
+                   data-course="<%= sched.course && sched.course._id ? sched.course._id : sched.course %>"
                    data-teacher="<%= sched.teacher ? sched.teacher._id : '' %>"
                    data-classroom="<%= sched.classroom ? sched.classroom._id : '' %>"
                    data-date="<%= sched.date %>"
@@ -345,7 +346,8 @@
                 <div class="calendar-event-card"
                      data-id="<%= sched._id %>"
                      data-subject="<%= sched.note || '—' %>"
-                     data-batch="<%= sched.batch %>"
+                     data-batch="<%= sched.batch && sched.batch._id ? sched.batch._id : sched.batch %>"
+                     data-course="<%= sched.course && sched.course._id ? sched.course._id : sched.course %>"
                      data-teacher="<%= sched.teacher ? sched.teacher._id : '' %>"
                      data-classroom="<%= sched.classroom ? sched.classroom._id : '' %>"
                      data-date="<%= sched.date %>"
@@ -357,7 +359,7 @@
                      onmouseover="this.style.borderColor='var(--gold-hover)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--gold)'; this.style.transform='none'">
                   <div style="font-weight: 700; color: var(--text);"><%= sched.note || '—' %></div>
                   <div style="font-size: 0.65rem; color: var(--text-sub); display: flex; flex-direction: column; gap: 1px; margin-top: auto; padding-top: 4px; border-top: 1px dashed var(--border-light);">
-                    <span style="font-weight: 600;"><%= sched.batch %></span>
+                    <span style="font-weight: 600;"><%= sched.batch && sched.batch.name ? sched.batch.name : sched.batch %></span>
                     <% if (sched.teacher) { %>
                       <span style="color: var(--gold-light);">👨‍🏫 <%= sched.teacher.name %></span>
                     <% } %>
@@ -388,20 +390,21 @@
         }
         
         let courseName = 'Other General';
-        const bLower = s.batch.toLowerCase();
-        if (bLower.includes('video')) {
+        const batchName = s.batch && s.batch.name ? s.batch.name : String(s.batch);
+        const bLower = batchName.toLowerCase();
+        if (bLower.includes('video') || bLower.includes('ve')) {
           courseName = 'Video Editing';
-        } else if (bLower.includes('marketing')) {
+        } else if (bLower.includes('marketing') || bLower.includes('dm')) {
           courseName = 'Digital Marketing';
         }
         
         if (!classroomTree[cName].courses[courseName]) {
           classroomTree[cName].courses[courseName] = {};
         }
-        if (!classroomTree[cName].courses[courseName][s.batch]) {
-          classroomTree[cName].courses[courseName][s.batch] = [];
+        if (!classroomTree[cName].courses[courseName][batchName]) {
+          classroomTree[cName].courses[courseName][batchName] = [];
         }
-        classroomTree[cName].courses[courseName][s.batch].push(s);
+        classroomTree[cName].courses[courseName][batchName].push(s);
       }
     });
   %>
@@ -461,7 +464,8 @@
                                     <button class="btn btn-ghost btn-xs"
                                             data-id="<%= sched._id %>"
                                             data-subject="<%= sched.note || '—' %>"
-                                            data-batch="<%= sched.batch %>"
+                                            data-batch="<%= sched.batch && sched.batch._id ? sched.batch._id : sched.batch %>"
+                                            data-course="<%= sched.course && sched.course._id ? sched.course._id : sched.course %>"
                                             data-teacher="<%= sched.teacher ? sched.teacher._id : '' %>"
                                             data-classroom="<%= sched.classroom ? sched.classroom._id : '' %>"
                                             data-date="<%= sched.date %>"
@@ -500,7 +504,7 @@
         <select id="v_select_batch" class="form-control" onchange="loadBatchTemplate(this.value)">
           <option value="">-- Select Batch to Configure --</option>
           <% batches.forEach(b => { %>
-            <option value="<%= b %>"><%= b %></option>
+            <option value="<%= b._id %>" data-course="<%= b.course ? (b.course._id || b.course) : '' %>"><%= b.name %></option>
           <% }) %>
         </select>
       </div>
@@ -722,7 +726,8 @@
                       <div class="calendar-event-card"
                            data-id="<%= sched._id %>"
                            data-subject="<%= sched.note || '—' %>"
-                           data-batch="<%= sched.batch %>"
+                           data-batch="<%= sched.batch && sched.batch._id ? sched.batch._id : sched.batch %>"
+                           data-course="<%= sched.course && sched.course._id ? sched.course._id : sched.course %>"
                            data-teacher="<%= sched.teacher ? sched.teacher._id : '' %>"
                            data-classroom="<%= sched.classroom ? sched.classroom._id : '' %>"
                            data-date="<%= sched.date %>"
@@ -734,7 +739,7 @@
                            onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='none';">
                         <div style="font-weight: 700; color: var(--text);"><%= sched.note || '—' %></div>
                         <div style="color: var(--text-muted); font-size: 0.65rem; margin-top: 2px;">
-                          👥 <%= sched.batch %><br>
+                          👥 <%= sched.batch && sched.batch.name ? sched.batch.name : sched.batch %><br>
                           👨‍🏫 <%= sched.teacher ? sched.teacher.name : 'No Teacher' %>
                         </div>
                       </div>
@@ -890,10 +895,11 @@
 
       <div class="form-group">
         <label class="form-label" for="c_batch">Target Batch *</label>
-        <select id="c_batch" name="batch" class="form-control" required>
+        <input type="hidden" id="c_course" name="course">
+        <select id="c_batch" name="batch" class="form-control" onchange="updateCourseField(this, 'c_course')" required>
           <option value="">-- Select Batch --</option>
           <% batches.forEach(b => { %>
-            <option value="<%= b %>"><%= b %></option>
+            <option value="<%= b._id %>" data-course="<%= b.course ? (b.course._id || b.course) : '' %>"><%= b.name %></option>
           <% }) %>
         </select>
       </div>
@@ -966,10 +972,11 @@
 
       <div class="form-group">
         <label class="form-label" for="e_batch">Target Batch *</label>
-        <select id="e_batch" name="batch" class="form-control" required>
+        <input type="hidden" id="e_course" name="course">
+        <select id="e_batch" name="batch" class="form-control" onchange="updateCourseField(this, 'e_course')" required>
           <option value="">-- Select Batch --</option>
           <% batches.forEach(b => { %>
-            <option value="<%= b %>"><%= b %></option>
+            <option value="<%= b._id %>" data-course="<%= b.course ? (b.course._id || b.course) : '' %>"><%= b.name %></option>
           <% }) %>
         </select>
       </div>
@@ -1138,6 +1145,7 @@
     closeAllDrawers();
     document.getElementById('c_subject').value = '';
     document.getElementById('c_batch').value = '';
+    document.getElementById('c_course').value = '';
     document.getElementById('c_teacher').value = '';
     document.getElementById('c_classroom').value = '';
     document.getElementById('c_startTime').value = '10:00';
@@ -1171,11 +1179,13 @@
     const endtime = target.getAttribute('data-endtime');
     const status = target.getAttribute('data-status');
 
+    const course = target.getAttribute('data-course');
     document.getElementById('editScheduleForm').action = `/admin/schedules/${id}/edit`;
     document.getElementById('deleteScheduleForm').action = `/admin/schedules/${id}/delete`;
     
     document.getElementById('e_subject').value = subject;
     document.getElementById('e_batch').value = batch;
+    document.getElementById('e_course').value = course || '';
     document.getElementById('e_teacher').value = teacher;
     document.getElementById('e_classroom').value = classroom;
     document.getElementById('e_date').value = date;
@@ -1220,15 +1230,24 @@
 
   // ==================== VISUAL WEEKLY GRID CONTROLLER ====================
   
-  function loadBatchTemplate(batchName) {
-    activeBatch = batchName;
-    if (!batchName) {
+  function updateCourseField(selectEl, hiddenInputId) {
+    const selectedOpt = selectEl.options[selectEl.selectedIndex];
+    const courseId = selectedOpt ? selectedOpt.getAttribute('data-course') : '';
+    document.getElementById(hiddenInputId).value = courseId || '';
+  }
+
+  function loadBatchTemplate(batchId) {
+    activeBatch = batchId;
+    if (!batchId) {
       document.getElementById('v_active_template_card').style.display = 'none';
       clearWeeklyGridBlocks();
       return;
     }
 
-    const t = timetablesData.find(item => item.batch === batchName);
+    const t = timetablesData.find(item => {
+      const tBatchId = item.batch && item.batch._id ? item.batch._id.toString() : String(item.batch);
+      return tBatchId === batchId;
+    });
     const statusInfo = document.getElementById('v_status_info');
     
     if (t) {
@@ -1346,8 +1365,11 @@
 
     // 2. Check across other saved timetables database
     for (const t of timetablesData) {
-      if (t.batch === activeBatch) continue; // ignore self
+      const tBatchId = t.batch && t.batch._id ? t.batch._id.toString() : String(t.batch);
+      if (tBatchId === activeBatch) continue; // ignore self
       
+      const tBatchName = t.batch && t.batch.name ? t.batch.name : String(t.batch);
+
       for (const slot of t.slots) {
         if (slot.dayOfWeek !== activeSlot.dayOfWeek) continue;
 
@@ -1355,16 +1377,16 @@
         const extEnd = parseTimeToMinutes(slot.endTime);
 
         if (newStart < extEnd && extStart < newEnd) {
-          const targetRoomId = slot.classroom ? (slot.classroom._id || slot.classroom) : '';
-          const targetTeacherId = slot.teacher ? (slot.teacher._id || slot.teacher) : '';
+          const targetRoomId = slot.classroom ? (slot.classroom._id || slot.classroom).toString() : '';
+          const targetTeacherId = slot.teacher ? (slot.teacher._id || slot.teacher).toString() : '';
 
-          if (targetRoomId === activeSlot.classroom) {
-            const room = classroomsData.find(r => r._id === activeSlot.classroom);
-            return { clashed: true, reason: `System Room Clash: Classroom "${room ? room.name : 'Room'}" is already allocated to Batch "${t.batch}" (${slot.subject}) from ${slot.startTime} to ${slot.endTime}.` };
+          if (targetRoomId === activeSlot.classroom.toString()) {
+            const room = classroomsData.find(r => r._id.toString() === activeSlot.classroom.toString());
+            return { clashed: true, reason: `System Room Clash: Classroom "${room ? room.name : 'Room'}" is already allocated to Batch "${tBatchName}" (${slot.subject}) from ${slot.startTime} to ${slot.endTime}.` };
           }
-          if (targetTeacherId === activeSlot.teacher) {
-            const teacher = teachersData.find(x => x._id === activeSlot.teacher);
-            return { clashed: true, reason: `System Teacher Clash: Instructor "${teacher ? teacher.name : 'Teacher'}" is scheduled to teach Batch "${t.batch}" (${slot.subject}) from ${slot.startTime} to ${slot.endTime}.` };
+          if (targetTeacherId === activeSlot.teacher.toString()) {
+            const teacher = teachersData.find(x => x._id.toString() === activeSlot.teacher.toString());
+            return { clashed: true, reason: `System Teacher Clash: Instructor "${teacher ? teacher.name : 'Teacher'}" is scheduled to teach Batch "${tBatchName}" (${slot.subject}) from ${slot.startTime} to ${slot.endTime}.` };
           }
         }
       }
@@ -1524,6 +1546,13 @@
     form.method = 'POST';
     form.action = '/admin/timetables';
 
+    const selectEl = document.getElementById('v_select_batch');
+    const selectedOpt = selectEl.options[selectEl.selectedIndex];
+    const courseId = selectedOpt ? selectedOpt.getAttribute('data-course') : '';
+    if (courseId) {
+      appendHiddenField(form, 'course', courseId);
+    }
+
     // Append standard parameters
     appendHiddenField(form, 'batch', activeBatch);
     appendHiddenField(form, 'startDate', startDate);
@@ -1585,6 +1614,7 @@
       openCreateDrawer(urlParams.get('date'));
       document.getElementById('c_subject').value = urlParams.get('subject') || '';
       document.getElementById('c_batch').value = urlParams.get('batch') || '';
+      updateCourseField(document.getElementById('c_batch'), 'c_course');
       document.getElementById('c_teacher').value = urlParams.get('teacher') || '';
       document.getElementById('c_classroom').value = urlParams.get('classroom') || '';
       document.getElementById('c_startTime').value = urlParams.get('startTime') || '';

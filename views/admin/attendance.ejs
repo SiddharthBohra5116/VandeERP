@@ -1,4 +1,11 @@
-<% layout = 'main'; title = 'Attendance Overview'; page = 'attendance'; %>
+<% 
+  layout = 'main'; 
+  title = 'Attendance Overview'; 
+  page = 'attendance'; 
+
+  const activeBatchDoc = typeof batches !== 'undefined' ? batches.find(b => String(b._id) === String(batch)) : null;
+  const batchNameStr = activeBatchDoc ? activeBatchDoc.name : '';
+%>
 
 <style>
 .calendar-container {
@@ -134,7 +141,7 @@
       <select name="batch" class="form-control" style="padding: 0.45rem 0.75rem;">
         <option value="">Choose Batch (Show Academy Overall)...</option>
         <% batches.forEach(b => { %>
-          <option value="<%= b %>" <%= batch === b ? 'selected' : '' %>><%= b %></option>
+          <option value="<%= b._id %>" <%= String(batch) === String(b._id) ? 'selected' : '' %>><%= b.name %></option>
         <% }) %>
       </select>
     </div>
@@ -156,7 +163,7 @@
 <div class="card" style="margin-bottom: 1.5rem;">
   <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
     <div>
-      <h3 style="margin: 0;">Attendance Calendar: <%= batch ? batch : 'Academy Overall' %></h3>
+      <h3 style="margin: 0;">Attendance Calendar: <%= batchNameStr ? batchNameStr : 'Academy Overall' %></h3>
       <p class="td-muted text-sm" style="margin: 0.25rem 0 0 0;">Interactive monthly log. Percentage displays average student attendance rates per class session. Click any day block to view details.</p>
     </div>
     <div class="mono fw-600 text-gold" style="font-size: 1.1rem; text-transform: uppercase;">
@@ -209,12 +216,12 @@
 <% if (batch) { %>
   <div class="card" style="margin-bottom: 1.5rem;">
     <div class="card-header">
-      <h3 style="margin: 0;">Cohort Student Attendance Matrix: <%= batch %></h3>
+      <h3 style="margin: 0;">Cohort Student Attendance Matrix: <%= batchNameStr %></h3>
       <p class="td-muted text-sm" style="margin: 0.25rem 0 0 0;">Monthly grid (skipping holidays). Showing Present/Late (<span class="text-green fw-700">P</span>), Absent (<span class="text-red fw-700">A</span>), or Not Marked (<span class="text-muted">—</span>).</p>
     </div>
     <% if (studentGrid.length === 0) { %>
       <div class="empty-state" style="padding: 3rem 1rem;">
-        No student enrollments found in batch <%= batch %>.
+        No student enrollments found in batch <%= batchNameStr %>.
       </div>
     <% } else { %>
       <div class="table-wrap" style="max-height: 450px; overflow: auto;">
@@ -267,7 +274,7 @@
             const isLow = b.attendancePct !== null && b.attendancePct < 75;
             const borderStyle = isLow ? '3px solid var(--red)' : '3px solid var(--gold)';
           %>
-          <a href="/admin/attendance?batch=<%= encodeURIComponent(b.name) %>&month=<%= selectedMonth %>" 
+          <a href="/admin/attendance?batch=<%= encodeURIComponent(b._id) %>&month=<%= selectedMonth %>" 
              class="card" 
              <%= `style="text-decoration: none; padding: 1.25rem; border-left: ${borderStyle}; transition: all 0.2s ease; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; gap: 0.75rem; background: rgba(255, 255, 255, 0.02); height: 100%;"` %>>
             <div>
@@ -362,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
         detailTableBody.innerHTML = '';
 
         filtered.forEach(rec => {
-          const studentName = rec.student?.name || 'Unknown Student';
+         const studentName = rec.student?.user?.name || rec.student?.name || 'Unknown Student';
           const status = rec.status.toUpperCase();
           const badgeClass = status === 'PRESENT' || status === 'LATE' ? 'badge-green' : 'badge-red';
           const note = rec.note || '—';

@@ -33,7 +33,7 @@
               <td class="mono text-sm fw-600"><%= up.date %></td>
               <td>
                 <div style="font-weight:600;"><%= up.subject %></div>
-                <div class="td-muted text-xs">Batch: <%= up.batch %></div>
+                <div class="td-muted text-xs">Batch: <%= up.batch && up.batch.name ? up.batch.name : '—' %></div>
               </td>
               <td>
                 <div class="topics-list" style="margin-top:0;">

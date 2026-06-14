@@ -28,7 +28,11 @@
         <select id="batch" name="batch" class="form-control" required>
           <option value="" disabled selected>Select Batch</option>
           <% batches.forEach(b => { %>
-            <option value="<%= b %>"><%= b %></option>
+            <% if (typeof b === 'object' && b && b._id) { %>
+              <option value="<%= b._id %>"><%= b.name %></option>
+            <% } else { %>
+              <option value="<%= b %>"><%= b %></option>
+            <% } %>
           <% }) %>
         </select>
       </div>

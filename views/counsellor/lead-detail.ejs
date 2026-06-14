@@ -50,7 +50,7 @@
                   let dotBorder = '1px solid var(--border)';
                   let titleText = `Call ${i + 1}: No Attempt`;
                   if (call) {
-                    titleText = `Call ${i + 1}: ${call.callOutcome.toUpperCase()} (${call.callDuration || 'no duration'}) - ${call.note}`;
+                    titleText = `Call ${i + 1}: ${(call.callOutcome || 'answered').toUpperCase()} (${call.callDuration || 'no duration'}) - ${call.note}`;
                     if (call.callOutcome === 'answered') {
                       dotColor = 'var(--green)';
                     } else if (call.callOutcome === 'busy' || call.callOutcome === 'no-answer') {

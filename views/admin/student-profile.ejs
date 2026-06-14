@@ -1,12 +1,11 @@
 <% layout='main' ; title=student.name; subtitle=`Student · ${student.rollNumber || 'No Roll Number' }`; page='users' ;
-  // Warnings calculations const today=new Date(); const isFeeOverdue=fee && (Math.max(0, fee.totalAmount -
-  (fee.discount || 0) - fee.paidAmount))> 0 && fee.dueDate && new Date(fee.dueDate) < today; let attendancePct=0; if
+  /* Warnings calculations */ const today=new Date(); const isFeeOverdue=fee && Math.max(0, fee.totalAmount - (fee.discount || 0) - fee.paidAmount) > 0 && fee.dueDate && new Date(fee.dueDate) < today; let attendancePct=0; if
     (attendance && attendance.length> 0) {
     const presentCount = attendance.filter(a => a.status === 'present').length;
     attendancePct = Math.round((presentCount / attendance.length) * 100);
     }
-    const isAttendanceLow = attendance && attendance.length > 0 && attendancePct < 75; // Profile completeness
-      calculations let score=0; let maxScore=6; const missing=[]; if (student.profilePic) score++; else missing.push({
+    const isAttendanceLow = attendance && attendance.length > 0 && attendancePct < 75; /* Profile completeness
+      calculations */ let score=0; let maxScore=6; const missing=[]; if (student.profilePic) score++; else missing.push({
       label: 'Photo' , link: `/admin/users/${student._id}/edit` }); if (student.phone) score++; else missing.push({
       label: 'Phone' , link: `/admin/users/${student._id}/edit` }); if (student.batch) score++; else missing.push({
       label: 'Batch' , link: `/admin/users/${student._id}/edit` }); if (fee) score++; else missing.push({
@@ -969,7 +968,7 @@
                             </div>
                             <form action="/admin/messages/send" method="POST"
                               style="background:var(--bg3); padding:1rem; border-radius:var(--radius); margin-bottom:1.5rem;">
-                              <input type="hidden" name="recipientId" value="<%= student._id %>">
+                              <input type="hidden" name="recipientId" value="<%= student.user._id %>">
                               <input type="hidden" name="redirect" value="/admin/students/<%= student._id %>">
                               <div class="form-group">
                                 <label class="form-label" for="msg_content">Send Notification / Message Note</label>

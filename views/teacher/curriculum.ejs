@@ -34,7 +34,7 @@
               <tr>
                 <td class="td-name">
                   <a href="/teacher/curriculum/<%= curr._id %>" style="color:var(--gold); font-weight:600;"><%= curr.subject %></a>
-                  <div class="td-muted text-xs">Batch: <%= curr.batch %></div>
+                  <div class="td-muted text-xs">Batch: <%= curr.batch && curr.batch.name ? curr.batch.name : curr.batch %></div>
                 </td>
                 <td class="mono text-sm"><%= curr.topics.length %> topics</td>
                 <td>
@@ -73,7 +73,7 @@
         <select id="batch" name="batch" class="form-control" required>
           <option value="" disabled selected>Select Batch</option>
           <% batches.forEach(b => { %>
-            <option value="<%= b %>"><%= b %></option>
+            <option value="<%= b._id %>"><%= b.name %></option>
           <% }) %>
         </select>
       </div>

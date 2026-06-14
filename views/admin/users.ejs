@@ -74,8 +74,8 @@
                   </div>
                   <div>
                     <div class="td-name">
-                      <% if (u.role === 'student') { %>
-                        <a href="/admin/students/<%= u._id %>" style="color:var(--gold);"><%= u.name %></a>
+                      <% if (u.role === 'student' && u.studentProfile) { %>
+                        <a href="/admin/students/<%= u.studentProfile._id %>" style="color:var(--gold);"><%= u.name %></a>
                       <% } else if (u.role === 'teacher') { %>
                         <a href="/admin/teachers/<%= u._id %>" style="color:var(--gold);"><%= u.name %></a>
                       <% } else if (u.role === 'counsellor') { %>
@@ -111,10 +111,10 @@
               <td class="mono text-sm"><%= u.phone || '—' %></td>
               <td>
                <% if (u.role === 'student') { %>
-                  <div class="text-sm">Course: <strong><%= u.studentProfile && u.studentProfile.course ? u.studentProfile.course : '—' %></strong></div>
-                  <div class="td-muted text-xs">Batch: <%= u.studentProfile && u.studentProfile.batch ? u.studentProfile.batch : '—' %></div>
+                  <div class="text-sm">Course: <strong><%= u.studentProfile && u.studentProfile.course ? (u.studentProfile.course.name || u.studentProfile.course) : '—' %></strong></div>
+                  <div class="td-muted text-xs">Batch: <%= u.studentProfile && u.studentProfile.batch ? (u.studentProfile.batch.name || u.studentProfile.batch) : '—' %></div>
                 <% } else if (u.role === 'teacher') { %>
-                  <div class="text-sm">Subject: <strong><%= u.teacherProfile && u.teacherProfile.subjects ? u.teacherProfile.subjects[0] : '—' %></strong></div>
+                  <div class="text-sm">Subject: <strong><%= u.teacherProfile && u.teacherProfile.subjects && u.teacherProfile.subjects.length > 0 ? u.teacherProfile.subjects[0] : '—' %></strong></div>
                   <div class="td-muted text-xs">Qual: <%= u.qualification || '—' %></div>
                 <% } else { %>
                   <span class="td-muted">—</span>

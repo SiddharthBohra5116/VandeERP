@@ -166,9 +166,9 @@
           <tbody>
             <% recentStudents.forEach(student => { %>
               <tr>
-                <td class="td-name"><%= student.name %></td>
-                <td><span class="badge badge-orange"><%= student.course %></span></td>
-                <td class="td-muted"><%= student.batch || '—' %></td>
+                <td class="td-name"><%= student.user && student.user.name ? student.user.name : 'Unknown Student' %></td>
+                <td><span class="badge badge-orange"><%= student.course && student.course.name ? student.course.name : '—' %></span></td>
+                <td class="td-muted"><%= student.batch && student.batch.name ? student.batch.name : '—' %></td>
               </tr>
             <% }) %>
           </tbody>

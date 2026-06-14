@@ -165,7 +165,7 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
               <div>
                 <strong style="color:var(--text);"><%= curr.subject %></strong>
-                <div class="td-muted text-xs">Batch: <%= curr.batch %></div>
+                <div class="td-muted text-xs">Batch: <%= curr.batch && curr.batch.name ? curr.batch.name : curr.batch %></div>
               </div>
               <span class="badge badge-blue"><%= completed %> / <%= total %> completed (<%= pct %>%)</span>
             </div>

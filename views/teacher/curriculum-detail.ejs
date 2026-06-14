@@ -1,7 +1,7 @@
 <%
   layout = 'main';
   title = curriculum.subject;
-  subtitle = `Syllabus track list for Batch: ${curriculum.batch}`;
+  subtitle = `Syllabus track list for Batch: ${curriculum.batch && curriculum.batch.name ? curriculum.batch.name : curriculum.batch}`;
   page = 'curriculum';
 %>
 

@@ -43,7 +43,7 @@
                 <div style="font-size: 0.75rem; color: var(--text-muted);">Created: <%= new Date(b.createdAt).toLocaleDateString() %></div>
               </td>
               <td>
-                <span class="badge badge-blue"><%= b.course %></span>
+                <span class="badge badge-blue"><%= b.course && b.course.name ? b.course.name : b.course %></span>
               </td>
               <td class="mono" style="font-size: 0.9rem;">
                 <%= b.capacity %> students

@@ -173,11 +173,11 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label" for="subject">Teaching Subject</label>
-          <input type="text" id="subject" name="subject" class="form-control" value="<%= isEdit ? target.subject : '' %>" placeholder="e.g. Video Production">
+          <input type="text" id="subject" name="subject" class="form-control" value="<%= isEdit && typeof teacherProfile !== 'undefined' && teacherProfile && teacherProfile.subjects && teacherProfile.subjects.length > 0 ? teacherProfile.subjects[0] : '' %>" placeholder="e.g. Video Production">
         </div>
         <div class="form-group">
           <label class="form-label" for="qualification">Qualifications</label>
-          <input type="text" id="qualification" name="qualification" class="form-control" value="<%= isEdit ? target.qualification : '' %>" placeholder="e.g. B.Voc in Film Editing, 5+ Yrs Exp">
+          <input type="text" id="qualification" name="qualification" class="form-control" value="<%= isEdit && typeof teacherProfile !== 'undefined' && teacherProfile ? teacherProfile.qualification : '' %>" placeholder="e.g. B.Voc in Film Editing, 5+ Yrs Exp">
         </div>
       </div>
     </div>
