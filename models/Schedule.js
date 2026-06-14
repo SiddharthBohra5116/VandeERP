@@ -2,15 +2,68 @@ const mongoose = require('mongoose');
 const { SCHEDULE_STATUSES } = require('../config/constants');
 
 const scheduleSchema = new mongoose.Schema({
-  course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
-  batch: { type: mongoose.Schema.Types.ObjectId, ref: 'Batch', required: true },
-  teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  classroom: { type: mongoose.Schema.Types.ObjectId, ref: 'Classroom', required: true },
-  date: { type: String, required: true },
-  startTime: { type: String, required: true },
-  endTime: { type: String, required: true },
-  status: { type: String, enum: SCHEDULE_STATUSES, default: 'scheduled' },
-  note: { type: String, trim: true, default: '' }
+
+  course: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course',
+    required: true
+  },
+
+  batch: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Batch',
+    required: true
+  },
+
+  teacher: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Teacher',
+    required: true
+  },
+
+  classroom: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Classroom',
+    required: true
+  },
+
+  date: {
+    type: String,
+    required: true
+  },
+
+  startTime: {
+    type: String,
+    required: true
+  },
+
+  endTime: {
+    type: String,
+    required: true
+  },
+
+  moduleId: {
+  type: mongoose.Schema.Types.ObjectId,
+  default: null
+},
+
+topicId: {
+  type: mongoose.Schema.Types.ObjectId,
+  default: null
+},
+
+  status: {
+    type: String,
+    enum: SCHEDULE_STATUSES,
+    default: 'scheduled'
+  },
+
+  note: {
+    type: String,
+    trim: true,
+    default: ''
+  }
+
 }, { timestamps: true });
 
 scheduleSchema.index({ batch: 1, date: 1 });

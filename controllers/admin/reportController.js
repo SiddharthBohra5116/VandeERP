@@ -88,13 +88,13 @@ exports.getReports = async (req, res) => {
 
     // Fetch filtered students
     const dbStudents = await Student.find(studentQuery)
-      .populate('userId', 'name status')
+      .populate('user', 'name status')
       .populate('batch', 'name')
       .populate('course', 'name code');
     const studentIds = dbStudents.map(s => s._id);
 
     // Active students count
-    const activeCount = dbStudents.filter(s => s.userId && s.userId.status === 'active').length;
+    const activeCount = dbStudents.filter(s => s.user && s.user.status === 'active').length;
     const newThisMonth = dbStudents.length;
 
     // Collections & Outstandings calculations
@@ -441,7 +441,7 @@ exports.getReports = async (req, res) => {
     if (tab === 'overview') {
       const [allStudents, allFees, allLeads] = await Promise.all([
         Student.find(studentQuery)
-          .populate('userId', 'name')
+          .populate('user', 'name')
           .populate('course', 'name')
           .populate('batch', 'name').select('name course batch enrollmentDate'),
         Fee.find().populate('student'),
@@ -459,7 +459,7 @@ exports.getReports = async (req, res) => {
 
       if (exportType === 'csv') {
         reportData = allStudents.map(s => ({
-          Name: s.userId?.name || '',
+          Name: s.user?.name || '',
           Course: s.course?.name || '',
           Batch: s.batch?.name || '',
           EnrollmentDate: s.enrollmentDate
@@ -712,9 +712,9 @@ exports.getReports = async (req, res) => {
       }
       renderData.calendarDays = calendarDays;
 
-      const students = await Student.find(studentQuery).populate('userId', 'name');
+      const students = await Student.find(studentQuery).populate('user', 'name');
       const studentIds = students.map(s => s._id);
-      students.sort((a, b) => (a.userId?.name || '').localeCompare(b.userId?.name || ''));
+      students.sort((a, b) => (a.user?.name || '').localeCompare(b.user?.name || ''));
       if (students.length > 0) {
         const studentIds = students.map(s => s._id);
         const attendanceRecords = await Attendance.find({
@@ -746,7 +746,7 @@ exports.getReports = async (req, res) => {
 
             return {
               _id: student._id,
-              name: student.userId?.name || '',
+              name: student.user?.name || '',
               attendanceByDate
             };
           });
@@ -767,7 +767,7 @@ exports.getReports = async (req, res) => {
       const activeBatches = batch === 'all' ? batches : [batch];
 
       for (const b of activeBatches) {
-        const students = await Student.find({ batch: b }).populate('userId', 'status');
+        const students = await Student.find({ batch: b }).populate('user', 'status');
         if (students.length === 0) continue;
 
         const studentIds = students.map(s => s._id);
@@ -818,7 +818,7 @@ exports.getReports = async (req, res) => {
       }
 
       // Populate At-Risk Students Alerts via aggregate queries (Issue 3.8)
-      const students = await Student.find(studentQuery).populate('userId', 'name'); const studentIds = students.map(s => s._id);
+      const students = await Student.find(studentQuery).populate('user', 'name'); const studentIds = students.map(s => s._id);
 
       // Fetch fees and progress in parallel
       const [feesList, progressList, allAssignments] = await Promise.all([
@@ -911,7 +911,7 @@ exports.getReports = async (req, res) => {
             { $match: { teacher: t._id, date: { $gte: startDate, $lte: endDate } } },
             { $group: { _id: { date: '$date', batch: '$batch' } } }
           ]),
-          Curriculum.find({ teacher: t._id })
+          Curriculum.find({ teacher: t._id }).populate('course')
         ]);
 
         let gradedCount = 0;

@@ -146,7 +146,7 @@ exports.postCreateUser = async (req, res) => {
 
     if (newUser.role === 'student') {
       const studentProfile = await Student.create({
-        userId: newUser._id,
+        user: newUser._id,
         counsellor: data.counsellor || null,
         teacher: data.teacher || null,
         course: data.course || null,
@@ -211,15 +211,16 @@ exports.postCreateUser = async (req, res) => {
 
     if (newUser.role === 'teacher') {
       await Teacher.create({
-        userId: newUser._id,
+        user: newUser._id,
         qualification: data.qualification || '',
-        experienceYears: Number(data.experienceYears) || 0
+        experienceYears: Number(data.experienceYears) || 0,
+        courses: data.course ? [data.course] : []
       });
     }
 
     if (newUser.role === 'counsellor') {
       await Counsellor.create({
-        userId: newUser._id
+        user: newUser._id
       });
     }
 
@@ -266,9 +267,9 @@ exports.getEditUser = async (req, res) => {
     const [courses, batches, studentProfile, teacherProfile, counsellorProfile] = await Promise.all([
       Course.find({ isActive: true }).sort({ name: 1 }),
       Batch.find({ isActive: true }).populate('course', 'name code').sort({ name: 1 }),
-      Student.findOne({ userId: target._id }),
-      Teacher.findOne({ userId: target._id }),
-      Counsellor.findOne({ userId: target._id })
+      Student.findOne({ user: target._id }),
+      Teacher.findOne({ user: target._id }),
+      Counsellor.findOne({ user: target._id })
     ]);
 
     res.render('admin/user-form', {
@@ -324,9 +325,9 @@ exports.postEditUser = async (req, res) => {
         const [courses, batches, studentProfile, teacherProfile, counsellorProfile] = await Promise.all([
           Course.find({ isActive: true }).sort({ name: 1 }),
           Batch.find({ isActive: true }).populate('course', 'name code').sort({ name: 1 }),
-          Student.findOne({ userId: targetUser._id }),
-          Teacher.findOne({ userId: targetUser._id }),
-          Counsellor.findOne({ userId: targetUser._id })
+          Student.findOne({ user: targetUser._id }),
+          Teacher.findOne({ user: targetUser._id }),
+          Counsellor.findOne({ user: targetUser._id })
         ]);
 
         return res.render('admin/user-form', {
@@ -361,7 +362,7 @@ exports.postEditUser = async (req, res) => {
 
     if (targetUser.role === 'student') {
       await Student.findOneAndUpdate(
-        { userId: targetUser._id },
+        { user: targetUser._id },
         {
           counsellor: data.counsellor || null,
           teacher: data.teacher || null,
@@ -401,10 +402,11 @@ exports.postEditUser = async (req, res) => {
 
     if (targetUser.role === 'teacher') {
       await Teacher.findOneAndUpdate(
-        { userId: targetUser._id },
+        { user: targetUser._id },
         {
           qualification: data.qualification || '',
-          experienceYears: Number(data.experienceYears) || 0
+          experienceYears: Number(data.experienceYears) || 0,
+          courses: data.course ? [data.course] : []
         },
         {
           new: true,
@@ -415,7 +417,7 @@ exports.postEditUser = async (req, res) => {
 
     if (targetUser.role === 'counsellor') {
       await Counsellor.findOneAndUpdate(
-        { userId: targetUser._id },
+        { user: targetUser._id },
         {},
         {
           new: true,

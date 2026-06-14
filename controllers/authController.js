@@ -129,7 +129,7 @@ exports.updateProfile = async (req, res) => {
         updateRequest.profilePic = `/files/${req.file.filename}`;
       }
       const Student = require('../models/Student');
-      await Student.findOneAndUpdate({ userId: req.user._id }, {
+      await Student.findOneAndUpdate({ user: req.user._id }, {
         pendingProfileUpdate: updateRequest
       });
       console.log('✅ Profile update request submitted by student:', { userId: req.user._id });
@@ -219,9 +219,11 @@ exports.getInbox = async (req, res) => {
         .sort({ name: 1 });
     } else if (req.user.role === 'teacher') {
       const Schedule = require('../models/Schedule');
-      const assignedBatches = await Schedule.distinct('batch', { teacher: req.user._id });
-      const batchStudents = await Student.find({ batch: { $in: assignedBatches } }).select('userId');
-      const batchUserIds = batchStudents.map(s => s.userId);
+      const Teacher = require('../models/Teacher');
+      const teacherProfile = await Teacher.findOne({ user: req.user._id });
+      const assignedBatches = teacherProfile ? await Schedule.distinct('batch', { teacher: teacherProfile._id }) : [];
+      const batchStudents = await Student.find({ batch: { $in: assignedBatches } }).select('user');
+      const batchUserIds = batchStudents.map(s => s.user).filter(Boolean);
       defaultContacts = await User.find({
         _id: { $ne: req.user._id },
         $or: [
@@ -232,8 +234,10 @@ exports.getInbox = async (req, res) => {
         .select('name role profilePic')
         .sort({ name: 1 });
     } else if (req.user.role === 'counsellor') {
-      const assignedStudents = await Student.find({ counsellor: req.user._id }).select('userId');
-      const assignedUserIds = assignedStudents.map(s => s.userId);
+      const Counsellor = require('../models/Counsellor');
+      const counsellorProfile = await Counsellor.findOne({ user: req.user._id });
+      const assignedStudents = counsellorProfile ? await Student.find({ counsellor: counsellorProfile._id }).select('user') : [];
+      const assignedUserIds = assignedStudents.map(s => s.user).filter(Boolean);
       defaultContacts = await User.find({
         _id: { $ne: req.user._id },
         $or: [
@@ -244,13 +248,21 @@ exports.getInbox = async (req, res) => {
         .select('name role profilePic')
         .sort({ name: 1 });
     } else if (req.user.role === 'student') {
-      const myProfile = await Student.findOne({ userId: req.user._id }).select('teacher counsellor');
+      const myProfile = await Student.findOne({ user: req.user._id }).select('teacher counsellor');
       const condition = [{ role: 'admin' }];
       if (myProfile?.teacher) {
-        condition.push({ _id: myProfile.teacher });
+        const Teacher = require('../models/Teacher');
+        const teacherProfile = await Teacher.findById(myProfile.teacher).select('user');
+        if (teacherProfile && teacherProfile.user) {
+          condition.push({ _id: teacherProfile.user });
+        }
       }
       if (myProfile?.counsellor) {
-        condition.push({ _id: myProfile.counsellor });
+        const Counsellor = require('../models/Counsellor');
+        const counsellorProfile = await Counsellor.findById(myProfile.counsellor).select('user');
+        if (counsellorProfile && counsellorProfile.user) {
+          condition.push({ _id: counsellorProfile.user });
+        }
       }
       defaultContacts = await User.find({
         _id: { $ne: req.user._id },

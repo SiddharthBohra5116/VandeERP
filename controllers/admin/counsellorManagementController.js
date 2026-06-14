@@ -31,14 +31,16 @@ exports.getCounsellors = async (req, res) => {
     const userIds = users.map(user => user._id);
 
     const counsellorProfiles = await Counsellor.find({
-      userId: { $in: userIds }
-    }).populate('userId', 'name email phone status profilePic');
+      user: { $in: userIds }
+    }).populate('user', 'name email phone status profilePic');
 
     const counsellorProfileMap = new Map(
-      counsellorProfiles.map(profile => [
-        String(profile.userId._id),
-        profile
-      ])
+      counsellorProfiles
+        .filter(profile => profile.user)
+        .map(profile => [
+          String(profile.user._id),
+          profile
+        ])
     );
 
     const mergedCounsellors = users.map(user => {
@@ -86,11 +88,11 @@ exports.getCounsellorProfile = async (req, res) => {
     }
 
     const counsellorProfile = await Counsellor.findOne({
-      userId: counsellorUser._id
+      user: counsellorUser._id
     });
 
     const [leads, messages, counsellors] = await Promise.all([
-      Lead.find({ assignedTo: counsellorUser._id })
+      Lead.find({ assignedTo: counsellorProfile ? counsellorProfile._id : null })
         .populate('interestedCourse', 'name code')
         .populate('convertedStudent')
         .sort({ createdAt: -1 }),

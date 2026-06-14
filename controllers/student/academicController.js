@@ -43,7 +43,7 @@ exports.getDailyUpdates = async (req, res) => {
  */
 exports.getProgress = async (req, res) => {
   try {
-    const studentProfile = await Student.findOne({ userId: req.user._id });
+    const studentProfile = await Student.findOne({ user: req.user._id });
     const progressRecords = studentProfile
       ? await Progress.find({ student: studentProfile._id }).populate('teacher', 'name')
       : [];
@@ -63,7 +63,7 @@ exports.getProgress = async (req, res) => {
  */
 exports.getCurriculum = async (req, res) => {
   try {
-    const kycProfile = await Student.findOne({ userId: req.user._id });
+    const kycProfile = await Student.findOne({ user: req.user._id });
     const isKycIncomplete = !kycProfile;
     if (isKycIncomplete) {
       return res.status(403).render('403', {
@@ -77,7 +77,9 @@ exports.getCurriculum = async (req, res) => {
       return res.render('student/curriculum', { title: 'Curriculum', user: req.user, curricula: [] });
     }
 
-    const curricula = await Curriculum.find({ batch: req.user.batch }).populate('teacher', 'name');
+    const curricula = await Curriculum.find({ batch: req.user.batch })
+      .populate('course')
+      .populate('teacher', 'name');
     res.render('student/curriculum', { title: 'Curriculum', user: req.user, curricula });
   } catch (err) {
     console.error('❌ Student Curriculum Fetch Error:', err);
@@ -94,7 +96,7 @@ exports.getCurriculum = async (req, res) => {
  */
 exports.getFees = async (req, res) => {
   try {
-    const sp = await Student.findOne({ userId: req.user._id });
+    const sp = await Student.findOne({ user: req.user._id });
     const fee = sp ? await Fee.findOne({ student: sp._id }) : null;
     res.render('student/fees', { title: 'My Fees', user: req.user, fee });
   } catch (err) {

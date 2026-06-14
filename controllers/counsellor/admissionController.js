@@ -12,29 +12,50 @@ exports.getAdmissions = async (req, res) => {
   const { search } = req.query;
   try {
     const query = {
-      assignedTo: req.user._id,
+      assignedTo: req.user.counsellorProfileId,
       status: 'admission_completed',
       convertedStudent: { $exists: true, $ne: null }
     };
     
     let convertedLeads = await Lead.find(query)
-      .populate('convertedStudent')
+      .populate({
+        path: 'convertedStudent',
+        populate: [
+          { path: 'user', select: 'name email phone status isActive' },
+          { path: 'course', select: 'name' },
+          { path: 'batch', select: 'name' }
+        ]
+      })
       .sort({ updatedAt: -1 });
 
     if (search) {
       const searchLower = search.toLowerCase().trim();
-      convertedLeads = convertedLeads.filter(lead => 
-        lead.convertedStudent && 
-        lead.convertedStudent.name.toLowerCase().includes(searchLower)
-      );
+      convertedLeads = convertedLeads.filter(lead => {
+        const studentUser = lead.convertedStudent && lead.convertedStudent.user;
+        return studentUser && studentUser.name.toLowerCase().includes(searchLower);
+      });
     }
 
-    const studentIds = convertedLeads.map(l => l.convertedStudent._id).filter(Boolean);
+    const studentIds = convertedLeads.map(l => l.convertedStudent && l.convertedStudent._id).filter(Boolean);
     const fees = await Fee.find({ student: { $in: studentIds } });
 
     const students = convertedLeads.map(lead => {
-      const student = lead.convertedStudent;
-      const fee = fees.find(f => String(f.student) === String(student._id));
+      const sp = lead.convertedStudent;
+      const userDoc = sp ? sp.user : null;
+      
+      const studentObj = sp ? {
+        _id: sp._id,
+        name: userDoc ? userDoc.name : 'Unknown Student',
+        phone: userDoc ? userDoc.phone : '—',
+        course: sp.course ? sp.course.name : '—',
+        batch: sp.batch ? sp.batch.name : '—',
+        fees_total: sp.fees_total,
+        fees_paid: sp.fees_paid,
+        status: userDoc ? userDoc.status : 'inactive',
+        isActive: userDoc ? userDoc.isActive : false
+      } : null;
+
+      const fee = sp ? fees.find(f => String(f.student) === String(sp._id)) : null;
       
       let feeStatus = 'unpaid';
       if (fee) {
@@ -53,7 +74,7 @@ exports.getAdmissions = async (req, res) => {
       }
 
       return {
-        student,
+        student: studentObj,
         lead,
         feeStatus,
         fee
@@ -109,7 +130,7 @@ exports.getStudentFee = async (req, res) => {
 exports.getConvertLead = async (req, res) => {
   logger.info('GET convert lead form request', { leadId: req.params.id });
   try {
-    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user._id });
+    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId });
     if (!lead) {
       logger.warn('Counsellor unauthorized lead convert request', { leadId: req.params.id });
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });
@@ -117,7 +138,15 @@ exports.getConvertLead = async (req, res) => {
 
     const Batch = require('../../models/Batch');
     const batches = await Batch.find({ isActive: true }).distinct('name');
-    const teachers = await User.find({ role: 'teacher', isActive: true }).select('name');
+    
+    const Teacher = require('../../models/Teacher');
+    const teacherProfiles = await Teacher.find().populate('user', 'name status');
+    const teachers = teacherProfiles
+      .filter(p => p.user && p.user.status === 'active')
+      .map(p => ({
+        _id: p._id,
+        name: p.user.name
+      }));
 
     res.render('counsellor/convert', {
       title: `Convert: ${lead.name}`,
@@ -141,11 +170,19 @@ exports.postConvertLead = async (req, res) => {
   
   const Batch = require('../../models/Batch');
   const batches = await Batch.find({ isActive: true }).distinct('name');
-  const teachers = await User.find({ role: 'teacher', isActive: true }).select('name');
+  
+  const Teacher = require('../../models/Teacher');
+  const teacherProfiles = await Teacher.find().populate('user', 'name status');
+  const teachers = teacherProfiles
+    .filter(p => p.user && p.user.status === 'active')
+    .map(p => ({
+      _id: p._id,
+      name: p.user.name
+    }));
   let lead;
 
   try {
-    lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user._id });
+    lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId });
     if (!lead) {
       logger.warn('Counsellor unauthorized lead convert request', { leadId: req.params.id });
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });
@@ -223,12 +260,26 @@ exports.postConvertLead = async (req, res) => {
       });
     }
 
+    const Course = require('../../models/Course');
+    const Student = require('../../models/Student');
+
+    const courseName = req.body.course || lead.course || 'Digital Marketing';
+    let courseDoc = await Course.findOne({
+      $or: [
+        { name: courseName },
+        { code: courseName.toUpperCase() }
+      ]
+    });
+    if (!courseDoc) {
+      courseDoc = await Course.findOne();
+    }
+
     // Dynamic Batch creation if it doesn't exist yet
     let targetBatchObj = await Batch.findOne({ name: batchName });
     if (!targetBatchObj) {
       targetBatchObj = await Batch.create({
         name: batchName,
-        course: req.body.course || lead.course || 'Digital Marketing',
+        course: courseDoc ? courseDoc._id : null,
         capacity: 20,
         teachers: req.body.teacherId ? [req.body.teacherId] : [],
         isActive: true
@@ -236,31 +287,39 @@ exports.postConvertLead = async (req, res) => {
       logger.info('Dynamically created missing batch during counsellor lead conversion', { batchName });
     }
 
-    const student = await User.create({
-      name: req.body.name,
-      email: email,
-      password: password,
-      role: 'student',
-      phone: req.body.phone,
-      course: req.body.course,
-      batch: batchName,
-      enrollmentDate: req.body.enrollmentDate ? new Date(req.body.enrollmentDate) : new Date(),
-      fees_total: totalFees,
-      fees_paid: paidFees,
-      counsellor: req.user._id,
-      teacher: req.body.teacherId || null,
-      statusHistory: [{
-        status: 'active',
-        changedBy: req.user._id,
-        reason: 'Enrolled via lead conversion'
-      }]
-    });
+    let studentUser;
+    let studentProfile;
 
-    let feeLedger;
     try {
-      feeLedger = new Fee({
-        student: student._id,
-        course: student.course,
+      studentUser = await User.create({
+        name: req.body.name || lead.name,
+        email: email,
+        password: password,
+        role: 'student',
+        phone: req.body.phone || lead.phone,
+        status: 'active'
+      });
+
+      studentProfile = await Student.create({
+        user: studentUser._id,
+        counsellor: req.user.counsellorProfileId,
+        teacher: req.body.teacherId || null,
+        course: courseDoc ? courseDoc._id : null,
+        batch: targetBatchObj ? targetBatchObj._id : null,
+        enrollmentDate: req.body.enrollmentDate ? new Date(req.body.enrollmentDate) : new Date(),
+        fees_total: totalFees,
+        fees_paid: paidFees,
+        statusHistory: [{
+          status: 'active',
+          changedBy: req.user._id,
+          reason: 'Enrolled via lead conversion'
+        }]
+      });
+
+      let feeLedger = new Fee({
+        student: studentProfile._id,
+        course: courseDoc ? courseDoc._id : null,
+        batch: targetBatchObj ? targetBatchObj._id : null,
         totalAmount: totalFees,
         paidAmount: paidFees,
         discount: 0,
@@ -276,31 +335,35 @@ exports.postConvertLead = async (req, res) => {
       feeLedger.generateInstallments();
       feeLedger.allocatePayments();
       await feeLedger.save();
+
+      await Student.findByIdAndUpdate(studentProfile._id, {
+        fees_total: feeLedger.totalAmount,
+        fees_paid: feeLedger.paidAmount
+      });
+
+      lead.status = 'admission_completed';
+      lead.convertedStudent = studentProfile._id;
+      lead.convertedAt = new Date();
+      lead.followUpHistory.push({
+        note: `Lead converted to student by Counsellor. Student ID: ${studentProfile.rollNumber || studentProfile._id}`,
+        status: 'admission_completed',
+        channel: 'In-person',
+        doneBy: req.user._id,
+        doneAt: new Date()
+      });
+      await lead.save();
+
+      logger.info('Lead converted to student successfully by Counsellor', { leadId: lead._id, studentId: studentProfile._id });
+      res.redirect('/counsellor/admissions?converted=1');
     } catch (dbErr) {
-      // Rollback student creation on ledger save error (e.g., duplicate index E11000)
-      await User.findByIdAndDelete(student._id);
+      if (studentProfile) {
+        await Student.findByIdAndDelete(studentProfile._id).catch(() => {});
+      }
+      if (studentUser) {
+        await User.findByIdAndDelete(studentUser._id).catch(() => {});
+      }
       throw dbErr;
     }
-
-    await User.findByIdAndUpdate(student._id, {
-      fees_total: feeLedger.totalAmount,
-      fees_paid: feeLedger.paidAmount
-    });
-
-    lead.status = 'admission_completed';
-    lead.convertedStudent = student._id;
-    lead.convertedAt = new Date();
-    lead.followUpHistory.push({
-      note: `Lead converted to student by Counsellor. Student ID: ${student._id}`,
-      status: 'admission_completed',
-      channel: 'In-person',
-      doneBy: req.user._id,
-      doneAt: new Date()
-    });
-    await lead.save();
-
-    logger.info('Lead converted to student successfully by Counsellor', { leadId: lead._id, studentId: student._id });
-    res.redirect('/counsellor/admissions?converted=1');
   } catch (err) {
     logger.error('Post Convert Lead Error', { error: err.message, stack: err.stack });
     

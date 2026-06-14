@@ -10,9 +10,9 @@ const logger = require('../../utils/logger');
 exports.getAnalytics = async (req, res) => {
   try {
     const studentProfile = await Student.findOne({
-      userId: req.user._id
+      user: req.user._id
     })
-      .populate('userId', 'name email phone status')
+      .populate('user', 'name email phone status')
       .populate('course', 'name code')
       .populate('batch', 'name');
 
@@ -108,6 +108,7 @@ exports.getAnalytics = async (req, res) => {
       .populate('teacher', 'name');
 
     const avgTestScores = progressList.map(progress => ({
+      subject: progress.course?.name || studentProfile.course?.name || 'Course',
       course: progress.course?.name || studentProfile.course?.name || 'Course',
       module: 'General',
       score: progress.overallScore
@@ -153,10 +154,10 @@ exports.getAnalytics = async (req, res) => {
     }
 
     const curriculums = await Curriculum.find(curriculumQuery)
-      .populate('course', 'name code')
-      .populate('modules.topics');
+      .populate('course');
 
     const curriculumCompletion = curriculums.map(curriculum => ({
+      subject: curriculum.course?.name || studentProfile.course?.name || 'Course',
       course: curriculum.course?.name || studentProfile.course?.name || 'Course',
       pct: curriculum.completionPct
     }));

@@ -8,7 +8,7 @@ const Student = require('../../models/Student');
  */
 exports.getAssignments = async (req, res) => {
   try {
-    const studentProfile = await Student.findOne({ userId: req.user._id });
+    const studentProfile = await Student.findOne({ user: req.user._id });
     const isKycIncomplete = !studentProfile;
     if (isKycIncomplete) {
       return res.status(403).render('403', {

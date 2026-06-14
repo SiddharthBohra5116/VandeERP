@@ -17,10 +17,10 @@ const { todayIST } = require('../../utils/dateHelper');
  */
 exports.getDashboard = async (req, res) => {
   try {
-    const studentProfile = await Student.findOne({ userId: req.user._id })
-      .populate('userId', 'name email phone status profilePic')
-      .populate('teacher', 'name')
-      .populate('counsellor', 'name');
+    const studentProfile = await Student.findOne({ user: req.user._id })
+      .populate('user', 'name email phone status profilePic')
+      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
+      .populate({ path: 'counsellor', populate: { path: 'user', select: 'name' } });
 
     if (!studentProfile || !studentProfile.batch) {
       const fallbackUser = req.user.toObject ? req.user.toObject() : req.user;
@@ -35,11 +35,18 @@ exports.getDashboard = async (req, res) => {
     }
 
     const student = studentProfile.toObject();
-    student.name = studentProfile.userId?.name || '';
-    student.email = studentProfile.userId?.email || '';
-    student.phone = studentProfile.userId?.phone || '';
-    student.status = studentProfile.userId?.status || 'active';
-    student.profilePic = studentProfile.userId?.profilePic || null;
+    student.name = studentProfile.user?.name || '';
+    student.email = studentProfile.user?.email || '';
+    student.phone = studentProfile.user?.phone || '';
+    student.status = studentProfile.user?.status || 'active';
+    student.profilePic = studentProfile.user?.profilePic || null;
+    student.role = req.user.role || 'student';
+    student.dob = studentProfile.user?.dob || null;
+    student.address = studentProfile.user?.address || '';
+    student.city = studentProfile.user?.city || '';
+    student.fatherName = studentProfile.family?.father?.name || '';
+    student.guardianPhone = studentProfile.family?.guardian?.phone || '';
+    student.idProof = studentProfile.documents?.idProof || null;
 
     if (student.status === 'complete' && (!student.feedback || !student.feedback.submitted)) {
       return res.render('student/feedback', {
@@ -65,7 +72,7 @@ exports.getDashboard = async (req, res) => {
         .sort({ createdAt: -1 })
         .limit(5),
       Schedule.find({ batch: student.batch, date: { $gte: today } })
-        .populate('teacher', 'name')
+        .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
         .populate('classroom', 'name location')
         .sort({ date: 1, startTime: 1 })
         .limit(5),
@@ -98,7 +105,7 @@ exports.getDashboard = async (req, res) => {
       date: { $in: dateStrings },
       status: { $ne: 'cancelled' },
     })
-      .populate('teacher', 'name')
+      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
       .populate('classroom', 'name location')
       .sort({ startTime: 1 });
 

@@ -108,7 +108,7 @@ exports.getSchedules = async (req, res) => {
     })
       .populate('course', 'name code')
       .populate('batch', 'name')
-      .populate('teacher', 'name')
+      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
       .populate('classroom', 'name')
       .sort({ startTime: 1 });
 
@@ -118,13 +118,13 @@ exports.getSchedules = async (req, res) => {
     })
       .populate('course', 'name code')
       .populate('batch', 'name')
-      .populate('teacher', 'name')
+      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
       .populate('classroom', 'name');
 
     const allSchedules = await Schedule.find(filter)
       .populate('course', 'name code')
       .populate('batch', 'name')
-      .populate('teacher', 'name')
+      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
       .populate('classroom', 'name')
       .sort({ date: -1, startTime: 1 });
 
@@ -169,7 +169,7 @@ exports.getSchedules = async (req, res) => {
     const timetables = await Timetable.find({})
       .populate('course', 'name code')
       .populate('batch', 'name')
-      .populate('slots.teacher', 'name')
+      .populate({ path: 'slots.teacher', populate: { path: 'user', select: 'name' } })
       .populate('slots.classroom', 'name');
 
     res.render('admin/schedules', {
@@ -270,7 +270,9 @@ exports.postCreateSchedule = async (req, res) => {
       date,
       startTime,
       endTime,
-      status
+      status,
+      subject,
+      note
     } = req.body;
 
     const { checkScheduleClash } = require('../../utils/clashDetector');
@@ -297,6 +299,8 @@ exports.postCreateSchedule = async (req, res) => {
       date,
       startTime,
       endTime,
+      subject: subject || '',
+      note: note || '',
       status: status || 'scheduled'
     });
 
@@ -413,7 +417,9 @@ exports.postEditSchedule = async (req, res) => {
       date,
       startTime,
       endTime,
-      status
+      status,
+      subject,
+      note
     } = req.body;
 
     const { checkScheduleClash } = require('../../utils/clashDetector');
@@ -441,6 +447,8 @@ exports.postEditSchedule = async (req, res) => {
       date,
       startTime,
       endTime,
+      subject: subject || '',
+      note: note || '',
       status
     });
 

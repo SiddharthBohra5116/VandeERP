@@ -32,14 +32,16 @@ exports.getTeachers = async (req, res) => {
     const userIds = users.map(user => user._id);
 
     const teacherProfiles = await Teacher.find({
-      userId: { $in: userIds }
-    }).populate('userId', 'name email phone status profilePic');
+      user: { $in: userIds }
+    }).populate('user', 'name email phone status profilePic');
 
     const teacherProfileMap = new Map(
-      teacherProfiles.map(profile => [
-        String(profile.userId._id),
-        profile
-      ])
+      teacherProfiles
+        .filter(profile => profile.user)
+        .map(profile => [
+          String(profile.user._id),
+          profile
+        ])
     );
 
     const mergedTeachers = users.map(user => {
@@ -89,21 +91,21 @@ exports.getTeacherProfile = async (req, res) => {
     }
 
     const teacherProfile = await Teacher.findOne({
-      userId: teacherUser._id
+      user: teacherUser._id
     });
 
     const [curricula, updates, schedules, messages] = await Promise.all([
 
-      Curriculum.find({ teacher: teacherUser._id })
-        .populate('course', 'name code')
+      Curriculum.find({ teacher: teacherProfile ? teacherProfile._id : null })
+        .populate('course')
         .populate('batch', 'name'),
 
-      DailyUpdate.find({ teacher: teacherUser._id })
+      DailyUpdate.find({ teacher: teacherProfile ? teacherProfile._id : null })
         .populate('course', 'name code')
         .populate('batch', 'name')
         .sort({ date: -1 }),
 
-      Schedule.find({ teacher: teacherUser._id })
+      Schedule.find({ teacher: teacherProfile ? teacherProfile._id : null })
         .populate('course', 'name code')
         .populate('batch', 'name')
         .populate('classroom', 'name')

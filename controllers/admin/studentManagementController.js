@@ -24,10 +24,32 @@ exports.getStudents = async (req, res) => {
     if (search) {
       const escaped = escapeRegex(search);
 
+      const Course = require('../../models/Course');
+      const Batch = require('../../models/Batch');
+
+      const [matchingCourses, matchingBatches] = await Promise.all([
+        Course.find({ name: { $regex: escaped, $options: 'i' } }).select('_id'),
+        Batch.find({ name: { $regex: escaped, $options: 'i' } }).select('_id')
+      ]);
+
+      const courseIds = matchingCourses.map(c => c._id);
+      const batchIds = matchingBatches.map(b => b._id);
+
+      const matchingStudents = await Student.find({
+        $or: [
+          { rollNumber: { $regex: escaped, $options: 'i' } },
+          { course: { $in: courseIds } },
+          { batch: { $in: batchIds } }
+        ]
+      }).select('user');
+
+      const matchedUserIdsFromProfiles = matchingStudents.map(s => s.user).filter(Boolean);
+
       userFilter.$or = [
         { name: { $regex: escaped, $options: 'i' } },
         { phone: { $regex: escaped, $options: 'i' } },
-        { email: { $regex: escaped, $options: 'i' } }
+        { email: { $regex: escaped, $options: 'i' } },
+        { _id: { $in: matchedUserIdsFromProfiles } }
       ];
     }
 
@@ -35,13 +57,24 @@ exports.getStudents = async (req, res) => {
 
     const userIds = users.map(user => user._id);
 
-    let studentProfiles = await Student.find({
-      userId: { $in: userIds }
+    const studentProfiles = await Student.find({
+      user: { $in: userIds }
     })
-      .populate('userId', 'name email phone status profilePic')
+      .populate('user', 'name email phone status profilePic')
       .populate('course', 'name code')
       .populate('batch', 'name')
       .sort({ createdAt: -1 });
+
+    const studentProfileMap = new Map(
+      studentProfiles
+        .filter(profile => profile.user)
+        .map(profile => [
+          String(profile.user._id),
+          profile
+        ])
+    );
+
+    let attendanceMap = new Map();
 
     if (studentProfiles.length > 0) {
       const studentIds = studentProfiles.map(student => student._id);
@@ -57,8 +90,8 @@ exports.getStudents = async (req, res) => {
       const studentsForAttendance = studentProfiles.map(student => {
         const plain = student.toObject();
 
-        plain.name = student.userId?.name || '';
-        plain.status = student.userId?.status || '';
+        plain.name = student.user?.name || '';
+        plain.status = student.user?.status || '';
 
         return plain;
       });
@@ -69,7 +102,7 @@ exports.getStudents = async (req, res) => {
         todayRecords
       );
 
-      const attendanceMap = new Map(
+      attendanceMap = new Map(
         studentsForAttendance.map(student => [
           String(student._id),
           {
@@ -78,32 +111,40 @@ exports.getStudents = async (req, res) => {
           }
         ])
       );
+    }
 
-      studentProfiles = studentProfiles.map(student => {
-        const plain = student.toObject();
-        const stats = attendanceMap.get(String(student._id)) || {};
+    let mergedStudents = users.map(user => {
+      const plainUser = user.toObject();
+      const profile = studentProfileMap.get(String(user._id));
+      const stats = profile ? (attendanceMap.get(String(profile._id)) || {}) : {};
 
-        plain.attendancePct = stats.attendancePct || 0;
-        plain.isMarkedToday = stats.isMarkedToday || false;
+      return {
+        ...plainUser,
+        studentProfile: profile ? profile.toObject() : null,
+        rollNumber: profile?.rollNumber || plainUser.rollNumber || '',
+        attendancePct: typeof stats.attendancePct !== 'undefined' ? stats.attendancePct : 100,
+        isMarkedToday: typeof stats.isMarkedToday !== 'undefined' ? stats.isMarkedToday : true,
+        idProof: profile?.documents?.idProof || null,
+        fatherName: profile?.family?.father?.name || '',
+        guardianPhone: profile?.family?.guardian?.phone || '',
+        idVerified: profile?.idVerified || false
+      };
+    });
 
-        return plain;
+    if (attendance) {
+      mergedStudents = mergedStudents.filter(student => {
+        if (attendance === 'low') return student.attendancePct < 75;
+        if (attendance === 'medium') return student.attendancePct >= 75 && student.attendancePct <= 85;
+        if (attendance === 'high') return student.attendancePct > 85;
+        if (attendance === 'not_marked_today') return !student.isMarkedToday;
+        return true;
       });
-
-      if (attendance) {
-        studentProfiles = studentProfiles.filter(student => {
-          if (attendance === 'low') return student.attendancePct < 75;
-          if (attendance === 'medium') return student.attendancePct >= 75 && student.attendancePct <= 85;
-          if (attendance === 'high') return student.attendancePct > 85;
-          if (attendance === 'not_marked_today') return !student.isMarkedToday;
-          return true;
-        });
-      }
     }
 
     res.render('admin/users', {
       title: 'Manage Students',
       user: req.user,
-      users: studentProfiles,
+      users: mergedStudents,
       roleActive: 'student',
       page: 'students',
       filter: req.query
@@ -128,13 +169,13 @@ exports.getStudents = async (req, res) => {
 exports.getStudentProfile = async (req, res) => {
   try {
     const student = await Student.findById(req.params.id)
-      .populate('userId', 'name email phone status profilePic address city dob socialHandle createdAt updatedAt')
-      .populate('teacher', 'name email phone')
-      .populate('counsellor', 'name email phone')
+      .populate('user', 'name email phone status profilePic address city dob socialHandle createdAt updatedAt')
+      .populate({ path: 'teacher', populate: { path: 'user', select: 'name email phone' } })
+      .populate({ path: 'counsellor', populate: { path: 'user', select: 'name email phone' } })
       .populate('course', 'name code durationMonths fees')
       .populate('batch', 'name');
 
-    if (!student || !student.userId) {
+    if (!student || !student.user) {
       return res.redirect('/admin/students');
     }
 
@@ -143,24 +184,24 @@ exports.getStudentProfile = async (req, res) => {
         .populate('payments.receivedBy', 'name'),
 
       Attendance.find({ student: student._id })
-        .populate('teacher', 'name')
+        .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
         .sort({ date: -1 }),
 
       Progress.findOne({ student: student._id })
-        .populate('teacher', 'name')
+        .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
         .populate('course', 'name code')
         .populate('batch', 'name'),
 
       Lead.findOne({ convertedStudent: student._id })
-        .populate('assignedTo', 'name'),
+        .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name' } }),
 
-      Message.find({ recipient: student.userId._id })
+      Message.find({ recipient: student.user._id })
         .populate('sender', 'name role')
         .sort({ createdAt: -1 })
     ]);
 
     res.render('admin/student-profile', {
-      title: `${student.userId.name} — Profile`,
+      title: `${student.user.name} — Profile`,
       user: req.user,
       student,
       fee,
@@ -239,15 +280,15 @@ exports.postAddStudentRemark = async (req, res) => {
 // POST /admin/students/:id/status
 exports.postUpdateStudentStatus = async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id).populate('userId');
+    const student = await Student.findById(req.params.id).populate('user');
 
-    if (!student || !student.userId) {
+    if (!student || !student.user) {
       return res.redirect('/admin/students');
     }
 
-    student.userId.status = req.body.status;
+    student.user.status = req.body.status;
 
-    await student.userId.save();
+    await student.user.save();
 
     if (!student.statusHistory) {
       student.statusHistory = [];

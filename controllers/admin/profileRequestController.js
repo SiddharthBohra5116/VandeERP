@@ -10,7 +10,7 @@ exports.getProfileRequests = async (req, res) => {
     const students = await Student.find({
       'pendingProfileUpdate.requestedAt': { $ne: null }
     })
-      .populate('userId', 'name email phone profilePic status')
+      .populate('user', 'name email phone profilePic status')
       .sort({ 'pendingProfileUpdate.requestedAt': -1 });
 
     res.render('admin/profile-requests', {
@@ -38,9 +38,9 @@ exports.getProfileRequests = async (req, res) => {
 // POST /admin/students/:id/approve-profile
 exports.postApproveProfileUpdate = async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id).populate('userId');
+    const student = await Student.findById(req.params.id).populate('user');
 
-    if (!student || !student.userId) {
+    if (!student || !student.user) {
       return res.redirect('/admin/students');
     }
 
@@ -48,28 +48,28 @@ exports.postApproveProfileUpdate = async (req, res) => {
 
     if (pending && pending.requestedAt) {
       if (pending.name !== null && pending.name !== undefined) {
-        student.userId.name = pending.name;
+        student.user.name = pending.name;
       }
 
       if (pending.phone !== null && pending.phone !== undefined) {
-        student.userId.phone = pending.phone;
+        student.user.phone = pending.phone;
       }
 
       if (pending.profilePic !== null && pending.profilePic !== undefined) {
-        student.userId.profilePic = pending.profilePic;
+        student.user.profilePic = pending.profilePic;
         student.documents.profilePic = pending.profilePic;
       }
 
       if (pending.address !== null && pending.address !== undefined) {
-        student.userId.address = pending.address;
+        student.user.address = pending.address;
       }
 
       if (pending.city !== null && pending.city !== undefined) {
-        student.userId.city = pending.city;
+        student.user.city = pending.city;
       }
 
       if (pending.dob !== null && pending.dob !== undefined) {
-        student.userId.dob = pending.dob;
+        student.user.dob = pending.dob;
       }
 
       if (pending.fatherName !== null && pending.fatherName !== undefined) {
@@ -92,7 +92,7 @@ exports.postApproveProfileUpdate = async (req, res) => {
         requestedAt: null
       };
 
-      await student.userId.save();
+      await student.user.save();
       await student.save();
 
       logger.info('Student profile update request approved', {

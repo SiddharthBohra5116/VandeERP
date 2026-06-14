@@ -57,11 +57,13 @@ exports.getAttendanceOverview = async (req, res) => {
       studentFilter.batch = batch;
     }
 
-    const students = await Student.find(studentFilter)
-      .populate('userId', 'name email phone status')
+    let students = await Student.find(studentFilter)
+      .populate('user', 'name email phone status')
       .populate('course', 'name code')
       .populate('batch', 'name')
       .sort({ createdAt: -1 });
+
+    students = students.filter(student => student.user && student.user.status === 'active');
 
     let monthlyAttendanceRecords = [];
     let gridDates = [];
@@ -77,11 +79,11 @@ exports.getAttendanceOverview = async (req, res) => {
         .populate({
           path: 'student',
           populate: {
-            path: 'userId',
+            path: 'user',
             select: 'name'
           }
         })
-        .populate('teacher', 'name')
+        .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
         .populate('batch', 'name')
         .populate('course', 'name code');
 
@@ -124,8 +126,8 @@ exports.getAttendanceOverview = async (req, res) => {
 
           return {
             _id: student._id,
-            userId: student.userId?._id,
-            name: student.userId?.name || 'Unknown Student',
+            userId: student.user?._id,
+            name: student.user?.name || 'Unknown Student',
             batch: student.batch?.name || '',
             course: student.course?.name || '',
             attendanceByDate
@@ -139,10 +141,10 @@ exports.getAttendanceOverview = async (req, res) => {
     for (const batchDoc of batches) {
       const batchStudents = await Student.find({
         batch: batchDoc._id
-      }).populate('userId', 'status');
+      }).populate('user', 'status');
 
       const activeStudents = batchStudents.filter(student =>
-        student.userId && student.userId.status === 'active'
+        student.user && student.user.status === 'active'
       );
 
       if (activeStudents.length === 0) continue;

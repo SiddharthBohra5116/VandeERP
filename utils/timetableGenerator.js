@@ -63,6 +63,9 @@ async function propagateTimetable(timetableId) {
           date: dateStr,
           startTime: slot.startTime,
           endTime: slot.endTime,
+          moduleId: slot.moduleId || null,
+          topicId: slot.topicId || null,
+          note: slot.note || '',
           status: 'scheduled'
         });
       }

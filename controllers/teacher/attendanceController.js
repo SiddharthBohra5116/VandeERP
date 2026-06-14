@@ -4,6 +4,8 @@ const Schedule = require('../../models/Schedule');
 const Holiday = require('../../models/Holiday');
 const { todayIST } = require('../../utils/dateHelper');
 const Course = require('../../models/Course');
+const Batch = require('../../models/Batch');
+const Student = require('../../models/Student');
 
 /**
  * GET /teacher/attendance
@@ -21,14 +23,25 @@ exports.getAttendancePage = async (req, res) => {
     let existing = [];
 
     if (batch && subject) {
-      [students, existing] = await Promise.all([
-        User.find({
-          role: 'student',
-          batch: { $regex: new RegExp('^' + batch.trim() + '$', 'i') },
-          status: { $in: ['active', 'inactive'] }
-        }).sort({ name: 1 }),
-        Attendance.find({ batch, date: today }),
-      ]);
+      const batchDoc = await Batch.findOne({ name: batch.trim() });
+      const batchId = batchDoc ? batchDoc._id : null;
+
+      if (batchId) {
+        const studentProfiles = await Student.find({ batch: batchId })
+          .populate('user', 'name status');
+
+        students = studentProfiles
+          .filter(sp => sp.user)
+          .map(sp => ({
+            _id: sp._id,
+            name: sp.user.name,
+            status: sp.user.status
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        existing = await Attendance.find({ batch: batchId, date: today });
+      }
+      
       console.log('✅ Attendance page data fetched:', {
         batch, subject, date: today,
         studentCount: students.length,
@@ -37,7 +50,7 @@ exports.getAttendancePage = async (req, res) => {
     }
 
     // Fetch all active student batches across the academy
-    const batches = await User.distinct('batch', { role: 'student', isActive: true });
+    const batches = await Batch.distinct('name', { isActive: true });
 
     // Fetch unique subjects
     let subjects = await Schedule.distinct('subject');
@@ -76,6 +89,10 @@ exports.postMarkAttendance = async (req, res) => {
   const { batch, subject, date, statuses, notes } = req.body;
   const courseDoc = await Course.findOne({ name: subject });
   const courseId = courseDoc ? courseDoc._id : null;
+  
+  const batchDoc = await Batch.findOne({ name: batch });
+  const batchId = batchDoc ? batchDoc._id : null;
+
   console.log('📝 Mark Attendance request:', {
     teacherId: req.user._id, batch, subject, date,
     statusesCount: Object.keys(statuses || {}).length,
@@ -83,7 +100,7 @@ exports.postMarkAttendance = async (req, res) => {
 
   try {
     if (req.user.role !== 'admin') {
-      const validBatch = await Schedule.findOne({ teacher: req.user._id, batch, subject });
+      const validBatch = await Schedule.findOne({ teacher: req.user.teacherProfileId, batch, subject });
       if (!validBatch) {
         console.warn(`⚠️ Teacher unauthorized attendance attempt: teacher ${req.user._id} attempted batch ${batch} with subject ${subject}`);
         return res.status(403).render('403', { title: 'Access Denied', user: req.user });
@@ -104,7 +121,15 @@ exports.postMarkAttendance = async (req, res) => {
       updateOne: {
         filter: { student: studentId, date },
         update: {
-          $set: { student: studentId, teacher: req.user._id, course: courseId, batch, date, status, note: notes?.[studentId] || '' },
+          $set: {
+            student: studentId,
+            teacher: req.user.teacherProfileId,
+            course: courseId,
+            batch: batchId,
+            date,
+            status,
+            note: notes?.[studentId] || ''
+          },
         },
         upsert: true,
       },
@@ -131,13 +156,18 @@ exports.getAttendanceHistory = async (req, res) => {
   console.log('📅 Attendance History load:', { teacherId: req.user._id, batch, subject, month });
 
   try {
-    const filter = { teacher: req.user._id };
-    if (batch) filter.batch = batch;
+    const filter = { teacher: req.user.teacherProfileId };
+    
+    if (batch) {
+      const batchDoc = await Batch.findOne({ name: batch });
+      if (batchDoc) filter.batch = batchDoc._id;
+    }
+    
     if (month) filter.date = { $regex: `^${month}` };
 
     const [records, batches] = await Promise.all([
       Attendance.find(filter).populate('student', 'name').sort({ date: -1 }),
-      User.distinct('batch', { role: 'student', isActive: true }),
+      Batch.distinct('name', { isActive: true }),
     ]);
 
     console.log('✅ Attendance History fetched:', { recordCount: records.length });

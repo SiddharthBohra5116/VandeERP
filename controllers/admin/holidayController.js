@@ -10,13 +10,20 @@ exports.getHolidaysLeaves = async (req, res) => {
   try {
     const [holidays, leaves] = await Promise.all([
       Holiday.find({}).sort({ date: 1 }),
-      LeaveRequest.find({}).populate('teacher', 'name email rollNumber phone').sort({ appliedAt: -1 })
+      LeaveRequest.find({}).populate('user', 'name email rollNumber phone').sort({ appliedAt: -1 })
     ]);
+
+    const mappedLeaves = leaves.map(leave => {
+      const obj = leave.toObject();
+      obj.teacher = obj.user;
+      return obj;
+    });
+
     res.render('admin/holidays-leaves', {
       title: 'Holidays & Leaves Management',
       user: req.user,
       holidays,
-      leaves
+      leaves: mappedLeaves
     });
   } catch (err) {
     logger.error('Get Holidays & Leaves Error', { err: err.message });

@@ -15,7 +15,7 @@ exports.getFees = async (req, res) => {
     if (search) {
       const matchingStudents = await Student.find()
         .populate({
-          path: 'userId',
+          path: 'user',
           match: {
             name: {
               $regex: escapeRegex(search),
@@ -24,10 +24,10 @@ exports.getFees = async (req, res) => {
           },
           select: 'name phone email'
         })
-        .select('_id userId');
+        .select('_id user');
 
       const studentIds = matchingStudents
-        .filter(student => student.userId)
+        .filter(student => student.user)
         .map(student => student._id);
 
       filter.student = {
@@ -40,7 +40,7 @@ exports.getFees = async (req, res) => {
         path: 'student',
         populate: [
           {
-            path: 'userId',
+            path: 'user',
             select: 'name phone email status'
           },
           {
@@ -62,6 +62,24 @@ exports.getFees = async (req, res) => {
 
     fees = fees.map(fee => {
       const obj = fee.toObject();
+      if (obj.student && obj.student.user) {
+        obj.student.name = obj.student.user.name;
+        obj.student.phone = obj.student.user.phone;
+        obj.student.email = obj.student.user.email;
+      } else if (obj.student) {
+        obj.student.name = obj.student.name || 'Unknown Student';
+        obj.student.phone = obj.student.phone || '—';
+        obj.student.email = obj.student.email || '—';
+      }
+      if (obj.student && obj.student.batch) {
+        obj.student.batch = (obj.student.batch && obj.student.batch.name) ? obj.student.batch.name : '—';
+      }
+      if (obj.course) {
+        obj.course = (obj.course && obj.course.name) ? obj.course.name : '—';
+      }
+      if (obj.batch) {
+        obj.batch = (obj.batch && obj.batch.name) ? obj.batch.name : '—';
+      }
 
       const netAmount =
         fee.totalAmount - (fee.discount || 0);
@@ -142,7 +160,7 @@ exports.getStudentFee = async (req, res) => {
         path: 'student',
         populate: [
           {
-            path: 'userId',
+            path: 'user',
             select: 'name phone email status'
           },
           {
@@ -163,10 +181,30 @@ exports.getStudentFee = async (req, res) => {
       return res.redirect('/admin/fees');
     }
 
+    const feeObj = fee.toObject();
+    if (feeObj.student && feeObj.student.user) {
+      feeObj.student.name = feeObj.student.user.name;
+      feeObj.student.phone = feeObj.student.user.phone;
+      feeObj.student.email = feeObj.student.user.email;
+    } else if (feeObj.student) {
+      feeObj.student.name = feeObj.student.name || 'Unknown Student';
+      feeObj.student.phone = feeObj.student.phone || '—';
+      feeObj.student.email = feeObj.student.email || '—';
+    }
+    if (feeObj.student && feeObj.student.batch) {
+      feeObj.student.batch = (feeObj.student.batch && feeObj.student.batch.name) ? feeObj.student.batch.name : '—';
+    }
+    if (feeObj.course) {
+      feeObj.course = (feeObj.course && feeObj.course.name) ? feeObj.course.name : '—';
+    }
+    if (feeObj.batch) {
+      feeObj.batch = (feeObj.batch && feeObj.batch.name) ? feeObj.batch.name : '—';
+    }
+
     res.render('admin/fee-detail', {
       title: 'Fee Details',
       user: req.user,
-      fee
+      fee: feeObj
     });
 
   } catch (err) {

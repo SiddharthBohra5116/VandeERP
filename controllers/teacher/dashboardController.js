@@ -22,15 +22,18 @@ exports.getDashboard = async (req, res) => {
 
   try {
     const [pendingAssignments, todayAttendance, recentUpdates, messages, schedules, admin, todaySchedules] = await Promise.all([
-      Assignment.find({ teacher: req.user._id, isActive: true, dueDate: { $gte: new Date() } })
+      Assignment.find({ teacher: req.user.teacherProfileId, isActive: true, dueDate: { $gte: new Date() } })
+        .populate('batch', 'name')
         .sort({ dueDate: 1 }).limit(5),
-      Attendance.countDocuments({ teacher: req.user._id, date: today }),
-      DailyUpdate.find({ teacher: req.user._id }).sort({ createdAt: -1 }).limit(5),
+      Attendance.countDocuments({ teacher: req.user.teacherProfileId, date: today }),
+      DailyUpdate.find({ teacher: req.user.teacherProfileId }).populate('batch', 'name').sort({ createdAt: -1 }).limit(5),
       Message.find({ recipient: req.user._id }).populate('sender', 'name role').sort({ createdAt: -1 }).limit(5),
-      Schedule.find({ teacher: req.user._id, date: { $gte: today } })
+      Schedule.find({ teacher: req.user.teacherProfileId, date: { $gte: today } })
+        .populate('batch', 'name')
         .populate('classroom', 'name location').sort({ date: 1, startTime: 1 }).limit(5),
       User.findOne({ role: 'admin' }),
-      Schedule.find({ teacher: req.user._id, date: today })
+      Schedule.find({ teacher: req.user.teacherProfileId, date: today })
+        .populate('batch', 'name')
         .populate('classroom', 'name location').sort({ startTime: 1 }),
     ]);
 
@@ -57,7 +60,7 @@ exports.getDashboard = async (req, res) => {
     );
 
     const weekSchedules = await Schedule.find({
-      teacher: req.user._id,
+      teacher: req.user.teacherProfileId,
       date: { $in: dateStrings },
       status: { $ne: 'cancelled' },
     }).populate('classroom', 'name location').sort({ startTime: 1 });

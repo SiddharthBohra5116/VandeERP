@@ -87,17 +87,16 @@ const courseSchema = new mongoose.Schema({
 
 
 courseSchema.virtual('moduleCount').get(function() {
-  return this.modules.length;
+  return Array.isArray(this.modules) ? this.modules.length : 0;
 });
 
 
 courseSchema.virtual('topicCount').get(function() {
-
+  if (!Array.isArray(this.modules)) return 0;
   return this.modules.reduce(
-    (total, module) => total + module.topics.length,
+    (total, module) => total + (Array.isArray(module.topics) ? module.topics.length : 0),
     0
   );
-
 });
 
 courseSchema.set('toObject', { virtuals: true });

@@ -12,24 +12,28 @@ const progressSchema = new mongoose.Schema({
   student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
   course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
   batch: { type: mongoose.Schema.Types.ObjectId, ref: 'Batch', required: true },
-  teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', required: true },
   testResults: [testResultSchema],
   overallScore: { type: Number, default: 0 },
   teacherRemark: { type: String, default: '' }
 }, { timestamps: true });
 
-// one progress record per student per batch
 progressSchema.index({ student: 1, batch: 1 }, { unique: true });
+progressSchema.index({ teacher: 1 });
 
-// Auto-calculate overallScore
 progressSchema.pre('save', function(next) {
-  if (this.testResults.length > 0) {
-    const total = this.testResults.reduce((sum, test) => {
-      if (!test.totalMarks || test.totalMarks <= 0) return sum;
-      return sum + ((test.score / test.totalMarks) * 100);
-    }, 0);
-    this.overallScore = Math.round(total / this.testResults.length);
+  if (Array.isArray(this.testResults) && this.testResults.length > 0) {
+    const validTests = this.testResults.filter(test => test.totalMarks && test.totalMarks > 0);
+
+    if (validTests.length > 0) {
+      const total = validTests.reduce((sum, test) => {
+        return sum + ((test.score / test.totalMarks) * 100);
+      }, 0);
+
+      this.overallScore = Math.round(total / validTests.length);
+    }
   }
+
   next();
 });
 

@@ -1,5 +1,7 @@
 const User = require('../../models/User');
 const Assignment = require('../../models/Assignment');
+const Batch = require('../../models/Batch');
+const Student = require('../../models/Student');
 
 /**
  * GET /teacher/assignments
@@ -8,7 +10,7 @@ const Assignment = require('../../models/Assignment');
 exports.getAssignments = async (req, res) => {
   console.log('📚 Teacher Assignments list load:', { teacherId: req.user._id });
   try {
-    const filter = req.user.role === 'admin' ? {} : { teacher: req.user._id };
+    const filter = req.user.role === 'admin' ? {} : { teacher: req.user.teacherProfileId };
     const assignments = await Assignment.find(filter).sort({ createdAt: -1 });
     console.log('✅ Assignments fetched:', { count: assignments.length });
     res.render('teacher/assignments', { title: 'Assignments', user: req.user, assignments });
@@ -25,7 +27,7 @@ exports.getAssignments = async (req, res) => {
 exports.getCreateAssignment = async (req, res) => {
   console.log('📝 Create Assignment form load:', { teacherId: req.user._id });
   try {
-    const batches = await User.distinct('batch', { role: 'student', isActive: true });
+    const batches = await Batch.find({ isActive: true });
     res.render('teacher/assignment-form', { title: 'New Assignment', user: req.user, target: null, batches });
   } catch (err) {
     console.error('❌ Create Assignment Form Load Error:', { teacherId: req.user._id, error: err.message });
@@ -43,7 +45,13 @@ exports.postCreateAssignment = async (req, res) => {
     batch: req.body.batch, dueDate: req.body.dueDate, hasFile: !!req.file,
   });
   try {
-    const data = { ...req.body, teacher: req.user._id };
+    const batchDoc = await Batch.findById(req.body.batch);
+    const data = { 
+      ...req.body, 
+      teacher: req.user.teacherProfileId,
+      course: batchDoc ? batchDoc.course : null,
+      batch: batchDoc ? batchDoc._id : req.body.batch
+    };
     if (req.file) {
       data.fileUrl = `/files/${req.file.filename}`;
       data.fileName = req.file.originalname;
@@ -67,7 +75,7 @@ exports.postCreateAssignment = async (req, res) => {
 exports.getAssignmentDetail = async (req, res) => {
   console.log('📄 Assignment Detail load:', { teacherId: req.user._id, assignmentId: req.params.id });
   try {
-    const assignment = await Assignment.findOne({ _id: req.params.id, teacher: req.user._id })
+    const assignment = await Assignment.findOne({ _id: req.params.id, teacher: req.user.teacherProfileId })
       .populate('submissions.student', 'name batch');
 
     if (!assignment) {
@@ -77,8 +85,13 @@ exports.getAssignmentDetail = async (req, res) => {
 
     const { status } = req.query;
     
-    // Find all active students in the batch
-    const activeStudents = await User.find({ role: 'student', batch: assignment.batch, isActive: true }).sort({ name: 1 });
+    // Find all active students in the batch via Student profile
+    const studentProfiles = await Student.find({ batch: assignment.batch })
+      .populate('user');
+    const activeStudents = studentProfiles
+      .filter(sp => sp.user && sp.user.isActive)
+      .map(sp => sp.user)
+      .sort((a, b) => a.name.localeCompare(b.name));
     
     // Find any students who submitted the assignment (even if currently completed/inactive)
     const submittedStudentIds = assignment.submissions.map(s => s.student).filter(Boolean);
@@ -99,8 +112,11 @@ exports.getAssignmentDetail = async (req, res) => {
     const dueDate = new Date(assignment.dueDate);
 
     let allSubmissions = studentsToProcess.map(student => {
+      const profile = studentProfiles.find(sp => sp.user && sp.user._id.toString() === student._id.toString());
+      const studentProfileId = profile ? profile._id.toString() : null;
+
       const sub = assignment.submissions.find(
-        s => s.student && s.student._id.toString() === student._id.toString()
+        s => s.student && (s.student._id || s.student).toString() === studentProfileId
       );
 
       if (sub) {

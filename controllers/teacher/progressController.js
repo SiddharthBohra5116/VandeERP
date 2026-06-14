@@ -28,8 +28,8 @@ exports.getProgress = async (req, res) => {
       const batchDoc = await Batch.findOne({ name: batch });
       const batchId = batchDoc ? batchDoc._id : null;
 
-      const studentDocs = await Student.find({ batch });
-      const studentUserIds = studentDocs.map(s => s.userId);
+      const studentDocs = await Student.find({ batch: batchId });
+      const studentUserIds = studentDocs.map(s => s.user);
       students = await User.find({ _id: { $in: studentUserIds }, status: 'active' }).sort({ name: 1 });
       
       const studentProfileIds = studentDocs.map(s => s._id);
@@ -38,15 +38,15 @@ exports.getProgress = async (req, res) => {
         progressRecords = await Progress.find({ course: courseId, student: { $in: studentProfileIds } })
           .populate({
             path: 'student',
-            populate: { path: 'userId', select: 'name' }
+            populate: { path: 'user', select: 'name' }
           })
           .populate('teacher', 'name');
 
         // Map progressRecords so student.name exists for views expecting it
         progressRecords = progressRecords.map(p => {
           const pObj = p.toObject();
-          if (pObj.student && pObj.student.userId) {
-            pObj.student.name = pObj.student.userId.name;
+          if (pObj.student && pObj.student.user) {
+            pObj.student.name = pObj.student.user.name;
           }
           return pObj;
         });
@@ -83,7 +83,7 @@ exports.postAddTestResult = async (req, res) => {
         student: studentId,
         course: courseId,
         batch: batchDoc ? batchDoc._id : null,
-        teacher: req.user._id
+        teacher: req.user.teacherProfileId
       });
     }
     record.testResults.push({ testName, score: Number(score), totalMarks: Number(totalMarks), date, remarks });
@@ -129,19 +129,26 @@ exports.getMyStudents = async (req, res) => {
   console.log('👨‍🎓 My Students list load:', { teacherId: req.user._id, batch, search, attendance });
   try {
     const Schedule = require('../../models/Schedule');
-    const assignedBatches = await Schedule.distinct('batch', { teacher: req.user._id });
+    const assignedBatches = await Schedule.distinct('batch', { teacher: req.user.teacherProfileId });
     
     const Batch = require('../../models/Batch');
     const batchDocs = await Batch.find({ _id: { $in: assignedBatches } });
     const assignedBatchNames = batchDocs.map(b => b.name);
 
-    const studentFilter = { batch: { $in: assignedBatchNames } };
-    if (batch) studentFilter.batch = batch;
+    let targetBatchIds = assignedBatches;
+    if (batch) {
+      const selectedBatchDoc = batchDocs.find(b => b.name === batch);
+      targetBatchIds = selectedBatchDoc ? [selectedBatchDoc._id] : [];
+    }
 
-    const studentsWithProfile = await Student.find(studentFilter).populate('userId');
+    const studentFilter = { batch: { $in: targetBatchIds } };
+
+    const studentsWithProfile = await Student.find(studentFilter)
+      .populate('user')
+      .populate('batch', 'name');
     let students = studentsWithProfile.map(sp => {
-      const u = sp.userId ? sp.userId.toObject() : {};
-      u.batch = sp.batch;
+      const u = sp.user ? sp.user.toObject() : {};
+      u.batch = sp.batch && sp.batch.name ? sp.batch.name : sp.batch;
       u.studentId = sp._id; // Student profile ID
       u.idProof = sp.documents ? sp.documents.idProof : null;
       u.idVerified = sp.idVerified;
@@ -165,7 +172,7 @@ exports.getMyStudents = async (req, res) => {
         Attendance.find({ student: { $in: studentProfileIds } }),
         Attendance.find({ date: todayStr, student: { $in: studentProfileIds } }),
         Progress.find({ student: { $in: studentProfileIds } }),
-        Assignment.find({ teacher: req.user._id }),
+        Assignment.find({ teacher: req.user.teacherProfileId }),
       ]);
 
       await calculateStudentsAttendance(students, attendanceRecords, todayRecords);

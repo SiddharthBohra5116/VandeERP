@@ -63,12 +63,12 @@ exports.getDashboard = async (req, res) => {
     // At-risk students
     const studentProfiles = await Student
       .find()
-      .populate('userId', 'name role status');
+      .populate('user', 'name role status');
 
     const activeStudentProfiles = studentProfiles.filter(student => {
       return (
-        student.userId &&
-        student.userId.status === 'active'
+        student.user &&
+        student.user.status === 'active'
       );
     });
 
@@ -85,9 +85,9 @@ exports.getDashboard = async (req, res) => {
     const studentsForAttendance = activeStudentProfiles.map(student => {
       const plainStudent = student.toObject();
 
-      plainStudent.name = student.userId.name;
-      plainStudent.role = student.userId.role;
-      plainStudent.status = student.userId.status;
+      plainStudent.name = student.user.name;
+      plainStudent.role = student.user.role;
+      plainStudent.status = student.user.status;
 
       return plainStudent;
     });
@@ -132,7 +132,7 @@ exports.getDashboard = async (req, res) => {
 
     // Recent students
     const recentStudents = await Student.find()
-      .populate('userId', 'name email phone status profilePic')
+      .populate('user', 'name email phone status profilePic')
       .populate('course', 'name code')
       .populate('batch', 'name')
       .sort({ createdAt: -1 })
@@ -152,7 +152,7 @@ exports.getDashboard = async (req, res) => {
     })
       .sort({ nextFollowUpAt: 1, followUpDate: 1 })
       .limit(5)
-      .populate('assignedTo', 'name')
+      .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name' } })
       .populate('interestedCourse', 'name code');
 
     res.render('admin/dashboard', {

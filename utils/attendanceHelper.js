@@ -16,6 +16,16 @@ async function filterValidAttendance(records) {
   // Fetch all approved leaves
   const approvedLeaves = await LeaveRequest.find({ status: 'approved' });
 
+  // Fetch teacher profiles to map profile ID to user ID
+  const Teacher = require('../models/Teacher');
+  const teacherProfiles = await Teacher.find({});
+  const teacherProfileToUserMap = {};
+  teacherProfiles.forEach(t => {
+    if (t.user) {
+      teacherProfileToUserMap[t._id.toString()] = t.user.toString();
+    }
+  });
+
   return records.filter(rec => {
     // 1. Exclude if date is a holiday
     if (holidayDates.has(rec.date)) {
@@ -24,12 +34,13 @@ async function filterValidAttendance(records) {
 
     // 2. Exclude if the teacher was on approved leave on that date
     if (rec.teacher) {
-      const teacherId = rec.teacher._id ? rec.teacher._id.toString() : rec.teacher.toString();
+      const teacherProfileId = rec.teacher._id ? rec.teacher._id.toString() : rec.teacher.toString();
+      const teacherUserId = teacherProfileToUserMap[teacherProfileId] || teacherProfileId;
       const recDateStr = rec.date; // YYYY-MM-DD
       
       const onLeave = approvedLeaves.some(leave => {
-        const leaveTeacherId = leave.user ? leave.user.toString() : (leave.teacher ? leave.teacher.toString() : '');
-        if (leaveTeacherId !== teacherId) return false;
+        const leaveTeacherId = leave.user ? leave.user.toString() : '';
+        if (leaveTeacherId !== teacherUserId) return false;
         
         return recDateStr >= leave.startDate && recDateStr <= leave.endDate;
       });
@@ -64,7 +75,7 @@ async function calculateStudentsAttendance(students, allAttendanceRecords, today
   const sortedRecords = [...validRecords].sort((a, b) => a.date.localeCompare(b.date));
 
   sortedRecords.forEach(rec => {
-    const sId = rec.student.toString();
+    const sId = rec.student && rec.student._id ? rec.student._id.toString() : (rec.student ? rec.student.toString() : '');
     if (studentMap[sId]) {
       studentMap[sId].total++;
       if (rec.status === 'present') {
@@ -79,7 +90,7 @@ async function calculateStudentsAttendance(students, allAttendanceRecords, today
     }
   });
 
-  const markedTodaySet = new Set((todayRecords || []).map(r => r.student.toString()));
+  const markedTodaySet = new Set((todayRecords || []).map(r => r.student && r.student._id ? r.student._id.toString() : (r.student ? r.student.toString() : '')));
 
   students.forEach(u => {
     const id = u._id ? u._id.toString() : '';

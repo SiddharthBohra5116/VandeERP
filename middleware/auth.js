@@ -26,7 +26,7 @@ const protect = async (req, res, next) => {
     // If the logged-in user is a student, attach their Student profile fields to req.user
     if (req.user.role === 'student') {
       const Student = require('../models/Student');
-      const studentProfile = await Student.findOne({ userId: req.user._id });
+      const studentProfile = await Student.findOne({ user: req.user._id });
       if (studentProfile) {
         req.user.studentProfileId = studentProfile._id;
         req.user.batch = studentProfile.batch;
@@ -41,6 +41,18 @@ const protect = async (req, res, next) => {
         req.user.fatherName = studentProfile.family?.father?.name || '';
         req.user.guardianPhone = studentProfile.family?.guardian?.phone || '';
         req.user.pendingProfileUpdate = studentProfile.pendingProfileUpdate;
+      }
+    } else if (req.user.role === 'teacher') {
+      const Teacher = require('../models/Teacher');
+      const teacherProfile = await Teacher.findOne({ user: req.user._id });
+      if (teacherProfile) {
+        req.user.teacherProfileId = teacherProfile._id;
+      }
+    } else if (req.user.role === 'counsellor') {
+      const Counsellor = require('../models/Counsellor');
+      const counsellorProfile = await Counsellor.findOne({ user: req.user._id });
+      if (counsellorProfile) {
+        req.user.counsellorProfileId = counsellorProfile._id;
       }
     }
     

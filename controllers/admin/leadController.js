@@ -58,14 +58,20 @@ exports.getLeads = async (req, res) => {
     }
 
     const leads = await Lead.find(filter)
-      .populate('assignedTo', 'name email phone')
+      .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name email phone' } })
       .populate('interestedCourse', 'name code')
       .sort({ createdAt: -1 });
 
-    const counsellors = await User.find({
-      role: 'counsellor',
-      isActive: true
-    }).select('name email phone');
+    const Counsellor = require('../../models/Counsellor');
+    const counsellorProfiles = await Counsellor.find().populate('user', 'name email phone status');
+    const counsellors = counsellorProfiles
+      .filter(p => p.user && p.user.status === 'active')
+      .map(p => ({
+        _id: p._id,
+        name: p.user.name,
+        email: p.user.email,
+        phone: p.user.phone
+      }));
 
     const courses = await Course.find({ isActive: true }).select('name code');
 
@@ -99,13 +105,13 @@ exports.getLeads = async (req, res) => {
 exports.getLeadDetail = async (req, res) => {
   try {
     const lead = await Lead.findById(req.params.id)
-      .populate('assignedTo', 'name email phone')
+      .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name email phone' } })
       .populate('interestedCourse', 'name code durationMonths fees')
       .populate('followUpHistory.doneBy', 'name role')
       .populate({
         path: 'convertedStudent',
         populate: [
-          { path: 'userId', select: 'name email phone status' },
+          { path: 'user', select: 'name email phone status' },
           { path: 'course', select: 'name code' },
           { path: 'batch', select: 'name' }
         ]
@@ -113,10 +119,16 @@ exports.getLeadDetail = async (req, res) => {
 
     if (!lead) return res.redirect('/admin/leads');
 
-    const counsellors = await User.find({
-      role: 'counsellor',
-      isActive: true
-    }).select('name email phone');
+    const Counsellor = require('../../models/Counsellor');
+    const counsellorProfiles = await Counsellor.find().populate('user', 'name email phone status');
+    const counsellors = counsellorProfiles
+      .filter(p => p.user && p.user.status === 'active')
+      .map(p => ({
+        _id: p._id,
+        name: p.user.name,
+        email: p.user.email,
+        phone: p.user.phone
+      }));
 
     res.render('admin/lead-detail', {
       title: lead.name,
@@ -196,11 +208,20 @@ exports.getConvertLead = async (req, res) => {
 
     if (!lead) return res.redirect('/admin/leads');
 
-    const [batches, teachers, courses] = await Promise.all([
+    const Teacher = require('../../models/Teacher');
+    const [batches, teacherProfiles, courses] = await Promise.all([
       Batch.find({ isActive: true }).populate('course', 'name code').sort({ name: 1 }),
-      User.find({ role: 'teacher', isActive: true }).select('name email'),
+      Teacher.find().populate('user', 'name email status'),
       Course.find({ isActive: true }).select('name code fees durationMonths').sort({ name: 1 })
     ]);
+
+    const teachers = teacherProfiles
+      .filter(p => p.user && p.user.status === 'active')
+      .map(p => ({
+        _id: p._id,
+        name: p.user.name,
+        email: p.user.email
+      }));
 
     res.render('admin/convert', {
       title: `Convert: ${lead.name}`,
@@ -235,11 +256,20 @@ exports.postConvertLead = async (req, res) => {
     lead = await Lead.findById(req.params.id).populate('interestedCourse');
     if (!lead) return res.redirect('/admin/leads');
 
-    const [batches, teachers, courses] = await Promise.all([
+    const Teacher = require('../../models/Teacher');
+    const [batches, teacherProfiles, courses] = await Promise.all([
       Batch.find({ isActive: true }).populate('course', 'name code').sort({ name: 1 }),
-      User.find({ role: 'teacher', isActive: true }).select('name email'),
+      Teacher.find().populate('user', 'name email status'),
       Course.find({ isActive: true }).select('name code fees durationMonths').sort({ name: 1 })
     ]);
+
+    const teachers = teacherProfiles
+      .filter(p => p.user && p.user.status === 'active')
+      .map(p => ({
+        _id: p._id,
+        name: p.user.name,
+        email: p.user.email
+      }));
 
     const email = req.body.email ? req.body.email.trim().toLowerCase() : '';
     const password = req.body.password ? req.body.password.trim() : '';
@@ -357,7 +387,7 @@ exports.postConvertLead = async (req, res) => {
     });
 
     studentProfile = await Student.create({
-      userId: studentUser._id,
+      user: studentUser._id,
       counsellor: lead.assignedTo || null,
       teacher: req.body.teacherId || null,
       course: selectedCourse._id,

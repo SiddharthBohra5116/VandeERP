@@ -32,7 +32,7 @@ exports.postSendMessage = async (req, res) => {
  */
 exports.getLeavesPage = async (req, res) => {
   try {
-    const leaves = await LeaveRequest.find({ teacher: req.user._id }).sort({ createdAt: -1 });
+    const leaves = await LeaveRequest.find({ user: req.user._id }).sort({ createdAt: -1 });
     res.render('teacher/leaves', { title: 'Leave Requests', user: req.user, leaves });
   } catch (err) {
     console.error('❌ Get Leaves Page Error:', err);
@@ -47,7 +47,7 @@ exports.getLeavesPage = async (req, res) => {
 exports.postApplyLeave = async (req, res) => {
   const { startDate, endDate, reason } = req.body;
   try {
-    await LeaveRequest.create({ teacher: req.user._id, startDate, endDate, reason });
+    await LeaveRequest.create({ user: req.user._id, startDate, endDate, reason });
     res.redirect('/teacher/leaves?created=1');
   } catch (err) {
     console.error('❌ Apply Leave Error:', err);
@@ -64,7 +64,7 @@ exports.postApplyLeave = async (req, res) => {
  */
 exports.postCompleteSchedule = async (req, res) => {
   try {
-    const schedule = await Schedule.findOne({ _id: req.params.id, teacher: req.user._id });
+    const schedule = await Schedule.findOne({ _id: req.params.id, teacher: req.user.teacherProfileId });
     if (!schedule) {
       logger.warn('Unauthorized complete schedule request by teacher', { scheduleId: req.params.id });
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });

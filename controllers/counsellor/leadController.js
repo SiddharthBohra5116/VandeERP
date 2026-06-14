@@ -11,7 +11,7 @@ const Message = require('../../models/Message');
 exports.getLeads = async (req, res) => {
   try {
     const { status, search } = req.query;
-    const filter = { assignedTo: req.user._id };
+    const filter = { assignedTo: req.user.counsellorProfileId };
     if (status) filter.status = status;
     if (search) {
       const escaped = escapeRegex(search);
@@ -43,7 +43,7 @@ exports.getCreateLead = (req, res) => {
  * Creates a new lead assigned to this counsellor.
  */
 exports.postCreateLead = async (req, res) => {
-  const data = { ...req.body, assignedTo: req.user._id };
+  const data = { ...req.body, assignedTo: req.user.counsellorProfileId };
   logger.info('Create Lead request', { name: data.name, phone: data.phone, course: data.course });
   try {
     const lead = await Lead.create(data);
@@ -62,7 +62,7 @@ exports.postCreateLead = async (req, res) => {
  */
 exports.getLeadDetail = async (req, res) => {
   try {
-    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user._id })
+    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId })
       .populate('followUpHistory.doneBy', 'name role')
       .populate('convertedStudent', 'name');
     if (!lead) {
@@ -84,7 +84,7 @@ exports.postEditLead = async (req, res) => {
   try {
     const { name, phone, email, course, source, notes, followUpDate } = req.body;
     const updated = await Lead.findOneAndUpdate(
-      { _id: req.params.id, assignedTo: req.user._id },
+      { _id: req.params.id, assignedTo: req.user.counsellorProfileId },
       { name, phone, email, course, source, notes, followUpDate }
     );
     if (!updated) {
@@ -106,19 +106,22 @@ exports.postAddFollowUp = async (req, res) => {
   const { note, status, followUpDate, channel, callDuration, callOutcome } = req.body;
   logger.info('Add follow-up request', { leadId: req.params.id, status, channel });
   try {
-    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user._id });
+    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId });
     if (!lead) {
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });
     }
 
+    let finalStatus = status;
+    if (status === 'interested') finalStatus = 'joining_interested';
+
     // Server-side status validation guard (Issue 2.11 / 4.1)
-    const validStatuses = ['new', 'contacted', 'joining_interested', 'admission_completed', 'lost'];
-    if (!validStatuses.includes(status)) {
-      logger.warn('Invalid status update parameter submitted', { status });
+    const validStatuses = ['new', 'contacted', 'mentorship_scheduled', 'mentorship_attended', 'follow_up', 'joining_interested', 'admission_completed', 'lost'];
+    if (!validStatuses.includes(finalStatus)) {
+      logger.warn('Invalid status update parameter submitted', { status: finalStatus });
       return res.redirect(`/counsellor/leads/${req.params.id}?error=Invalid+status+action`);
     }
 
-    const followUpObj = { note, status, channel: channel || 'Call', doneBy: req.user._id };
+    const followUpObj = { note, status: finalStatus, channel: channel || 'Call', doneBy: req.user._id };
 
     if (followUpObj.channel === 'Call') {
       const callCount = lead.followUpHistory.filter(h => h.channel === 'Call').length;
@@ -128,7 +131,7 @@ exports.postAddFollowUp = async (req, res) => {
     }
 
     lead.followUpHistory.push(followUpObj);
-    lead.status = status;
+    lead.status = finalStatus;
     if (followUpDate) lead.followUpDate = new Date(followUpDate);
     await lead.save();
 
@@ -148,7 +151,7 @@ exports.postMarkLost = async (req, res) => {
   logger.info('Mark lead lost request', { leadId: req.params.id });
   try {
     const updated = await Lead.findOneAndUpdate(
-      { _id: req.params.id, assignedTo: req.user._id },
+      { _id: req.params.id, assignedTo: req.user.counsellorProfileId },
       { status: 'lost' }
     );
     if (!updated) return res.status(403).render('403', { title: 'Access Denied', user: req.user });
@@ -172,7 +175,7 @@ exports.postWalkIn = async (req, res) => {
       course: course || 'Undecided',
       source: 'Walk-in',
       status: 'new',
-      assignedTo: req.user._id,
+      assignedTo: req.user.counsellorProfileId,
     });
     logger.info('Walk-in lead created successfully', { leadId: lead._id });
     res.redirect('/counsellor/leads?walkin=1');
@@ -190,7 +193,7 @@ exports.postWalkIn = async (req, res) => {
 exports.getFollowUps = async (req, res) => {
   try {
     const leads = await Lead.find({
-      assignedTo: req.user._id,
+      assignedTo: req.user.counsellorProfileId,
       followUpDate: { $lte: new Date() },
       status: { $nin: ['admission_completed', 'lost'] },
     }).sort({ followUpDate: 1 });
@@ -207,7 +210,7 @@ exports.getFollowUps = async (req, res) => {
  */
 exports.postMarkReady = async (req, res) => {
   try {
-    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user._id });
+    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId });
     if (!lead) {
       logger.warn('Unauthorized mark ready request by counsellor', { leadId: req.params.id });
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });
@@ -240,7 +243,7 @@ exports.postMarkReady = async (req, res) => {
 exports.deleteLead = async (req, res) => {
   logger.info('Delete lead request', { leadId: req.params.id });
   try {
-    const deleted = await Lead.findOneAndDelete({ _id: req.params.id, assignedTo: req.user._id });
+    const deleted = await Lead.findOneAndDelete({ _id: req.params.id, assignedTo: req.user.counsellorProfileId });
     if (!deleted) return res.status(403).render('403', { title: 'Access Denied', user: req.user });
     res.redirect('/counsellor/leads?deleted=1');
   } catch (err) {

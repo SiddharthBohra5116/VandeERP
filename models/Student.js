@@ -14,19 +14,56 @@ const pendingProfileUpdateSchema = new mongoose.Schema({
 }, { _id: false });
 
 const studentSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
-  rollNumber: { type: String, unique: true },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    unique: true
+  },
 
-  counsellor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-  teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  rollNumber: {
+    type: String,
+    unique: true
+  },
 
-  course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
-  batch: { type: mongoose.Schema.Types.ObjectId, ref: 'Batch', default: null },
+  counsellor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Counsellor',
+    default: null
+  },
 
-  enrollmentDate: { type: Date, default: Date.now },
+  teacher: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Teacher',
+    default: null
+  },
 
-  fees_total: { type: Number, default: 0 },
-  fees_paid: { type: Number, default: 0 },
+  course: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course',
+    required: true
+  },
+
+  batch: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Batch',
+    default: null
+  },
+
+  enrollmentDate: {
+    type: Date,
+    default: Date.now
+  },
+
+  fees_total: {
+    type: Number,
+    default: 0
+  },
+
+  fees_paid: {
+    type: Number,
+    default: 0
+  },
 
   family: {
     father: {
@@ -45,11 +82,20 @@ const studentSchema = new mongoose.Schema({
   },
 
   documents: {
-    profilePic: { type: String, default: null },
-    idProof: { type: String, default: null }
+    profilePic: {
+      type: String,
+      default: null
+    },
+    idProof: {
+      type: String,
+      default: null
+    }
   },
 
-  idVerified: { type: Boolean, default: false },
+  idVerified: {
+    type: Boolean,
+    default: false
+  },
 
   pendingProfileUpdate: {
     type: pendingProfileUpdateSchema,
@@ -67,36 +113,96 @@ const studentSchema = new mongoose.Schema({
   },
 
   remarks: [{
-    postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    role: { type: String },
-    note: { type: String },
-    date: { type: Date, default: Date.now }
+    postedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    role: {
+      type: String
+    },
+    note: {
+      type: String
+    },
+    date: {
+      type: Date,
+      default: Date.now
+    }
   }],
 
   statusHistory: [{
-    status: { type: String },
-    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    reason: { type: String, default: '' },
-    date: { type: Date, default: Date.now }
+    status: {
+      type: String
+    },
+    changedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    reason: {
+      type: String,
+      default: ''
+    },
+    date: {
+      type: Date,
+      default: Date.now
+    }
   }],
 
   feedback: {
-    submitted: { type: Boolean, default: false },
-    teacherRating: { type: Number, default: 0 },
-    contentRating: { type: Number, default: 0 },
-    facilitiesRating: { type: Number, default: 0 },
-    comments: { type: String, default: '' },
-    submittedAt: { type: Date, default: null }
+    submitted: {
+      type: Boolean,
+      default: false
+    },
+    teacherRating: {
+      type: Number,
+      default: 0
+    },
+    contentRating: {
+      type: Number,
+      default: 0
+    },
+    facilitiesRating: {
+      type: Number,
+      default: 0
+    },
+    comments: {
+      type: String,
+      default: ''
+    },
+    submittedAt: {
+      type: Date,
+      default: null
+    }
   }
+
 }, { timestamps: true });
 
 studentSchema.virtual('fees_due').get(function() {
-  return this.fees_total - this.fees_paid;
+  return Math.max(0, this.fees_total - this.fees_paid);
 });
 
 studentSchema.virtual('fees_pct').get(function() {
   if (this.fees_total <= 0) return 0;
   return Math.round((this.fees_paid / this.fees_total) * 100);
+});
+
+studentSchema.virtual('name').get(function() {
+  return this.user && this.user.name ? this.user.name : '';
+});
+
+studentSchema.virtual('email').get(function() {
+  return this.user && this.user.email ? this.user.email : '';
+});
+
+studentSchema.virtual('phone').get(function() {
+  return this.user && this.user.phone ? this.user.phone : '';
+});
+
+studentSchema.virtual('status').get(function() {
+  return this.user && this.user.status ? this.user.status : '';
+});
+
+studentSchema.virtual('profilePic').get(function() {
+  return this.user && this.user.profilePic ? this.user.profilePic : '';
 });
 
 studentSchema.pre('save', async function(next) {

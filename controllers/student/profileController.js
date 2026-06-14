@@ -40,7 +40,7 @@ exports.postUploadIdProof = async (req, res) => {
   try {
     if (!req.file) return res.redirect('/auth/profile?error=1');
 
-    const studentProfile = await Student.findOne({ userId: req.user._id });
+    const studentProfile = await Student.findOne({ user: req.user._id });
     if (!studentProfile) return res.redirect('/auth/profile?error=1');
     studentProfile.documents.idProof = `/files/${req.file.filename}`;
     studentProfile.idVerified = false;
@@ -64,7 +64,7 @@ exports.postUploadIdProof = async (req, res) => {
 exports.postSubmitFeedback = async (req, res) => {
   try {
     const { teacherRating, contentRating, facilitiesRating, comments } = req.body;
-    const studentProfile = await Student.findOne({ userId: req.user._id });
+    const studentProfile = await Student.findOne({ user: req.user._id });
     if (!studentProfile) return res.redirect('/student/dashboard?error=1');
 
     const tRate = Number(teacherRating) || 0;
@@ -102,12 +102,12 @@ exports.postSubmitFeedback = async (req, res) => {
  */
 exports.getCertificate = async (req, res) => {
   try {
-    const studentProfile = await Student.findOne({ userId: req.user._id })
-      .populate('userId', 'name status statusHistory')
+    const studentProfile = await Student.findOne({ user: req.user._id })
+      .populate('user', 'name status statusHistory')
       .populate('course', 'name code')
       .populate('batch', 'name');
 
-    if (!studentProfile || !studentProfile.userId || studentProfile.userId.status !== 'complete' || !studentProfile.feedback?.submitted) {
+    if (!studentProfile || !studentProfile.user || studentProfile.user.status !== 'complete' || !studentProfile.feedback?.submitted) {
       return res.redirect('/student/dashboard?error=Certificate not unlocked yet');
     }
 
@@ -115,7 +115,7 @@ exports.getCertificate = async (req, res) => {
     const completionDate = completeEntry ? completeEntry.date : studentProfile.updatedAt || new Date();
 
     const student = studentProfile.toObject();
-    student.name = studentProfile.userId.name;
+    student.name = studentProfile.user.name;
     student.course = studentProfile.course?.name || '';
     student.batch = studentProfile.batch?.name || '';
 

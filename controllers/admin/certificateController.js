@@ -7,11 +7,11 @@ const logger = require('../../utils/logger');
 exports.getStudentCertificate = async (req, res) => {
   try {
     const student = await Student.findById(req.params.id)
-      .populate('userId', 'name email phone status')
+      .populate('user', 'name email phone status')
       .populate('course', 'name code')
       .populate('batch', 'name');
 
-    if (!student || !student.userId || student.userId.status !== 'complete') {
+    if (!student || !student.user || student.user.status !== 'complete') {
       return res.redirect(
         `/admin/students/${req.params.id || ''}?error=Certificate+not+generated+yet`
       );
@@ -27,7 +27,7 @@ exports.getStudentCertificate = async (req, res) => {
       new Date();
 
     const studentObj = student.toObject();
-    studentObj.name = student.userId?.name || '';
+    studentObj.name = student.user?.name || '';
     studentObj.course = student.course?.name || '';
     studentObj.batch = student.batch?.name || '';
 
