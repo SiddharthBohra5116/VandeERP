@@ -8,9 +8,9 @@
 <!-- Search & Filter Form -->
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
   <form method="GET" action="/admin/fees" class="filter-bar" style="margin: 0; display: flex; gap: 0.75rem; flex-wrap: wrap;">
-    <input type="text" name="search" class="form-control" placeholder="Search by student name..." value="<%= (typeof filter !== 'undefined' && filter.search) ? filter.search : '' %>" style="flex: 2; min-width: 200px; padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
+    <input type="text" name="search" class="form-control" placeholder="Search by student name..." value="<%= (typeof filter !== 'undefined' && filter.search) ? filter.search : '' %>" style="flex: 2; padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
     
-    <select name="paymentStatus" class="form-control" style="flex: 1; min-width: 150px;" onchange="this.form.submit()">
+    <select name="paymentStatus" class="form-control" style="flex: 1;" onchange="this.form.submit()">
       <option value="">All Payment Statuses</option>
       <option value="fully paid" <%= filter.paymentStatus === 'fully paid' ? 'selected' : '' %>>Fully Paid</option>
       <option value="partially paid" <%= filter.paymentStatus === 'partially paid' ? 'selected' : '' %>>Partially Paid</option>
@@ -19,7 +19,7 @@
       <option value="no invoice" <%= filter.paymentStatus === 'no invoice' ? 'selected' : '' %>>No Invoice</option>
     </select>
 
-    <select name="sortBy" class="form-control" style="flex: 1; min-width: 150px;" onchange="this.form.submit()">
+    <select name="sortBy" class="form-control" style="flex: 1;" onchange="this.form.submit()">
       <option value="">Default Sort</option>
       <option value="outstanding" <%= filter.sortBy === 'outstanding' ? 'selected' : '' %>>Highest Outstanding Due</option>
       <option value="longest_overdue" <%= filter.sortBy === 'longest_overdue' ? 'selected' : '' %>>Longest Overdue Date</option>

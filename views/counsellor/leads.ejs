@@ -9,11 +9,11 @@
 <!-- Filters -->
 <div class="card" style="padding:16px 20px; margin-bottom:20px;">
   <form method="GET" action="/counsellor/leads" class="filter-bar" style="margin:0; gap:0.75rem;">
-    <div class="form-group" style="margin:0; flex:1; min-width:160px;">
+    <div class="form-group" style="margin:0; flex:1;">
       <label class="form-label" style="font-size: 10px;">Search</label>
       <input type="text" name="search" class="form-control" placeholder="Name or phone..." value="<%= filters.search || '' %>" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
     </div>
-    <div class="form-group" style="margin:0; min-width:140px;">
+    <div class="form-group">
       <label class="form-label" style="font-size: 10px;">Status</label>
       <select name="status" class="form-control" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
         <option value="">All Statuses</option>
@@ -31,7 +31,7 @@
         <% }); %>
       </select>
     </div>
-    <div class="form-group" style="margin:0; min-width:140px;">
+    <div class="form-group">
       <label class="form-label" style="font-size: 10px;">Source</label>
       <select name="source" class="form-control" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
         <option value="">All Sources</option>

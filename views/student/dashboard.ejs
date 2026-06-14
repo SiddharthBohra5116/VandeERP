@@ -125,7 +125,7 @@
         <span class="badge badge-red" style="font-size: 10px;">⚠️ Late Fines Accrued: +₹<%= fee.totalFine.toLocaleString('en-IN') %></span>
       <% } %>
     </div>
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; padding-top: 0.5rem;">
+    <div class="installments-grid">
       <% fee.installments.forEach(inst => { %>
         <% 
           const isPaid = inst.paidAmount >= inst.amount;

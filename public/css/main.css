@@ -52,6 +52,10 @@
 
 /* ─── RESET ─────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
 html { font-size: 16.5px; -webkit-font-smoothing: antialiased; }
 body {
   font-family: var(--font-body);
@@ -265,10 +269,12 @@ ul { list-style: none; }
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-width: 0;
 }
 .page-content {
   flex: 1;
   padding: 1.75rem;
+  min-width: 0;
 }
 .page-header {
   display: flex;
@@ -288,13 +294,14 @@ ul { list-style: none; }
   color: var(--text-muted);
   margin-top: 0.2rem;
 }
-
+ 
 /* ─── CARDS ─────────────────────────────────────────────────────────────── */
-.card {
+.card, .table-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 1.25rem;
+  min-width: 0;
 }
 .card-header {
   display: flex;
@@ -313,7 +320,7 @@ ul { list-style: none; }
   align-items: center;
   gap: 0.5rem;
 }
-
+ 
 /* ─── STAT CARDS ────────────────────────────────────────────────────────── */
 .stats-grid {
   display: grid;
@@ -331,6 +338,7 @@ ul { list-style: none; }
   display: block;
   text-decoration: none;
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  min-width: 0;
 }
 a.stat-card:hover, .stat-card:hover {
   transform: translateY(-1px);
@@ -381,10 +389,18 @@ a.stat-card:hover, .stat-card:hover {
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
 .two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
+.installments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  padding-top: 0.5rem;
+}
 
 /* ─── TABLE ─────────────────────────────────────────────────────────────── */
-.table-wrap {
+.table-wrap,
+.table-responsive {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 table {
   width: 100%;
@@ -1236,15 +1252,24 @@ body.light-theme .slide-over-drawer {
   .fee-summary { grid-template-columns: 1fr 1fr; }
   .topbar { padding: 0 1rem; }
   .page-content { padding: 1.25rem 1rem; }
-  
-  /* Make topbar search more responsive */
+
+  /* Filter bars: always flex-wrap on tablets+ */
+  .filter-bar { flex-wrap: wrap; }
+  /* Shrink topbar search on tablets */
   .topbar-search {
-    width: 200px;
+    max-width: 200px;
     margin-left: 0.75rem;
   }
-  
-  /* Wrap tables nicely */
-  .table-wrap {
+
+  /* Notification dropdown: prevent overflow on tablets */
+  .notification-dropdown {
+    width: min(320px, calc(100vw - 2rem));
+    right: 0;
+  }
+
+  /* Tables always scroll horizontally */
+  .table-wrap,
+  .table-responsive {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -1262,6 +1287,7 @@ body.light-theme .slide-over-drawer {
   }
   .topbar-search {
     width: 100%;
+    max-width: none;
     order: 3;
     margin-left: 0;
   }
@@ -1295,6 +1321,72 @@ body.light-theme .slide-over-drawer {
     right: 1rem;
     min-width: auto;
     max-width: none;
+  }
+  .installments-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  .stat-card {
+    padding: 0.85rem 0.75rem;
+  }
+  .stat-value {
+    font-size: 1.45rem;
+  }
+  .stat-label {
+    font-size: 0.65rem;
+    margin-bottom: 0.35rem;
+  }
+  .filter-bar {
+    gap: 0.5rem;
+  }
+  .filter-bar .form-group {
+    flex: 1 1 100%;
+    min-width: 0 !important;
+    margin: 0 !important;
+  }
+  .filter-bar .form-control,
+  .filter-bar input.form-control,
+  .filter-bar select.form-control {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Notification dropdown: pin to viewport edges on mobile */
+  .notification-dropdown {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: none;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-height: 70vh;
+  }
+
+  /* Sidebar z-index raised on mobile so it overlays content */
+  .sidebar {
+    z-index: 200;
+  }
+
+  /* .two-col stacks on mobile (class confirmed used in 4 views) */
+  .two-col {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem;
+  }
+
+  /* page-content padding */
+  .page-content {
+    padding: 1rem 0.75rem;
+  }
+
+  /* Tighter card padding */
+  .card, .table-card {
+    padding: 0.9rem;
   }
 }
 

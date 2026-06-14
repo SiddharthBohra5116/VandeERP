@@ -13,7 +13,7 @@
 
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
   <form method="GET" action="/admin/leads" class="filter-bar" style="margin:0; gap:0.75rem;">
-    <input type="text" name="search" class="form-control" placeholder="Search by name / phone..." value="<%= filter.search || '' %>" style="min-width: 200px;" onchange="this.form.submit()">
+    <input type="text" name="search" class="form-control" placeholder="Search by name / phone..." value="<%= filter.search || '' %>" style="flex:1;" onchange="this.form.submit()">
     
     <select name="status" class="form-control" onchange="this.form.submit()">
       <option value="">All Statuses</option>

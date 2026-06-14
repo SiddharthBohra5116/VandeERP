@@ -7,12 +7,12 @@
 
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
   <form method="GET" action="/student/updates" class="filter-bar form-inline">
-    <div class="form-group" style="margin:0; min-width:140px;">
+    <div class="form-group">
       <label class="form-label" for="subjectFilter" style="margin-bottom:0.25rem;">Subject</label>
       <input type="text" id="subjectFilter" name="subject" class="form-control" style="padding:0.45rem 0.75rem;" placeholder="Filter by subject" value="<%= filter.subject || '' %>" onchange="this.form.submit()">
     </div>
 
-    <div class="form-group" style="margin:0; min-width:140px;">
+    <div class="form-group">
       <label class="form-label" for="dateFilter" style="margin-bottom:0.25rem;">Date</label>
       <input type="date" id="dateFilter" name="date" class="form-control" style="padding:0.45rem 0.75rem;" value="<%= filter.date || '' %>" onchange="this.form.submit()">
     </div>
