@@ -1237,9 +1237,64 @@ body.light-theme .slide-over-drawer {
   .topbar { padding: 0 1rem; }
   .page-content { padding: 1.25rem 1rem; }
   
-  /* Stack tables slightly cleaner if they're squeezed */
+  /* Make topbar search more responsive */
+  .topbar-search {
+    width: 200px;
+    margin-left: 0.75rem;
+  }
+  
+  /* Wrap tables nicely */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
   table {
     min-width: 600px;
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 0.75rem 1rem;
+    gap: 0.5rem;
+  }
+  .topbar-search {
+    width: 100%;
+    order: 3;
+    margin-left: 0;
+  }
+  .topbar-right {
+    gap: 0.5rem;
+  }
+  .user-chip .uname {
+    display: none;
+  }
+  .user-chip .urole {
+    display: none;
+  }
+  .topbar-clock {
+    display: none;
+  }
+  .fee-summary {
+    grid-template-columns: 1fr;
+  }
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .page-header .btn {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+  .alert-toast {
+    left: 1rem;
+    right: 1rem;
+    min-width: auto;
+    max-width: none;
   }
 }
 

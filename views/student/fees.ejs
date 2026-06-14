@@ -20,7 +20,7 @@
     const paidPct = netFees > 0 ? Math.round((fee.paidAmount / netFees) * 100) : 0;
   %>
 
-  <div class="fee-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
+  <div class="fee-summary">
     <div class="stat-card gold">
       <div class="stat-label">Net Invoice Amount</div>
       <div class="stat-value">₹<%= netFees.toLocaleString('en-IN') %></div>
