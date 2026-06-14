@@ -84,7 +84,7 @@
             <tbody>
               <% students.forEach(student => { %>
                 <% 
-                  const record = progressRecords.find(pr => pr.student && pr.student._id.toString() === student._id.toString());
+                  const record = progressRecords.find(pr => pr.student && pr.student._id.toString() === student.studentProfileId);
                   const overall = record ? record.overallScore : 0;
                   const remarks = record ? record.teacherRemark : '';
                   const tests = record ? record.testResults : [];
@@ -123,11 +123,11 @@
                   <td>
                     <div class="d-flex gap-1">
                       <button class="btn btn-primary btn-xs" 
-                              onclick="openTestModal('<%= student._id %>', '<%= student.name %>', '<%= filter.course %>', '<%= filter.batch %>')">
+                              onclick="openTestModal('<%= student.studentProfileId %>', '<%= student.name %>', '<%= filter.course %>', '<%= filter.batch %>')">
                         + Test
                       </button>
                       <button class="btn btn-ghost btn-xs" 
-                              onclick="openRemarkModal('<%= student._id %>', '<%= student.name %>', '<%= filter.course %>', '<%= filter.batch %>', '<%= remarks %>')">
+                              onclick="openRemarkModal('<%= student.studentProfileId %>', '<%= student.name %>', '<%= filter.course %>', '<%= filter.batch %>', '<%= remarks %>')">
                         Remark
                       </button>
                     </div>
