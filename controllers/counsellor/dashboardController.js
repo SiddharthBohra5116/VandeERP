@@ -4,13 +4,16 @@ const Message = require('../../models/Message');
 const Fee = require('../../models/Fee');
 const logger = require('../../utils/logger');
 
+const Student = require('../../models/Student');
+
 /**
  * GET /counsellor/dashboard
  * Aggregates counsellor metrics, recent leads, scheduled follow-ups, and pending notifications.
  */
 exports.getDashboard = async (req, res) => {
   try {
-    const counsellorId = req.user._id;
+    const counsellorId = req.user.counsellorProfileId;
+    const userId = req.user._id;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -48,7 +51,7 @@ exports.getDashboard = async (req, res) => {
         followUpDate: { $gte: today, $lt: tomorrow },
         status: { $nin: ['admission_completed', 'lost'] }
       }).sort({ followUpDate: 1 }),
-      User.find({ role: 'student', counsellor: counsellorId }),
+      Student.find({ counsellor: counsellorId }).populate('user'),
       Lead.aggregate([
         { $match: { assignedTo: counsellorId } },
         { $group: { _id: '$status', count: { $sum: 1 } } }
@@ -65,7 +68,7 @@ exports.getDashboard = async (req, res) => {
       Lead.countDocuments({ assignedTo: counsellorId, status: 'admission_completed' }),
       Lead.countDocuments({ assignedTo: counsellorId, status: 'lost' }),
       User.findOne({ role: 'admin' }),
-      Message.find({ recipient: counsellorId })
+      Message.find({ recipient: userId })
         .populate('sender', 'name role')
         .sort({ createdAt: -1 })
         .limit(5)

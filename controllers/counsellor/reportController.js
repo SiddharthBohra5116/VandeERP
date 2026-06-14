@@ -5,9 +5,11 @@ const Attendance = require('../../models/Attendance');
 const Assignment = require('../../models/Assignment');
 const logger = require('../../utils/logger');
 
+const Student = require('../../models/Student');
+
 exports.getReports = async (req, res) => {
   try {
-    const counsellorId = req.user._id;
+    const counsellorId = req.user.counsellorProfileId;
 
     // 1. Fetch leads metrics
     const [totalLeads, convertedLeads] = await Promise.all([
@@ -28,7 +30,7 @@ exports.getReports = async (req, res) => {
     }
 
     // 2. Fetch admitted students (health grid)
-    const students = await User.find({ role: 'student', counsellor: counsellorId }).sort({ name: 1 });
+    const students = await Student.find({ counsellor: counsellorId }).populate('user').populate('batch', 'name').sort({ name: 1 });
 
     const studentHealthGrid = [];
     for (const student of students) {

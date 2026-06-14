@@ -56,7 +56,7 @@
           <% studentHealthGrid.forEach(item => { %>
             <tr style="border-left: 3px solid <%= item.attendancePct < 75 || item.feeStatus === 'overdue' ? 'var(--red, #ef4444)' : 'var(--green, #10b981)' %>;">
               <td><strong><%= item.student.name %></strong></td>
-              <td class="td-mono"><%= item.student.batch || 'Unassigned' %></td>
+              <td class="td-mono"><%= item.student.batch && item.student.batch.name ? item.student.batch.name : 'Unassigned' %></td>
               <td class="mono text-right <%= item.attendancePct < 75 ? 'text-red fw-700' : '' %>">
                 <%= item.attendancePct %>%
               </td>
