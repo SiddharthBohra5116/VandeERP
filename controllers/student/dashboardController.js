@@ -63,15 +63,16 @@ exports.getDashboard = async (req, res) => {
 
     const [fee, assignments, attendance, updates, admin, messages, schedules] = await Promise.all([
       Fee.findOne({ student: student._id }),
-      Assignment.find({ batch: student.batch, isActive: true, dueDate: { $gte: new Date() } }).sort({ dueDate: 1 }).limit(5),
+      Assignment.find({ batch: student.batch, isActive: true, dueDate: { $gte: new Date() } }).populate('course', 'name').sort({ dueDate: 1 }).limit(5),
       Attendance.find({ student: student._id, date: { $gte: thirtyDaysStr } }),
-      DailyUpdate.find({ batch: student.batch }).sort({ date: -1 }).limit(5),
+      DailyUpdate.find({ batch: student.batch }).populate('course', 'name').populate({ path: 'teacher', populate: { path: 'user', select: 'name' } }).sort({ date: -1 }).limit(5),
       User.findOne({ role: 'admin' }),
       Message.find({ recipient: student._id })
         .populate('sender', 'name role')
         .sort({ createdAt: -1 })
         .limit(5),
       Schedule.find({ batch: student.batch, date: { $gte: today } })
+        .populate('course', 'name')
         .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
         .populate('classroom', 'name location')
         .sort({ date: 1, startTime: 1 })
@@ -105,6 +106,7 @@ exports.getDashboard = async (req, res) => {
       date: { $in: dateStrings },
       status: { $ne: 'cancelled' },
     })
+      .populate('course', 'name')
       .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
       .populate('classroom', 'name location')
       .sort({ startTime: 1 });

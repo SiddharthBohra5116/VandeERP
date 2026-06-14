@@ -73,9 +73,11 @@ async function run() {
     const student = await User.findOne({ email: 'vikram.student@gmail.com' });
     const Classroom = require('../models/Classroom');
     const classroom = await Classroom.findOne();
+    const Batch = require('../models/Batch');
+    const batchDoc = await Batch.findOne({ name: 'DM-03PM-A1' });
 
-    if (!teacher || !student || !classroom) {
-      throw new Error('Required test users or classrooms not found. Seed DB first.');
+    if (!teacher || !student || !classroom || !batchDoc) {
+      throw new Error('Required test users, classrooms, or batches not found. Seed DB first.');
     }
 
     // Clean up any stale test schedules
@@ -113,7 +115,7 @@ async function run() {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
-    const createPostData = `subject=Integration+Testing+Schedule&batch=DM-03PM-A1&teacher=${teacher._id}&classroom=${classroom._id}&date=${tomorrowStr}&startTime=11%3A00+AM&endTime=12%3A30+PM&status=scheduled`;
+    const createPostData = `subject=Integration+Testing+Schedule&batch=${batchDoc._id}&course=${batchDoc.course}&teacher=${teacher._id}&classroom=${classroom._id}&date=${tomorrowStr}&startTime=11%3A00+AM&endTime=12%3A30+PM&status=scheduled`;
     const createRes = await makeRequest({
       hostname: 'localhost', port: 3129, path: '/admin/schedules/create', method: 'POST',
       headers: {
@@ -186,7 +188,7 @@ async function run() {
 
     // 6. Admin edit/update schedule slot
     console.log('\n🔧 Step 6: Admin updating schedule to completed...');
-    const editPostData = `subject=Integration+Testing+Schedule&batch=DM-03PM-A1&teacher=${teacher._id}&classroom=${classroom._id}&date=${tomorrowStr}&startTime=11%3A00+AM&endTime=12%3A30+PM&status=completed`;
+    const editPostData = `subject=Integration+Testing+Schedule&batch=${batchDoc._id}&course=${batchDoc.course}&teacher=${teacher._id}&classroom=${classroom._id}&date=${tomorrowStr}&startTime=11%3A00+AM&endTime=12%3A30+PM&status=completed`;
     const editRes = await makeRequest({
       hostname: 'localhost', port: 3129, path: `/admin/schedules/${scheduleId}/edit`, method: 'POST',
       headers: {

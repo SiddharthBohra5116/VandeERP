@@ -2,8 +2,22 @@ const mongoose = require('mongoose');
 
 const testResultSchema = new mongoose.Schema({
   testName: { type: String, required: true },
-  score: { type: Number, required: true },
-  totalMarks: { type: Number, required: true },
+  score: { 
+    type: Number, 
+    required: true,
+    min: [0, 'Score cannot be negative'],
+    validate: {
+      validator: function(val) {
+        return this.totalMarks === undefined || val <= this.totalMarks;
+      },
+      message: 'Score cannot exceed total marks'
+    }
+  },
+  totalMarks: { 
+    type: Number, 
+    required: true,
+    min: [1, 'Total marks must be at least 1']
+  },
   date: { type: String, required: true },
   remarks: { type: String, default: '' }
 });

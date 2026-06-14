@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Lead = require('../models/Lead');
 const Fee = require('../models/Fee');
+const Student = require('../models/Student');
 
 // Helper to wait
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -208,10 +209,14 @@ async function run() {
     if (!studentUser) {
       throw new Error('Verification failed: Student user was not created in DB!');
     }
-    console.log(`✅ Student created successfully. Roll Number: ${studentUser.rollNumber}`);
+    const studentProfile = await Student.findOne({ userId: studentUser._id });
+    if (!studentProfile) {
+      throw new Error('Verification failed: Student profile was not created in DB!');
+    }
+    console.log(`✅ Student created successfully. Roll Number: ${studentProfile.rollNumber}`);
 
     // 7. Verify Fee Ledger creation
-    const feeLedger = await Fee.findOne({ student: studentUser._id });
+    const feeLedger = await Fee.findOne({ student: studentProfile._id });
     if (!feeLedger) {
       throw new Error('Verification failed: Fee record was not created for the new student!');
     }
@@ -220,9 +225,9 @@ async function run() {
     }
     console.log(`✅ Fee ledger matches inputs: Total = ₹${feeLedger.totalAmount}, Paid = ₹${feeLedger.paidAmount}`);
 
-    // 8. Verify Lead status is set to converted
+    // 8. Verify Lead status is set to admission_completed
     const updatedLead = await Lead.findById(leadId);
-    if (updatedLead.status !== 'converted' || updatedLead.convertedStudent.toString() !== studentUser._id.toString()) {
+    if (updatedLead.status !== 'admission_completed' || updatedLead.convertedStudent.toString() !== studentProfile._id.toString()) {
       throw new Error(`Verification failed: Lead status not converted or mismatch! Status: ${updatedLead.status}`);
     }
     console.log('✅ Lead pipeline file marked as converted and linked to student record.');

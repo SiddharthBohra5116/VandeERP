@@ -57,11 +57,27 @@ exports.getProgress = async (req, res) => {
 
     const Schedule = require('../../models/Schedule');
     const Teacher = require('../../models/Teacher');
-    const assignedBatches = await Schedule.distinct('batch', { teacher: req.user.teacherProfileId });
+    
+    // Get batches assigned via schedules
+    const scheduledBatches = await Schedule.distinct('batch', { teacher: req.user.teacherProfileId });
+    
+    // Get batches assigned directly in the Batch model
+    const directlyAssignedBatches = await Batch.distinct('_id', { 
+      $or: [
+        { teachers: req.user._id },
+        { teachers: req.user.teacherProfileId }
+      ]
+    });
+    
+    const allAssignedBatchIds = Array.from(new Set([
+      ...scheduledBatches.map(id => id.toString()),
+      ...directlyAssignedBatches.map(id => id.toString())
+    ])).map(id => new mongoose.Types.ObjectId(id));
+
     const teacherProfile = await Teacher.findById(req.user.teacherProfileId);
     
     const [batches, courses, teacherSchedules] = await Promise.all([
-      Batch.find({ _id: { $in: assignedBatches }, isActive: true }).select('name'),
+      Batch.find({ _id: { $in: allAssignedBatchIds }, isActive: true }).select('name course'),
       Course.find({ _id: { $in: teacherProfile ? teacherProfile.courses : [] } }).select('name'),
       Schedule.find({ teacher: req.user.teacherProfileId })
         .populate('batch', 'name')
@@ -127,6 +143,13 @@ exports.postAddTestResult = async (req, res) => {
 
   if (!mongoose.Types.ObjectId.isValid(studentId) || !mongoose.Types.ObjectId.isValid(course)) {
     return res.redirect('/teacher/progress?error=invalid_params');
+  }
+
+  const scoreNum = Number(score);
+  const totalMarksNum = Number(totalMarks);
+
+  if (isNaN(scoreNum) || isNaN(totalMarksNum) || scoreNum < 0 || totalMarksNum < 1 || scoreNum > totalMarksNum) {
+    return res.redirect(`/teacher/progress?error=invalid_score`);
   }
 
   try {
@@ -405,8 +428,26 @@ exports.postBulkAddTestResult = async (req, res) => {
     return res.redirect('/teacher/progress?error=invalid_params');
   }
 
+  const totalMarksNum = Number(totalMarks);
+  if (isNaN(totalMarksNum) || totalMarksNum < 1) {
+    return res.redirect(`/teacher/progress?batch=${batch}&course=${course}&error=Invalid+total+marks`);
+  }
+
   try {
-    const studentProfiles = await Student.find({ batch });
+    const studentProfiles = await Student.find({ batch }).populate('user');
+    
+    // Validate all scores first
+    for (const student of studentProfiles) {
+      const studentIdStr = student._id.toString();
+      const scoreVal = scores ? scores[studentIdStr] : '';
+      if (scoreVal !== undefined && scoreVal !== '') {
+        const score = Number(scoreVal);
+        if (isNaN(score) || score < 0 || score > totalMarksNum) {
+          const studentName = student.user ? student.user.name : 'Unknown Student';
+          return res.redirect(`/teacher/progress?batch=${batch}&course=${course}&error=Invalid+score+value+(${scoreVal})+for+${encodeURIComponent(studentName)}. Must be between 0 and ${totalMarksNum}`);
+        }
+      }
+    }
     
     for (const student of studentProfiles) {
       const studentIdStr = student._id.toString();

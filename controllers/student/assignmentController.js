@@ -9,7 +9,11 @@ const Student = require('../../models/Student');
 exports.getAssignments = async (req, res) => {
   try {
     const studentProfile = await Student.findOne({ user: req.user._id });
-    const isKycIncomplete = !studentProfile;
+    if (!studentProfile) {
+      return res.redirect('/student/dashboard?error=Student+profile+not+found');
+    }
+
+    const isKycIncomplete = !studentProfile.family?.father?.name || !studentProfile.family?.guardian?.phone || !studentProfile.documents?.idProof;
     if (isKycIncomplete) {
       return res.status(403).render('403', {
         title: 'Access Restricted',
@@ -22,7 +26,7 @@ exports.getAssignments = async (req, res) => {
       return res.render('student/assignments', { title: 'Assignments', user: req.user, assignments: [] });
     }
 
-    const assignments = await Assignment.find({ batch: req.user.batch, isActive: true }).sort({ dueDate: 1 });
+    const assignments = await Assignment.find({ batch: req.user.batch, isActive: true }).populate('course', 'name').sort({ dueDate: 1 });
     const userId = studentProfile._id.toString();
 
     const enriched = assignments.map(a => ({
@@ -43,12 +47,18 @@ exports.getAssignments = async (req, res) => {
  * Flags submission as 'late' automatically if current time is past the due date.
  */
 exports.postSubmitAssignment = async (req, res) => {
-  const { note } = req.body;
-  console.log('📚 Student assignment submission request:', {
-    studentId: studentProfile._id,
-    assignmentId: req.params.id,
-  });
   try {
+    const studentProfile = await Student.findOne({ user: req.user._id });
+    if (!studentProfile) {
+      return res.redirect('/student/dashboard?error=Student+profile+not+found');
+    }
+
+    const { note } = req.body;
+    console.log('📚 Student assignment submission request:', {
+      studentId: studentProfile._id,
+      assignmentId: req.params.id,
+    });
+
     const assignment = await Assignment.findById(req.params.id);
     if (!assignment) return res.redirect('/student/assignments');
 

@@ -8,17 +8,16 @@
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
   <form method="GET" action="/student/updates" class="filter-bar" style="margin:0;">
     <div class="form-group" style="margin:0; min-width:140px;">
-      <label class="form-label" style="margin-bottom:0.25rem;">Subject</label>
-      <input type="text" name="subject" class="form-control" style="padding:0.45rem 0.75rem;" placeholder="Filter by subject" value="<%= filter.subject || '' %>">
+      <label class="form-label" for="subjectFilter" style="margin-bottom:0.25rem;">Subject</label>
+      <input type="text" id="subjectFilter" name="subject" class="form-control" style="padding:0.45rem 0.75rem;" placeholder="Filter by subject" value="<%= filter.subject || '' %>" onchange="this.form.submit()">
     </div>
 
     <div class="form-group" style="margin:0; min-width:140px;">
-      <label class="form-label" style="margin-bottom:0.25rem;">Date</label>
-      <input type="date" name="date" class="form-control" style="padding:0.45rem 0.75rem;" value="<%= filter.date || '' %>">
+      <label class="form-label" for="dateFilter" style="margin-bottom:0.25rem;">Date</label>
+      <input type="date" id="dateFilter" name="date" class="form-control" style="padding:0.45rem 0.75rem;" value="<%= filter.date || '' %>" onchange="this.form.submit()">
     </div>
 
     <div style="display:flex; gap:0.5rem; align-items:flex-end;">
-      <button type="submit" class="btn btn-primary btn-sm">Filter</button>
       <a href="/student/updates" class="btn btn-ghost btn-sm">Clear</a>
     </div>
   </form>

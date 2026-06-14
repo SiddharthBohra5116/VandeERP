@@ -31,12 +31,11 @@
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
   <form method="GET" action="/student/attendance" class="filter-bar" style="margin:0;">
     <div class="form-group" style="margin:0; min-width:140px;">
-      <label class="form-label" style="margin-bottom:0.25rem;">Select Month</label>
-      <input type="month" name="month" class="form-control" style="padding:0.45rem 0.75rem;" value="<%= filter.month || '' %>">
+      <label class="form-label" for="monthSelect" style="margin-bottom:0.25rem;">Select Month</label>
+      <input type="month" id="monthSelect" name="month" class="form-control" style="padding:0.45rem 0.75rem;" value="<%= filter.month || '' %>" onchange="this.form.submit()">
     </div>
 
     <div style="display:flex; gap:0.5rem; align-items:flex-end;">
-      <button type="submit" class="btn btn-primary btn-sm">Filter</button>
       <a href="/student/attendance" class="btn btn-ghost btn-sm">Clear</a>
     </div>
   </form>
@@ -57,7 +56,6 @@
         <thead>
           <tr>
             <th>Date</th>
-            <th>Subject Topic</th>
             <th>Status</th>
             <th>Teacher Remarks</th>
           </tr>
@@ -66,7 +64,6 @@
           <% records.forEach(r => { %>
             <tr>
               <td class="mono text-sm fw-600"><%= r.date %></td>
-              <td><%= r.course && r.course.name ? r.course.name : '—' %></td>
               <td>
                 <% 
                   const badgeClass = {

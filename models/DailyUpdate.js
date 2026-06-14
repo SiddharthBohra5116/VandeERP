@@ -76,6 +76,14 @@ const dailyUpdateSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
+// VIRTUALS
+dailyUpdateSchema.virtual('subject').get(function() {
+  return this.course && this.course.name ? this.course.name : '';
+});
+
+dailyUpdateSchema.set('toJSON', { virtuals: true });
+dailyUpdateSchema.set('toObject', { virtuals: true });
+
 dailyUpdateSchema.index({ batch: 1, date: 1 });
 dailyUpdateSchema.index({ teacher: 1, date: 1 });
 dailyUpdateSchema.index({ course: 1, date: 1 });

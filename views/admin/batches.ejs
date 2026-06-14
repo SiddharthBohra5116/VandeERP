@@ -7,8 +7,7 @@
 
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
   <form method="GET" action="/admin/batches" class="filter-bar" style="margin: 0;">
-    <input type="text" name="search" class="form-control" placeholder="Search batches by name..." value="<%= filter.search || '' %>">
-    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+    <input type="text" name="search" class="form-control" placeholder="Search batches by name..." value="<%= filter.search || '' %>" onchange="this.form.submit()">
     <a href="/admin/batches" class="btn btn-ghost btn-sm">Clear</a>
     
     <a href="/admin/batches/create" class="btn btn-primary btn-sm" style="margin-left: auto;">+ Create Batch</a>

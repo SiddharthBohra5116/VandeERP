@@ -13,17 +13,27 @@ const Student = require('../../models/Student');
  */
 exports.getDailyUpdates = async (req, res) => {
   try {
+    const studentProfile = await Student.findOne({ user: req.user._id });
+    if (!studentProfile) {
+      return res.redirect('/student/dashboard?error=Student+profile+not+found');
+    }
+
     if (!req.user.batch) {
       return res.render('student/updates', { title: 'Class Updates', user: req.user, updates: [], filter: req.query });
     }
 
     const { subject, date } = req.query;
     const filter = { batch: req.user.batch };
-    if (subject) filter.subject = subject;
+    if (subject) {
+      const Course = require('../../models/Course');
+      const courses = await Course.find({ name: { $regex: subject, $options: 'i' } });
+      filter.course = { $in: courses.map(c => c._id) };
+    }
     if (date) filter.date = date;
 
     const updates = await DailyUpdate.find(filter)
-      .populate('teacher', 'name')
+      .populate('course', 'name')
+      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
       .sort({ date: -1 })
       .limit(50);
 
@@ -44,9 +54,14 @@ exports.getDailyUpdates = async (req, res) => {
 exports.getProgress = async (req, res) => {
   try {
     const studentProfile = await Student.findOne({ user: req.user._id });
-    const progressRecords = studentProfile
-      ? await Progress.find({ student: studentProfile._id }).populate('teacher', 'name')
-      : [];
+    if (!studentProfile) {
+      return res.redirect('/student/dashboard?error=Student+profile+not+found');
+    }
+
+    const progressRecords = await Progress.find({ student: studentProfile._id })
+      .populate('course', 'name')
+      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
+
     res.render('student/progress', { title: 'My Progress', user: req.user, progressRecords });
   } catch (err) {
     console.error('❌ Student Progress Fetch Error:', err);
@@ -63,8 +78,12 @@ exports.getProgress = async (req, res) => {
  */
 exports.getCurriculum = async (req, res) => {
   try {
-    const kycProfile = await Student.findOne({ user: req.user._id });
-    const isKycIncomplete = !kycProfile;
+    const studentProfile = await Student.findOne({ user: req.user._id });
+    if (!studentProfile) {
+      return res.redirect('/student/dashboard?error=Student+profile+not+found');
+    }
+
+    const isKycIncomplete = !studentProfile.family?.father?.name || !studentProfile.family?.guardian?.phone || !studentProfile.documents?.idProof;
     if (isKycIncomplete) {
       return res.status(403).render('403', {
         title: 'Access Restricted',
@@ -79,7 +98,7 @@ exports.getCurriculum = async (req, res) => {
 
     const curricula = await Curriculum.find({ batch: req.user.batch })
       .populate('course')
-      .populate('teacher', 'name');
+      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
     res.render('student/curriculum', { title: 'Curriculum', user: req.user, curricula });
   } catch (err) {
     console.error('❌ Student Curriculum Fetch Error:', err);
@@ -96,8 +115,15 @@ exports.getCurriculum = async (req, res) => {
  */
 exports.getFees = async (req, res) => {
   try {
-    const sp = await Student.findOne({ user: req.user._id });
-    const fee = sp ? await Fee.findOne({ student: sp._id }) : null;
+    const studentProfile = await Student.findOne({ user: req.user._id });
+    if (!studentProfile) {
+      return res.redirect('/student/dashboard?error=Student+profile+not+found');
+    }
+
+    const fee = await Fee.findOne({ student: studentProfile._id }).populate({
+      path: 'payments.receivedBy',
+      select: 'name'
+    });
     res.render('student/fees', { title: 'My Fees', user: req.user, fee });
   } catch (err) {
     console.error('❌ Student Fees Fetch Error:', err);

@@ -11,11 +11,11 @@
   <form method="GET" action="/counsellor/leads" class="filter-bar" style="margin:0; gap:0.75rem;">
     <div class="form-group" style="margin:0; flex:1; min-width:160px;">
       <label class="form-label" style="font-size: 10px;">Search</label>
-      <input type="text" name="search" class="form-control" placeholder="Name or phone..." value="<%= filters.search || '' %>" style="padding: 0.45rem 0.75rem;">
+      <input type="text" name="search" class="form-control" placeholder="Name or phone..." value="<%= filters.search || '' %>" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
     </div>
     <div class="form-group" style="margin:0; min-width:140px;">
       <label class="form-label" style="font-size: 10px;">Status</label>
-      <select name="status" class="form-control" style="padding: 0.45rem 0.75rem;">
+      <select name="status" class="form-control" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
         <option value="">All Statuses</option>
         <% ['new','contacted','mentorship_scheduled','mentorship_attended','follow_up','joining_interested','admission_completed','lost'].forEach(s => { %>
           <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= s.charAt(0).toUpperCase() + s.slice(1) %></option>
@@ -24,7 +24,7 @@
     </div>
     <div class="form-group" style="margin:0; min-width:160px;">
       <label class="form-label" style="font-size: 10px;">Course</label>
-      <select name="course" class="form-control" style="padding: 0.45rem 0.75rem;">
+      <select name="course" class="form-control" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
         <option value="">All Courses</option>
         <% ['Video Editing','Digital Marketing','Both','Undecided'].forEach(c => { %>
           <option value="<%= c %>" <%= filters.course === c ? 'selected' : '' %>><%= c %></option>
@@ -33,7 +33,7 @@
     </div>
     <div class="form-group" style="margin:0; min-width:140px;">
       <label class="form-label" style="font-size: 10px;">Source</label>
-      <select name="source" class="form-control" style="padding: 0.45rem 0.75rem;">
+      <select name="source" class="form-control" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
         <option value="">All Sources</option>
         <% ['Walk-in','Website','Referral','Social Media','Advertisement','WhatsApp','Other'].forEach(s => { %>
           <option value="<%= s %>" <%= filters.source === s ? 'selected' : '' %>><%= s %></option>

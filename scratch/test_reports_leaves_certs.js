@@ -39,10 +39,12 @@ async function runTests() {
   }
 
   // Test 4: Graduation and Certificate check
-  const completeStudent = await User.findOne({ role: 'student', status: 'complete' });
-  if (completeStudent) {
-    console.log(`- Found Graduated Student: ${completeStudent.name}`);
-    if (!completeStudent.feedback.submitted) {
+  const completeUser = await User.findOne({ role: 'student', status: 'complete' });
+  if (completeUser) {
+    console.log(`- Found Graduated Student: ${completeUser.name}`);
+    const Student = require('../models/Student');
+    const completeStudent = await Student.findOne({ userId: completeUser._id });
+    if (!completeStudent || !completeStudent.feedback || !completeStudent.feedback.submitted) {
       throw new Error("Completed student must have submitted feedback");
     }
     console.log("- Certificate Unlocking status: UNLOCKED");

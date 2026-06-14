@@ -59,7 +59,7 @@ async function run() {
   try {
     // 1. Verify Teacher student search
     console.log('\n🔑 Step 1: Logging in as Teacher and searching students...');
-    const teacherLogin = 'email=teacher%40gmail.com&password=password123';
+    const teacherLogin = 'email=vikram.teacher%40gmail.com&password=password123';
     const teacherLoginRes = await makeRequest({
       hostname: 'localhost', port: 3125, path: '/auth/login', method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(teacherLogin) }

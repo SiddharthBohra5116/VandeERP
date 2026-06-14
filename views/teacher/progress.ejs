@@ -22,7 +22,7 @@
     <!-- Batch select second -->
     <div class="form-group" style="margin:0; min-width:140px; flex: 1;">
       <label class="form-label" for="progressBatchSelect" style="margin-bottom:0.25rem;">Batch</label>
-      <select name="batch" id="progressBatchSelect" class="form-control" style="padding:0.45rem 0.75rem;" required>
+      <select name="batch" id="progressBatchSelect" class="form-control" style="padding:0.45rem 0.75rem;" required onchange="this.form.submit()">
         <option value="" disabled <%= !filter.batch ? 'selected' : '' %>>Select Batch</option>
         <% batches.forEach(b => { %>
           <option value="<%= b._id %>" <%= String(filter.batch) === String(b._id) ? 'selected' : '' %>><%= b.name %></option>
@@ -92,14 +92,20 @@
                 <tr>
                   <td class="td-name"><strong><%= student.name %></strong></td>
                   <td>
-                    <div style="min-width: 80px;">
-                      <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:600; margin-bottom: 2px;">
-                        <span class="<%= overall >= 75 ? 'text-green' : overall >= 40 ? 'text-gold' : 'text-red' %>">
+                    <div style="min-width: 110px; display: flex; flex-direction: column; gap: 4px;">
+                      <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Grade</span>
+                        <span style="font-size: 12px; font-weight: 800; font-family: var(--font-display); padding: 1px 5px; border-radius: 4px; background: rgba(0,0,0,0.25);" 
+                              class="<%= overall >= 75 ? 'text-green' : overall >= 40 ? 'text-gold' : 'text-red' %>">
                           <%= overall %>%
                         </span>
                       </div>
-                      <div class="progress-bar">
-                        <div class="progress-fill <%= overall >= 75 ? 'green' : 'gold' %>" <%= `style="width: ${overall}%"` %>></div>
+                      <!-- Premium Gradient Progress Track -->
+                      <div style="width: 100%; height: 6px; background: var(--bg-hover); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; position: relative;">
+                        <div style="height: 100%; width: <%= overall %>%; border-radius: 10px; transition: width 0.5s ease-out;
+                                    background: <%= overall >= 75 ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)' : overall >= 40 ? 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)' : 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)' %>;
+                                    box-shadow: 0 0 6px <%= overall >= 75 ? 'rgba(16,185,129,0.4)' : overall >= 40 ? 'rgba(245,158,11,0.4)' : 'rgba(239,68,68,0.4)' %>;">
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -113,17 +119,12 @@
                           (<%= tests.length %> <%= tests.length === 1 ? 'test' : 'tests' %>)
                         </span>
                       </div>
-                      <button type="button" class="btn-link" onclick="toggleStudentTests(this)" style="font-size: 0.7rem; color: var(--gold); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; margin-bottom: 2px;">
-                        Show test list
+                      <button type="button" class="btn-link view-student-tests-btn" 
+                              data-student-name="<%= student.name %>" 
+                              data-student-tests='<%- JSON.stringify(tests) %>'
+                              style="font-size: 0.7rem; color: var(--gold); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; margin-bottom: 2px;">
+                        View test list
                       </button>
-                      <div class="student-tests-list" style="display: none; flex-direction: column; gap: 4px; max-height: 80px; overflow-y: auto; padding-right: 5px; margin-top: 4px;">
-                        <% tests.forEach(t => { %>
-                          <div class="text-xs" style="background:var(--bg-hover); padding:3px 6px; border-radius:4px; border:1px solid var(--border);">
-                            <strong><%= t.testName %></strong>: <span class="text-gold"><%= t.score %>/<%= t.totalMarks %></span>
-                            <span class="td-muted" style="float:right;"><%= t.date %></span>
-                          </div>
-                        <% }) %>
-                      </div>
                     <% } %>
                   </td>
                   <td class="text-sm" style="max-width: 200px; white-space: normal; line-height: 1.4;">
@@ -169,7 +170,7 @@
             </div>
             <div class="form-group">
               <label class="form-label" for="bulkTotalMarks">Total Marks</label>
-              <input type="number" id="bulkTotalMarks" name="totalMarks" class="form-control" value="50" oninput="updateTotalMarksLabel(this.value)" required>
+              <input type="number" id="bulkTotalMarks" name="totalMarks" class="form-control" value="50" min="1" oninput="updateTotalMarksLabel(this.value)" required>
             </div>
             <div class="form-group">
               <label class="form-label" for="bulkTestDate">Date of Exam</label>
@@ -311,11 +312,11 @@
       <div class="form-row-3">
         <div class="form-group">
           <label class="form-label" for="score">Marks Obtained</label>
-          <input type="number" id="score" name="score" class="form-control" required>
+          <input type="number" id="score" name="score" class="form-control" min="0" required>
         </div>
         <div class="form-group">
           <label class="form-label" for="totalMarks">Total Marks</label>
-          <input type="number" id="totalMarks" name="totalMarks" class="form-control" value="50" required>
+          <input type="number" id="totalMarks" name="totalMarks" class="form-control" value="50" min="1" required>
         </div>
         <div class="form-group">
           <label class="form-label" for="testDate">Date of Exam</label>
@@ -365,6 +366,24 @@
   </div>
 </div>
 
+<!-- View Student Tests Modal -->
+<div id="viewTestsModal" class="modal-overlay">
+  <div class="modal" style="max-width: 450px;">
+    <div class="modal-header">
+      <div class="modal-title">Test History: <span id="viewTestsStudentName" style="color:var(--gold);">Student</span></div>
+      <button class="modal-close" onclick="closeViewTestsModal()">&times;</button>
+    </div>
+    <div style="padding: 1.25rem;">
+      <div id="viewTestsListContainer" style="display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto; padding-right:5px;">
+        <!-- Loaded dynamically -->
+      </div>
+    </div>
+    <div class="modal-footer" style="padding-top: 0;">
+      <button type="button" class="btn btn-primary btn-sm" onclick="closeViewTestsModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
   // Robust click handler for dynamic elements
   document.addEventListener('click', function(e) {
@@ -386,19 +405,46 @@
       editPastTest(testName, date, totalMarks, studentScores);
       return;
     }
+
+    const viewTestsBtn = e.target.closest('.view-student-tests-btn');
+    if (viewTestsBtn) {
+      const studentName = viewTestsBtn.getAttribute('data-student-name');
+      const testsJSON = viewTestsBtn.getAttribute('data-student-tests');
+      showStudentTests(studentName, testsJSON);
+      return;
+    }
   });
 
-  function toggleStudentTests(btn) {
-    const list = btn.nextElementSibling;
-    if (list) {
-      if (list.style.display === 'none' || list.style.display === '') {
-        list.style.display = 'flex';
-        btn.innerText = 'Hide test list';
-      } else {
-        list.style.display = 'none';
-        btn.innerText = 'Show test list';
-      }
+  function showStudentTests(studentName, testsJSON) {
+    document.getElementById('viewTestsStudentName').innerText = studentName;
+    const container = document.getElementById('viewTestsListContainer');
+    container.innerHTML = '';
+    
+    const tests = JSON.parse(testsJSON || '[]');
+    if (tests.length === 0) {
+      container.innerHTML = '<p class="td-muted text-sm" style="text-align:center; padding:1rem;">No tests recorded yet.</p>';
+    } else {
+      tests.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'text-xs';
+        div.style.cssText = 'background:var(--bg-hover); padding:10px 12px; border-radius:6px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;';
+        div.innerHTML = `
+          <div>
+            <strong style="color:var(--text); font-size:12px; display:block; margin-bottom:2px;">${t.testName}</strong>
+            <span class="td-muted" style="font-size:10px;">Date: ${t.date}</span>
+          </div>
+          <div style="font-weight:600; font-size:12px;">
+            Score: <span class="text-gold">${t.score}/${t.totalMarks}</span>
+          </div>
+        `;
+        container.appendChild(div);
+      });
     }
+    document.getElementById('viewTestsModal').classList.add('open');
+  }
+  
+  function closeViewTestsModal() {
+    document.getElementById('viewTestsModal').classList.remove('open');
   }
 
   function switchProgressTab(tabName) {
@@ -457,12 +503,8 @@
     updateTotalMarksLabel(totalMarks);
     
     // Clear all inputs first
-    <% if (students && students.length > 0) { %>
-      <% students.forEach(student => { %>
-        document.getElementById('bulk_score_<%= student.studentProfileId %>').value = '';
-        document.getElementById('bulk_remark_<%= student.studentProfileId %>').value = '';
-      <% }) %>
-    <% } %>
+    document.querySelectorAll('input[id^="bulk_score_"]').forEach(el => el.value = '');
+    document.querySelectorAll('input[id^="bulk_remark_"]').forEach(el => el.value = '');
     
     // Populate existing scores
     for (const studentId in studentScores) {
@@ -486,12 +528,8 @@
     document.getElementById('bulkOldTestName').value = '';
     
     // Clear all inputs
-    <% if (students && students.length > 0) { %>
-      <% students.forEach(student => { %>
-        document.getElementById('bulk_score_<%= student.studentProfileId %>').value = '';
-        document.getElementById('bulk_remark_<%= student.studentProfileId %>').value = '';
-      <% }) %>
-    <% } %>
+    document.querySelectorAll('input[id^="bulk_score_"]').forEach(el => el.value = '');
+    document.querySelectorAll('input[id^="bulk_remark_"]').forEach(el => el.value = '');
     
     updateTotalMarksLabel(50);
     document.getElementById('bulkCancelEditBtn').style.display = 'none';
@@ -542,9 +580,11 @@
   // Close modals on overlay clicks
   document.getElementById('testModal').addEventListener('click', function(e) { if (e.target === this) closeTestModal(); });
   document.getElementById('remarkModal').addEventListener('click', function(e) { if (e.target === this) closeRemarkModal(); });
+  document.getElementById('viewTestsModal').addEventListener('click', function(e) { if (e.target === this) closeViewTestsModal(); });
 
   // Dependent dropdown config
   const teacherSchedules = <%- JSON.stringify(teacherSchedules || []) %>;
+  const teacherBatches = <%- JSON.stringify(batches || []) %>;
 
   const setupDependentDropdowns = () => {
     const courseSelect = document.getElementById('progressCourseSelect');
@@ -574,10 +614,9 @@
         return;
       }
 
-      const validBatchIds = teacherSchedules
-        .filter(s => s.course && s.course._id === selectedCourse)
-        .map(s => s.batch ? s.batch._id : null)
-        .filter(Boolean);
+      const validBatchIds = teacherBatches
+        .filter(b => b.course && (b.course === selectedCourse || b.course._id === selectedCourse))
+        .map(b => b._id);
 
       const currentSelectedBatch = batchSelect.value;
       batchSelect.innerHTML = '<option value="">Select Batch</option>';
@@ -595,9 +634,9 @@
       const selectedBatch = batchSelect.value;
       if (!selectedBatch) return;
 
-      const match = teacherSchedules.find(s => s.batch && s.batch._id === selectedBatch);
+      const match = teacherBatches.find(b => b._id === selectedBatch);
       if (match && match.course) {
-        const targetCourseId = match.course._id;
+        const targetCourseId = match.course._id || match.course;
         if (courseSelect.value !== targetCourseId) {
           courseSelect.value = targetCourseId;
           courseSelect.dispatchEvent(new Event('change'));
@@ -616,6 +655,64 @@
     if (totalMarksInput && scoreInput) {
       totalMarksInput.addEventListener('input', () => {
         scoreInput.max = totalMarksInput.value || 50;
+      });
+    }
+
+    // Single test score form validation
+    const testForm = document.querySelector('#testModal form');
+    if (testForm) {
+      testForm.addEventListener('submit', function(e) {
+        if (scoreInput && totalMarksInput) {
+          const sVal = Number(scoreInput.value);
+          const tmVal = Number(totalMarksInput.value);
+          if (sVal < 0) {
+            alert('Score cannot be negative.');
+            e.preventDefault();
+            return;
+          }
+          if (tmVal < 1) {
+            alert('Total marks must be at least 1.');
+            e.preventDefault();
+            return;
+          }
+          if (sVal > tmVal) {
+            alert('Score cannot exceed total marks.');
+            e.preventDefault();
+            return;
+          }
+        }
+      });
+    }
+
+    // Bulk test score form validation
+    const bulkForm = document.getElementById('bulkTestForm');
+    if (bulkForm) {
+      bulkForm.addEventListener('submit', function(e) {
+        const bulkTotalMarksInput = document.getElementById('bulkTotalMarks');
+        const bulkTotalMarksVal = Number(bulkTotalMarksInput.value);
+        if (bulkTotalMarksVal < 1) {
+          alert('Total marks must be at least 1.');
+          e.preventDefault();
+          return;
+        }
+        const scoreInputs = document.querySelectorAll('input[id^="bulk_score_"]');
+        for (const input of scoreInputs) {
+          if (input.value !== '') {
+            const scoreVal = Number(input.value);
+            if (scoreVal < 0) {
+              alert('Scores cannot be negative.');
+              e.preventDefault();
+              input.focus();
+              return;
+            }
+            if (scoreVal > bulkTotalMarksVal) {
+              alert('Score cannot exceed total marks (' + bulkTotalMarksVal + ').');
+              e.preventDefault();
+              input.focus();
+              return;
+            }
+          }
+        }
       });
     }
   };

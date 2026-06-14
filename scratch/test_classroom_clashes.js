@@ -54,6 +54,7 @@ async function test() {
     const sched1 = await Schedule.create({
       subject: 'Test Subject Basics',
       batch: batchDoc._id,
+      course: batchDoc.course,
       teacher: teacher._id,
       classroom: roomA._id,
       date: '2026-06-10',

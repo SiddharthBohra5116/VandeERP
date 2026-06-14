@@ -13,9 +13,9 @@
 
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
   <form method="GET" action="/admin/leads" class="filter-bar" style="margin:0; gap:0.75rem;">
-    <input type="text" name="search" class="form-control" placeholder="Search by name / phone..." value="<%= filter.search || '' %>" style="min-width: 200px;">
+    <input type="text" name="search" class="form-control" placeholder="Search by name / phone..." value="<%= filter.search || '' %>" style="min-width: 200px;" onchange="this.form.submit()">
     
-    <select name="status" class="form-control">
+    <select name="status" class="form-control" onchange="this.form.submit()">
       <option value="">All Statuses</option>
       <option value="new" <%= filter.status === 'new' ? 'selected' : '' %>>New</option>
       <option value="contacted" <%= filter.status === 'contacted' ? 'selected' : '' %>>Contacted</option>
@@ -27,7 +27,7 @@
       <option value="lost" <%= filter.status === 'lost' ? 'selected' : '' %>>Lost</option>
     </select>
 
-    <select name="course" class="form-control">
+    <select name="course" class="form-control" onchange="this.form.submit()">
       <option value="">All Courses</option>
       <option value="Video Editing" <%= filter.course === 'Video Editing' ? 'selected' : '' %>>Video Editing</option>
       <option value="Digital Marketing" <%= filter.course === 'Digital Marketing' ? 'selected' : '' %>>Digital Marketing</option>
@@ -35,7 +35,7 @@
       <option value="Undecided" <%= filter.course === 'Undecided' ? 'selected' : '' %>>Undecided</option>
     </select>
 
-    <select name="source" class="form-control">
+    <select name="source" class="form-control" onchange="this.form.submit()">
       <option value="">All Sources</option>
       <option value="Walk-in" <%= filter.source === 'Walk-in' ? 'selected' : '' %>>Walk-in</option>
       <option value="Website" <%= filter.source === 'Website' ? 'selected' : '' %>>Website</option>

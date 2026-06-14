@@ -127,7 +127,7 @@
           <tbody>
             <% fee.payments.forEach(p => { %>
               <tr>
-                <td class="mono text-sm"><%= new Date(p.date).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %></td>
+                <td class="mono text-sm"><%= new Date(p.paidAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %></td>
                 <td class="mono text-green fw-600">₹<%= p.amount.toLocaleString('en-IN') %></td>
                 <td><span class="badge badge-grey"><%= p.method %></span></td>
                 <td class="mono text-xs"><%= p.transactionId || '—' %></td>

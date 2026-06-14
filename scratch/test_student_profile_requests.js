@@ -12,8 +12,11 @@ async function test() {
   
   try {
     // Clean up if previous run crashed
-    await User.deleteMany({ email: 'student.request@gmail.com' });
-    await Student.deleteMany({});
+    const oldRequestUser = await User.findOne({ email: 'student.request@gmail.com' });
+    if (oldRequestUser) {
+      await Student.deleteMany({ userId: oldRequestUser._id });
+      await User.deleteOne({ _id: oldRequestUser._id });
+    }
     
     let courseDoc = await Course.findOne({ name: 'Video Editing' });
     if (!courseDoc) {

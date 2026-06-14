@@ -12,6 +12,7 @@ const Lead = require('../models/Lead');
 const Expense = require('../models/Expense');
 const RevenueTarget = require('../models/RevenueTarget');
 const Schedule = require('../models/Schedule');
+const Progress = require('../models/Progress');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -53,7 +54,7 @@ async function run() {
   const serverProc = spawn('node', ['server.js'], { cwd: process.cwd(), env });
 
   serverProc.stdout.on('data', (data) => {
-    // console.log(`[Server Out]: ${data.toString().trim()}`);
+    console.log(`[Server Out]: ${data.toString().trim()}`);
   });
 
   serverProc.stderr.on('data', (data) => {
@@ -92,7 +93,20 @@ async function run() {
       });
     }
 
-    // 2. Create Counsellor, Teacher, and Student
+    // 2. Create Admin, Counsellor, Teacher, and Student
+    let adminUser = await User.findOne({ email: 'admin@vandedigital.com' });
+    if (!adminUser) {
+      adminUser = await User.create({
+        name: 'System Admin',
+        email: 'admin@vandedigital.com',
+        password: 'password123',
+        role: 'admin',
+        phone: '8881112220',
+        isActive: true,
+        status: 'active'
+      });
+    }
+
     const counsellor = await User.create({
       name: 'Day8 Counsellor',
       email: 'day8counsellor@example.com',
@@ -129,7 +143,7 @@ async function run() {
     });
 
     const student = await Student.create({
-      userId: user._id,
+      user: user._id,
       course: courseDoc._id,
       batch: batchDoc._id,
       teacher: teacher._id,
@@ -186,7 +200,7 @@ async function run() {
       phone: '9998887771',
       interestedCourse: courseDoc._id,
       source: 'Website',
-      status: 'converted',
+      status: 'admission_completed',
       assignedTo: counsellor._id,
       convertedStudent: student._id,
       createdAt: new Date('2026-06-02'),

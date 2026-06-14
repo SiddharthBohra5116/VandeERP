@@ -98,47 +98,86 @@ async function run() {
   }
 
   // Clear previous test students
+  const Course = require('../models/Course');
+  const Batch = require('../models/Batch');
+  const Student = require('../models/Student');
+
   const oldTestStudents = await User.find({ email: /@testsmart\.com$/ }).select('_id');
   const oldTestStudentIds = oldTestStudents.map(s => s._id);
+  const oldStudentProfiles = await Student.find({ userId: { $in: oldTestStudentIds } }).select('_id');
+  const oldStudentProfileIds = oldStudentProfiles.map(s => s._id);
+
+  await Student.deleteMany({ _id: { $in: oldStudentProfileIds } });
   await User.deleteMany({ _id: { $in: oldTestStudentIds } });
-  await Attendance.deleteMany({ student: { $in: oldTestStudentIds } });
-  await Fee.deleteMany({ student: { $in: oldTestStudentIds } });
+  await Attendance.deleteMany({ student: { $in: oldStudentProfileIds } });
+  await Fee.deleteMany({ student: { $in: oldStudentProfileIds } });
   await Assignment.deleteMany({ title: 'Filter Test Assignment' });
 
-  // Create 3 Test Students
-  const s1 = await User.create({
+  // Get or Create Course and Batches
+  let courseDoc = await Course.findOne({ name: 'Video Editing' });
+  if (!courseDoc) {
+    courseDoc = await Course.create({ name: 'Video Editing', code: 'VE', durationMonths: 3, fees: 25000 });
+  }
+
+  let batchA = await Batch.findOne({ name: 'Filter Batch A' });
+  if (!batchA) {
+    batchA = await Batch.create({ name: 'Filter Batch A', course: courseDoc._id, capacity: 20, isActive: true });
+  }
+
+  let batchB = await Batch.findOne({ name: 'Filter Batch B' });
+  if (!batchB) {
+    batchB = await Batch.create({ name: 'Filter Batch B', course: courseDoc._id, capacity: 20, isActive: true });
+  }
+
+  // Create 3 Test Students (both User and Student profiles)
+  const s1User = await User.create({
     name: 'Suresh Kumar',
     email: 'suresh@testsmart.com',
     password: 'password123',
     role: 'student',
     phone: '9988776655',
-    batch: 'Filter Batch A',
-    course: 'Video Editing',
     isActive: true,
     status: 'active'
   });
-  const s2 = await User.create({
+  const s1 = await Student.create({
+    userId: s1User._id,
+    course: courseDoc._id,
+    batch: batchA._id,
+    family: { father: { name: 'Father of Suresh', phone: '9988776655' } }
+  });
+
+  const s2User = await User.create({
     name: 'Ramesh Singh',
     email: 'ramesh@testsmart.com',
     password: 'password123',
     role: 'student',
     phone: '9988776656',
-    batch: 'Filter Batch A',
-    course: 'Video Editing',
     isActive: true,
     status: 'active'
   });
-  const s3 = await User.create({
+  const s2 = await Student.create({
+    userId: s2User._id,
+    course: courseDoc._id,
+    batch: batchA._id,
+    family: { father: { name: 'Father of Ramesh', phone: '9988776656' } }
+  });
+
+  const s3User = await User.create({
     name: 'Dinesh Patel',
     email: 'dinesh@testsmart.com',
     password: 'password123',
     role: 'student',
     phone: '9988776657',
-    batch: 'Filter Batch B',
-    course: 'Video Editing',
     isActive: true,
     status: 'active'
   });
+  const s3 = await Student.create({
+    userId: s3User._id,
+    course: courseDoc._id,
+    batch: batchB._id,
+    family: { father: { name: 'Father of Dinesh', phone: '9988776657' } }
+  });
+
   console.log('➕ Seeded 3 Test Students (Suresh, Ramesh, Dinesh)');
 
   // 3. Generate Auth Tokens
@@ -182,12 +221,12 @@ async function run() {
   console.log('👣 [2/4] Verifying Attendance Tier Filters (Low, Medium, High, Not Marked)...');
 
   // Seed attendance for Suresh (100% - present)
-  await Attendance.create({ student: s1._id, teacher: teacher._id, subject: 'Video Editing', batch: 'Filter Batch A', date: '2026-06-01', status: 'present' });
-  await Attendance.create({ student: s1._id, teacher: teacher._id, subject: 'Video Editing', batch: 'Filter Batch A', date: '2026-06-02', status: 'present' });
+  await Attendance.create({ student: s1._id, teacher: teacher._id, course: courseDoc._id, batch: batchA._id, date: '2026-06-01', status: 'present' });
+  await Attendance.create({ student: s1._id, teacher: teacher._id, course: courseDoc._id, batch: batchA._id, date: '2026-06-02', status: 'present' });
 
   // Seed attendance for Ramesh (50% - low)
-  await Attendance.create({ student: s2._id, teacher: teacher._id, subject: 'Video Editing', batch: 'Filter Batch A', date: '2026-06-01', status: 'present' });
-  await Attendance.create({ student: s2._id, teacher: teacher._id, subject: 'Video Editing', batch: 'Filter Batch A', date: '2026-06-02', status: 'absent' });
+  await Attendance.create({ student: s2._id, teacher: teacher._id, course: courseDoc._id, batch: batchA._id, date: '2026-06-01', status: 'present' });
+  await Attendance.create({ student: s2._id, teacher: teacher._id, course: courseDoc._id, batch: batchA._id, date: '2026-06-02', status: 'absent' });
 
   // Dinesh has no records at all (0 records -> 100% fallback, unmarked today)
 
@@ -195,8 +234,8 @@ async function run() {
   await Attendance.create({
     student: s1._id,
     teacher: teacher._id,
-    subject: 'Video Editing',
-    batch: 'Filter Batch A',
+    course: courseDoc._id,
+    batch: batchA._id,
     date: todayIST(),
     status: 'present'
   });
@@ -228,7 +267,7 @@ async function run() {
   // Suresh: Overdue
   await Fee.create({
     student: s1._id,
-    course: 'Video Editing',
+    course: courseDoc._id,
     totalAmount: 30000,
     paidAmount: 5000,
     discount: 2000, // actual total: 28000. due: 23000
@@ -238,7 +277,7 @@ async function run() {
   // Ramesh: Partially Paid
   await Fee.create({
     student: s2._id,
-    course: 'Video Editing',
+    course: courseDoc._id,
     totalAmount: 20000,
     paidAmount: 10000,
     discount: 0, // due: 10000
@@ -248,7 +287,7 @@ async function run() {
   // Dinesh: Fully Paid
   await Fee.create({
     student: s3._id,
-    course: 'Video Editing',
+    course: courseDoc._id,
     totalAmount: 15000,
     paidAmount: 15000,
     discount: 0, // due: 0
@@ -297,8 +336,8 @@ async function run() {
   const assign = await Assignment.create({
     title: 'Filter Test Assignment',
     description: 'Verifying filters.',
-    subject: 'Video Editing',
-    batch: 'Filter Batch A',
+    course: courseDoc._id,
+    batch: batchA._id,
     teacher: teacher._id,
     totalMarks: 100,
     dueDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) // Overdue!

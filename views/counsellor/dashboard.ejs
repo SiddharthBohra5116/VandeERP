@@ -329,26 +329,3 @@
   </div>
 </div>
 
-<!-- Contact Admin Form -->
-<div class="card" style="margin-top:1.25rem;">
-  <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
-    <div class="card-title" style="display:flex; align-items:center; gap:0.4rem;">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gold"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      Send Message Note to Admin
-    </div>
-  </div>
-  <form action="/counsellor/messages/send" method="POST" style="margin: 0; padding: 0;">
-    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
-    <input type="hidden" name="redirect" value="/counsellor/dashboard">
-    <% if (typeof admin !== 'undefined' && admin) { %>
-      <input type="hidden" name="recipientId" value="<%= admin._id %>">
-    <% } %>
-    <div class="form-group">
-      <label class="form-label" style="font-size: 10px;">Message / Note to Admin *</label>
-      <textarea name="content" class="form-control" placeholder="Type notification or message query to send to Admin..." required style="min-height: 80px;" maxlength="500"></textarea>
-    </div>
-    <div style="display: flex; justify-content: flex-end; margin-top: 0.75rem;">
-      <button type="submit" class="btn btn-primary btn-sm">Send Note to Admin</button>
-    </div>
-  </form>
-</div>

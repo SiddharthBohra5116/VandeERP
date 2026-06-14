@@ -8,10 +8,10 @@
 
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
   <form method="GET" action="<%= typeof roleActive !== 'undefined' ? '/admin/' + roleActive + 's' : '/admin/users' %>" class="filter-bar" style="margin: 0;">
-    <input type="text" name="search" class="form-control" placeholder="Search..." value="<%= filter.search || '' %>">
+    <input type="text" name="search" class="form-control" placeholder="Search..." value="<%= filter.search || '' %>" onchange="this.form.submit()">
     
     <% if (typeof roleActive === 'undefined') { %>
-      <select name="role" class="form-control">
+      <select name="role" class="form-control" onchange="this.form.submit()">
         <option value="">All Roles</option>
         <option value="student" <%= filter.role === 'student' ? 'selected' : '' %>>Student</option>
         <option value="teacher" <%= filter.role === 'teacher' ? 'selected' : '' %>>Teacher</option>
@@ -21,7 +21,7 @@
     <% } %>
 
     <% if (typeof roleActive !== 'undefined' && roleActive === 'student') { %>
-      <select name="attendance" class="form-control">
+      <select name="attendance" class="form-control" onchange="this.form.submit()">
         <option value="">All Attendance Tiers</option>
         <option value="low" <%= filter.attendance === 'low' ? 'selected' : '' %>>Low (< 75%)</option>
         <option value="medium" <%= filter.attendance === 'medium' ? 'selected' : '' %>>Medium (75% - 85%)</option>

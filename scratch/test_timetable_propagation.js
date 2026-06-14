@@ -74,6 +74,7 @@ async function run() {
 
     // 3. Create Timetable template
     const timetable = await Timetable.create({
+      course: batchDoc.course,
       batch: testBatch,
       startDate: nextMonday,
       endDate: nextFriday,

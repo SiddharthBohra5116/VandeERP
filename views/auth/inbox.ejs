@@ -22,7 +22,9 @@
       <button class="filter-tab" data-filter="admin" style="background: none; border: none; color: var(--text-muted); font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600;">Admins</button>
       <button class="filter-tab" data-filter="teacher" style="background: none; border: none; color: var(--text-muted); font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600;">Teachers</button>
       <button class="filter-tab" data-filter="counsellor" style="background: none; border: none; color: var(--text-muted); font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600;">Counsellors</button>
-      <button class="filter-tab" data-filter="student" style="background: none; border: none; color: var(--text-muted); font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600;">Students</button>
+      <% if (user.role !== 'student') { %>
+        <button class="filter-tab" data-filter="student" style="background: none; border: none; color: var(--text-muted); font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600;">Students</button>
+      <% } %>
     </div>
     <div class="contacts-list" id="contactsList">
       <% if (contacts.length === 0) { %>
@@ -1152,7 +1154,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         if (chatInput.value.trim()) {
-          chatInput.form.submit();
+          chatInput.form.requestSubmit();
         }
       }
     });

@@ -8,8 +8,14 @@ const { filterValidAttendance } = require('../../utils/attendanceHelper');
  */
 exports.getAttendance = async (req, res) => {
   try {
+    const Student = require('../../models/Student');
+    const studentProfile = await Student.findOne({ user: req.user._id });
+    if (!studentProfile) {
+      return res.redirect('/student/dashboard?error=Student+profile+not+found');
+    }
+
     const { month } = req.query;
-    const filter = { student: req.user._id };
+    const filter = { student: studentProfile._id };
     if (month) filter.date = { $regex: `^${month}` };
 
     const records = await Attendance.find(filter).sort({ date: -1 });
