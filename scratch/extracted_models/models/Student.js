@@ -1,0 +1,119 @@
+const mongoose = require('mongoose');
+const { generateRollNumber } = require('../utils/rollNumberHelper');
+
+const pendingProfileUpdateSchema = new mongoose.Schema({
+  name: { type: String, default: null },
+  phone: { type: String, default: null },
+  profilePic: { type: String, default: null },
+  fatherName: { type: String, default: null },
+  motherName: { type: String, default: null },
+  address: { type: String, default: null },
+  city: { type: String, default: null },
+  dob: { type: Date, default: null },
+  requestedAt: { type: Date, default: null }
+}, { _id: false });
+
+const studentSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  rollNumber: { type: String, unique: true },
+
+  counsellor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+
+  course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
+  batch: { type: mongoose.Schema.Types.ObjectId, ref: 'Batch', default: null },
+
+  enrollmentDate: { type: Date, default: Date.now },
+
+  fees_total: { type: Number, default: 0 },
+  fees_paid: { type: Number, default: 0 },
+
+  family: {
+    father: {
+      name: { type: String, default: '' },
+      phone: { type: String, default: '' }
+    },
+    mother: {
+      name: { type: String, default: '' },
+      phone: { type: String, default: '' }
+    },
+    guardian: {
+      name: { type: String, default: '' },
+      relation: { type: String, default: '' },
+      phone: { type: String, default: '' }
+    }
+  },
+
+  documents: {
+    profilePic: { type: String, default: null },
+    idProof: { type: String, default: null }
+  },
+
+  idVerified: { type: Boolean, default: false },
+
+  pendingProfileUpdate: {
+    type: pendingProfileUpdateSchema,
+    default: () => ({
+      name: null,
+      phone: null,
+      profilePic: null,
+      fatherName: null,
+      motherName: null,
+      address: null,
+      city: null,
+      dob: null,
+      requestedAt: null
+    })
+  },
+
+  remarks: [{
+    postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    role: { type: String },
+    note: { type: String },
+    date: { type: Date, default: Date.now }
+  }],
+
+  statusHistory: [{
+    status: { type: String },
+    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    reason: { type: String, default: '' },
+    date: { type: Date, default: Date.now }
+  }],
+
+  feedback: {
+    submitted: { type: Boolean, default: false },
+    teacherRating: { type: Number, default: 0 },
+    contentRating: { type: Number, default: 0 },
+    facilitiesRating: { type: Number, default: 0 },
+    comments: { type: String, default: '' },
+    submittedAt: { type: Date, default: null }
+  }
+}, { timestamps: true });
+
+studentSchema.virtual('fees_due').get(function() {
+  return this.fees_total - this.fees_paid;
+});
+
+studentSchema.virtual('fees_pct').get(function() {
+  if (this.fees_total <= 0) return 0;
+  return Math.round((this.fees_paid / this.fees_total) * 100);
+});
+
+studentSchema.pre('save', async function(next) {
+  try {
+    await generateRollNumber(this, 'student', 'STU');
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
+studentSchema.index({ course: 1 });
+studentSchema.index({ batch: 1 });
+studentSchema.index({ counsellor: 1 });
+studentSchema.index({ teacher: 1 });
+
+studentSchema.set('toJSON', { virtuals: true });
+studentSchema.set('toObject', { virtuals: true });
+
+module.exports = mongoose.model('Student', studentSchema);

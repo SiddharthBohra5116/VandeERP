@@ -93,9 +93,9 @@ app.use(cookieParser());
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ limit: '2mb', extended: true }));
 
-// ── AntiGravity Module 4: Input Mutation Guard ────────────────────────────
+// ── Security: Input Sanitization Guard ──────────────────────────────────────
 // MUST come after body parsers (req.body only exists after parsing)
-const inputMutationGuard = require('./middleware/antiGravity/inputMutationGuard');
+const inputMutationGuard = require('./middleware/security/inputMutationGuard');
 app.use(inputMutationGuard);
 
 // ── Belt-and-suspenders NoSQL sanitize (strips remaining $-prefixed keys) ─
@@ -204,17 +204,17 @@ app.get('/api/notifications', protect, async (req, res) => {
   }
 });
 
-// ── AntiGravity Module 2: Anonymous rate limiter on auth routes ──────────
-const { getRateLimiter } = require('./middleware/antiGravity/intelligentRateLimiter');
+// ── Security: Rate Limiter on public auth routes ─────────────────────────
+const { getRateLimiter } = require('./middleware/security/intelligentRateLimiter');
 app.use('/auth/login', getRateLimiter('anonymous'));
 app.use('/auth/forgot-password', getRateLimiter('anonymous'));
 
-// ── AntiGravity Module 5: Fee Integrity Validator ─────────────────────────
-const feeIntegrityValidator = require('./middleware/antiGravity/feeIntegrityValidator');
+// ── Security: Fee Payment Integrity Checks ───────────────────────────────
+const feeIntegrityValidator = require('./middleware/security/feeIntegrityValidator');
 app.use(['/admin/fees', '/counsellor/admission', '/student/fees', '/student/payment'], feeIntegrityValidator);
 
-// ── AntiGravity Module 6: Security Dashboard ─────────────────────────────
-app.use('/admin/security', require('./routes/antiGravity/adminSecurityRoutes'));
+// ── Security: Admin Security Dashboard ──────────────────────────────────
+app.use('/admin/security', require('./routes/security/adminSecurityRoutes'));
 
 // Mount Modules
 app.use('/auth', require('./routes/auth'));

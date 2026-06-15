@@ -1,6 +1,6 @@
 const jwt     = require('jsonwebtoken');
 const User    = require('../models/User');
-const behaviorEngine = require('./antiGravity/behaviorEngine');
+const behaviorEngine = require('./security/behaviorEngine');
 
 const protect = async (req, res, next) => {
   let token;
