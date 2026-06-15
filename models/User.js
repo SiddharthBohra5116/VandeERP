@@ -89,7 +89,13 @@ const userSchema = new mongoose.Schema({
   resetRequested: {
     type: Boolean,
     default: false
-  }
+  },
+
+  // AntiGravity: timestamp before which ALL tokens for this user are invalid.
+  // Set by admin blacklist action. Any JWT with iat < this value is rejected.
+  tokenBlacklistedBefore: { type: Date, default: null },
+  // AntiGravity: timestamp of last password change for token freshness checks
+  passwordChangedAt: { type: Date, default: null },
 
 }, { timestamps: true });
 
