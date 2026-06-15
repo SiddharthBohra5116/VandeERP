@@ -1,0 +1,416 @@
+<%
+  layout = 'main';
+  title = 'Security Dashboard';
+  subtitle = 'AntiGravity — Real-Time Threat Monitor';
+  page = 'security';
+%>
+
+<style>
+  /* ── AntiGravity Dashboard Design System ────────────────────────── */
+  :root {
+    --ag-red:      #ef4444;
+    --ag-orange:   #f97316;
+    --ag-yellow:   #eab308;
+    --ag-green:    #22c55e;
+    --ag-critical: #dc2626;
+    --ag-high:     #f97316;
+    --ag-medium:   #eab308;
+    --ag-low:      #22c55e;
+  }
+
+  .threat-banner {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 1rem 1.5rem; border-radius: var(--radius-lg);
+    margin-bottom: 1.5rem; border: 1px solid;
+    animation: pulse-border 2s infinite;
+  }
+  .threat-banner.CRITICAL { background: rgba(220,38,38,0.1); border-color: rgba(220,38,38,0.4); }
+  .threat-banner.HIGH     { background: rgba(249,115,22,0.1); border-color: rgba(249,115,22,0.4); }
+  .threat-banner.MEDIUM   { background: rgba(234,179,8,0.1);  border-color: rgba(234,179,8,0.4);  }
+  .threat-banner.LOW      { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.3);  }
+
+  @keyframes pulse-border {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0.7; }
+  }
+
+  .threat-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    flex-shrink: 0; animation: pulse-dot 1.5s infinite;
+  }
+  .CRITICAL .threat-dot { background: var(--ag-critical); box-shadow: 0 0 12px var(--ag-critical); }
+  .HIGH     .threat-dot { background: var(--ag-high);     box-shadow: 0 0 12px var(--ag-high);     }
+  .MEDIUM   .threat-dot { background: var(--ag-medium);   box-shadow: 0 0 8px  var(--ag-medium);   }
+  .LOW      .threat-dot { background: var(--ag-green);    box-shadow: 0 0 8px  var(--ag-green);    }
+
+  @keyframes pulse-dot {
+    0%,100% { transform: scale(1); }
+    50%      { transform: scale(1.3); }
+  }
+
+  .threat-level-text {
+    font-family: var(--font-display); font-size: 1.2rem; font-weight: 800; letter-spacing: 0.05em;
+  }
+  .CRITICAL .threat-level-text { color: var(--ag-critical); }
+  .HIGH     .threat-level-text { color: var(--ag-high);     }
+  .MEDIUM   .threat-level-text { color: var(--ag-medium);   }
+  .LOW      .threat-level-text { color: var(--ag-green);    }
+
+  .ag-stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+
+  .ag-stat {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1rem 1.25rem;
+    display: flex; flex-direction: column; gap: 0.3rem;
+  }
+  .ag-stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); }
+  .ag-stat-value { font-family: var(--font-display); font-size: 1.8rem; font-weight: 800; color: var(--text); }
+  .ag-stat-sub   { font-size: 0.7rem; color: var(--text-muted); }
+
+  .severity-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    margin-right: 5px; flex-shrink: 0;
+  }
+  .sev-CRITICAL { background: var(--ag-critical); }
+  .sev-HIGH     { background: var(--ag-high);     }
+  .sev-MEDIUM   { background: var(--ag-medium);   }
+  .sev-LOW      { background: var(--ag-green);    }
+
+  .alert-live-feed { display: flex; flex-direction: column; gap: 0.5rem; max-height: 320px; overflow-y: auto; }
+
+  .alert-item {
+    display: flex; align-items: flex-start; gap: 0.75rem;
+    background: var(--bg-input); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 0.65rem 0.85rem;
+    font-size: 0.8rem; animation: slide-in 0.3s ease;
+  }
+  @keyframes slide-in { from { opacity:0; transform: translateY(-6px); } to { opacity:1; transform: translateY(0); } }
+
+  .alert-item-new { border-color: var(--gold-border); background: rgba(255,204,0,0.05); }
+
+  .blacklist-btn {
+    background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+    color: var(--ag-red); padding: 3px 10px; border-radius: 4px;
+    font-size: 0.72rem; cursor: pointer; font-weight: 600;
+    transition: background 0.2s;
+  }
+  .blacklist-btn:hover { background: rgba(239,68,68,0.2); }
+
+  .connection-indicator {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.72rem; color: var(--text-muted);
+  }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ag-green); }
+  .conn-dot.disconnected { background: var(--ag-red); animation: none; }
+
+  #alertsTable tbody tr { animation: slide-in 0.25s ease; }
+
+  @media (max-width: 600px) {
+    .ag-stat-row { grid-template-columns: repeat(2, 1fr); }
+    .threat-level-text { font-size: 1rem; }
+  }
+</style>
+
+<!-- ── Threat Level Banner ──────────────────────────────────────────────── -->
+<div class="threat-banner <%= threat.level %>" id="threatBanner">
+  <div class="threat-dot"></div>
+  <div>
+    <div class="threat-level-text">THREAT LEVEL: <%= threat.level %></div>
+    <div style="font-size:0.78rem; color: var(--text-muted); margin-top:2px;">
+      <%= threat.count %> alert<%= threat.count !== 1 ? 's' : '' %> in the last hour &nbsp;·&nbsp;
+      <span class="connection-indicator" id="connIndicator">
+        <span class="conn-dot" id="connDot"></span>
+        <span id="connLabel">Connecting...</span>
+      </span>
+    </div>
+  </div>
+  <div style="margin-left: auto; font-size: 0.75rem; color: var(--text-muted);">
+    Last updated: <span id="lastUpdated"><%= new Date().toLocaleTimeString('en-IN') %></span>
+  </div>
+</div>
+
+<!-- ── Stats Row ──────────────────────────────────────────────────────────── -->
+<div class="ag-stat-row">
+  <div class="ag-stat">
+    <div class="ag-stat-label">Alerts (Last Hour)</div>
+    <div class="ag-stat-value" id="statHour"><%= threat.count %></div>
+    <div class="ag-stat-sub">Live via Socket.IO</div>
+  </div>
+  <div class="ag-stat">
+    <div class="ag-stat-label">Total Alerts (7d)</div>
+    <div class="ag-stat-value"><%= recentAlerts.length %></div>
+    <div class="ag-stat-sub">From DB (page load)</div>
+  </div>
+  <div class="ag-stat">
+    <div class="ag-stat-label">Critical / High</div>
+    <div class="ag-stat-value" style="color: var(--ag-red);">
+      <%= recentAlerts.filter(a => a.severity === 'CRITICAL' || a.severity === 'HIGH').length %>
+    </div>
+    <div class="ag-stat-sub">Needs review</div>
+  </div>
+  <div class="ag-stat">
+    <div class="ag-stat-label">Flagged Users</div>
+    <div class="ag-stat-value" style="color: var(--ag-orange);"><%= flaggedUsers.length %></div>
+    <div class="ag-stat-sub">By anomaly score (24h)</div>
+  </div>
+</div>
+
+<!-- ── Live Feed + Top Flagged Users ─────────────────────────────────────── -->
+<div class="grid-2" style="margin-bottom: 1.5rem;">
+
+  <!-- Live Alert Feed -->
+  <div class="card">
+    <div class="card-header card-header--divided">
+      <div class="card-title" style="display:flex; align-items:center; gap:0.5rem;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Live Alert Feed
+      </div>
+    </div>
+    <div class="alert-live-feed" id="liveFeed">
+      <% if (recentAlerts.length === 0) { %>
+        <div style="text-align:center; color: var(--text-muted); padding: 2rem; font-size: 0.82rem;">
+          ✅ No alerts. System is healthy.
+        </div>
+      <% } else { %>
+        <% recentAlerts.slice(0, 10).forEach(alert => { %>
+          <div class="alert-item">
+            <span class="severity-dot sev-<%= alert.severity %>"></span>
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:600; color: var(--text);"><%= alert.type.replace(/_/g,' ').toUpperCase() %></div>
+              <div style="color: var(--text-muted); font-size: 0.72rem; margin-top:2px;">
+                <%= alert.endpoint || '—' %> &nbsp;·&nbsp; Score: <%= alert.anomalyScore %>
+                &nbsp;·&nbsp; <%= new Date(alert.createdAt).toLocaleTimeString('en-IN') %>
+              </div>
+            </div>
+            <span class="badge <%= alert.severity === 'CRITICAL' ? 'badge-red' : alert.severity === 'HIGH' ? 'badge-orange' : alert.severity === 'MEDIUM' ? 'badge-yellow' : 'badge-green' %>"
+                  style="font-size:9px; padding:1px 5px;"><%= alert.severity %></span>
+          </div>
+        <% }) %>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Top Flagged Users -->
+  <div class="card">
+    <div class="card-header card-header--divided">
+      <div class="card-title" style="display:flex; align-items:center; gap:0.5rem;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Top Flagged Users (24h)
+      </div>
+    </div>
+    <% if (flaggedUsers.length === 0) { %>
+      <div style="text-align:center; color: var(--text-muted); padding: 2rem; font-size: 0.82rem;">No flagged users.</div>
+    <% } else { %>
+      <table style="font-size: 0.8rem;">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Role</th>
+            <th>Score</th>
+            <th>Alerts</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% flaggedUsers.forEach(u => { %>
+            <tr>
+              <td style="font-weight:600;"><%= u.userName || '—' %></td>
+              <td><span class="badge badge-grey" style="font-size:9px;"><%= u.userRole || '—' %></span></td>
+              <td style="font-weight:700; color: <%= u.totalScore >= 80 ? 'var(--ag-red)' : 'var(--ag-orange)' %>;">
+                <%= u.totalScore %>
+              </td>
+              <td><%= u.alertCount %></td>
+              <td>
+                <button class="blacklist-btn" onclick="blacklistUser('<%= u.userId %>', '<%= u.userName %>')">
+                  Blacklist
+                </button>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+
+</div>
+
+<!-- ── Full Alert History Table ───────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-header card-header--divided" style="display:flex; justify-content:space-between; align-items:center;">
+    <div class="card-title" style="display:flex; align-items:center; gap:0.5rem;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Alert History (Last 50)
+    </div>
+    <a href="/admin/security/fee-audit" class="btn btn-ghost btn-xs">Fee Audit Log →</a>
+  </div>
+  <div class="table-wrap">
+    <table id="alertsTable">
+      <thead>
+        <tr>
+          <th>Severity</th>
+          <th>Type</th>
+          <th>Endpoint</th>
+          <th>IP Address</th>
+          <th>Score</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% recentAlerts.forEach(alert => { %>
+          <tr>
+            <td>
+              <span class="badge <%= alert.severity === 'CRITICAL' ? 'badge-red' : alert.severity === 'HIGH' ? 'badge-orange' : alert.severity === 'MEDIUM' ? 'badge-yellow' : 'badge-green' %>"
+                    style="font-size:9px; padding:1px 5px;"><%= alert.severity %></span>
+            </td>
+            <td style="font-size:0.77rem; font-weight:600;"><%= alert.type.replace(/_/g,' ') %></td>
+            <td style="font-size:0.77rem; color: var(--text-muted);"><%= alert.endpoint || '—' %></td>
+            <td class="mono text-xs"><%= alert.ipAddress || '—' %></td>
+            <td style="font-weight:700; color: var(--gold);"><%= alert.anomalyScore || 0 %></td>
+            <td style="font-size:0.73rem; color: var(--text-muted);">
+              <%= new Date(alert.createdAt).toLocaleString('en-IN', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) %>
+            </td>
+          </tr>
+        <% }) %>
+        <% if (recentAlerts.length === 0) { %>
+          <tr><td colspan="6" style="text-align:center; color: var(--text-muted); padding: 2rem;">No alerts found.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Blacklist Confirmation Modal -->
+<div id="blacklistModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:1000; align-items:center; justify-content:center;">
+  <div class="card" style="max-width:420px; width:90%; padding: 1.5rem;">
+    <h3 style="color:var(--ag-red); margin-top:0;">⚠️ Confirm Blacklist</h3>
+    <p style="color:var(--text-sub); font-size:0.87rem;">
+      This will deactivate <strong id="blacklistTargetName"></strong> and invalidate all their active sessions immediately.
+    </p>
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:0.8rem; color: var(--text-muted);">Reason (required)</label>
+      <input type="text" id="blacklistReason" class="form-control" placeholder="e.g. Suspicious login pattern" style="margin-top:4px;">
+    </div>
+    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeBlacklistModal()">Cancel</button>
+      <button class="btn" style="background:var(--ag-red); color:#fff; border-color:var(--ag-red);" onclick="confirmBlacklist()">Blacklist User</button>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  let blacklistTargetId = null;
+
+  // ── Socket.IO Connection ──────────────────────────────────────────────────
+  const socket = io('/security', { withCredentials: true });
+  const connDot   = document.getElementById('connDot');
+  const connLabel = document.getElementById('connLabel');
+
+  socket.on('connect', () => {
+    connDot.classList.remove('disconnected');
+    connLabel.textContent = 'Live';
+  });
+  socket.on('disconnect', () => {
+    connDot.classList.add('disconnected');
+    connLabel.textContent = 'Disconnected';
+  });
+
+  // ── Real-time alert handler ───────────────────────────────────────────────
+  socket.on('security:alert', (data) => {
+    addLiveFeedItem(data);
+    addTableRow(data);
+    updateLastUpdated();
+
+    // Flash the banner
+    const banner = document.getElementById('threatBanner');
+    banner.style.transform = 'scale(1.01)';
+    setTimeout(() => banner.style.transform = '', 300);
+  });
+
+  socket.on('security:threat_level_change', (data) => {
+    const banner = document.getElementById('threatBanner');
+    banner.className = 'threat-banner ' + data.level;
+    banner.querySelector('.threat-level-text').textContent = 'THREAT LEVEL: ' + data.level;
+    document.getElementById('statHour').textContent = data.alertCount;
+  });
+
+  socket.on('security:rate_limit_breach', (data) => addLiveFeedItem({ ...data, type: 'rate_limit_breach', severity: 'HIGH' }));
+  socket.on('security:fee_drift',         (data) => addLiveFeedItem({ ...data, type: 'fee_drift', severity: 'HIGH' }));
+
+  function addLiveFeedItem(data) {
+    const feed = document.getElementById('liveFeed');
+    const sevColors = { CRITICAL: '#dc2626', HIGH: '#f97316', MEDIUM: '#eab308', LOW: '#22c55e' };
+    const item = document.createElement('div');
+    item.className = 'alert-item alert-item-new';
+    item.innerHTML = `
+      <span class="severity-dot" style="background:${sevColors[data.severity] || '#888'}; margin-top:2px;"></span>
+      <div style="flex:1; min-width:0;">
+        <div style="font-weight:600; color: var(--text);">${(data.type || '').replace(/_/g,' ').toUpperCase()}</div>
+        <div style="color: var(--text-muted); font-size: 0.72rem; margin-top:2px;">
+          ${data.endpoint || data.ip || '—'} · Score: ${data.anomalyScore || 0} · ${new Date().toLocaleTimeString('en-IN')}
+        </div>
+      </div>
+      <span style="font-size:9px; padding:1px 5px; border-radius:4px; font-weight:700; background:${sevColors[data.severity]}20; color:${sevColors[data.severity]}; border: 1px solid ${sevColors[data.severity]}40;">
+        ${data.severity}
+      </span>
+    `;
+    feed.prepend(item);
+    // Keep max 20 items in live feed
+    while (feed.children.length > 20) feed.removeChild(feed.lastChild);
+  }
+
+  function addTableRow(data) {
+    const tbody = document.querySelector('#alertsTable tbody');
+    const sevBadge = { CRITICAL: 'badge-red', HIGH: 'badge-orange', MEDIUM: 'badge-yellow', LOW: 'badge-green' };
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td><span class="badge ${sevBadge[data.severity] || 'badge-grey'}" style="font-size:9px;">${data.severity}</span></td>
+      <td style="font-size:0.77rem; font-weight:600;">${(data.type || '').replace(/_/g,' ')}</td>
+      <td style="font-size:0.77rem; color: var(--text-muted);">${data.endpoint || '—'}</td>
+      <td class="mono text-xs">${data.ip || '—'}</td>
+      <td style="font-weight:700; color: var(--gold);">${data.anomalyScore || 0}</td>
+      <td style="font-size:0.73rem; color: var(--text-muted);">${new Date().toLocaleString('en-IN', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
+    `;
+    tbody.prepend(row);
+  }
+
+  function updateLastUpdated() {
+    document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString('en-IN');
+  }
+
+  // ── Blacklist flow ────────────────────────────────────────────────────────
+  function blacklistUser(userId, userName) {
+    blacklistTargetId = userId;
+    document.getElementById('blacklistTargetName').textContent = userName;
+    document.getElementById('blacklistReason').value = '';
+    document.getElementById('blacklistModal').style.display = 'flex';
+  }
+
+  function closeBlacklistModal() {
+    document.getElementById('blacklistModal').style.display = 'none';
+    blacklistTargetId = null;
+  }
+
+  async function confirmBlacklist() {
+    const reason = document.getElementById('blacklistReason').value.trim();
+    if (!reason) { alert('Please enter a reason.'); return; }
+
+    try {
+      const res = await fetch('/admin/security/blacklist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<%= csrfToken %>' },
+        credentials: 'include',
+        body: JSON.stringify({ userId: blacklistTargetId, reason })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('✅ ' + data.message);
+        closeBlacklistModal();
+      } else {
+        alert('❌ ' + data.error);
+      }
+    } catch (err) {
+      alert('Request failed: ' + err.message);
+    }
+  }
+</script>
