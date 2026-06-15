@@ -23,6 +23,7 @@
  */
 const { isEnabled, createAlert, noopMiddleware } = require('./index');
 const UserBehaviorLog = require('../../models/security/UserBehaviorLog');
+const User            = require('../../models/User');
 
 // Endpoints that require specific roles — accessing them from the wrong role is suspicious
 const SENSITIVE_PATHS = [
@@ -165,9 +166,43 @@ async function behaviorEngine(req, res, next) {
           }
         });
 
+        // ── Auto-Response: Auto-Blacklist on Score >= 90 ──────────────────────
+        let autoBlacklisted = false;
+        if (score >= 90) {
+          try {
+            await User.findByIdAndUpdate(req.user._id, {
+              isActive: false,
+              tokenBlacklistedBefore: new Date() // revokes all active tokens immediately
+            });
+            autoBlacklisted = true;
+
+            await createAlert({
+              type:      'manual_blacklist',
+              severity:  'CRITICAL',
+              userId:    req.user._id,
+              endpoint:  req.path,
+              details:   { reason: 'Auto-blacklisted by Behavior Engine (Score ' + score + ')', auto: true }
+            });
+          } catch (err) {
+            console.error('[AntiGravity/BAE] Auto-blacklist failed:', err.message);
+          }
+        }
+
         // Emit real-time Socket.IO event to admin security namespace
         const io = req.app?.get('io');
         if (io && alert) {
+          // If auto-blacklisted, emit an additional blacklist event to the dashboard
+          if (autoBlacklisted) {
+            io.to('security').emit('security:alert', {
+              type:      'manual_blacklist',
+              severity:  'CRITICAL',
+              userId:    req.user._id,
+              userName:  req.user.name || 'User',
+              reason:    'Auto-blacklisted (Score ' + score + ')',
+              timestamp: new Date()
+            });
+          }
+
           io.to('security').emit('security:alert', {
             alertId:      alert._id,
             type:         'anomaly',
