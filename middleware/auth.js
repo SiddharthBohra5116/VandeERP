@@ -1,5 +1,6 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const jwt     = require('jsonwebtoken');
+const User    = require('../models/User');
+const behaviorEngine = require('./antiGravity/behaviorEngine');
 
 const protect = async (req, res, next) => {
   let token;
@@ -16,7 +17,8 @@ const protect = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'vande_secret_key');
+    // No fallback secret — server.js already crashes at startup if JWT_SECRET is missing.
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = await User.findById(decoded.id).select('-password');
     if (!req.user || (!req.user.isActive && req.user.status !== 'complete')) {
       if (req.accepts('html')) return res.redirect('/auth/login');
@@ -61,6 +63,9 @@ const protect = async (req, res, next) => {
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     
+    // Module 1 — Behavior Engine: async anomaly scoring (never blocks response)
+    behaviorEngine(req, res, () => {});
+
     next();
   } catch (err) {
     if (req.accepts('html')) return res.redirect('/auth/login');

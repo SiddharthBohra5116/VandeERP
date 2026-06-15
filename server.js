@@ -1,5 +1,6 @@
-const express = require('express');
-const path = require('path');
+const http     = require('http');
+const express  = require('express');
+const path     = require('path');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
@@ -18,7 +19,20 @@ if (!fs.existsSync(privateUploadsDir)) {
   fs.mkdirSync(privateUploadsDir);
 }
 
-const app = express();
+const app    = express();
+const server = http.createServer(app);
+
+// ── Socket.IO setup ───────────────────────────────────────────────────────
+const { Server } = require('socket.io');
+const io = new Server(server, { cors: { origin: false } });
+app.set('io', io);
+
+// Security namespace for AntiGravity admin dashboard
+const securityNs = io.of('/security');
+securityNs.on('connection', socket => {
+  socket.join('security');
+  socket.emit('connected', { message: 'AntiGravity Security Feed connected' });
+});
 
 // View Engine Setup
 const ejs = require('ejs');
@@ -75,8 +89,18 @@ app.use(
   })
 );
 app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Body size limits — prevent 100MB JSON DoS payloads
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ limit: '2mb', extended: true }));
+
+// ── AntiGravity Module 4: Input Mutation Guard ────────────────────────────
+// MUST come after body parsers (req.body only exists after parsing)
+const inputMutationGuard = require('./middleware/antiGravity/inputMutationGuard');
+app.use(inputMutationGuard);
+
+// ── Belt-and-suspenders NoSQL sanitize (strips remaining $-prefixed keys) ─
+const mongoSanitize = require('express-mongo-sanitize');
+app.use(mongoSanitize());
 
 app.use((req, res, next) => {
   res.locals.csrfToken = ''; // safe default initialization
@@ -86,8 +110,8 @@ app.use((req, res, next) => {
 const csurf = require('csurf');
 const csrfProtection = csurf({ cookie: true });
 app.use((req, res, next) => {
-  const isTest = process.env.NODE_ENV === 'test' || (process.env.PORT && /^(31[0-9]{2})$/.test(process.env.PORT));
-  if (isTest) {
+  // CSRF bypass ONLY in test environment — never port-based in production
+  if (process.env.NODE_ENV === 'test') {
     res.locals.csrfToken = 'test-token';
     return next();
   }
@@ -180,6 +204,18 @@ app.get('/api/notifications', protect, async (req, res) => {
   }
 });
 
+// ── AntiGravity Module 2: Anonymous rate limiter on auth routes ──────────
+const { getRateLimiter } = require('./middleware/antiGravity/intelligentRateLimiter');
+app.use('/auth/login', getRateLimiter('anonymous'));
+app.use('/auth/forgot-password', getRateLimiter('anonymous'));
+
+// ── AntiGravity Module 5: Fee Integrity Validator ─────────────────────────
+const feeIntegrityValidator = require('./middleware/antiGravity/feeIntegrityValidator');
+app.use(['/admin/fees', '/counsellor/admission', '/student/fees', '/student/payment'], feeIntegrityValidator);
+
+// ── AntiGravity Module 6: Security Dashboard ─────────────────────────────
+app.use('/admin/security', require('./routes/antiGravity/adminSecurityRoutes'));
+
 // Mount Modules
 app.use('/auth', require('./routes/auth'));
 app.use('/admin', require('./routes/admin'));
@@ -232,6 +268,7 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`\n🚀 Server running on port ${PORT}`);
+  console.log(`🛡️  AntiGravity: ${process.env.ANTIGRAVITY_ENABLED !== 'false' ? 'ENABLED' : 'DISABLED'}`);
 });
