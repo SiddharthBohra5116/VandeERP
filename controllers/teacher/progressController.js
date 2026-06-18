@@ -264,7 +264,6 @@ exports.getMyStudents = async (req, res) => {
     const batches = assignedBatchNames;
 
     if (students.length > 0) {
-      const studentUserIds = students.map(s => s._id);
       const studentProfileIds = students.map(s => s.studentId);
       const todayStr = todayIST();
 
@@ -279,7 +278,7 @@ exports.getMyStudents = async (req, res) => {
 
       // Ungraded submission counts per student
       const ungradedCounts = {};
-      studentUserIds.forEach(id => { ungradedCounts[id.toString()] = 0; });
+      studentProfileIds.forEach(id => { ungradedCounts[id.toString()] = 0; });
       assignments.forEach(a => {
         a.submissions.forEach(sub => {
           if (sub.student && ungradedCounts[sub.student.toString()] !== undefined && sub.status !== 'graded') {
@@ -298,7 +297,7 @@ exports.getMyStudents = async (req, res) => {
       students.forEach(s => {
         const scores = studentProgress[s.studentId.toString()] || [];
         s.overallProgress = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-        s.ungradedCount = ungradedCounts[s._id.toString()] || 0;
+        s.ungradedCount = ungradedCounts[s.studentId.toString()] || 0;
       });
 
       let filtered = students;

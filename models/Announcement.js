@@ -17,6 +17,7 @@ const announcementSchema = new mongoose.Schema({
   course: { type: mongoose.Schema.Types.ObjectId, ref: "Course", default: null },
   batch: { type: mongoose.Schema.Types.ObjectId, ref: "Batch", default: null },
   role: { type: String, enum: ANNOUNCEMENT_ROLES, default: "" },
+  counsellor: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   readBy: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     readAt: { type: Date, default: Date.now }
@@ -38,5 +39,6 @@ announcementSchema.index({ audienceType: 1, createdAt: -1 });
 announcementSchema.index({ course: 1, createdAt: -1 });
 announcementSchema.index({ batch: 1, createdAt: -1 });
 announcementSchema.index({ role: 1, createdAt: -1 });
+announcementSchema.index({ counsellor: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Announcement", announcementSchema);

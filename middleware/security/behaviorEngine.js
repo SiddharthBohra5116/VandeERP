@@ -1,5 +1,5 @@
 /**
- * Behavioral Anomaly Engine (BAE) — AntiGravity Module 1
+ * Behavioral Anomaly Engine (BAE) — Security Module 1
  *
  * Records every authenticated request to a rolling 24h log and asynchronously
  * computes an anomaly score (0–100) based on deviations from the user's
@@ -61,7 +61,7 @@ async function computeAnomalyScore(req, startTime) {
       timestamp:    now
     });
   } catch (err) {
-    console.error('[AntiGravity/BAE] Log write failed (non-fatal):', err.message);
+    console.error('[Security/BAE] Log write failed (non-fatal):', err.message);
     return 0; // Can't score without logs
   }
 
@@ -77,7 +77,7 @@ async function computeAnomalyScore(req, startTime) {
     });
     if (!knownIp) score += 30;
   } catch (err) {
-    console.error('[AntiGravity/BAE] IP check failed (non-fatal):', err.message);
+    console.error('[Security/BAE] IP check failed (non-fatal):', err.message);
   }
 
   // ── Signal 2: Unusual hour (+20) ────────────────────────────────────────
@@ -95,7 +95,7 @@ async function computeAnomalyScore(req, startTime) {
     }
     // If insufficient data, skip this signal (avoid false positives for new users)
   } catch (err) {
-    console.error('[AntiGravity/BAE] Hour check failed (non-fatal):', err.message);
+    console.error('[Security/BAE] Hour check failed (non-fatal):', err.message);
   }
 
   // ── Signal 3: Wrong role on sensitive path (+25) ─────────────────────────
@@ -125,7 +125,7 @@ async function computeAnomalyScore(req, startTime) {
       score += 25;
     }
   } catch (err) {
-    console.error('[AntiGravity/BAE] Rate check failed (non-fatal):', err.message);
+    console.error('[Security/BAE] Rate check failed (non-fatal):', err.message);
   }
 
   return score;
@@ -184,7 +184,7 @@ async function behaviorEngine(req, res, next) {
               details:   { reason: 'Auto-blacklisted by Behavior Engine (Score ' + score + ')', auto: true }
             });
           } catch (err) {
-            console.error('[AntiGravity/BAE] Auto-blacklist failed:', err.message);
+            console.error('[Security/BAE] Auto-blacklist failed:', err.message);
           }
         }
 
@@ -225,7 +225,7 @@ async function behaviorEngine(req, res, next) {
       }
     } catch (err) {
       // Fail-open: anomaly scoring error never affects the app
-      console.error('[AntiGravity/BAE] Scoring error (non-fatal):', err.message);
+      console.error('[Security/BAE] Scoring error (non-fatal):', err.message);
     }
   });
 }

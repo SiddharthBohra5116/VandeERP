@@ -63,6 +63,14 @@ const protect = async (req, res, next) => {
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     
+    const isPasswordChangeRoute = req.path === '/force-change-password';
+    const isLogoutRoute = req.path === '/logout';
+
+    if ((req.user.mustChangePassword || req.user.firstLoginCompleted === false) && !isPasswordChangeRoute && !isLogoutRoute) {
+      if (req.accepts('html')) return res.redirect('/auth/force-change-password');
+      return res.status(403).json({ message: 'Password change required' });
+    }
+
     // Module 1 — Behavior Engine: async anomaly scoring (never blocks response)
     behaviorEngine(req, res, () => {});
 

@@ -1,10 +1,10 @@
 /**
- * AntiGravity Core — Shared Utilities
+ * Security Core — Shared Utilities
  *
  * Provides:
- *  1. isEnabled()        — reads ANTIGRAVITY_ENABLED env var
+ *  1. isEnabled()        — reads SECURITY_ENABLED env var
  *  2. createAlert(data)  — single entry point for all security event writes
- *  3. noopMiddleware     — used when AntiGravity is disabled
+ *  3. noopMiddleware     — used when Security is disabled
  *
  * WHY a single createAlert helper?
  *  Enforces consistent schema across all 6 modules. A missing field
@@ -13,11 +13,11 @@
 const SecurityAlert = require('../../models/security/SecurityAlert');
 
 /**
- * Returns true if AntiGravity is enabled via environment variable.
- * Default: enabled. Set ANTIGRAVITY_ENABLED=false to disable all modules.
+ * Returns true if Security is enabled via environment variable.
+ * Default: enabled. Set SECURITY_ENABLED=false to disable all modules.
  */
 function isEnabled() {
-  return process.env.ANTIGRAVITY_ENABLED !== 'false';
+  return process.env.SECURITY_ENABLED !== 'false';
 }
 
 /**
@@ -49,15 +49,15 @@ async function createAlert(data) {
     });
     return await alert.save();
   } catch (err) {
-    console.error('[AntiGravity] createAlert failed (non-fatal):', err.message);
+    console.error('[Security] createAlert failed (non-fatal):', err.message);
     return null;
   }
 }
 
 /**
- * A no-op middleware used when ANTIGRAVITY_ENABLED=false.
+ * A no-op middleware used when SECURITY_ENABLED=false.
  * Every module returns this when disabled so the middleware chain
- * continues without any AntiGravity processing.
+ * continues without any Security processing.
  */
 function noopMiddleware(req, res, next) {
   next();

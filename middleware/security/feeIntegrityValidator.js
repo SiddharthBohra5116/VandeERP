@@ -1,5 +1,5 @@
 /**
- * Fee Integrity Validator (FIV) — AntiGravity Module 5
+ * Fee Integrity Validator (FIV) — Security Module 5
  *
  * Applied only to fee/payment routes. Enforces server-side financial rules
  * that cannot be bypassed regardless of what the frontend sends.
@@ -90,7 +90,7 @@ async function feeIntegrityValidator(req, res, next) {
           }
         } catch (err) {
           // Fail-open on drift detection — never block GET responses
-          console.error('[AntiGravity/FIV] Drift check failed (non-fatal):', err.message);
+          console.error('[Security/FIV] Drift check failed (non-fatal):', err.message);
         }
       });
 
@@ -143,7 +143,7 @@ async function feeIntegrityValidator(req, res, next) {
       outstanding = fee.totalAmount - (fee.discount || 0) - fee.paidAmount;
     } catch (err) {
       // FAIL-CLOSED: DB error during balance check blocks the payment
-      console.error('[AntiGravity/FIV] Fee lookup failed (fail-closed):', err.message);
+      console.error('[Security/FIV] Fee lookup failed (fail-closed):', err.message);
       return res.status(503).json({
         error: 'Payment validation temporarily unavailable. Please try again.'
       });
@@ -162,7 +162,7 @@ async function feeIntegrityValidator(req, res, next) {
       outstanding,
       passed,
       failReason
-    }).catch(err => console.error('[AntiGravity/FIV] Audit log failed:', err.message));
+    }).catch(err => console.error('[Security/FIV] Audit log failed:', err.message));
 
     if (!passed) {
       await createAlert({

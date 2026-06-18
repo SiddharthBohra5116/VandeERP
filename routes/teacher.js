@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 // Multer dependency removed in favor of uploadHelper
-const path = require('path');
 const protect = require('../middleware/auth');
 const role = require('../middleware/role');
 const ctrl = require('../controllers/teacherController');
@@ -60,5 +59,11 @@ router.post('/leaves/apply', ...guard, ctrl.postApplyLeave);
 
 // Complete Class Action
 router.post('/schedules/:id/complete', ...guard, ctrl.postCompleteSchedule);
+
+// Announcements
+router.get('/announcements', ...guard, ctrl.getTeacherAnnouncements);
+router.get('/announcements/create', ...guard, ctrl.getTeacherCreateAnnouncement);
+router.post('/announcements/create', ...guard, ctrl.postTeacherCreateAnnouncement);
+router.post('/announcements/:id/toggle', ...guard, ctrl.postTeacherToggleAnnouncement);
 
 module.exports = router;

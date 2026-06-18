@@ -30,6 +30,7 @@ const reportCtrl = require('../controllers/admin/reportController');
 const attendanceCtrl = require('../controllers/admin/attendanceController');
 const holidayCtrl = require('../controllers/admin/holidayController');
 const batchCtrl = require('../controllers/admin/batchController');
+const announcementCtrl = require('../controllers/admin/announcementController');
 
 // Validators
 const {
@@ -475,5 +476,35 @@ router.get(
   ...guard,
   certificateCtrl.getStudentCertificate
 );
+
+
+// ===================================
+// ANNOUNCEMENTS
+// ===================================
+
+router.get(
+  '/announcements',
+  ...guard,
+  announcementCtrl.getAnnouncements
+);
+
+router.get(
+  '/announcements/create',
+  ...guard,
+  announcementCtrl.getCreateAnnouncement
+);
+
+router.post(
+  '/announcements/create',
+  ...guard,
+  announcementCtrl.postCreateAnnouncement
+);
+
+router.post(
+  '/announcements/:id/toggle',
+  ...guard,
+  announcementCtrl.postToggleAnnouncement
+);
+
 
 module.exports = router;

@@ -10,7 +10,7 @@ const Message = require('../../models/Message');
  */
 exports.getLeads = async (req, res) => {
   try {
-    const { status, search } = req.query;
+    const { status, search, course } = req.query;
     const filter = { assignedTo: req.user.counsellorProfileId };
     if (status) filter.status = status;
     if (search) {
@@ -20,7 +20,18 @@ exports.getLeads = async (req, res) => {
         { phone: { $regex: escaped, $options: 'i' } },
       ];
     }
-    const leads = await Lead.find(filter).sort({ followUpDate: 1, createdAt: -1 });
+    if (course) {
+      if (course === 'Undecided') {
+        filter.interestedCourse = null;
+      } else {
+        const Course = require('../../models/Course');
+        const courseDoc = await Course.findOne({ name: course });
+        if (courseDoc) {
+          filter.interestedCourse = courseDoc._id;
+        }
+      }
+    }
+    const leads = await Lead.find(filter).populate('interestedCourse').sort({ nextFollowUpAt: 1, createdAt: -1 });
     res.render('counsellor/leads', {
       title: 'My Leads', user: req.user, leads, filter: req.query, filters: req.query,
     });
@@ -43,10 +54,26 @@ exports.getCreateLead = (req, res) => {
  * Creates a new lead assigned to this counsellor.
  */
 exports.postCreateLead = async (req, res) => {
-  const data = { ...req.body, assignedTo: req.user.counsellorProfileId };
-  logger.info('Create Lead request', { name: data.name, phone: data.phone, course: data.course });
   try {
-    const lead = await Lead.create(data);
+    const Course = require('../../models/Course');
+    const { name, phone, email, course, source, status, followUpDate, notes } = req.body;
+    let interestedCourse = null;
+    if (course && course !== 'Both' && course !== 'Undecided') {
+      const courseDoc = await Course.findOne({ name: course });
+      if (courseDoc) interestedCourse = courseDoc._id;
+    }
+    const leadData = {
+      name,
+      phone,
+      email,
+      interestedCourse,
+      source,
+      status,
+      nextFollowUpAt: followUpDate ? new Date(followUpDate) : null,
+      notes: notes || '',
+      assignedTo: req.user.counsellorProfileId
+    };
+    const lead = await Lead.create(leadData);
     logger.info('Lead created successfully', { leadId: lead._id, name: lead.name });
     res.redirect('/counsellor/leads?created=1');
   } catch (err) {
@@ -63,6 +90,7 @@ exports.postCreateLead = async (req, res) => {
 exports.getLeadDetail = async (req, res) => {
   try {
     const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId })
+      .populate('interestedCourse')
       .populate('followUpHistory.doneBy', 'name role')
       .populate('convertedStudent', 'name');
     if (!lead) {
@@ -77,15 +105,47 @@ exports.getLeadDetail = async (req, res) => {
 };
 
 /**
+ * GET /counsellor/leads/:id/edit
+ * Renders the lead edit form populated with current lead details.
+ */
+exports.getEditLead = async (req, res) => {
+  try {
+    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId }).populate('interestedCourse');
+    if (!lead) {
+      logger.warn('Counsellor unauthorized edit page request', { leadId: req.params.id });
+      return res.status(403).render('403', { title: 'Access Denied', user: req.user });
+    }
+    res.render('counsellor/lead-form', { title: 'Edit Lead', user: req.user, lead, target: lead });
+  } catch (err) {
+    logger.error('Counsellor Edit Lead Page Error', { err: err.message });
+    res.status(500).render('500', { title: 'Error', user: req.user });
+  }
+};
+
+/**
  * POST /counsellor/leads/:id/edit
  * Updates basic lead information (contact details, course interest, follow-up date).
  */
 exports.postEditLead = async (req, res) => {
   try {
+    const Course = require('../../models/Course');
     const { name, phone, email, course, source, notes, followUpDate } = req.body;
+    let interestedCourse = null;
+    if (course && course !== 'Both' && course !== 'Undecided') {
+      const courseDoc = await Course.findOne({ name: course });
+      if (courseDoc) interestedCourse = courseDoc._id;
+    }
     const updated = await Lead.findOneAndUpdate(
       { _id: req.params.id, assignedTo: req.user.counsellorProfileId },
-      { name, phone, email, course, source, notes, followUpDate }
+      {
+        name,
+        phone,
+        email,
+        interestedCourse,
+        source,
+        notes: notes || '',
+        nextFollowUpAt: followUpDate ? new Date(followUpDate) : null
+      }
     );
     if (!updated) {
       logger.warn('Counsellor unauthorized lead edit request', { leadId: req.params.id });
@@ -132,13 +192,44 @@ exports.postAddFollowUp = async (req, res) => {
 
     lead.followUpHistory.push(followUpObj);
     lead.status = finalStatus;
-    if (followUpDate) lead.followUpDate = new Date(followUpDate);
+    if (followUpDate) lead.nextFollowUpAt = new Date(followUpDate);
     await lead.save();
 
     logger.info('Follow-up logged successfully', { leadId: req.params.id, status: lead.status });
     res.redirect(`/counsellor/leads/${req.params.id}?followup=1`);
   } catch (err) {
     logger.error('Add Lead Follow-up Error', { err: err.message });
+    res.redirect(`/counsellor/leads/${req.params.id}?error=1`);
+  }
+};
+
+/**
+ * POST /counsellor/leads/:id/followup/:index/edit
+ * Edits the note of an existing follow-up log in the timeline.
+ */
+exports.postEditFollowUp = async (req, res) => {
+  const { note } = req.body;
+  const index = parseInt(req.params.index);
+  logger.info('Edit follow-up request', { leadId: req.params.id, index });
+  try {
+    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId });
+    if (!lead) {
+      return res.status(403).render('403', { title: 'Access Denied', user: req.user });
+    }
+
+    // Check bounds
+    if (isNaN(index) || index < 0 || index >= lead.followUpHistory.length) {
+      return res.redirect(`/counsellor/leads/${req.params.id}?error=Invalid+log+index`);
+    }
+
+    // Only allow updating note
+    lead.followUpHistory[index].note = note;
+    await lead.save();
+
+    logger.info('Follow-up updated successfully', { leadId: req.params.id, index });
+    res.redirect(`/counsellor/leads/${req.params.id}?updated=1`);
+  } catch (err) {
+    logger.error('Edit Lead Follow-up Error', { err: err.message });
     res.redirect(`/counsellor/leads/${req.params.id}?error=1`);
   }
 };
@@ -170,9 +261,15 @@ exports.postWalkIn = async (req, res) => {
   const { name, phone, course } = req.body;
   logger.info('Walk-in entry request', { name, phone, course });
   try {
+    const Course = require('../../models/Course');
+    let interestedCourse = null;
+    if (course && course !== 'Both' && course !== 'Undecided') {
+      const courseDoc = await Course.findOne({ name: course });
+      if (courseDoc) interestedCourse = courseDoc._id;
+    }
     const lead = await Lead.create({
       name, phone,
-      course: course || 'Undecided',
+      interestedCourse,
       source: 'Walk-in',
       status: 'new',
       assignedTo: req.user.counsellorProfileId,
@@ -194,9 +291,9 @@ exports.getFollowUps = async (req, res) => {
   try {
     const leads = await Lead.find({
       assignedTo: req.user.counsellorProfileId,
-      followUpDate: { $lte: new Date() },
+      nextFollowUpAt: { $lte: new Date() },
       status: { $nin: ['admission_completed', 'lost'] },
-    }).sort({ followUpDate: 1 });
+    }).populate('interestedCourse').sort({ nextFollowUpAt: 1 });
     res.render('counsellor/followups', { title: 'Follow-ups', user: req.user, leads });
   } catch (err) {
     logger.error('Follow-ups Fetch Error', { err: err.message });
@@ -225,7 +322,7 @@ exports.postMarkReady = async (req, res) => {
       await Message.create({
         sender: req.user._id,
         recipient: adminUser._id,
-        content: `Lead handoff alert: "${lead.name}" is marked ready for admission conversion.`,
+        content: `Lead handoff alert: "${lead.name}" is marked ready for admission conversion. URL: /admin/leads/${lead._id}`,
       });
     }
 

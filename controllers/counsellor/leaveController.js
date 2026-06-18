@@ -7,7 +7,7 @@ const logger = require('../../utils/logger');
  */
 exports.getLeavesPage = async (req, res) => {
   try {
-    const leaves = await LeaveRequest.find({ teacher: req.user._id }).sort({ createdAt: -1 });
+    const leaves = await LeaveRequest.find({ user: req.user._id }).sort({ createdAt: -1 });
     res.render('counsellor/leaves', { title: 'Leave Requests', user: req.user, leaves });
   } catch (err) {
     logger.error('Counsellor Get Leaves Page Error', { err: err.message });
@@ -22,7 +22,7 @@ exports.getLeavesPage = async (req, res) => {
 exports.postApplyLeave = async (req, res) => {
   const { startDate, endDate, reason } = req.body;
   try {
-    await LeaveRequest.create({ teacher: req.user._id, startDate, endDate, reason });
+    await LeaveRequest.create({ user: req.user._id, startDate, endDate, reason });
     res.redirect('/counsellor/leaves?created=1');
   } catch (err) {
     logger.error('Counsellor Apply Leave Error', { err: err.message });

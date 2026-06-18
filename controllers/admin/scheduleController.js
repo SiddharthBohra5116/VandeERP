@@ -1,4 +1,3 @@
-const User = require('../../models/User');
 const Student = require('../../models/Student');
 const Course = require('../../models/Course');
 const Batch = require('../../models/Batch');
@@ -6,6 +5,7 @@ const Schedule = require('../../models/Schedule');
 const Classroom = require('../../models/Classroom');
 const Timetable = require('../../models/Timetable');
 const Message = require('../../models/Message');
+const Teacher = require('../../models/Teacher');
 
 const { todayIST, formatMonthLocal } = require('../../utils/dateHelper');
 const { escapeRegex } = require('../../utils/sanitize');
@@ -13,23 +13,25 @@ const logger = require('../../utils/logger');
 
 async function notifyBatchStudents({ adminId, batchId, teacherId, content }) {
   const students = await Student.find({ batch: batchId })
-    .populate('userId', '_id status');
+    .populate('user', '_id status');
+
+  const teacher = teacherId ? await Teacher.findById(teacherId).populate('user', '_id status') : null;
 
   const notifications = [];
 
-  if (teacherId) {
+  if (teacher?.user && teacher.user.status === 'active') {
     notifications.push(Message.create({
       sender: adminId,
-      recipient: teacherId,
+      recipient: teacher.user._id,
       content
     }));
   }
 
   students.forEach(student => {
-    if (student.userId && student.userId.status === 'active') {
+    if (student.user && student.user.status === 'active') {
       notifications.push(Message.create({
         sender: adminId,
-        recipient: student.userId._id,
+        recipient: student.user._id,
         content
       }));
     }
@@ -70,10 +72,13 @@ exports.getSchedules = async (req, res) => {
     const [classrooms, teachers, batches] = await Promise.all([
       Classroom.find({ isActive: true }).sort({ name: 1 }),
 
-      User.find({
-        role: 'teacher',
-        status: 'active'
-      }).sort({ name: 1 }),
+      Teacher.find({})
+        .populate({
+          path: 'user',
+          match: { role: 'teacher', status: 'active' },
+          select: 'name email phone status'
+        })
+        .sort({ createdAt: -1 }),
 
       Batch.find({ isActive: true })
         .populate('course', 'name code')
@@ -176,7 +181,7 @@ exports.getSchedules = async (req, res) => {
       title: 'Class Schedules',
       user: req.user,
       schedules: allSchedules,
-      teachers,
+      teachers: teachers.filter(t => t.user),
       batches,
       classrooms,
       monthParam,
@@ -212,10 +217,13 @@ exports.getSchedules = async (req, res) => {
 exports.getCreateSchedule = async (req, res) => {
   try {
     const [teachers, courses, batches, classrooms] = await Promise.all([
-      User.find({
-        role: 'teacher',
-        status: 'active'
-      }).sort({ name: 1 }),
+      Teacher.find({})
+        .populate({
+          path: 'user',
+          match: { role: 'teacher', status: 'active' },
+          select: 'name email phone status'
+        })
+        .sort({ createdAt: -1 }),
 
       Course.find({
         isActive: true
@@ -235,7 +243,7 @@ exports.getCreateSchedule = async (req, res) => {
     res.render('admin/schedule-form', {
       title: 'Add Class Schedule',
       user: req.user,
-      teachers,
+      teachers: teachers.filter(t => t.user),
       courses,
       batches,
       classrooms,
@@ -263,7 +271,6 @@ exports.getCreateSchedule = async (req, res) => {
 exports.postCreateSchedule = async (req, res) => {
   try {
     const {
-      course,
       batch,
       teacher,
       classroom,
@@ -276,6 +283,11 @@ exports.postCreateSchedule = async (req, res) => {
     } = req.body;
 
     const { checkScheduleClash } = require('../../utils/clashDetector');
+    const batchObj = await Batch.findById(batch);
+    if (!batchObj) {
+      return res.redirect('/admin/schedules?error=batch_not_found&openCreate=1');
+    }
+    const course = batchObj.course;
 
     const clash = await checkScheduleClash(
       date,
@@ -299,13 +311,11 @@ exports.postCreateSchedule = async (req, res) => {
       date,
       startTime,
       endTime,
-      subject: subject || '',
-      note: note || '',
+      note: note || subject || '',
       status: status || 'scheduled'
     });
 
-    const [batchObj, courseObj, classroomObj] = await Promise.all([
-      Batch.findById(batch),
+    const [courseObj, classroomObj] = await Promise.all([
       Course.findById(course),
       Classroom.findById(classroom)
     ]);
@@ -355,10 +365,13 @@ exports.getEditSchedule = async (req, res) => {
         .populate('course', 'name code')
         .populate('batch', 'name'),
 
-      User.find({
-        role: 'teacher',
-        status: 'active'
-      }).sort({ name: 1 }),
+      Teacher.find({})
+        .populate({
+          path: 'user',
+          match: { role: 'teacher', status: 'active' },
+          select: 'name email phone status'
+        })
+        .sort({ createdAt: -1 }),
 
       Course.find({
         isActive: true
@@ -382,7 +395,7 @@ exports.getEditSchedule = async (req, res) => {
     res.render('admin/schedule-form', {
       title: 'Edit Class Schedule',
       user: req.user,
-      teachers,
+      teachers: teachers.filter(t => t.user),
       courses,
       batches,
       classrooms,
@@ -410,7 +423,6 @@ exports.getEditSchedule = async (req, res) => {
 exports.postEditSchedule = async (req, res) => {
   try {
     const {
-      course,
       batch,
       teacher,
       classroom,
@@ -423,6 +435,11 @@ exports.postEditSchedule = async (req, res) => {
     } = req.body;
 
     const { checkScheduleClash } = require('../../utils/clashDetector');
+    const batchObj = await Batch.findById(batch);
+    if (!batchObj) {
+      return res.redirect(`/admin/schedules?error=batch_not_found&openEdit=${req.params.id}`);
+    }
+    const course = batchObj.course;
 
     const clash = await checkScheduleClash(
       date,
@@ -447,13 +464,11 @@ exports.postEditSchedule = async (req, res) => {
       date,
       startTime,
       endTime,
-      subject: subject || '',
-      note: note || '',
+      note: note || subject || '',
       status
     });
 
-    const [batchObj, courseObj, classroomObj] = await Promise.all([
-      Batch.findById(batch),
+    const [courseObj, classroomObj] = await Promise.all([
       Course.findById(course),
       Classroom.findById(classroom)
     ]);
@@ -572,7 +587,8 @@ exports.postSaveTimetable = async (req, res) => {
             teacher: teachers[i],
             classroom: classrooms[i],
             startTime: starts[i],
-            endTime: ends[i]
+            endTime: ends[i],
+            note: Array.isArray(req.body.subject) ? (req.body.subject[i] || '') : (req.body.subject || '')
           });
         }
       }

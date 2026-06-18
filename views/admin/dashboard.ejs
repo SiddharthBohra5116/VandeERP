@@ -77,7 +77,12 @@
             <td class="mono text-sm"><%= reqUser.phone || '—' %></td>
             <td class="td-actions">
               <div class="d-flex gap-1">
-                <button class="btn btn-primary btn-sm" onclick="triggerPasswordReset('<%= reqUser._id %>', '<%= reqUser.name %>')">
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm reset-password-btn"
+                  data-user-id="<%= reqUser._id %>"
+                  data-user-name="<%= reqUser.name %>"
+                  data-user-phone="<%= reqUser.phone || '' %>">
                   Reset Password
                 </button>
                 <form action="/admin/users/<%= reqUser._id %>/dismiss-reset" method="POST" class="form-inline">
@@ -235,7 +240,7 @@
       </p>
       <div class="form-group">
         <label class="form-label" for="password">New Password</label>
-        <input type="password" id="password" name="password" class="form-control" placeholder="Min. 6 characters" minlength="6" required>
+        <input type="password" id="password" name="password" class="form-control" placeholder="Min. 8 characters" minlength="8" required>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost btn-sm" onclick="closeResetModal()">Cancel</button>
@@ -246,9 +251,40 @@
 </div>
 
 <script>
-  function triggerPasswordReset(userId, userName) {
+  let resetTarget = {
+    phone: '',
+    name: ''
+  };
+
+  function normalizeWhatsappPhone(phone) {
+    const digits = String(phone || '').replace(/\D/g, '');
+    if (digits.length === 10) return '91' + digits;
+    return digits;
+  }
+
+  function buildPasswordResetWhatsappUrl(name, phone, password) {
+    const whatsappPhone = normalizeWhatsappPhone(phone);
+    if (!whatsappPhone) return '';
+
+    const message = [
+      `Hello ${name || 'there'},`,
+      '',
+      'Your forgot password request has been approved by Vande Digital Academy.',
+      `Temporary password: ${password}`,
+      '',
+      'Please login with this password and set your own new password immediately.'
+    ].join('\n');
+
+    return `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`;
+  }
+
+  function triggerPasswordReset(userId, userName, userPhone) {
     const form = document.getElementById('resetForm');
     form.action = '/admin/users/' + userId + '/reset-password';
+    resetTarget = {
+      phone: userPhone || '',
+      name: userName || ''
+    };
     document.getElementById('resetUserName').innerText = userName;
     document.getElementById('resetModal').classList.add('open');
   }
@@ -256,7 +292,23 @@
   function closeResetModal() {
     document.getElementById('resetModal').classList.remove('open');
     document.getElementById('password').value = '';
+    resetTarget = { phone: '', name: '' };
   }
+
+  document.querySelectorAll('.reset-password-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      triggerPasswordReset(btn.dataset.userId, btn.dataset.userName, btn.dataset.userPhone);
+    });
+  });
+
+  document.getElementById('resetForm').addEventListener('submit', function() {
+    const password = document.getElementById('password').value;
+    const whatsappUrl = buildPasswordResetWhatsappUrl(resetTarget.name, resetTarget.phone, password);
+
+    if (whatsappUrl) {
+      window.open(whatsappUrl, '_blank', 'noopener');
+    }
+  });
 
   // Close modal when clicking on layout background
   document.getElementById('resetModal').addEventListener('click', function(e) {

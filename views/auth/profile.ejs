@@ -35,6 +35,7 @@
           &middot; Phone: <em>"<%= user.pendingProfileUpdate.phone || '—' %>"</em><br>
           &middot; Father's Name: <em>"<%= user.pendingProfileUpdate.fatherName || '—' %>"</em><br>
           &middot; Mother's Name: <em>"<%= user.pendingProfileUpdate.motherName || '—' %>"</em><br>
+          &middot; Guardian's Phone: <em>"<%= user.pendingProfileUpdate.guardianPhone || '—' %>"</em><br>
           &middot; Date of Birth: <em>"<%= user.pendingProfileUpdate.dob ? new Date(user.pendingProfileUpdate.dob).toLocaleDateString() : '—' %>"</em><br>
           &middot; Address: <em>"<%= user.pendingProfileUpdate.address || '—' %>"</em><br>
           &middot; City: <em>"<%= user.pendingProfileUpdate.city || '—' %>"</em><br>
@@ -60,6 +61,12 @@
         <label class="form-label" for="motherName">Mother's Name</label>
         <input type="text" id="motherName" name="motherName" class="form-control" value="<%= user.motherName || '' %>">
       </div>
+      <% if (user.role === 'student') { %>
+        <div class="form-group">
+          <label class="form-label" for="guardianPhone">Guardian's Phone Number</label>
+          <input type="text" id="guardianPhone" name="guardianPhone" class="form-control" value="<%= user.guardianPhone || '' %>">
+        </div>
+      <% } %>
       <div class="form-group">
         <label class="form-label" for="dob">Date of Birth</label>
         <input type="date" id="dob" name="dob" class="form-control" value="<%= user.dob ? new Date(user.dob).toISOString().split('T')[0] : '' %>">

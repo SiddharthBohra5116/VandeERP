@@ -1,5 +1,6 @@
 const User = require('../../models/User');
 const Student = require('../../models/Student');
+const Announcement = require('../../models/Announcement');
 const Attendance = require('../../models/Attendance');
 const Assignment = require('../../models/Assignment');
 const DailyUpdate = require('../../models/DailyUpdate');
@@ -60,14 +61,15 @@ exports.getDashboard = async (req, res) => {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const { formatDateLocal } = require('../../utils/dateHelper');
     const thirtyDaysStr = formatDateLocal(thirtyDaysAgo);
+    const counsellorUserId = studentProfile.counsellor?.user?._id || null;
 
-    const [fee, assignments, attendance, updates, admin, messages, schedules] = await Promise.all([
+    const [fee, assignments, attendance, updates, admin, messages, schedules, activeAnnouncements] = await Promise.all([
       Fee.findOne({ student: student._id }),
       Assignment.find({ batch: student.batch, isActive: true, dueDate: { $gte: new Date() } }).populate('course', 'name').sort({ dueDate: 1 }).limit(5),
       Attendance.find({ student: student._id, date: { $gte: thirtyDaysStr } }),
       DailyUpdate.find({ batch: student.batch }).populate('course', 'name').populate({ path: 'teacher', populate: { path: 'user', select: 'name' } }).sort({ date: -1 }).limit(5),
       User.findOne({ role: 'admin' }),
-      Message.find({ recipient: student._id })
+      Message.find({ recipient: req.user._id })
         .populate('sender', 'name role')
         .sort({ createdAt: -1 })
         .limit(5),
@@ -77,7 +79,26 @@ exports.getDashboard = async (req, res) => {
         .populate('classroom', 'name location')
         .sort({ date: 1, startTime: 1 })
         .limit(5),
+      Announcement.find({
+        isActive: true,
+        $or: [
+          { audienceType: 'all' },
+          { audienceType: 'role', role: 'student' },
+          { audienceType: 'course', course: studentProfile.course },
+          { audienceType: 'batch', batch: studentProfile.batch },
+          ...(counsellorUserId ? [{ audienceType: 'counsellor', counsellor: counsellorUserId }] : [])
+        ]
+      }).populate('createdBy', 'name role').sort({ createdAt: -1 }).limit(5)
     ]);
+
+    const mappedAnnouncements = (activeAnnouncements || []).map(ann => ({
+      _id: ann._id,
+      content: `📢 [${ann.title}] ${ann.content}`,
+      sender: ann.createdBy,
+      createdAt: ann.createdAt
+    }));
+
+    const combinedMessages = [...mappedAnnouncements, ...(messages || [])];
 
     // ─── WEEKLY TIMETABLE ────────────────────────────────────────────────────
     const weekOffset = parseInt(req.query.weekOffset, 10) || 0;
@@ -147,7 +168,7 @@ exports.getDashboard = async (req, res) => {
       presentCount,
       updates,
       admin,
-      messages,
+      messages: combinedMessages,
       schedules,
       today,
       daysTimetable,

@@ -101,6 +101,11 @@ const leadSchema = new mongoose.Schema({
     default: null
   },
 
+  notes: {
+    type: String,
+    default: ''
+  },
+
   source: {
     type: String,
     enum: LEAD_SOURCES,

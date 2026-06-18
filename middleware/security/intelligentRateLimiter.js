@@ -1,5 +1,5 @@
 /**
- * Intelligent Rate Limiter (IRL) — AntiGravity Module 2
+ * Intelligent Rate Limiter (IRL) — Security Module 2
  *
  * Dynamic, per-role rate limits that tighten automatically under attack conditions.
  * Uses lru-cache as an in-memory store (no Redis needed for single-server deployment).
@@ -13,8 +13,10 @@
  *  A rate limit breach is a concrete, measurable event — not a probabilistic score.
  *  Failing open on a confirmed breach defeats the purpose of rate limiting.
  */
-const rateLimit   = require('express-rate-limit');
+const rateLimit    = require('express-rate-limit');
 const { LRUCache } = require('lru-cache');
+// ipKeyGenerator is required by express-rate-limit v8+ for IPv6-safe key generation
+const { ipKeyGenerator } = require('express-rate-limit');
 const { isEnabled, createAlert, noopMiddleware } = require('./index');
 const SecurityAlert = require('../../models/security/SecurityAlert');
 
@@ -55,7 +57,7 @@ async function getThreatMultiplier() {
     multiplierFetchedAt = now;
     return cachedMultiplier;
   } catch (err) {
-    console.error('[AntiGravity/IRL] Multiplier fetch failed (non-fatal):', err.message);
+    console.error('[Security/IRL] Multiplier fetch failed (non-fatal):', err.message);
     return 1; // fail-open: don't tighten on DB error
   }
 }
@@ -91,7 +93,9 @@ class LRUStore {
   }
 }
 
-const lruStore = new LRUStore();
+// NOTE: Do NOT create a single shared instance here.
+// Each getRateLimiter() call creates its own LRUStore to satisfy
+// express-rate-limit v8's ERR_ERL_STORE_REUSE validation.
 
 /**
  * Factory: returns a configured express-rate-limit middleware for the given role.
@@ -105,19 +109,23 @@ function getRateLimiter(role) {
 
   const base = BASE_LIMITS[role] || BASE_LIMITS.anonymous;
 
+  // Each call gets its own store instance — required by express-rate-limit v8
+  const store = new LRUStore();
+
   return rateLimit({
     windowMs: base.windowMs,
-    store:    lruStore,
+    store,
 
     // Dynamic max — recomputed per request via async handler
     max: async (req) => {
       const multiplier = await getThreatMultiplier();
-      return Math.max(5, Math.floor(base.max / multiplier)); // floor of 5 to avoid 0
+      return Math.max(5, Math.floor(base.max / multiplier));
     },
 
     keyGenerator: (req) => {
-      // Key: role:ip — keeps different roles isolated even from same IP
-      return `${role}:${req.ip}`;
+      // Use ipKeyGenerator for IPv6-safe key, then prefix with role
+      const ip = ipKeyGenerator(req);
+      return `${role}:${ip}`;
     },
 
     handler: async (req, res) => {
@@ -144,7 +152,7 @@ function getRateLimiter(role) {
           });
         }
       } catch (err) {
-        console.error('[AntiGravity/IRL] Handler alert failed:', err.message);
+        console.error('[Security/IRL] Handler alert failed:', err.message);
       }
 
       const retryAfter = Math.ceil(base.windowMs / 1000);

@@ -1,5 +1,6 @@
 const Student = require('../../models/Student');
 const Fee = require('../../models/Fee');
+const Message = require('../../models/Message');
 
 const { escapeRegex } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
@@ -269,6 +270,15 @@ exports.postAddPayment = async (req, res) => {
       fees_paid: fee.paidAmount
     });
 
+    const student = await Student.findById(req.params.studentId).populate('user', '_id status');
+    if (student?.user && student.user.status === 'active') {
+      await Message.create({
+        sender: req.user._id,
+        recipient: student.user._id,
+        content: `Payment received: Rs. ${amt.toLocaleString('en-IN')} has been added to your fee ledger.`
+      });
+    }
+
     logger.info('Payment recorded successfully', {
       studentId: req.params.studentId,
       paidAmount: fee.paidAmount
@@ -349,6 +359,15 @@ exports.postUpdateFee = async (req, res) => {
       fees_total: fee.totalAmount,
       fees_paid: fee.paidAmount
     });
+
+    const student = await Student.findById(req.params.studentId).populate('user', '_id status');
+    if (student?.user && student.user.status === 'active') {
+      await Message.create({
+        sender: req.user._id,
+        recipient: student.user._id,
+        content: 'Your fee ledger has been updated. Please review your latest installments and due dates.'
+      });
+    }
 
     logger.info('Fee ledger updated successfully', {
       studentId: req.params.studentId,

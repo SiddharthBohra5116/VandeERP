@@ -1,8 +1,123 @@
 const User = require('../../models/User');
 const Lead = require('../../models/Lead');
 const Fee = require('../../models/Fee');
+const Student = require('../../models/Student');
 const Message = require('../../models/Message');
 const logger = require('../../utils/logger');
+
+function buildTeacherOptions(teacherProfiles) {
+  return teacherProfiles
+    .filter(p => p.user && p.user.status === 'active')
+    .map(p => ({
+      _id: p._id,
+      userId: p.user._id,
+      name: p.user.name,
+      courses: p.courses
+    }));
+}
+
+function attachTeacherProfileIdsToBatches(batches, teacherProfiles) {
+  const profileByUserId = new Map(
+    teacherProfiles
+      .filter(p => p.user)
+      .map(p => [p.user._id.toString(), p._id.toString()])
+  );
+
+  return batches.map(batch => {
+    const obj = batch.toObject ? batch.toObject() : batch;
+    obj.teacherProfileIds = (obj.teachers || [])
+      .map(id => profileByUserId.get(id.toString()))
+      .filter(Boolean);
+    return obj;
+  });
+}
+
+/**
+ * GET /counsellor/students
+ * Lists ALL students assigned to this counsellor (via Student.counsellor field).
+ */
+exports.getMyStudents = async (req, res) => {
+  const { search } = req.query;
+  try {
+    const counsellorId = req.user.counsellorProfileId;
+
+    let students = await Student.find({ counsellor: counsellorId })
+      .populate('user', 'name email phone status isActive profilePic')
+      .populate('course', 'name')
+      .populate('batch', 'name')
+      .sort({ createdAt: -1 });
+
+    // Filter out students whose user doc has been deleted
+    students = students.filter(s => s.user);
+
+    if (search) {
+      const searchLower = search.toLowerCase().trim();
+      students = students.filter(s =>
+        s.user.name.toLowerCase().includes(searchLower) ||
+        (s.user.phone && s.user.phone.includes(searchLower)) ||
+        (s.user.email && s.user.email.toLowerCase().includes(searchLower))
+      );
+    }
+
+    // Fetch fee records for all these students
+    const studentIds = students.map(s => s._id);
+    const fees = studentIds.length > 0 ? await Fee.find({ student: { $in: studentIds } }) : [];
+
+    const studentData = students.map(s => {
+      const fee = fees.find(f => String(f.student) === String(s._id));
+      let feeStatus = 'unpaid';
+      let feePct = 0;
+      if (fee) {
+        const net = (fee.totalAmount || 0) - (fee.discount || 0);
+        const due = Math.max(0, net - (fee.paidAmount || 0));
+        feePct = net > 0 ? Math.round((fee.paidAmount / net) * 100) : 0;
+        if (net > 0) {
+          if (due === 0) feeStatus = 'paid';
+          else if (fee.paidAmount > 0) feeStatus = 'partial';
+        }
+        if (due > 0 && fee.dueDate && new Date(fee.dueDate) < new Date()) {
+          feeStatus = 'overdue';
+        }
+      }
+      return {
+        _id: s._id,
+        rollNumber: s.rollNumber,
+        name: s.user.name,
+        email: s.user.email,
+        phone: s.user.phone || '—',
+        profilePic: s.user.profilePic,
+        course: s.course ? s.course.name : '—',
+        batch: s.batch ? s.batch.name : '—',
+        enrollmentDate: s.enrollmentDate,
+        status: s.user.status || (s.user.isActive ? 'active' : 'inactive'),
+        fees_total: s.fees_total,
+        fees_paid: s.fees_paid,
+        feeStatus,
+        feePct
+      };
+    });
+
+    // Course-wise counts
+    const courseMap = {};
+    studentData.forEach(s => {
+      courseMap[s.course] = (courseMap[s.course] || 0) + 1;
+    });
+
+    const activeCount = studentData.filter(s => s.status === 'active').length;
+
+    res.render('counsellor/students', {
+      title: 'My Students',
+      user: req.user,
+      students: studentData,
+      activeCount,
+      courseMap,
+      filter: req.query
+    });
+  } catch (err) {
+    logger.error('Counsellor getMyStudents Error', { err: err.message });
+    res.status(500).render('500', { title: 'Error', user: req.user });
+  }
+};
 
 /**
  * GET /counsellor/admissions
@@ -130,29 +245,25 @@ exports.getStudentFee = async (req, res) => {
 exports.getConvertLead = async (req, res) => {
   logger.info('GET convert lead form request', { leadId: req.params.id });
   try {
-    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId });
+    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId }).populate('interestedCourse');
     if (!lead) {
       logger.warn('Counsellor unauthorized lead convert request', { leadId: req.params.id });
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });
     }
 
     const Batch = require('../../models/Batch');
-    const batches = await Batch.find({ isActive: true }).distinct('name');
+    const batches = await Batch.find({ isActive: true }).populate('course');
     
     const Teacher = require('../../models/Teacher');
-    const teacherProfiles = await Teacher.find().populate('user', 'name status');
-    const teachers = teacherProfiles
-      .filter(p => p.user && p.user.status === 'active')
-      .map(p => ({
-        _id: p._id,
-        name: p.user.name
-      }));
+    const teacherProfiles = await Teacher.find().populate('user');
+    const teachers = buildTeacherOptions(teacherProfiles);
+    const batchesForForm = attachTeacherProfileIdsToBatches(batches, teacherProfiles);
 
     res.render('counsellor/convert', {
       title: `Convert: ${lead.name}`,
       user: req.user,
       lead,
-      batches,
+      batches: batchesForForm,
       teachers
     });
   } catch (err) {
@@ -169,20 +280,16 @@ exports.postConvertLead = async (req, res) => {
   logger.info('POST convert lead request received', { leadId: req.params.id });
   
   const Batch = require('../../models/Batch');
-  const batches = await Batch.find({ isActive: true }).distinct('name');
+  const batches = await Batch.find({ isActive: true }).populate('course');
   
   const Teacher = require('../../models/Teacher');
-  const teacherProfiles = await Teacher.find().populate('user', 'name status');
-  const teachers = teacherProfiles
-    .filter(p => p.user && p.user.status === 'active')
-    .map(p => ({
-      _id: p._id,
-      name: p.user.name
-    }));
+  const teacherProfiles = await Teacher.find().populate('user');
+  const teachers = buildTeacherOptions(teacherProfiles);
+  const batchesForForm = attachTeacherProfileIdsToBatches(batches, teacherProfiles);
   let lead;
 
   try {
-    lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId });
+    lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId }).populate('interestedCourse');
     if (!lead) {
       logger.warn('Counsellor unauthorized lead convert request', { leadId: req.params.id });
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });
@@ -197,7 +304,7 @@ exports.postConvertLead = async (req, res) => {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
-        batches,
+        batches: batchesForForm,
         teachers,
         error: `Admission Policy Error: On joining, a minimum 50% down payment (₹${minDownPayment.toLocaleString('en-IN')}) is required. You inputted ₹${paidFees.toLocaleString('en-IN')}.`
       });
@@ -211,7 +318,7 @@ exports.postConvertLead = async (req, res) => {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
-        batches,
+        batches: batchesForForm,
         teachers,
         error: 'A valid email address is required.'
       });
@@ -222,7 +329,7 @@ exports.postConvertLead = async (req, res) => {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
-        batches,
+        batches: batchesForForm,
         teachers,
         error: 'Password must be at least 8 characters long.'
       });
@@ -234,7 +341,7 @@ exports.postConvertLead = async (req, res) => {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
-        batches,
+        batches: batchesForForm,
         teachers,
         error: 'This email address is already registered.'
       });
@@ -254,7 +361,7 @@ exports.postConvertLead = async (req, res) => {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
-        batches,
+        batches: batchesForForm,
         teachers,
         error: 'Batch selection or a custom batch name is required.'
       });
@@ -263,7 +370,7 @@ exports.postConvertLead = async (req, res) => {
     const Course = require('../../models/Course');
     const Student = require('../../models/Student');
 
-    const courseName = req.body.course || lead.course || 'Digital Marketing';
+    const courseName = req.body.course || (lead.interestedCourse ? lead.interestedCourse.name : '') || 'Digital Marketing';
     let courseDoc = await Course.findOne({
       $or: [
         { name: courseName },
@@ -274,6 +381,11 @@ exports.postConvertLead = async (req, res) => {
       courseDoc = await Course.findOne();
     }
 
+    const selectedTeacherProfile = req.body.teacherId
+      ? teacherProfiles.find(profile => profile._id.toString() === req.body.teacherId)
+      : null;
+    const selectedTeacherUserId = selectedTeacherProfile?.user?._id || null;
+
     // Dynamic Batch creation if it doesn't exist yet
     let targetBatchObj = await Batch.findOne({ name: batchName });
     if (!targetBatchObj) {
@@ -281,10 +393,13 @@ exports.postConvertLead = async (req, res) => {
         name: batchName,
         course: courseDoc ? courseDoc._id : null,
         capacity: 20,
-        teachers: req.body.teacherId ? [req.body.teacherId] : [],
+        teachers: selectedTeacherUserId ? [selectedTeacherUserId] : [],
         isActive: true
       });
       logger.info('Dynamically created missing batch during counsellor lead conversion', { batchName });
+    } else if (selectedTeacherUserId && !targetBatchObj.teachers.some(id => id.toString() === selectedTeacherUserId.toString())) {
+      targetBatchObj.teachers.push(selectedTeacherUserId);
+      await targetBatchObj.save();
     }
 
     let studentUser;
@@ -297,7 +412,10 @@ exports.postConvertLead = async (req, res) => {
         password: password,
         role: 'student',
         phone: req.body.phone || lead.phone,
-        status: 'active'
+        status: 'active',
+        mustChangePassword: true,
+        passwordSetByAdmin: true,
+        firstLoginCompleted: false
       });
 
       studentProfile = await Student.create({
@@ -378,7 +496,7 @@ exports.postConvertLead = async (req, res) => {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
-        batches,
+        batches: batchesForForm,
         teachers,
         error: cleanErrMessage
       });

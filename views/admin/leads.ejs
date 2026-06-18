@@ -40,7 +40,9 @@
       <option value="Walk-in" <%= filter.source === 'Walk-in' ? 'selected' : '' %>>Walk-in</option>
       <option value="Website" <%= filter.source === 'Website' ? 'selected' : '' %>>Website</option>
       <option value="Referral" <%= filter.source === 'Referral' ? 'selected' : '' %>>Referral</option>
-      <option value="Social Media" <%= filter.source === 'Social Media' ? 'selected' : '' %>>Social Media</option>
+      <option value="Instagram" <%= filter.source === 'Instagram' ? 'selected' : '' %>>Instagram</option>
+      <option value="Facebook" <%= filter.source === 'Facebook' ? 'selected' : '' %>>Facebook</option>
+      <option value="LinkedIn" <%= filter.source === 'LinkedIn' ? 'selected' : '' %>>LinkedIn</option>
       <option value="Advertisement" <%= filter.source === 'Advertisement' ? 'selected' : '' %>>Advertisement</option>
       <option value="WhatsApp" <%= filter.source === 'WhatsApp' ? 'selected' : '' %>>WhatsApp</option>
       <option value="Other" <%= filter.source === 'Other' ? 'selected' : '' %>>Other</option>
@@ -72,7 +74,7 @@
         <tbody>
           <% leads.forEach(l => { %>
             <% 
-              const isOverdue = l.followUpDate && new Date(l.followUpDate) < new Date() && l.status !== 'admission_completed' && l.status !== 'lost';
+              const isOverdue = l.nextFollowUpAt && new Date(l.nextFollowUpAt) < new Date() && l.status !== 'admission_completed' && l.status !== 'lost';
             %>
             <tr <%= l.status === 'joining_interested' ? 'style="background: linear-gradient(90deg, rgba(212,175,55,0.08) 0%, rgba(0,0,0,0) 100%); border-left: 3px solid var(--gold);"' : '' %>>
               <td class="td-name">
@@ -83,7 +85,7 @@
                 <div class="td-muted text-sm"><%= l.phone %> &nbsp;·&nbsp; <%= l.email || 'No email' %></div>
               </td>
               <td>
-                <span class="badge badge-orange"><%= l.course %></span>
+                <span class="badge badge-orange"><%= l.interestedCourse ? l.interestedCourse.name : 'Undecided' %></span>
               </td>
               <td><%= l.source %></td>
               <td>

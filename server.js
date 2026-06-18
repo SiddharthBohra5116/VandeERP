@@ -27,11 +27,11 @@ const { Server } = require('socket.io');
 const io = new Server(server, { cors: { origin: false } });
 app.set('io', io);
 
-// Security namespace for AntiGravity admin dashboard
+// Security namespace for Security admin dashboard
 const securityNs = io.of('/security');
 securityNs.on('connection', socket => {
   socket.join('security');
-  socket.emit('connected', { message: 'AntiGravity Security Feed connected' });
+  socket.emit('connected', { message: 'Security Security Feed connected' });
 });
 
 // View Engine Setup
@@ -155,6 +155,7 @@ app.use((req, res, next) => {
     saved: 'Record saved successfully!',
     posted: 'Update posted successfully!',
     pwd_reset: 'Password reset successfully!',
+    pwd_changed: 'Password changed successfully!',
     pwd_request: 'Password reset request submitted successfully. Please contact your administrator to approve.',
     paid: 'Payment recorded successfully!',
     converted: 'Lead converted to student successfully!',
@@ -261,14 +262,11 @@ app.use((req, res) => {
   res.status(404).render('404', { title: 'Page Not Found', layout: 'main' });
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('❌ Server Error:', err);
-  res.status(500).render('500', { title: 'Server Error', layout: 'main', errorDetail: err.message });
-});
+const errorHandler = require('./middleware/errorHandler');
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`\n🚀 Server running on port ${PORT}`);
-  console.log(`🛡️  AntiGravity: ${process.env.ANTIGRAVITY_ENABLED !== 'false' ? 'ENABLED' : 'DISABLED'}`);
+  console.log(`🛡️  Security: ${process.env.SECURITY_ENABLED !== 'false' ? 'ENABLED' : 'DISABLED'}`);
 });

@@ -1,5 +1,5 @@
 /**
- * FeeAuditLog Model — AntiGravity Module 5 (FIV)
+ * FeeAuditLog Model — Security Module 5 (FIV)
  * Permanent record of every payment attempt, pass or fail.
  * Never expires — financial audit trail must be kept indefinitely.
  */

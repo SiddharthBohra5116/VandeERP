@@ -5,6 +5,7 @@ const role = require('../middleware/role');
 const ctrl = require('../controllers/counsellorController');
 const Lead = require('../models/Lead');
 const Message = require('../models/Message');
+const Student = require('../models/Student');
 
 const populateCounsellorSidebar = async (req, res, next) => {
   if (req.user && req.user.role === 'counsellor') {
@@ -14,16 +15,18 @@ const populateCounsellorSidebar = async (req, res, next) => {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const [leadCount, followupCount] = await Promise.all([
-        Lead.countDocuments({ assignedTo: req.user._id }),
+      const [leadCount, followupCount, studentCount] = await Promise.all([
+        Lead.countDocuments({ assignedTo: req.user.counsellorProfileId }),
         Lead.countDocuments({
-          assignedTo: req.user._id,
-          followUpDate: { $lt: tomorrow },
+          assignedTo: req.user.counsellorProfileId,
+          nextFollowUpAt: { $lt: tomorrow },
           status: { $nin: ['admission_completed', 'lost'] }
-        })
+        }),
+        Student.countDocuments({ counsellor: req.user.counsellorProfileId })
       ]);
       res.locals.leadCount = leadCount;
       res.locals.followupCount = followupCount;
+      res.locals.studentCount = studentCount;
     } catch (err) {
       console.error('❌ Error populating counsellor sidebar counts:', err);
     }
@@ -42,17 +45,19 @@ router.get('/leads/new', ...guard, ctrl.getCreateLead); // alias for layout link
 router.post('/leads/create', ...guard, leadValidator, ctrl.postCreateLead);
 router.get('/leads/followups', ...guard, ctrl.getFollowUps);
 router.post('/leads/walkin', ...guard, ctrl.postWalkIn);
+router.get('/students', ...guard, ctrl.getMyStudents);
 router.get('/admissions', ...guard, ctrl.getAdmissions);
 router.get('/admissions/:id/fee', ...guard, ctrl.getStudentFee);
 
 router.get('/leads/:id', ...guard, ctrl.getLeadDetail);
+router.get('/leads/:id/edit', ...guard, ctrl.getEditLead);
 router.get('/leads/:id/convert', ...guard, ctrl.getConvertLead);
 router.post('/leads/:id/convert', ...guard, ctrl.postConvertLead);
 router.post('/leads/:id/edit', ...guard, ctrl.postEditLead);
 router.post('/leads/:id/followup', ...guard, ctrl.postAddFollowUp);
+router.post('/leads/:id/followup/:index/edit', ...guard, ctrl.postEditFollowUp);
 router.post('/leads/:id/lost', ...guard, ctrl.postMarkLost);
 router.post('/leads/:id/ready', ...guard, ctrl.postMarkReady);
-router.delete('/leads/:id', ...guard, ctrl.deleteLead);
 
 // Messaging
 router.post('/messages/send', ...guard, ctrl.postSendMessage);
@@ -67,5 +72,11 @@ router.post('/leaves/apply', ...guard, ctrl.postApplyLeave);
 
 // Reports & Analytics
 router.get('/reports', ...guard, ctrl.getReports);
+
+// Announcements
+router.get('/announcements', ...guard, ctrl.getCounsellorAnnouncements);
+router.get('/announcements/create', ...guard, ctrl.getCounsellorCreateAnnouncement);
+router.post('/announcements/create', ...guard, ctrl.postCounsellorCreateAnnouncement);
+router.post('/announcements/:id/toggle', ...guard, ctrl.postCounsellorToggleAnnouncement);
 
 module.exports = router;

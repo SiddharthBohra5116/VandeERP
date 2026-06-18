@@ -377,6 +377,13 @@
 
 <!-- ==================== TAB 3: CLASSROOM HIERARCHY TREE ==================== -->
 <div id="tab-hierarchyTree" class="tab-pane tab-hidden">
+  <style>
+    .tree-details > summary { list-style: none; }
+    .tree-details > summary::-webkit-details-marker { display: none; }
+    .tree-details > summary .chevron { transition: transform 0.2s ease; opacity: 0.7; }
+    .tree-details > summary:hover .chevron { opacity: 1; color: var(--gold); }
+    .tree-details[open] > summary .chevron { transform: rotate(90deg); }
+  </style>
   <% 
     const classroomTree = {};
     classrooms.forEach(c => {
@@ -414,9 +421,10 @@
       <% Object.keys(classroomTree).forEach((cName, idx) => { 
           const node = classroomTree[cName];
       %>
-        <details style="background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;" <%= idx === 0 ? 'open' : '' %>>
+        <details class="tree-details" style="background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 0.75rem;" <%= idx === 0 ? 'open' : '' %>>
           <summary style="padding: 0.85rem 1.25rem; font-weight: 700; font-size: 0.9rem; color: var(--text); cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
               <span style="color: var(--gold);">🏫</span>
               <%= cName %>
             </div>
@@ -430,14 +438,20 @@
               <p style="font-size:0.75rem; color: var(--text-muted); font-style: italic;">No classes currently scheduled in this classroom.</p>
             <% } else { %>
               <% Object.keys(node.courses).forEach(courseName => { %>
-                <div style="border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 0.5rem;">
-                  <div style="background: rgba(0,0,0,0.1); padding: 0.5rem 0.75rem; font-weight: 700; font-size: 0.78rem; color: var(--gold-light);">📁 Course: <%= courseName %></div>
-                  <div style="padding: 0.75rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                <details class="tree-details" style="border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 0.5rem;" open>
+                  <summary style="background: rgba(0,0,0,0.1); padding: 0.5rem 0.75rem; font-weight: 700; font-size: 0.78rem; color: var(--gold-light); cursor: pointer; display: flex; align-items: center; gap: 0.5rem; user-select: none;">
+                    <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    📁 Course: <%= courseName %>
+                  </summary>
+                  <div style="padding: 0.75rem; display: flex; flex-direction: column; gap: 0.75rem; background: var(--bg-card);">
                     <% Object.keys(node.courses[courseName]).forEach(batchName => { 
                         const batchSchedules = node.courses[courseName][batchName];
                     %>
-                      <div style="border: 1px solid var(--border-light); border-radius: 4px; overflow: hidden;">
-                        <div style="background: rgba(255,255,255,0.02); padding: 0.4rem 0.6rem; font-size: 0.72rem; font-weight: 600; color: var(--text-sub); border-bottom: 1px solid var(--border-light);">👥 Batch: <%= batchName %></div>
+                      <details class="tree-details" style="border: 1px solid var(--border-light); border-radius: 4px; overflow: hidden;" open>
+                        <summary style="background: rgba(255,255,255,0.02); padding: 0.4rem 0.6rem; font-size: 0.72rem; font-weight: 600; color: var(--text-sub); border-bottom: 1px solid var(--border-light); cursor: pointer; display: flex; align-items: center; gap: 0.5rem; user-select: none;">
+                          <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                          👥 Batch: <%= batchName %>
+                        </summary>
                         <div class="table-wrap">
                           <table style="margin: 0; font-size: 0.75rem;">
                             <thead>
@@ -480,10 +494,10 @@
                             </tbody>
                           </table>
                         </div>
-                      </div>
+                      </details>
                     <% }) %>
                   </div>
-                </div>
+                </details>
               <% }) %>
             <% } %>
           </div>
@@ -1257,7 +1271,7 @@
       activeSlots = t.slots.map(s => ({
         id: s._id,
         dayOfWeek: s.dayOfWeek,
-        subject: s.subject,
+        subject: s.note || '',
         teacher: s.teacher ? (s.teacher._id || s.teacher) : '',
         classroom: s.classroom ? (s.classroom._id || s.classroom) : '',
         startTime: s.startTime,

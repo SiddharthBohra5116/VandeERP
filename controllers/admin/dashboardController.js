@@ -155,6 +155,11 @@ exports.getDashboard = async (req, res) => {
       .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name' } })
       .populate('interestedCourse', 'name code');
 
+    const resetRequests = await User.find({ resetRequested: true })
+      .select('name email phone role updatedAt')
+      .sort({ updatedAt: -1 })
+      .limit(25);
+
     res.render('admin/dashboard', {
       title: 'Admin Dashboard',
       user: req.user,
@@ -169,7 +174,7 @@ exports.getDashboard = async (req, res) => {
       },
       recentStudents,
       hotLeads,
-      resetRequests: [],
+      resetRequests,
       messages
     });
 

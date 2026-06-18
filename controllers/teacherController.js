@@ -15,6 +15,7 @@ const assignmentController    = require('./teacher/assignmentController');
 const contentController       = require('./teacher/contentController');
 const progressController      = require('./teacher/progressController');
 const communicationController = require('./teacher/communicationController');
+const announcementController = require('./teacher/announcementController');
 
 module.exports = {
   ...dashboardController,      // getDashboard
@@ -23,4 +24,5 @@ module.exports = {
   ...contentController,        // getDailyUpdates, getCreateUpdate, postCreateUpdate, getCurriculum, postCreateCurriculum, getCurriculumDetail, postAddTopic, postToggleTopic
   ...progressController,       // getProgress, postAddTestResult, postUpdateRemark, getMyStudents
   ...communicationController,  // postSendMessage, getLeavesPage, postApplyLeave, postCompleteSchedule
+  ...announcementController
 };

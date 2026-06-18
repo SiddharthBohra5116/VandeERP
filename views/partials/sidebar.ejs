@@ -23,6 +23,9 @@
       <a href="/admin/profile-requests" class="nav-item <%= page === 'profile-requests' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         <span>Profile Requests</span>
+        <% if (typeof sidebarBadges !== 'undefined' && sidebarBadges.profileRequests > 0) { %>
+          <span class="badge badge-gold" style="margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 5px;"><%= sidebarBadges.profileRequests %></span>
+        <% } %>
       </a>
       <a href="/admin/teachers" class="nav-item <%= page === 'teachers' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -35,6 +38,10 @@
       <a href="/admin/batches" class="nav-item <%= page === 'batches' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
         <span>Manage Batches</span>
+      </a>
+      <a href="/admin/announcements" class="nav-item <%= page === 'announcements' ? 'active' : '' %>">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span>Announcements</span>
       </a>
       <div class="nav-label">Operations</div>
       <a href="/admin/fees" class="nav-item <%= page === 'fees' || page === 'fee-detail' ? 'active' : '' %>">
@@ -63,6 +70,9 @@
       <a href="/admin/holidays-leaves" class="nav-item <%= page === 'holidays-leaves' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span>Holidays & Leaves</span>
+        <% if (typeof sidebarBadges !== 'undefined' && sidebarBadges.pendingLeaves > 0) { %>
+          <span class="badge badge-gold" style="margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 5px;"><%= sidebarBadges.pendingLeaves %></span>
+        <% } %>
       </a>
       <div class="nav-label" style="color: var(--ag-red, #ef4444);">Security</div>
       <a href="/admin/security/dashboard" class="nav-item <%= page === 'security' ? 'active' : '' %>">
@@ -104,6 +114,10 @@
       <a href="/teacher/leaves" class="nav-item <%= page === 'leaves' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span>Leave Requests</span>
+      </a>
+      <a href="/teacher/announcements" class="nav-item <%= page === 'teacher-announcements' ? 'active' : '' %>">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span>Announcements</span>
       </a>
       <div class="nav-label">Academic Progress</div>
       <a href="/teacher/curriculum" class="nav-item <%= page === 'curriculum' || page === 'curriculum-detail' ? 'active' : '' %>">
@@ -177,13 +191,24 @@
         <% } %>
       </a>
       <div class="nav-label">Admissions</div>
+      <a href="/counsellor/students" class="nav-item <%= page === 'my-students' ? 'active' : '' %>">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <span>My Students</span>
+        <% if (typeof studentCount !== 'undefined' && studentCount > 0) { %>
+          <span class="badge badge-gold" style="margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 5px;"><%= studentCount %></span>
+        <% } %>
+      </a>
       <a href="/counsellor/admissions" class="nav-item <%= page === 'admissions' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        <span>Admitted Students</span>
+        <span>Pipeline Admissions</span>
       </a>
       <a href="/counsellor/leaves" class="nav-item <%= page === 'leaves' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span>Leave Requests</span>
+      </a>
+      <a href="/counsellor/announcements" class="nav-item <%= page === 'counsellor-announcements' ? 'active' : '' %>">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span>Announcements</span>
       </a>
     <% } %>
     

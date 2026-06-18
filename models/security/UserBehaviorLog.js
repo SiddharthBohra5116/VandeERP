@@ -1,5 +1,5 @@
 /**
- * UserBehaviorLog Model — AntiGravity Module 1 (BAE)
+ * UserBehaviorLog Model — Security Module 1 (BAE)
  * 7-day TTL auto-removes old entries.
  * Lightweight footprint for rolling anomaly detection window.
  */

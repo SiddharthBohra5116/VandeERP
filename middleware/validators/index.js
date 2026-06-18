@@ -52,8 +52,9 @@ const leadValidator = validate([
 ]);
 
 const scheduleValidator = validate([
-  body('subject').trim().notEmpty().withMessage('Subject name is required'),
-  body('batch').trim().notEmpty().withMessage('Student batch assignment is required'),
+  body('subject').optional({ checkFalsy: true }).trim(),
+  body('note').optional({ checkFalsy: true }).trim(),
+  body('batch').isMongoId().withMessage('A valid batch assignment is required'),
   body('teacher').isMongoId().withMessage('A valid teacher ID is required'),
   body('classroom').isMongoId().withMessage('A valid classroom ID is required'),
   body('date').isDate().withMessage('A valid schedule date is required'),

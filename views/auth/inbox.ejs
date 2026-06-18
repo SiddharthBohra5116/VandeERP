@@ -1,31 +1,44 @@
 <%
   layout = 'main';
   title = 'Inbox & Chat';
-  subtitle = 'Exchange personal queries, guidance notes, and alerts with other academy members';
   page = 'inbox';
 %>
 
 <div class="inbox-container <%= selectedContact ? 'has-selection' : '' %>" id="inboxContainer">
   <!-- Contacts Panel (Left) -->
   <div class="inbox-contacts-panel">
-    <div class="contacts-search-box">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-      <input type="text" id="contactSearchInput" placeholder="Search contacts by name or role...">
+    <div class="contacts-search-box" style="display: flex; align-items: center; gap: 8px; padding: 0 1rem; height: 72px; box-sizing: border-box; border-bottom: 1px solid var(--border);">
+      <div style="position: relative; flex: 1; display: flex; align-items: center;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon" style="position: absolute; left: 10px; color: var(--text-muted); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="contactSearchInput" placeholder="Search contacts..." style="width: 100%; padding: 0.5rem 0.75rem 0.5rem 2.2rem; border: 1px solid var(--border); border-radius: var(--radius, 6px); background: var(--bg-input); color: var(--text); font-size: 0.85rem; outline: none; transition: border-color 0.2s;">
+      </div>
     </div>
+
+    <%
+      const totalUnreadMessages = Object.values(unreadMap).reduce((a, b) => a + b, 0);
+    %>
+
     <!-- Filter Tabs for Segregation -->
-    <div class="contacts-filter-tabs" style="display: flex; gap: 4px; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); overflow-x: auto; background: rgba(0,0,0,0.15); scrollbar-width: none;">
-      <button class="filter-tab active" data-filter="all" style="background: none; border: none; color: var(--text-muted); font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600;">All</button>
-      <button class="filter-tab" data-filter="unread" style="background: none; border: none; color: var(--text-muted); font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600; display: flex; align-items: center; gap: 4px;">
-        Unread
-        <span class="tab-unread-dot" style="display: none; width: 6px; height: 6px; background: var(--error, #ef4444); border-radius: 50%;"></span>
+    <div class="contacts-filter-tabs" style="display: flex; gap: 4px; padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); overflow-x: auto; background: rgba(0,0,0,0.15); scrollbar-width: none; align-items: center;">
+      <button class="filter-tab active" data-filter="all" style="background: none; border: none; color: var(--text-muted); font-size: 0.72rem; padding: 4px 8px; border-radius: 20px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+        All
+        <% if (totalUnreadMessages > 0) { %>
+          <span class="filter-count-badge" style="background:#000; color:var(--gold); border-radius:50%; font-size:9px; font-weight:700; width:14px; height:14px; display:inline-flex; align-items:center; justify-content:center;"><%= totalUnreadMessages %></span>
+        <% } %>
       </button>
-      <button class="filter-tab" data-filter="admin" style="background: none; border: none; color: var(--text-muted); font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600;">Admins</button>
-      <button class="filter-tab" data-filter="teacher" style="background: none; border: none; color: var(--text-muted); font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600;">Teachers</button>
-      <button class="filter-tab" data-filter="counsellor" style="background: none; border: none; color: var(--text-muted); font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600;">Counsellors</button>
+      <button class="filter-tab" data-filter="unread" style="background: none; border: none; color: var(--text-muted); font-size: 0.72rem; padding: 4px 8px; border-radius: 20px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+        Unread
+        <% if (totalUnreadMessages > 0) { %>
+          <span class="filter-count-badge" style="background:var(--gold); color:#000; border-radius:50%; font-size:9px; font-weight:700; width:14px; height:14px; display:inline-flex; align-items:center; justify-content:center;"><%= totalUnreadMessages %></span>
+        <% } %>
+      </button>
+      <button class="filter-tab" data-filter="admin" style="background: none; border: none; color: var(--text-muted); font-size: 0.72rem; padding: 4px 8px; border-radius: 20px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600;">Admins</button>
+      <button class="filter-tab" data-filter="teacher" style="background: none; border: none; color: var(--text-muted); font-size: 0.72rem; padding: 4px 8px; border-radius: 20px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600;">Teachers</button>
       <% if (user.role !== 'student') { %>
-        <button class="filter-tab" data-filter="student" style="background: none; border: none; color: var(--text-muted); font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600;">Students</button>
+        <button class="filter-tab" data-filter="student" style="background: none; border: none; color: var(--text-muted); font-size: 0.72rem; padding: 4px 8px; border-radius: 20px; cursor: pointer; white-space: nowrap; transition: all 0.2s; font-weight: 600;">Students</button>
       <% } %>
     </div>
+
     <div class="contacts-list" id="contactsList">
       <% if (contacts.length === 0) { %>
         <div class="empty-contacts">
@@ -33,12 +46,11 @@
         </div>
       <% } else { %>
         <% contacts.forEach(c => { %>
-          <% 
-            const isSelected = selectedContact && selectedContact._id.toString() === c._id.toString(); 
+          <%
+            const isSelected = selectedContact && selectedContact._id.toString() === c._id.toString();
             const unreadCount = unreadMap[c._id.toString()] || 0;
             const lastMsg = lastMessageMap[c._id.toString()];
-            
-            // Format time dynamically: e.g. "10:30 AM" or "Yesterday" or date
+
             let lastMsgTime = '';
             if (lastMsg) {
               const msgDate = new Date(lastMsg.createdAt);
@@ -64,19 +76,21 @@
                 <%
                   const initials = c.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                 %>
-                <div class="contact-avatar-fallback" <%= `style="background-color: ${roleColor}15; color: ${roleColor};"` %>>
+                <div class="contact-avatar-fallback" style="background-color: <%- roleColor %>; color: #fff; font-weight: bold;">
                   <%= initials %>
                 </div>
-              <% } %>
-              <% if (unreadCount > 0) { %>
-                <span class="unread-dot"></span>
               <% } %>
             </div>
             <div class="contact-info">
               <div class="contact-header">
-                <span class="contact-name"><%= c.name %></span>
+                <div style="display: flex; align-items: center; gap: 4px; overflow: hidden; min-width: 0;">
+                  <span class="contact-name"><%= c.name %></span>
+                  <button type="button" class="contact-profile-icon-btn" onclick="event.preventDefault(); event.stopPropagation(); window.viewContactProfile('<%= c._id %>');" style="background: none; border: none; padding: 2px; color: var(--text-muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; width: 18px; height: 18px; transition: background 0.2s, color 0.2s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,255,255,0.06)'; this.style.color='var(--gold)';" onmouseout="this.style.background='none'; this.style.color='var(--text-muted)';" title="View Profile">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                  </button>
+                </div>
                 <% if (lastMsg) { %>
-                  <span class="contact-time"><%= lastMsgTime %></span>
+                  <span class="contact-time" style="font-size: 0.72rem; color: var(--text-muted);"><%= lastMsgTime %></span>
                 <% } %>
               </div>
               <div class="contact-meta-row">
@@ -88,7 +102,10 @@
                   <% } %>
                 </div>
                 <% if (unreadCount > 0) { %>
-                  <span class="unread-badge"><%= unreadCount %></span>
+                  <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
+                    <span style="width:6px; height:6px; border-radius:50%; background:var(--gold); display:inline-block;"></span>
+                    <span class="unread-badge" style="background:var(--gold); color:#000; border-radius:50%; font-size:9px; font-weight:800; width:15px; height:15px; display:inline-flex; align-items:center; justify-content:center;"><%= unreadCount %></span>
+                  </div>
                 <% } %>
               </div>
             </div>
@@ -113,7 +130,7 @@
           <button type="button" class="inbox-back-btn" onclick="document.getElementById('inboxContainer').classList.remove('has-selection')" aria-label="Back to contacts" title="Back to contacts">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
           </button>
-          <% 
+          <%
             let roleColor = 'var(--gold)';
             if (selectedContact.role === 'admin') roleColor = '#3b82f6';
             else if (selectedContact.role === 'teacher') roleColor = '#10b981';
@@ -126,43 +143,26 @@
             <%
               const initials = selectedContact.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
             %>
-            <div class="chat-header-avatar-fallback" <%= `style="background-color: ${roleColor}15; color: ${roleColor};"` %>>
+            <div class="chat-header-avatar-fallback" style="background-color: <%- roleColor %>; color: #fff; font-weight: bold;">
               <%= initials %>
             </div>
           <% } %>
           <div>
             <div class="chat-header-name"><%= selectedContact.name %></div>
-            <div class="chat-header-meta">
-              <span class="contact-role-badge" <%= `style="border-color: ${roleColor}20; color: ${roleColor}; background-color: ${roleColor}08; font-size: 10px; padding: 1px 6px;"` %>>
-                <%= selectedContact.role %></span>
+            <div class="chat-header-meta" style="display:flex; align-items:center; gap:6px;">
+              <span class="contact-role-badge" style="border: 1px solid <%- roleColor %>40; color: <%- roleColor %>; background-color: <%- roleColor %>15; font-size: 10px; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; font-weight: 700; margin: 0;">
+                <%= selectedContact.role %>
+              </span>
             </div>
           </div>
         </div>
 
-        <!-- Go to Profile Redirection Button / Details Modal Trigger -->
-        <%
-          let profileUrl = null;
-          if (user.role === 'admin') {
-            if (selectedContact.role === 'student') profileUrl = `/admin/students/${selectedContact._id}`;
-            else if (selectedContact.role === 'teacher') profileUrl = `/admin/teachers/${selectedContact._id}`;
-            else if (selectedContact.role === 'counsellor') profileUrl = `/admin/counsellors/${selectedContact._id}`;
-          } else if (user.role === 'teacher' && selectedContact.role === 'student') {
-            profileUrl = `/teacher/students?search=${encodeURIComponent(selectedContact.name)}`;
-          } else if (user.role === 'counsellor' && selectedContact.role === 'student') {
-            profileUrl = `/counsellor/admissions?search=${encodeURIComponent(selectedContact.name)}`;
-          }
-        %>
-        <% if (profileUrl) { %>
-          <a href="<%= profileUrl %>" class="btn btn-ghost btn-sm header-profile-link" style="display: flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; text-decoration: none; font-size: 0.78rem; font-weight: 600; color: var(--text-sub); transition: background 0.2s;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <span>View Profile</span>
-          </a>
-        <% } else { %>
-          <button type="button" onclick="window.openContactDetailModal(<%= JSON.stringify(selectedContact.name) %>, <%= JSON.stringify(selectedContact.role) %>, <%= JSON.stringify(selectedContact.profilePic || '') %>)" class="btn btn-ghost btn-sm header-profile-link" style="display: flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.78rem; font-weight: 600; color: var(--text-sub); transition: background 0.2s; background: none; cursor: pointer;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-            <span>Contact Details</span>
-          </button>
-        <% } %>
+        <!-- View Profile Button — always opens a consistent popup for all roles -->
+        <button type="button" onclick="window.viewContactProfile('<%= selectedContact._id %>')"
+          class="btn btn-ghost btn-sm header-profile-link" style="display: flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.78rem; font-weight: 600; color: var(--text-sub); transition: background 0.2s; background: none; cursor: pointer;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>View Profile</span>
+        </button>
       </div>
 
       <!-- Messages Window -->
@@ -172,18 +172,17 @@
             <p>No messages exchanged yet. Send a message to start the conversation!</p>
           </div>
         <% } else { %>
-          <% 
+          <%
             let lastDividerDate = null;
-            chatHistory.forEach(msg => { 
+            chatHistory.forEach(msg => {
               const msgDate = new Date(msg.createdAt);
               const isMe = msg.sender._id.toString() === user._id.toString();
               const formattedTime = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-              
-              // Determine Divider Title
+
               const today = new Date();
               const yesterday = new Date();
               yesterday.setDate(yesterday.getDate() - 1);
-              
+
               let dividerText = '';
               if (msgDate.toDateString() === today.toDateString()) {
                 dividerText = 'Today';
@@ -192,10 +191,23 @@
               } else {
                 dividerText = msgDate.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
               }
-              
+
               const showDivider = lastDividerDate !== msgDate.toDateString();
               if (showDivider) {
                 lastDividerDate = msgDate.toDateString();
+              }
+
+              // Check if lead handoff alert
+              let isHandoff = false;
+              let handoffName = '';
+              let handoffUrl = '';
+              if (msg.content && msg.content.startsWith('Lead handoff alert:')) {
+                const match = msg.content.match(/Lead handoff alert:\s*"(.*?)"\s*is marked ready for admission conversion\.\s*(?:URL:\s*(.*))?/i);
+                if (match) {
+                  isHandoff = true;
+                  handoffName = match[1];
+                  handoffUrl = match[2] ? match[2].trim() : '';
+                }
               }
           %>
             <% if (showDivider) { %>
@@ -204,98 +216,123 @@
                 <span style="position: relative; z-index: 2; background: var(--bg-card); padding: 4px 12px; border-radius: 20px; font-size: 0.68rem; font-weight: 600; color: var(--text-muted); border: 1px solid var(--border); letter-spacing: 0.5px;"><%= dividerText %></span>
               </div>
             <% } %>
-            <div class="message-row <%= isMe ? 'me' : 'them' %>" data-message-id="<%= msg._id %>">
-              <div class="message-bubble" style="box-shadow: 0 2px 8px rgba(0,0,0,0.12); margin-top: 2px; position: relative;">
-                <!-- Reply Context Quote -->
-                <% if (msg.replyTo) { %>
-                  <div class="reply-quote-preview" data-parent-id="<%= msg.replyTo._id %>" style="background: rgba(0,0,0,0.15); border-left: 3px solid var(--gold); padding: 4px 8px; border-radius: 4px; margin-bottom: 6px; font-size: 0.75rem; color: var(--text-sub); display: flex; flex-direction: column; cursor: pointer;">
-                    <span style="font-weight: 700; font-size: 0.7rem; color: var(--gold); margin-bottom: 2px;">
-                      <%= msg.replyTo.sender.toString() === user._id.toString() ? 'You' : (msg.replyTo.sender.toString() === selectedContact._id.toString() ? selectedContact.name : 'User') %>
-                    </span>
-                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
-                      <%= msg.replyTo.content %>
-                    </span>
+
+            <div class="message-row <%= isMe ? 'me' : 'them' %>" data-message-id="<%= msg._id %>" style="display:flex; flex-direction:column; align-items: <%= isHandoff ? 'stretch' : (isMe ? 'flex-end' : 'flex-start') %>; width: 100%;">
+
+              <% if (isHandoff) { %>
+                <!-- Custom Handoff Alert Bubble matching Screenshot UI -->
+                <div class="message-bubble handoff-alert-bubble" style="background:#fef3c7; border:1px solid #fcd34d; border-radius:12px; padding:12px 16px; color:#78350f; display:flex; align-items:center; gap:12px; margin-bottom:6px; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                  <div style="width:32px; height:32px; border-radius:50%; background:#fbbf24; border:1px solid #d97706; display:flex; align-items:center; justify-content:center; color:#78350f; font-size:14px; flex-shrink:0;">
+                    🔔
                   </div>
-                <% } %>
-
-                <!-- Message Content -->
-                <div class="message-content" id="msg-content-<%= msg._id %>"><%= msg.content %></div>
-
-                <!-- Render Attachments -->
-                <% if (msg.attachments && msg.attachments.length > 0) { %>
-                  <div class="message-attachments" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
-                    <% msg.attachments.forEach(att => { %>
-                      <% if (att.fileType.startsWith('image/')) { %>
-                        <div class="attachment-image-wrapper" onclick="openDocPreviewModal('<%= att.url %>', '<%= att.fileName %>')" style="max-width: 280px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); cursor: pointer;">
-                          <img src="<%= att.url %>" style="width: 100%; height: auto; display: block;" alt="Uploaded Image">
-                        </div>
-                      <% } else { %>
-                        <div class="attachment-file-wrapper" onclick="openDocPreviewModal('<%= att.url %>', '<%= att.fileName %>')" style="display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.1); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 0.8rem; cursor: pointer; transition: background 0.2s;">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--gold);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                          <span style="color: var(--text); font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;">
-                            <%= att.fileName || 'Attachment' %>
-                          </span>
-                        </div>
+                  <div style="flex:1;">
+                    <div style="font-weight:600; font-size:0.88rem; line-height:1.4;">
+                      Lead handoff alert: "<%= handoffName %>" is marked ready for admission conversion.
+                    </div>
+                    <% if (handoffUrl) { %>
+                      <div style="margin-top:6px; font-size:0.8rem; color:rgba(120, 53, 15, 0.85);">
+                        View Lead: <a href="<%= handoffUrl %>" style="color:#2563eb; text-decoration:underline; font-weight:600;"><%= handoffUrl %></a>
+                      </div>
+                    <% } %>
+                    <div style="margin-top: 6px; font-size: 0.65rem; color: rgba(120, 53, 15, 0.7); display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                      <%= formattedTime %>
+                      <% if (isMe && msg.readAt) { %>
+                        <span style="color:#d97706; font-weight:600;">✓✓ Seen (<%= new Date(msg.readAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>)</span>
+                      <% } else if (isMe) { %>
+                        <span>Sent</span>
                       <% } %>
-                    <% }) %>
+                    </div>
                   </div>
-                <% } %>
-
-                <!-- Hover actions drawer -->
-                <div class="message-hover-actions">
-                  <!-- Emoji list drawer -->
-                  <div class="reaction-emoji-selector">
-                    <button class="emoji-btn" data-emoji="👍" title="Like">👍</button>
-                    <button class="emoji-btn" data-emoji="❤️" title="Love">❤️</button>
-                    <button class="emoji-btn" data-emoji="😂" title="Laugh">😂</button>
-                    <button class="emoji-btn" data-emoji="😮" title="Wow">😮</button>
-                    <button class="emoji-btn" data-emoji="😢" title="Sad">😢</button>
-                    <button class="emoji-btn" data-emoji="🙏" title="Pray/Thanks">🙏</button>
-                  </div>
-                  <button class="btn-msg-action reply-btn-trigger" data-message-id="<%= msg._id %>" data-sender-name="<%= isMe ? 'You' : selectedContact.name %>" data-snippet="<%= msg.content.substring(0, 60) + (msg.content.length > 60 ? '...' : '') %>" title="Reply">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
-                  </button>
-                  <% 
-                    const isEditable = isMe;
-                  %>
-                  <% if (isEditable) { %>
-                    <button class="btn-msg-action edit-btn-trigger" data-message-id="<%= msg._id %>" title="Edit Message">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                    </button>
+                </div>
+              <% } else { %>
+                <div class="message-bubble" style="box-shadow: 0 2px 8px rgba(0,0,0,0.12); margin-top: 2px; position: relative;">
+                  <!-- Reply Context Quote -->
+                  <% if (msg.replyTo) { %>
+                    <div class="reply-quote-preview" data-parent-id="<%= msg.replyTo._id %>" style="background: rgba(0,0,0,0.15); border-left: 3px solid var(--gold); padding: 4px 8px; border-radius: 4px; margin-bottom: 6px; font-size: 0.75rem; color: var(--text-sub); display: flex; flex-direction: column; cursor: pointer;">
+                      <span style="font-weight: 700; font-size: 0.7rem; color: var(--gold); margin-bottom: 2px;">
+                        <%= msg.replyTo.sender.toString() === user._id.toString() ? 'You' : (msg.replyTo.sender.toString() === selectedContact._id.toString() ? selectedContact.name : 'User') %>
+                      </span>
+                      <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
+                        <%= msg.replyTo.content %>
+                      </span>
+                    </div>
                   <% } %>
+
+                  <!-- Message Content -->
+                  <div class="message-content" id="msg-content-<%= msg._id %>"><%= msg.content %></div>
+
+                  <!-- Render Attachments -->
+                  <% if (msg.attachments && msg.attachments.length > 0) { %>
+                    <div class="message-attachments" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                      <% msg.attachments.forEach(att => { %>
+                        <% if (att.fileType.startsWith('image/')) { %>
+                          <div class="attachment-image-wrapper" onclick="openDocPreviewModal('<%= att.url %>', '<%= att.fileName %>')" style="max-width: 280px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); cursor: pointer;">
+                            <img src="<%= att.url %>" style="width: 100%; height: auto; display: block;" alt="Uploaded Image">
+                          </div>
+                        <% } else { %>
+                          <div class="attachment-file-wrapper" onclick="openDocPreviewModal('<%= att.url %>', '<%= att.fileName %>')" style="display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.1); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 0.8rem; cursor: pointer; transition: background 0.2s;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--gold);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                            <span style="color: var(--text); font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;">
+                              <%= att.fileName || 'Attachment' %>
+                            </span>
+                          </div>
+                        <% } %>
+                      <% }) %>
+                    </div>
+                  <% } %>
+
+                  <!-- Hover actions drawer -->
+                  <div class="message-hover-actions">
+                    <div class="reaction-emoji-selector">
+                      <button class="emoji-btn" data-emoji="👍" title="Like">👍</button>
+                      <button class="emoji-btn" data-emoji="❤️" title="Love">❤️</button>
+                      <button class="emoji-btn" data-emoji="😂" title="Laugh">😂</button>
+                      <button class="emoji-btn" data-emoji="😮" title="Wow">😮</button>
+                      <button class="emoji-btn" data-emoji="😢" title="Sad">😢</button>
+                      <button class="emoji-btn" data-emoji="🙏" title="Pray/Thanks">🙏</button>
+                    </div>
+                    <button class="btn-msg-action reply-btn-trigger" data-message-id="<%= msg._id %>" data-sender-name="<%= isMe ? 'You' : selectedContact.name %>" data-snippet="<%= msg.content.substring(0, 60) + (msg.content.length > 60 ? '...' : '') %>" title="Reply">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+                    </button>
+                    <% if (isMe) { %>
+                      <button class="btn-msg-action edit-btn-trigger" data-message-id="<%= msg._id %>" title="Edit Message">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                      </button>
+                    <% } %>
+                  </div>
+
+                  <div class="message-time" style="opacity: 0.75; display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                    <%= formattedTime %>
+                    <% if (isMe) { %>
+                      <span class="read-status-text" style="font-size: 0.65rem; opacity: 0.85; margin-left: 4px;">
+                        <% if (msg.readAt) { %>
+                          Seen (<%= new Date(msg.readAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>)
+                        <% } else { %>
+                          Sent
+                        <% } %>
+                      </span>
+                    <% } %>
+                  </div>
                 </div>
 
-                <!-- Rendered Reactions -->
+                <!-- Rendered Reactions BELOW the bubble -->
                 <% if (msg.reactions && msg.reactions.length > 0) { %>
-                  <div class="message-reactions-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
-                    <% 
-                      // Group by emoji to show count, or list them out cleanly
+                  <div class="message-reactions-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; padding: 2px 0;">
+                    <%
                       const reactionCounts = {};
                       msg.reactions.forEach(r => {
                         reactionCounts[r.emoji] = (reactionCounts[r.emoji] || 0) + 1;
                       });
                     %>
                     <% Object.entries(reactionCounts).forEach(([emoji, count]) => { %>
-                      <span class="reaction-badge" data-emoji="<%= emoji %>" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.08); border: 1px solid var(--border); border-radius: 12px; padding: 2px 6px; font-size: 0.75rem; cursor: pointer; user-select: none;">
-                        <%= emoji %> <span style="opacity: 0.8; margin-left: 2px; font-size: 0.65rem;"><%= count %></span>
+                      <span class="reaction-badge" data-emoji="<%= emoji %>" style="display: inline-flex; align-items: center; background: rgba(255,204,0,0.1); border: 1px solid var(--gold-border); border-radius: 12px; padding: 2px 6px; font-size: 0.72rem; cursor: pointer; user-select: none; color: var(--gold);">
+                        <%= emoji %> <span style="opacity: 0.9; margin-left: 3px; font-size: 0.65rem; font-weight: 700;"><%= count %></span>
                       </span>
                     <% }) %>
                   </div>
                 <% } %>
+              <% } %>
 
-                <div class="message-time" style="opacity: 0.75; display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
-                  <%= formattedTime %>
-                  <% if (isMe) { %>
-                    <span class="read-status-text" style="font-size: 0.65rem; opacity: 0.85; margin-left: 4px;">
-                      <% if (msg.readAt) { %>
-                        Seen (<%= new Date(msg.readAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>)
-                      <% } else { %>
-                        Sent
-                      <% } %>
-                    </span>
-                  <% } %>
-                </div>
-              </div>
             </div>
           <% }) %>
         <% } %>
@@ -331,28 +368,38 @@
         </button>
       </div>
 
-      <!-- Message Form -->
-      <form action="/auth/inbox/send" method="POST" enctype="multipart/form-data" class="chat-input-bar">
-        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
-        <input type="hidden" name="recipientId" value="<%= selectedContact._id %>">
-        <input type="hidden" name="replyTo" id="replyToInput" value="">
-        <input type="hidden" name="editMessageId" id="editMessageIdInput" value="">
-        
-        <!-- File Input with Attachment Icon -->
-        <label for="chatAttachmentInput" class="btn btn-ghost" style="padding: 8px; margin: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 50%; width: 38px; height: 38px;" title="Attach JPEG, PNG, or PDF">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
-        </label>
-        <input type="file" name="attachments" id="chatAttachmentInput" multiple style="display: none;">
+      <!-- Message Form & Input Box Area -->
+      <div style="border-top: 1px solid var(--border); background: var(--bg-card); padding: 0.85rem 1.5rem;">
+        <form action="/auth/inbox/send" method="POST" enctype="multipart/form-data" class="chat-input-bar" style="border: none; padding: 0; display: flex; gap: 12px; align-items: center;">
+          <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+          <input type="hidden" name="recipientId" value="<%= selectedContact._id %>">
+          <input type="hidden" name="replyTo" id="replyToInput" value="">
+          <input type="hidden" name="editMessageId" id="editMessageIdInput" value="">
 
-        <textarea name="content" id="chatMessageInput" placeholder="Type a message here... (Press Enter to send)"></textarea>
-        <button type="submit" class="btn btn-primary send-btn" aria-label="Send Message">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-          <span>Send</span>
-        </button>
-      </form>
+          <!-- File Input with Attachment Icon -->
+          <label for="chatAttachmentInput" class="btn btn-ghost" style="padding: 8px; margin: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 50%; width: 38px; height: 38px; background: rgba(255,255,255,0.02); border: 1px solid var(--border);" title="Attach files">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+          </label>
+          <input type="file" name="attachments" id="chatAttachmentInput" multiple style="display: none;">
+
+          <textarea name="content" id="chatMessageInput" placeholder="Type your message..." style="min-height: 48px; border-radius: var(--radius); padding: 10px 14px; font-size: 0.9rem; line-height: 1.4;"></textarea>
+
+          <button type="submit" class="btn-premium-send" aria-label="Send Message">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            <span>Send</span>
+          </button>
+        </form>
+
+        <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 6px; padding: 0 4px;">
+          <span>Press Enter to send</span>
+          <span id="charCountEl">0/1000</span>
+        </div>
+      </div>
     <% } %>
+  </div>
 </div>
 
+<!-- Modals -->
 <!-- Edit Message Modal -->
 <div id="editMessageModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; transition: opacity 0.3s ease;">
   <div class="modal-content" style="background: var(--bg-card, #121212); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; width: 90%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); position: relative;">
@@ -389,29 +436,67 @@
 
 <!-- Contact Detail Info Modal -->
 <div id="contactDetailModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 1050; align-items: center; justify-content: center; transition: opacity 0.3s ease;">
-  <div class="modal-content" style="background: var(--bg-card, #121212); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; width: 90%; max-width: 420px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); position: relative; text-align: center;">
-    <button type="button" onclick="closeContactDetailModal()" style="position: absolute; right: 16px; top: 16px; background: none; border: none; color: var(--text-muted); cursor: pointer;" title="Close">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+  <div class="modal-content" style="background: var(--bg-card, #121212); border: 1px solid var(--border); border-radius: 14px; padding: 0; width: 90%; max-width: 400px; box-shadow: 0 12px 40px rgba(0,0,0,0.4); position: relative; overflow: hidden;">
+    <!-- Close button -->
+    <button type="button" onclick="closeContactDetailModal()" style="position: absolute; right: 14px; top: 14px; background: rgba(255,255,255,0.06); border: none; color: var(--text-muted); cursor: pointer; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 2; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.12)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'" title="Close">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
     </button>
-    <div id="contactDetailAvatarWrapper" style="margin-bottom: 1.25rem; display: inline-block;">
-      <!-- Rendered dynamically -->
-    </div>
-    <h3 id="contactDetailName" style="margin: 0 0 0.25rem 0; color: var(--text); font-size: 1.3rem;">Name</h3>
-    <div id="contactDetailRole" style="text-transform: uppercase; font-size: 0.72rem; font-weight: 700; color: var(--gold); letter-spacing: 1px; margin-bottom: 1.5rem;">Role</div>
-    
-    <div style="border-top: 1px solid var(--border); padding-top: 1.25rem; text-align: left; display: flex; flex-direction: column; gap: 8px;">
-      <div style="display: flex; gap: 8px; font-size: 0.82rem; color: var(--text-sub);">
-        <span style="font-weight: 600; min-width: 80px;">Status:</span>
-        <span style="color: #10b981; font-weight: 600;">Active Academy Member</span>
+
+    <!-- Header banner with gradient -->
+    <div id="contactDetailBanner" style="height: 80px; position: relative;"></div>
+
+    <!-- Avatar (overlapping banner) -->
+    <div style="display: flex; justify-content: center; margin-top: -44px; position: relative; z-index: 1;">
+      <div id="contactDetailAvatarWrapper" style="border-radius: 50%; border: 3px solid var(--bg-card, #121212); background: var(--bg-card, #121212);">
+        <!-- Rendered dynamically -->
       </div>
-      <div style="display: flex; gap: 8px; font-size: 0.82rem; color: var(--text-sub);">
-        <span style="font-weight: 600; min-width: 80px;">Department:</span>
-        <span id="contactDetailDept">General Guidance</span>
+    </div>
+
+    <!-- Name & Role -->
+    <div style="text-align: center; padding: 0.75rem 1.5rem 0;">
+      <h3 id="contactDetailName" style="margin: 0 0 0.3rem 0; color: var(--text); font-size: 1.25rem; font-weight: 700;">Name</h3>
+      <div id="contactDetailRoleBadge" style="display: inline-block; text-transform: uppercase; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.8px; padding: 3px 12px; border-radius: 20px; margin-bottom: 0.25rem;">Role</div>
+    </div>
+
+    <!-- Contact Details -->
+    <div style="padding: 1rem 1.5rem 1.5rem;">
+      <div style="border-top: 1px solid var(--border); padding-top: 1rem; display: flex; flex-direction: column; gap: 10px;">
+        <!-- Email -->
+        <div id="contactDetailEmailRow" style="display: flex; align-items: center; gap: 10px; font-size: 0.82rem;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div>
+            <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; margin-bottom: 1px;">Email</div>
+            <div id="contactDetailEmail" style="color: var(--text); font-weight: 500; word-break: break-all;">—</div>
+          </div>
+        </div>
+        <!-- Phone -->
+        <div id="contactDetailPhoneRow" style="display: flex; align-items: center; gap: 10px; font-size: 0.82rem;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          </div>
+          <div>
+            <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; margin-bottom: 1px;">Phone</div>
+            <div id="contactDetailPhone" style="color: var(--text); font-weight: 500;">—</div>
+          </div>
+        </div>
+        <!-- Status -->
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.82rem;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div>
+            <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; margin-bottom: 1px;">Status</div>
+            <div id="contactDetailStatus" style="font-weight: 600;">Active</div>
+          </div>
+        </div>
+        <!-- Role-Specific Custom Fields (Dynamic) -->
+        <div id="contactDetailRoleFields" style="display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border); padding-top: 10px;"></div>
       </div>
     </div>
   </div>
 </div>
-
 
 <style>
 .inbox-container {
@@ -437,34 +522,9 @@
 }
 
 .contacts-search-box {
-  padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--border);
   position: relative;
   display: flex;
   align-items: center;
-}
-
-.contacts-search-box input {
-  width: 100%;
-  padding: 0.5rem 0.75rem 0.5rem 2.2rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius, 6px);
-  background: var(--bg-input);
-  color: var(--text);
-  font-size: 0.85rem;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.contacts-search-box input:focus {
-  border-color: var(--gold);
-}
-
-.contacts-search-box .search-icon {
-  position: absolute;
-  left: 1.6rem;
-  color: var(--text-muted);
-  pointer-events: none;
 }
 
 .contacts-list {
@@ -473,7 +533,6 @@
   padding: 0.5rem;
 }
 
-/* Custom Scrollbar for premium feel */
 .contacts-list::-webkit-scrollbar, .chat-messages-window::-webkit-scrollbar {
   width: 6px;
 }
@@ -495,6 +554,7 @@
   color: var(--text);
   transition: background 0.2s;
   margin-bottom: 0.25rem;
+  border: 1px solid transparent;
 }
 
 .contact-item:hover {
@@ -503,7 +563,7 @@
 
 .contact-item.active {
   background: var(--bg-input);
-  border-left: 3px solid var(--gold);
+  border: 1px solid var(--gold);
 }
 
 .contact-avatar-wrapper {
@@ -530,12 +590,10 @@
 }
 
 .unread-dot {
-  position: absolute;
-  top: 0;
-  right: 0;
+  display: inline-block;
   width: 10px;
   height: 10px;
-  background: var(--error, #ef4444);
+  background: var(--gold);
   border: 2px solid var(--bg-card);
   border-radius: 50%;
 }
@@ -561,11 +619,6 @@
   text-overflow: ellipsis;
 }
 
-.contact-time {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-}
-
 .contact-meta-row {
   display: flex;
   justify-content: space-between;
@@ -580,17 +633,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.unread-badge {
-  background: var(--gold);
-  color: #000;
-  font-weight: 700;
-  font-size: 0.68rem;
-  padding: 1px 6px;
-  border-radius: 10px;
-  min-width: 18px;
-  text-align: center;
 }
 
 /* Chat Panel */
@@ -620,7 +662,9 @@
 }
 
 .chat-header-bar {
-  padding: 0.85rem 1.25rem;
+  height: 72px;
+  padding: 0 1.25rem;
+  box-sizing: border-box;
   border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
@@ -665,12 +709,6 @@
   margin-top: 0.2rem;
 }
 
-.chat-header-roll {
-  font-family: monospace;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-
 .chat-messages-window {
   flex: 1;
   overflow-y: auto;
@@ -694,16 +732,8 @@
   width: 100%;
 }
 
-.message-row.me {
-  justify-content: flex-end;
-}
-
-.message-row.them {
-  justify-content: flex-start;
-}
-
 .message-bubble {
-  max-width: 70%;
+  max-width: 100%;
   padding: 0.75rem 1rem;
   border-radius: 16px;
   position: relative;
@@ -712,13 +742,14 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-.message-row.me .message-bubble {
-  background: var(--gold);
-  color: #000;
+.message-row.me .message-bubble:not(.handoff-alert-bubble) {
+  background: var(--gold-dim);
+  color: var(--text);
+  border: 1px solid var(--gold-border);
   border-bottom-right-radius: 4px;
 }
 
-.message-row.them .message-bubble {
+.message-row.them .message-bubble:not(.handoff-alert-bubble) {
   background: var(--bg-input);
   color: var(--text);
   border: 1px solid var(--border);
@@ -740,44 +771,26 @@
 }
 
 .message-row.me .message-time {
-  color: rgba(0,0,0,0.45);
+  color: var(--text-muted);
 }
 
 .message-row.them .message-time {
   color: var(--text-muted);
 }
 
-.read-status {
-  display: inline-flex;
-  color: rgba(0,0,0,0.3);
-}
-
-.read-status.read {
-  color: #1d4ed8;
-}
-
-/* Chat Input */
-.chat-input-bar {
-  padding: 0.75rem 1.25rem;
-  border-top: 1px solid var(--border);
-  display: flex;
-  gap: 0.75rem;
-  background: var(--bg-card);
-  align-items: center;
-}
-
+/* Chat Input bar styles */
 .chat-input-bar textarea {
   flex: 1;
-  padding: 0.6rem 0.85rem;
+  padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius, 6px);
   background: var(--bg-input);
   color: var(--text);
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   resize: none;
-  height: 42px;
+  height: 48px;
   outline: none;
-  line-height: 1.35;
+  line-height: 1.4;
   transition: border-color 0.2s;
   font-family: inherit;
   max-height: 120px;
@@ -788,17 +801,27 @@
   border-color: var(--gold);
 }
 
-.send-btn {
-  height: 42px;
-  display: flex;
+/* Send Button overrides */
+.btn-premium-send {
+  background: #eab308;
+  color: #000;
+  font-weight: 700;
+  padding: 0 20px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  height: 48px;
+  display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0 1.25rem;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(234, 179, 8, 0.15);
 }
 
-.header-profile-link:hover {
-  background: var(--bg-input);
-  color: var(--text) !important;
+.btn-premium-send:hover {
+  background: #ca8a04;
+  box-shadow: 0 6px 16px rgba(234, 179, 8, 0.25);
 }
 
 /* Mobile “back to contacts” button inside chat header */
@@ -963,21 +986,13 @@
 </style>
 
 <script>
-// Global Error Handler for Diagnostics
-window.onerror = function (message, source, lineno, colno, error) {
-  alert("🚨 JS Error detected:\nMessage: " + message + "\nSource: " + source + "\nLine: " + lineno + ":" + colno);
-  return false;
-};
-
 // Expose Edit Modal Functions Globally
 window.openEditModal = (messageId) => {
-  console.log("✏️ openEditModal inline called with messageId:", messageId);
   const chatInput = document.getElementById('chatMessageInput');
   const editIdInput = document.getElementById('editMessageIdInput');
   const editPreviewText = document.getElementById('editPreviewText');
   const editPreviewContainer = document.getElementById('editPreviewContainer');
-  
-  // Close reply preview if open, to avoid layout clutter
+
   const replyToInput = document.getElementById('replyToInput');
   const replyPreviewContainer = document.getElementById('replyPreviewContainer');
   if (replyToInput) replyToInput.value = '';
@@ -998,15 +1013,6 @@ window.openEditModal = (messageId) => {
     editPreviewContainer.style.display = 'flex';
     chatInput.value = text;
     chatInput.focus();
-    console.log("✅ Loaded message into input bar for inline editing.");
-  } else {
-    console.error("❌ Failed to load edit. Elements missing:", {
-      chatInput: !!chatInput,
-      editIdInput: !!editIdInput,
-      editPreviewText: !!editPreviewText,
-      editPreviewContainer: !!editPreviewContainer,
-      contentDiv: !!contentDiv
-    });
   }
 };
 
@@ -1017,12 +1023,10 @@ window.closeEditModal = () => {
   }
 };
 
-// Global click delegation for edit buttons to run independently of DOMContentLoaded scripts
 document.addEventListener('click', (e) => {
   const editBtn = e.target.closest('.edit-btn-trigger');
   if (editBtn) {
     const msgId = editBtn.getAttribute('data-message-id');
-    console.log("Global edit-btn-trigger click detected for messageId:", msgId);
     window.openEditModal(msgId);
   }
 });
@@ -1033,25 +1037,23 @@ window.openDocPreviewModal = (url, fileName) => {
   const title = document.getElementById('previewDocTitle');
   const downloadBtn = document.getElementById('previewDocDownloadBtn');
   const frameContainer = document.getElementById('previewDocFrameContainer');
-  
+
   if (modal && title && downloadBtn && frameContainer) {
     title.textContent = `Preview: ${fileName}`;
     downloadBtn.href = url;
     downloadBtn.setAttribute('download', fileName);
-    
-    // Inject sandboxed iframe to securely render PDF/document isolation
+
     frameContainer.innerHTML = '';
     const iframe = document.createElement('iframe');
     iframe.src = url;
     iframe.style.width = '100%';
     iframe.style.height = '100%';
     iframe.style.border = 'none';
-    
-    // sandbox attributes restrict javascript execution, popups, form submissions inside the document
     iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
-    
+
     frameContainer.appendChild(iframe);
     modal.style.display = 'flex';
+    modal.classList.add('open');
   }
 };
 
@@ -1060,35 +1062,57 @@ window.closeDocPreviewModal = () => {
   const frameContainer = document.getElementById('previewDocFrameContainer');
   if (modal) {
     modal.style.display = 'none';
+    modal.classList.remove('open');
   }
   if (frameContainer) {
-    frameContainer.innerHTML = ''; // tear down iframe immediately to free memory
+    frameContainer.innerHTML = '';
   }
 };
 
-window.openContactDetailModal = (name, role, profilePic) => {
+window.openContactDetailModal = (data) => {
   const modal = document.getElementById('contactDetailModal');
   const titleName = document.getElementById('contactDetailName');
-  const titleRole = document.getElementById('contactDetailRole');
+  const roleBadge = document.getElementById('contactDetailRoleBadge');
   const avatarWrapper = document.getElementById('contactDetailAvatarWrapper');
-  const deptEl = document.getElementById('contactDetailDept');
-  
-  if (modal && titleName && titleRole && avatarWrapper) {
-    titleName.textContent = name;
-    titleRole.textContent = role;
-    
-    if (deptEl) {
-      deptEl.textContent = role.charAt(0).toUpperCase() + role.slice(1) + ' Services';
-    }
+  const banner = document.getElementById('contactDetailBanner');
+  const emailEl = document.getElementById('contactDetailEmail');
+  const phoneEl = document.getElementById('contactDetailPhone');
+  const statusEl = document.getElementById('contactDetailStatus');
+  const roleFieldsEl = document.getElementById('contactDetailRoleFields');
 
-    let roleColor = 'var(--gold)';
-    if (role === 'admin') roleColor = '#3b82f6';
-    else if (role === 'teacher') roleColor = '#10b981';
-    else if (role === 'counsellor') roleColor = '#f59e0b';
-    else if (role === 'student') roleColor = '#8b5cf6';
+  if (!modal || !titleName) return;
 
+  const { name, role, profilePic, email, phone, status } = data;
+
+  const roleColors = {
+    admin: '#3b82f6',
+    teacher: '#10b981',
+    counsellor: '#f59e0b',
+    student: '#8b5cf6'
+  };
+  const roleColor = roleColors[role] || '#c39b34';
+
+  // Banner gradient
+  if (banner) {
+    banner.style.background = `linear-gradient(135deg, ${roleColor}30 0%, ${roleColor}08 100%)`;
+    banner.style.borderBottom = `1px solid ${roleColor}20`;
+  }
+
+  // Name
+  titleName.textContent = name;
+
+  // Role badge
+  if (roleBadge) {
+    roleBadge.textContent = role;
+    roleBadge.style.color = roleColor;
+    roleBadge.style.background = roleColor + '15';
+    roleBadge.style.border = `1px solid ${roleColor}30`;
+  }
+
+  // Avatar
+  if (avatarWrapper) {
     if (profilePic) {
-      avatarWrapper.innerHTML = `<img src="${profilePic}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid ${roleColor};" alt="${name}">`;
+      avatarWrapper.innerHTML = `<img src="${profilePic}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid ${roleColor}40;" alt="${name}">`;
     } else {
       const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
       avatarWrapper.innerHTML = `
@@ -1097,14 +1121,155 @@ window.openContactDetailModal = (name, role, profilePic) => {
         </div>
       `;
     }
-    modal.style.display = 'flex';
   }
+
+  // Email
+  if (emailEl) {
+    emailEl.textContent = email || '—';
+  }
+
+  // Phone
+  if (phoneEl) {
+    phoneEl.textContent = phone || '—';
+  }
+
+  // Status
+  if (statusEl) {
+    const statusColors = {
+      active: '#10b981',
+      inactive: '#6b7280',
+      drop: '#ef4444',
+      complete: '#c39b34'
+    };
+    const sColor = statusColors[status] || '#6b7280';
+    const statusLabel = status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Active';
+    statusEl.textContent = statusLabel;
+    statusEl.style.color = sColor;
+  }
+
+  // Role-Specific Custom Fields
+  if (roleFieldsEl) {
+    roleFieldsEl.innerHTML = '';
+    const extra = data.extraInfo || {};
+    let fieldsHtml = '';
+
+    const createFieldRow = (iconSvg, label, value) => {
+      return `
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.82rem;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            ${iconSvg}
+          </div>
+          <div>
+            <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; margin-bottom: 1px;">${label}</div>
+            <div style="color: var(--text); font-weight: 500;">${value || '—'}</div>
+          </div>
+        </div>
+      `;
+    };
+
+    if (role === 'student') {
+      fieldsHtml += createFieldRow(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>`,
+        'Roll Number',
+        extra.rollNumber
+      );
+      fieldsHtml += createFieldRow(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>`,
+        'Course',
+        extra.course
+      );
+      fieldsHtml += createFieldRow(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+        'Batch',
+        extra.batch
+      );
+      if (extra.counsellor) {
+        fieldsHtml += createFieldRow(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+          'Counsellor',
+          extra.counsellor
+        );
+      }
+      if (extra.teacher) {
+        fieldsHtml += createFieldRow(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+          'Teacher',
+          extra.teacher
+        );
+      }
+    } else if (role === 'teacher') {
+      fieldsHtml += createFieldRow(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+        'Employee ID',
+        extra.rollNumber
+      );
+      fieldsHtml += createFieldRow(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>`,
+        'Qualification',
+        extra.qualification
+      );
+      fieldsHtml += createFieldRow(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><circle cx="12" cy="8" r="7"/><polyline points="12 8 12 12 16 14"/></svg>`,
+        'Experience',
+        extra.experienceYears ? `${extra.experienceYears} Years` : '—'
+      );
+      if (extra.courses) {
+        fieldsHtml += createFieldRow(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>`,
+          'Courses Taught',
+          extra.courses
+        );
+      }
+    } else if (role === 'counsellor') {
+      fieldsHtml += createFieldRow(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+        'Counsellor ID',
+        extra.rollNumber
+      );
+    }
+
+    roleFieldsEl.innerHTML = fieldsHtml;
+    roleFieldsEl.style.display = fieldsHtml ? 'flex' : 'none';
+  }
+
+  modal.style.display = 'flex';
+  modal.classList.add('open');
 };
 
 window.closeContactDetailModal = () => {
   const modal = document.getElementById('contactDetailModal');
   if (modal) {
     modal.style.display = 'none';
+    modal.classList.remove('open');
+  }
+};
+
+window.viewContactProfile = async (contactId) => {
+  if (!contactId) return;
+
+  if (typeof NProgress !== 'undefined') {
+    NProgress.start();
+  }
+
+  try {
+    const response = await fetch(`/auth/inbox/user-profile/${contactId}`);
+    if (response.ok) {
+      const resData = await response.json();
+      if (resData.success && resData.data) {
+        window.openContactDetailModal(resData.data);
+      } else {
+        alert(resData.error || 'Failed to load contact profile.');
+      }
+    } else {
+      alert('Failed to load contact profile.');
+    }
+  } catch (err) {
+    console.error('Error fetching contact profile:', err);
+    alert('An error occurred while loading the contact profile.');
+  } finally {
+    if (typeof NProgress !== 'undefined') {
+      NProgress.done();
+    }
   }
 };
 
@@ -1126,7 +1291,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (isUnread) hasUnreadInList = true;
 
-      // Filter by tab
       let matchesTab = true;
       if (currentFilter === 'unread') {
         matchesTab = isUnread;
@@ -1134,7 +1298,6 @@ document.addEventListener('DOMContentLoaded', () => {
         matchesTab = (role === currentFilter);
       }
 
-      // Filter by search term
       const matchesSearch = name.includes(term) || role.includes(term);
 
       if (matchesTab && matchesSearch) {
@@ -1144,7 +1307,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Update unread tab dot indicator if there are unread messages
     const unreadDot = document.querySelector('.tab-unread-dot');
     if (unreadDot) {
       unreadDot.style.display = hasUnreadInList ? 'inline-block' : 'none';
@@ -1164,7 +1326,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Call filterContacts initially to set up unread dots
   filterContacts();
 
   // 2. Scroll Chat Window to Bottom
@@ -1184,9 +1345,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     });
+
+    // Character Counter
+    const charCountEl = document.getElementById('charCountEl');
+    chatInput.addEventListener('input', () => {
+      const length = chatInput.value.length;
+      if (charCountEl) {
+        charCountEl.textContent = `${length}/1000`;
+      }
+    });
   }
 
-  // 4. Edit Modal Logic
+  // 4. Close modal clicks
   const editModalOverlay = document.getElementById('editMessageModal');
   if (editModalOverlay) {
     editModalOverlay.addEventListener('click', (e) => {
@@ -1221,7 +1391,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const replyPreviewText = document.getElementById('replyPreviewText');
   const cancelReplyBtn = document.getElementById('cancelReplyBtn');
 
-  // Trigger reply action
   document.addEventListener('click', (e) => {
     const replyBtn = e.target.closest('.reply-btn-trigger');
     if (replyBtn) {
@@ -1238,8 +1407,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-
-    // Scroll to & highlight replied-to parent message
     const quotePreview = e.target.closest('.reply-quote-preview');
     if (quotePreview) {
       const parentId = quotePreview.getAttribute('data-parent-id');
@@ -1250,7 +1417,6 @@ document.addEventListener('DOMContentLoaded', () => {
           const bubble = parentRow.querySelector('.message-bubble');
           if (bubble) {
             bubble.classList.remove('pulse-highlight');
-            // Trigger reflow to restart CSS animation cleanly
             void bubble.offsetWidth;
             bubble.classList.add('pulse-highlight');
             setTimeout(() => {
@@ -1262,7 +1428,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Cancel reply action
   if (cancelReplyBtn) {
     cancelReplyBtn.addEventListener('click', () => {
       if (replyToInput && replyPreviewContainer) {
@@ -1272,7 +1437,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 6. Reaction handler via Event Delegation (fetch POST request to /auth/inbox/react)
+  // 6. Reaction AJAX Handler
   const getCsrfToken = () => {
     const csrfInput = document.querySelector('input[name="_csrf"]');
     return csrfInput ? csrfInput.value : '';
@@ -1312,9 +1477,8 @@ document.addEventListener('DOMContentLoaded', () => {
             _csrf: getCsrfToken()
           })
         });
-        
+
         if (response.ok) {
-          // Real-time UI refresh simple version: reload page to match exact backend state cleanly
           window.location.reload();
         } else {
           const resData = await response.json();
@@ -1326,7 +1490,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 7. File Upload Selection & Drag and Drop Handling
+  // 7. File Upload Handler
   const fileInput = document.getElementById('chatAttachmentInput');
   const filePreviewContainer = document.getElementById('filePreviewContainer');
   const filePreviewText = document.getElementById('filePreviewText');
@@ -1335,11 +1499,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const updateFilePreview = () => {
     if (fileInput && fileInput.files && fileInput.files.length > 0) {
-      const maxSizeBytes = 25 * 1024 * 1024; // 25 MB
+      const maxSizeBytes = 25 * 1024 * 1024;
       const oversizedFiles = Array.from(fileInput.files).filter(f => f.size > maxSizeBytes);
-      
+
       if (oversizedFiles.length > 0) {
-        alert(`File size exceeds limit: ${oversizedFiles.map(f => f.name).join(', ')}. Maximum allowed size is 25MB.`);
+        alert(`File size exceeds limit. Maximum allowed size is 25MB.`);
         fileInput.value = '';
         if (filePreviewContainer) filePreviewContainer.style.display = 'none';
         return;
@@ -1370,7 +1534,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Drag and Drop Logic
   if (chatMessagesWindow && fileInput) {
     ['dragenter', 'dragover'].forEach(eventName => {
       chatMessagesWindow.addEventListener(eventName, (e) => {
@@ -1398,7 +1561,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, false);
   }
 
-  // 8. Dynamic Polling and AJAX Submission for Live Chat (no reloads)
+  // 8. Live chat polling
   const messageForm = document.querySelector('.chat-input-bar');
   const activeChatContactId = '<%= selectedContact ? selectedContact._id : "" %>';
   const currentUserId = '<%= user._id %>';
@@ -1428,8 +1591,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const renderChatHistory = (messages) => {
     if (!chatMessagesWindow) return;
-    
-    // Calculate scroll state to stay down if already scrolled down
     const isScrolledToBottom = chatMessagesWindow.scrollHeight - chatMessagesWindow.clientHeight <= chatMessagesWindow.scrollTop + 50;
 
     let html = '';
@@ -1442,12 +1603,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const msgDate = new Date(msg.createdAt);
         const isMe = msg.sender._id.toString() === currentUserId;
         const formattedTime = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        
-        // Determine Divider Title
+
         const today = new Date();
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        
+
         let dividerText = '';
         if (msgDate.toDateString() === today.toDateString()) {
           dividerText = 'Today';
@@ -1456,7 +1616,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           dividerText = msgDate.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         }
-        
+
         const showDivider = lastDividerDate !== msgDate.toDateString();
         if (showDivider) {
           lastDividerDate = msgDate.toDateString();
@@ -1468,100 +1628,135 @@ document.addEventListener('DOMContentLoaded', () => {
           `;
         }
 
-        let replyQuoteHtml = '';
-        if (msg.replyTo) {
-          const replySenderName = msg.replyTo.sender.toString() === currentUserId ? 'You' : (msg.replyTo.sender.toString() === activeChatContactId ? selectedContactName : 'User');
-          replyQuoteHtml = `
-            <div class="reply-quote-preview" data-parent-id="${msg.replyTo._id}" style="background: rgba(0,0,0,0.15); border-left: 3px solid var(--gold); padding: 4px 8px; border-radius: 4px; margin-bottom: 6px; font-size: 0.75rem; color: var(--text-sub); display: flex; flex-direction: column; cursor: pointer;">
-              <span style="font-weight: 700; font-size: 0.7rem; color: var(--gold); margin-bottom: 2px;">${replySenderName}</span>
-              <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">${msg.replyTo.content}</span>
+        let isHandoff = false;
+        let handoffName = '';
+        let handoffUrl = '';
+        if (msg.content && msg.content.startsWith('Lead handoff alert:')) {
+          const match = msg.content.match(/Lead handoff alert:\s*"(.*?)"\s*is marked ready for admission conversion\.\s*(?:URL:\s*(.*))?/i);
+          if (match) {
+            isHandoff = true;
+            handoffName = match[1];
+            handoffUrl = match[2] ? match[2].trim() : '';
+          }
+        }
+
+        if (isHandoff) {
+          const seenHtml = isMe ? `<span style="color:#d97706; margin-left: 4px; font-weight:600;">✓✓ Seen (${msg.readAt ? new Date(msg.readAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''})</span>` : '';
+          html += `
+            <div class="message-row ${isMe ? 'me' : 'them'}" data-message-id="${msg._id}" style="display:flex; flex-direction:column; align-items: stretch; width: 100%;">
+              <div class="message-bubble handoff-alert-bubble" style="background:#fef3c7; border:1px solid #fcd34d; border-radius:12px; padding:12px 16px; color:#78350f; display:flex; align-items:center; gap:12px; margin-bottom:6px; width:100%; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <div style="width:32px; height:32px; border-radius:50%; background:#fbbf24; border:1px solid #d97706; display:flex; align-items:center; justify-content:center; color:#78350f; font-size:14px; flex-shrink:0;">
+                  🔔
+                </div>
+                <div style="flex:1;">
+                  <div style="font-weight:600; font-size:0.88rem; line-height:1.4;">
+                    Lead handoff alert: "${handoffName}" is marked ready for admission conversion.
+                  </div>
+                  ${handoffUrl ? `<div style="margin-top:6px; font-size:0.8rem; color:rgba(120, 53, 15, 0.85);">View Lead: <a href="${handoffUrl}" style="color:#2563eb; text-decoration:underline; font-weight:600;">${handoffUrl}</a></div>` : ''}
+                  <div style="margin-top: 6px; font-size: 0.65rem; color: rgba(120, 53, 15, 0.7); display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                    ${formattedTime}
+                    ${isMe ? seenHtml : ''}
+                  </div>
+                </div>
+              </div>
             </div>
           `;
-        }
-
-        let attachmentsHtml = '';
-        if (msg.attachments && msg.attachments.length > 0) {
-          attachmentsHtml += '<div class="message-attachments" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">';
-          msg.attachments.forEach(att => {
-            if (att.fileType.startsWith('image/')) {
-              attachmentsHtml += `
-                <div class="attachment-image-wrapper" onclick="openDocPreviewModal('${att.url}', '${att.fileName}')" style="max-width: 280px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); cursor: pointer;">
-                  <img src="${att.url}" style="width: 100%; height: auto; display: block;" alt="Uploaded Image">
-                </div>
-              `;
-            } else {
-              attachmentsHtml += `
-                <div class="attachment-file-wrapper" onclick="openDocPreviewModal('${att.url}', '${att.fileName}')" style="display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.1); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 0.8rem; cursor: pointer; transition: background 0.2s;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--gold);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                  <span style="color: var(--text); font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;">${att.fileName || 'Attachment'}</span>
-                </div>
-              `;
-            }
-          });
-          attachmentsHtml += '</div>';
-        }
-        let editBtnHtml = '';
-        if (isMe) {
-          editBtnHtml = `
-            <button class="btn-msg-action edit-btn-trigger" data-message-id="${msg._id}" title="Edit Message">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-            </button>
-          `;
-        }
-
-        let reactionsHtml = '';
-        if (msg.reactions && msg.reactions.length > 0) {
-          reactionsHtml += '<div class="message-reactions-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">';
-          const reactionCounts = {};
-          msg.reactions.forEach(r => {
-            reactionCounts[r.emoji] = (reactionCounts[r.emoji] || 0) + 1;
-          });
-          Object.entries(reactionCounts).forEach(([emoji, count]) => {
-            reactionsHtml += `
-              <span class="reaction-badge" data-emoji="${emoji}" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.08); border: 1px solid var(--border); border-radius: 12px; padding: 2px 6px; font-size: 0.75rem; cursor: pointer; user-select: none;">
-                ${emoji} <span style="opacity: 0.8; margin-left: 2px; font-size: 0.65rem;">${count}</span>
-              </span>
+        } else {
+          let replyQuoteHtml = '';
+          if (msg.replyTo) {
+            const replySenderName = msg.replyTo.sender.toString() === currentUserId ? 'You' : (msg.replyTo.sender.toString() === activeChatContactId ? selectedContactName : 'User');
+            replyQuoteHtml = `
+              <div class="reply-quote-preview" data-parent-id="${msg.replyTo._id}" style="background: rgba(0,0,0,0.15); border-left: 3px solid var(--gold); padding: 4px 8px; border-radius: 4px; margin-bottom: 6px; font-size: 0.75rem; color: var(--text-sub); display: flex; flex-direction: column; cursor: pointer;">
+                <span style="font-weight: 700; font-size: 0.7rem; color: var(--gold); margin-bottom: 2px;">${replySenderName}</span>
+                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">${msg.replyTo.content}</span>
+              </div>
             `;
-          });
-          reactionsHtml += '</div>';
-        }
+          }
 
-        const seenHtml = isMe ? `<span class="read-status-text" style="font-size: 0.65rem; opacity: 0.85; margin-left: 4px;">${msg.readAt ? 'Seen (' + new Date(msg.readAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ')' : 'Sent'}</span>` : '';
+          let attachmentsHtml = '';
+          if (msg.attachments && msg.attachments.length > 0) {
+            attachmentsHtml += '<div class="message-attachments" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">';
+            msg.attachments.forEach(att => {
+              if (att.fileType.startsWith('image/')) {
+                attachmentsHtml += `
+                  <div class="attachment-image-wrapper" onclick="openDocPreviewModal('${att.url}', '${att.fileName}')" style="max-width: 280px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); cursor: pointer;">
+                    <img src="${att.url}" style="width: 100%; height: auto; display: block;" alt="Uploaded Image">
+                  </div>
+                `;
+              } else {
+                attachmentsHtml += `
+                  <div class="attachment-file-wrapper" onclick="openDocPreviewModal('${att.url}', '${att.fileName}')" style="display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.1); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 0.8rem; cursor: pointer; transition: background 0.2s;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--gold);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    <span style="color: var(--text); font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;">${att.fileName || 'Attachment'}</span>
+                  </div>
+                `;
+              }
+            });
+            attachmentsHtml += '</div>';
+          }
+          let editBtnHtml = '';
+          if (isMe) {
+            editBtnHtml = `
+              <button class="btn-msg-action edit-btn-trigger" data-message-id="${msg._id}" title="Edit Message">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+            `;
+          }
 
-        html += `
-          <div class="message-row ${isMe ? 'me' : 'them'}" data-message-id="${msg._id}">
-            <div class="message-bubble" style="box-shadow: 0 2px 8px rgba(0,0,0,0.12); margin-top: 2px; position: relative;">
-              ${replyQuoteHtml}
-              <div class="message-content" id="msg-content-${msg._id}">${msg.content}</div>
-              ${attachmentsHtml}
-              <div class="message-hover-actions">
-                <div class="reaction-emoji-selector">
-                  <button class="emoji-btn" data-emoji="👍" title="Like">👍</button>
-                  <button class="emoji-btn" data-emoji="❤️" title="Love">❤️</button>
-                  <button class="emoji-btn" data-emoji="😂" title="Laugh">😂</button>
-                  <button class="emoji-btn" data-emoji="😮" title="Wow">😮</button>
-                  <button class="emoji-btn" data-emoji="😢" title="Sad">😢</button>
-                  <button class="emoji-btn" data-emoji="🙏" title="Pray/Thanks">🙏</button>
+          let reactionsHtml = '';
+          if (msg.reactions && msg.reactions.length > 0) {
+            reactionsHtml += '<div class="message-reactions-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; padding: 2px 0;">';
+            const reactionCounts = {};
+            msg.reactions.forEach(r => {
+              reactionCounts[r.emoji] = (reactionCounts[r.emoji] || 0) + 1;
+            });
+            Object.entries(reactionCounts).forEach(([emoji, count]) => {
+              reactionsHtml += `
+                <span class="reaction-badge" data-emoji="${emoji}" style="display: inline-flex; align-items: center; background: rgba(255,204,0,0.1); border: 1px solid var(--gold-border); border-radius: 12px; padding: 2px 6px; font-size: 0.72rem; cursor: pointer; user-select: none; color: var(--gold);">
+                  ${emoji} <span style="opacity: 0.9; margin-left: 3px; font-size: 0.65rem; font-weight: 700;">${count}</span>
+                </span>
+              `;
+            });
+            reactionsHtml += '</div>';
+          }
+
+          const seenHtml = isMe ? `<span class="read-status-text" style="font-size: 0.65rem; opacity: 0.85; margin-left: 4px;">${msg.readAt ? 'Seen (' + new Date(msg.readAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ')' : 'Sent'}</span>` : '';
+
+          html += `
+            <div class="message-row ${isMe ? 'me' : 'them'}" data-message-id="${msg._id}" style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'};">
+              <div class="message-bubble" style="box-shadow: 0 2px 8px rgba(0,0,0,0.12); margin-top: 2px; position: relative;">
+                ${replyQuoteHtml}
+                <div class="message-content" id="msg-content-${msg._id}">${msg.content}</div>
+                ${attachmentsHtml}
+                <div class="message-hover-actions">
+                  <div class="reaction-emoji-selector">
+                    <button class="emoji-btn" data-emoji="👍" title="Like">👍</button>
+                    <button class="emoji-btn" data-emoji="❤️" title="Love">❤️</button>
+                    <button class="emoji-btn" data-emoji="😂" title="Laugh">😂</button>
+                    <button class="emoji-btn" data-emoji="😮" title="Wow">😮</button>
+                    <button class="emoji-btn" data-emoji="😢" title="Sad">😢</button>
+                    <button class="emoji-btn" data-emoji="🙏" title="Pray/Thanks">🙏</button>
+                  </div>
+                  <button class="btn-msg-action reply-btn-trigger" data-message-id="${msg._id}" data-sender-name="${isMe ? 'You' : escapeHtmlAttr(selectedContactName)}" data-snippet="${escapeHtmlAttr(msg.content.substring(0, 60))}" title="Reply">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+                  </button>
+                  ${editBtnHtml}
                 </div>
-                <button class="btn-msg-action reply-btn-trigger" data-message-id="${msg._id}" data-sender-name="${isMe ? 'You' : escapeHtmlAttr(selectedContactName)}" data-snippet="${escapeHtmlAttr(msg.content.substring(0, 60))}" title="Reply">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
-                </button>
-                ${editBtnHtml}
+                <div class="message-time" style="opacity: 0.75; display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                  ${formattedTime}
+                  ${seenHtml}
+                </div>
               </div>
               ${reactionsHtml}
-              <div class="message-time" style="opacity: 0.75; display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
-                ${formattedTime}
-                ${seenHtml}
-              </div>
             </div>
-          </div>
-        `;
+          `;
+        }
       });
     }
 
     chatMessagesWindow.innerHTML = html;
     clearActiveChatUnreadBadge();
-    
+
     if (isScrolledToBottom) {
       chatMessagesWindow.scrollTop = chatMessagesWindow.scrollHeight;
     }
@@ -1582,12 +1777,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Poll for new messages every 3 seconds to keep chat live
   if (activeChatContactId) {
     setInterval(pollMessages, 3000);
   }
 
-  // Cancel Edit Action Handler
   const cancelEditBtn = document.getElementById('cancelEditBtn');
   const editMessageIdInput = document.getElementById('editMessageIdInput');
   const editPreviewContainer = document.getElementById('editPreviewContainer');
@@ -1600,26 +1793,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Handle AJAX message submission (no page reloads on send or edit)
   if (messageForm) {
     messageForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const restoreSubmitBtn = () => {
         const submitBtn = messageForm.querySelector('button[type="submit"]');
         if (submitBtn) {
           submitBtn.disabled = false;
-          const origText = submitBtn.getAttribute('data-original-text');
-          if (origText) {
-            submitBtn.innerHTML = origText;
-          }
+          const origText = submitBtn.getAttribute('data-original-text') || `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> <span>Send</span>`;
+          submitBtn.innerHTML = origText;
         }
       };
 
       const editMessageId = editMessageIdInput ? editMessageIdInput.value : '';
 
       if (editMessageId) {
-        // Handle Inline Message Edit via AJAX
         const content = chatInput ? chatInput.value.trim() : '';
         if (!content) {
           restoreSubmitBtn();
@@ -1627,7 +1816,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const actionUrl = `/auth/messages/${editMessageId}/edit`;
-
         const params = new URLSearchParams();
         params.append('content', content);
         params.append('_csrf', getCsrfToken());
@@ -1643,12 +1831,9 @@ document.addEventListener('DOMContentLoaded', () => {
           });
 
           if (response.ok) {
-            // Reset Edit State
             if (editMessageIdInput) editMessageIdInput.value = '';
             if (editPreviewContainer) editPreviewContainer.style.display = 'none';
             if (chatInput) chatInput.value = '';
-            
-            // Poll immediately to show edited content
             pollMessages();
           } else {
             const errData = await response.json().catch(() => ({ error: 'Failed to update message.' }));
@@ -1656,35 +1841,35 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         } catch (err) {
           console.error('AJAX edit error:', err);
-          alert('An error occurred while editing the message.');
         } finally {
           restoreSubmitBtn();
         }
         return;
       }
 
-      // Otherwise: Standard Send Message
       const formData = new FormData(messageForm);
       if (!chatInput.value.trim() && (!fileInput || fileInput.files.length === 0)) {
         restoreSubmitBtn();
-        return; // do not send empty
+        return;
       }
 
       try {
         const response = await fetch('/auth/inbox/send', {
           method: 'POST',
+          headers: {
+            'Accept': 'application/json'
+          },
           body: formData
         });
 
         if (response.ok) {
-          // Clear inputs
           chatInput.value = '';
+          const charCountEl = document.getElementById('charCountEl');
+          if (charCountEl) charCountEl.textContent = '0/1000';
           if (fileInput) fileInput.value = '';
           if (replyToInput) replyToInput.value = '';
           if (replyPreviewContainer) replyPreviewContainer.style.display = 'none';
           if (filePreviewContainer) filePreviewContainer.style.display = 'none';
-          
-          // Poll immediately to show new message
           pollMessages();
         } else {
           console.error('Failed to send message via AJAX');
@@ -1696,8 +1881,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-  
-  // Clear unread badge for the active chat immediately on page load
+
   clearActiveChatUnreadBadge();
 });
 </script>

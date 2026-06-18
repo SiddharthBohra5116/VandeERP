@@ -6,6 +6,7 @@ const Lead = require('../../models/Lead');
 const LeadActivity = require('../../models/LeadActivity');
 const Fee = require('../../models/Fee');
 const Message = require('../../models/Message');
+const Counsellor = require('../../models/Counsellor');
 
 const { escapeRegex } = require('../../utils/sanitize');
 const { computeSourceStats } = require('../../utils/leadAnalytics');
@@ -181,6 +182,17 @@ exports.postAssignLead = async (req, res) => {
       doneBy: req.user._id
     });
 
+    if (assignedTo) {
+      const counsellor = await Counsellor.findById(assignedTo).populate('user', '_id status');
+      if (counsellor?.user && counsellor.user.status === 'active') {
+        await Message.create({
+          sender: req.user._id,
+          recipient: counsellor.user._id,
+          content: `${oldCounsellor ? 'Lead reassigned' : 'New lead assigned'}: "${lead.name}".`
+        });
+      }
+    }
+
     logger.info('Lead assigned successfully', {
       leadId: lead._id,
       counsellorId: assignedTo
@@ -210,25 +222,57 @@ exports.getConvertLead = async (req, res) => {
 
     const Teacher = require('../../models/Teacher');
     const [batches, teacherProfiles, courses] = await Promise.all([
-      Batch.find({ isActive: true }).populate('course', 'name code').sort({ name: 1 }),
+      Batch.find({ isActive: true })
+        .populate('course', 'name code fees durationMonths')
+        .populate('teachers', 'name email status')
+        .sort({ name: 1 }),
       Teacher.find().populate('user', 'name email status'),
       Course.find({ isActive: true }).select('name code fees durationMonths').sort({ name: 1 })
     ]);
+
+    const teacherProfileByUserId = new Map(
+      teacherProfiles
+        .filter(profile => profile.user)
+        .map(profile => [profile.user._id.toString(), profile])
+    );
 
     const teachers = teacherProfiles
       .filter(p => p.user && p.user.status === 'active')
       .map(p => ({
         _id: p._id,
+        userId: p.user._id,
         name: p.user.name,
-        email: p.user.email
+        email: p.user.email,
+        courseIds: (p.courses || []).map(id => id.toString())
       }));
+
+    const batchOptions = batches.map(batch => {
+      const firstTeacherUser = (batch.teachers || []).find(t => t && t.status === 'active') || (batch.teachers || [])[0];
+      const firstTeacherProfile = firstTeacherUser
+        ? teacherProfileByUserId.get(firstTeacherUser._id.toString())
+        : null;
+      const teacherProfileIds = (batch.teachers || [])
+        .map(teacherUser => teacherUser ? teacherProfileByUserId.get(teacherUser._id.toString()) : null)
+        .filter(Boolean)
+        .map(profile => profile._id.toString());
+
+      return {
+        _id: batch._id.toString(),
+        name: batch.name,
+        courseId: batch.course?._id?.toString() || '',
+        courseName: batch.course?.name || '',
+        capacity: batch.capacity || 0,
+        teacherProfileId: firstTeacherProfile?._id?.toString() || '',
+        teacherProfileIds,
+        teacherName: firstTeacherProfile?.user?.name || firstTeacherUser?.name || ''
+      };
+    });
 
     res.render('admin/convert', {
       title: `Convert: ${lead.name}`,
       user: req.user,
       lead,
-      batches: batches.map(batch => batch.name),
-      batchDocs: batches,
+      batches: batchOptions,
       teachers,
       courses
     });
@@ -335,9 +379,13 @@ exports.postConvertLead = async (req, res) => {
     const totalFees = Number(req.body.fees_total) || selectedCourse.fees || 0;
     const paidFees = Number(req.body.fees_paid) || 0;
 
+    let targetBatch = null;
     let batchName = '';
 
-    if (req.body.customBatch && req.body.customBatch.trim()) {
+    if (req.body.batch && req.body.batch.match && req.body.batch.match(/^[0-9a-fA-F]{24}$/)) {
+      targetBatch = await Batch.findById(req.body.batch).populate('course', 'name code fees durationMonths');
+      batchName = targetBatch ? targetBatch.name : '';
+    } else if (req.body.customBatch && req.body.customBatch.trim()) {
       batchName = req.body.customBatch.trim();
     } else if (req.body.batch && req.body.batch.trim()) {
       batchName = req.body.batch.trim();
@@ -356,14 +404,21 @@ exports.postConvertLead = async (req, res) => {
       });
     }
 
-    let targetBatch = await Batch.findOne({ name: batchName });
+    if (!targetBatch) {
+      targetBatch = await Batch.findOne({ name: batchName });
+    }
+
+    const selectedTeacherProfile = req.body.teacherId
+      ? await Teacher.findById(req.body.teacherId).populate('user', '_id name')
+      : null;
+    const selectedTeacherUserId = selectedTeacherProfile?.user?._id || null;
 
     if (!targetBatch) {
       targetBatch = await Batch.create({
         name: batchName,
         course: selectedCourse._id,
         capacity: 20,
-        teachers: req.body.teacherId ? [req.body.teacherId] : [],
+        teachers: selectedTeacherUserId ? [selectedTeacherUserId] : [],
         isActive: true
       });
 
@@ -371,6 +426,9 @@ exports.postConvertLead = async (req, res) => {
         batchId: targetBatch._id,
         batchName
       });
+    } else if (selectedTeacherUserId && !targetBatch.teachers.some(id => id.toString() === selectedTeacherUserId.toString())) {
+      targetBatch.teachers.push(selectedTeacherUserId);
+      await targetBatch.save();
     }
 
     const enrollmentDate = req.body.enrollmentDate
@@ -383,13 +441,16 @@ exports.postConvertLead = async (req, res) => {
       password,
       role: 'student',
       phone: req.body.phone || lead.phone,
-      status: 'active'
+      status: 'active',
+      mustChangePassword: true,
+      passwordSetByAdmin: true,
+      firstLoginCompleted: false
     });
 
     studentProfile = await Student.create({
       user: studentUser._id,
       counsellor: lead.assignedTo || null,
-      teacher: req.body.teacherId || null,
+      teacher: selectedTeacherProfile?._id || null,
       course: selectedCourse._id,
       batch: targetBatch._id,
       enrollmentDate,
@@ -522,11 +583,14 @@ exports.postAddLeadComment = async (req, res) => {
     });
 
     if (lead.assignedTo) {
-      await Message.create({
-        sender: req.user._id,
-        recipient: lead.assignedTo,
-        content: `Admin added a note to lead "${lead.name}": "${note.length > 50 ? note.slice(0, 47) + '...' : note}"`
-      });
+      const counsellor = await Counsellor.findById(lead.assignedTo).populate('user', '_id status');
+      if (counsellor?.user && counsellor.user.status === 'active') {
+        await Message.create({
+          sender: req.user._id,
+          recipient: counsellor.user._id,
+          content: `Admin added a note to lead "${lead.name}": "${note.length > 50 ? note.slice(0, 47) + '...' : note}"`
+        });
+      }
     }
 
     res.redirect(`/admin/leads/${req.params.id}?updated=1`);

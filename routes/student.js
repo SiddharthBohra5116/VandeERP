@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 // Multer dependency removed in favor of uploadHelper
-const path = require('path');
 const protect = require('../middleware/auth');
 const role = require('../middleware/role');
 const ctrl = require('../controllers/studentController');

@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 // Multer dependency removed in favor of uploadHelper
-const path = require('path');
 const protect = require('../middleware/auth');
 const ctrl = require('../controllers/authController');
 
@@ -34,6 +33,9 @@ router.get('/forgot-password', ctrl.getForgotPassword);
 router.post('/forgot-password', forgotPasswordLimiter, ctrl.postForgotPassword);
 router.get('/logout', ctrl.logout);
 
+router.get('/force-change-password', protect, ctrl.getForceChangePassword);
+router.post('/force-change-password', protect, ctrl.postForceChangePassword);
+
 router.get('/profile', protect, ctrl.getProfile);
 router.post('/profile', protect, upload.single('profilePic'), ctrl.updateProfile);
 router.post('/change-password', protect, ctrl.changePassword);
@@ -43,6 +45,7 @@ router.get('/inbox', protect, ctrl.getInbox);
 router.get('/inbox/messages', protect, ctrl.getInboxMessages);
 router.post('/inbox/send', protect, upload.array('attachments', 5), ctrl.postInboxSend);
 router.post('/inbox/react', protect, ctrl.postAddReaction);
+router.get('/inbox/user-profile/:id', protect, ctrl.getContactProfileData);
 
 // Notifications
 router.post('/notifications/:id/read', protect, ctrl.postReadNotification);

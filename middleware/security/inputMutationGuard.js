@@ -1,5 +1,5 @@
 /**
- * Input Mutation Guard (IMG) — AntiGravity Module 4
+ * Input Mutation Guard (IMG) — Security Module 4
  *
  * Applied AFTER body-parsing middleware (express.json / urlencoded).
  * Sanitizes req.body, req.query, and req.params before any controller sees them.
@@ -99,10 +99,22 @@ function truncateOverflowFields(obj, path = '', overflowed = []) {
 /**
  * Strip mass-assignment fields from request body for sensitive routes.
  */
-function stripMassAssignmentFields(obj) {
+function stripMassAssignmentFields(obj, currentPath) {
   if (!obj || typeof obj !== 'object') return;
   for (const field of MASS_ASSIGN_BLOCKED_FIELDS) {
     if (field in obj) {
+      // Allow password for legitimate auth endpoints (login, reset, etc.)
+      if (field === 'password' && currentPath && currentPath.startsWith('/auth/')) {
+        continue;
+      }
+      // Allow password, fees_total, and fees_paid only for lead conversion endpoints
+      if (['password', 'fees_total', 'fees_paid'].includes(field) && currentPath && (currentPath.startsWith('/counsellor/leads/') || currentPath.startsWith('/admin/leads/')) && currentPath.endsWith('/convert')) {
+        continue;
+      }
+      // Allow 'status' for counsellor lead followup log updates (Issue fix)
+      if (field === 'status' && currentPath && currentPath.includes('/followup')) {
+        continue;
+      }
       delete obj[field];
     }
   }
@@ -142,7 +154,7 @@ async function inputMutationGuard(req, res, next) {
 
     // --- c) Mass-assignment protection (sensitive routes only) ---
     if (isSensitiveRoute && req.body) {
-      stripMassAssignmentFields(req.body);
+      stripMassAssignmentFields(req.body, req.path);
     }
 
     // --- d) Field overflow truncation ---
@@ -171,13 +183,13 @@ async function inputMutationGuard(req, res, next) {
             });
           }
         } catch (err) {
-          console.error('[AntiGravity/IMG] Alert write failed (non-fatal):', err.message);
+          console.error('[Security/IMG] Alert write failed (non-fatal):', err.message);
         }
       });
     }
   } catch (err) {
     // Fail-open: sanitization error must never block legitimate requests
-    console.error('[AntiGravity/IMG] Guard error (non-fatal, passing through):', err.message);
+    console.error('[Security/IMG] Guard error (non-fatal, passing through):', err.message);
   }
 
   next();

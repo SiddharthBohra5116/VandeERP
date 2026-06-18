@@ -25,9 +25,9 @@
         <label class="form-label" for="course">Course Subject *</label>
         <select id="course" name="course" class="form-control" required>
           <option value="" disabled <%= !isEdit ? 'selected' : '' %>>Select Course</option>
-          <option value="Video Editing" <%= isEdit && target.course === 'Video Editing' ? 'selected' : '' %>>Video Editing</option>
-          <option value="Digital Marketing" <%= isEdit && target.course === 'Digital Marketing' ? 'selected' : '' %>>Digital Marketing</option>
-          <option value="Both" <%= isEdit && target.course === 'Both' ? 'selected' : '' %>>Both</option>
+          <% courses.forEach(course => { %>
+            <option value="<%= course._id %>" <%= isEdit && target.course && String(target.course._id || target.course) === String(course._id) ? 'selected' : '' %>><%= course.name %></option>
+          <% }) %>
         </select>
       </div>
 

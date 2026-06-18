@@ -5,6 +5,7 @@ const Fee = require('../../models/Fee');
 const logger = require('../../utils/logger');
 
 const Student = require('../../models/Student');
+const Announcement = require('../../models/Announcement');
 
 /**
  * GET /counsellor/dashboard
@@ -33,24 +34,25 @@ exports.getDashboard = async (req, res) => {
       convertedLeadsCount,
       lostLeadsCount,
       admin,
-      messages
+      messages,
+      activeAnnouncements
     ] = await Promise.all([
       Lead.find({ assignedTo: counsellorId }).sort({ createdAt: -1 }).limit(10),
       Lead.find({
         assignedTo: counsellorId,
-        followUpDate: { $lt: tomorrow },
+        nextFollowUpAt: { $lt: tomorrow },
         status: { $nin: ['admission_completed', 'lost'] }
-      }).sort({ followUpDate: 1 }),
+      }).sort({ nextFollowUpAt: 1 }),
       Lead.find({
         assignedTo: counsellorId,
-        followUpDate: { $lt: today },
+        nextFollowUpAt: { $lt: today },
         status: { $nin: ['admission_completed', 'lost'] }
-      }).sort({ followUpDate: 1 }),
+      }).sort({ nextFollowUpAt: 1 }),
       Lead.find({
         assignedTo: counsellorId,
-        followUpDate: { $gte: today, $lt: tomorrow },
+        nextFollowUpAt: { $gte: today, $lt: tomorrow },
         status: { $nin: ['admission_completed', 'lost'] }
-      }).sort({ followUpDate: 1 }),
+      }).sort({ nextFollowUpAt: 1 }),
       Student.find({ counsellor: counsellorId }).populate('user'),
       Lead.aggregate([
         { $match: { assignedTo: counsellorId } },
@@ -71,8 +73,24 @@ exports.getDashboard = async (req, res) => {
       Message.find({ recipient: userId })
         .populate('sender', 'name role')
         .sort({ createdAt: -1 })
-        .limit(5)
+        .limit(5),
+      Announcement.find({
+        isActive: true,
+        $or: [
+          { audienceType: 'all' },
+          { audienceType: 'role', role: 'counsellor' }
+        ]
+      }).populate('createdBy', 'name role').sort({ createdAt: -1 }).limit(5)
     ]);
+
+    const mappedAnnouncements = (activeAnnouncements || []).map(ann => ({
+      _id: ann._id,
+      content: `📢 [${ann.title}] ${ann.content}`,
+      sender: ann.createdBy,
+      createdAt: ann.createdAt
+    }));
+
+    const combinedMessages = [...mappedAnnouncements, ...(messages || [])];
 
     // Compute fee callbacks (overdue payments) in parallel
     const studentIds = enrolledStudents.map(s => s._id);
@@ -88,7 +106,7 @@ exports.getDashboard = async (req, res) => {
     // To be accurate, we do a full query for all leads, or reuse what is needed. We already count total.
     // Let's load the full minimal list of leads if we want to run computeSourceStats on all leads.
     // Or we can do a projection to save memory.
-    const allLeadsForAnalytics = await Lead.find({ assignedTo: counsellorId }).select('status source course createdAt followUpHistory');
+    const allLeadsForAnalytics = await Lead.find({ assignedTo: counsellorId }).select('status source interestedCourse createdAt followUpHistory');
     const sourceStatsMap = computeSourceStats(allLeadsForAnalytics);
 
     const byStatus = { new: 0, contacted: 0, mentorship_scheduled: 0, mentorship_attended: 0, follow_up: 0, joining_interested: 0, admission_completed: 0, lost: 0 };
@@ -111,7 +129,7 @@ exports.getDashboard = async (req, res) => {
       feeCallbacks,
       sourceStats: sourceStatsMap,
       admin,
-      messages,
+      messages: combinedMessages,
       stats: {
         total: totalLeadsCount,
         newToday: newLeadsTodayCount,

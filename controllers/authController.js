@@ -8,6 +8,17 @@ const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
 const signToken = (id) =>
   jwt.sign({ id }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 
+function getRoleRedirect(role) {
+  const redirectMap = {
+    admin: '/admin/dashboard',
+    teacher: '/teacher/dashboard',
+    counsellor: '/counsellor/dashboard',
+    student: '/student/dashboard',
+  };
+
+  return redirectMap[role] || '/';
+}
+
 const setCookie = (res, token) => {
   res.cookie('token', token, {
     httpOnly: true,
@@ -48,13 +59,11 @@ exports.postLogin = async (req, res) => {
 
     console.log('✅ User logged in successfully:', { userId: user._id, email: user.email, role: user.role });
 
-    const redirectMap = {
-      admin: '/admin/dashboard',
-      teacher: '/teacher/dashboard',
-      counsellor: '/counsellor/dashboard',
-      student: '/student/dashboard',
-    };
-    res.redirect(redirectMap[user.role] || '/');
+    if (user.mustChangePassword || user.firstLoginCompleted === false) {
+      return res.redirect('/auth/force-change-password');
+    }
+
+    res.redirect(getRoleRedirect(user.role));
   } catch (err) {
     console.error('❌ Login error:', err);
     res.render('auth/login', { title: 'Login', error: 'Something went wrong' });
@@ -84,6 +93,21 @@ exports.postForgotPassword = async (req, res) => {
       });
     }
 
+    if (user.role === 'admin') {
+      const activeAdminCount = await User.countDocuments({
+        role: 'admin',
+        status: 'active',
+        isActive: true
+      });
+
+      if (activeAdminCount <= 1) {
+        return res.render('auth/forgot-password', {
+          title: 'Forgot Password',
+          error: 'Only one admin exists. Admin password recovery must be done from the server console with: npm run reset-admin-password'
+        });
+      }
+    }
+
     user.resetRequested = true;
     await user.save();
 
@@ -104,6 +128,71 @@ exports.logout = (req, res) => {
   res.redirect('/auth/login');
 };
 
+// GET /auth/force-change-password
+exports.getForceChangePassword = (req, res) => {
+  if (!req.user.mustChangePassword && req.user.firstLoginCompleted !== false) {
+    return res.redirect(getRoleRedirect(req.user.role));
+  }
+
+  res.render('auth/force-change-password', {
+    title: 'Set New Password',
+    user: req.user,
+    error: null
+  });
+};
+
+// POST /auth/force-change-password
+exports.postForceChangePassword = async (req, res) => {
+  const { newPassword, confirmPassword } = req.body;
+
+  try {
+    if (!newPassword || newPassword.trim().length < 8) {
+      return res.render('auth/force-change-password', {
+        title: 'Set New Password',
+        user: req.user,
+        error: 'Password must be at least 8 characters long.'
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.render('auth/force-change-password', {
+        title: 'Set New Password',
+        user: req.user,
+        error: 'New password and confirmation do not match.'
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+    const sameAsCurrent = await user.matchPassword(newPassword.trim());
+
+    if (sameAsCurrent) {
+      return res.render('auth/force-change-password', {
+        title: 'Set New Password',
+        user: req.user,
+        error: 'Please choose a password different from the temporary or initial password.'
+      });
+    }
+
+    user.password = newPassword.trim();
+    user.mustChangePassword = false;
+    user.passwordSetByAdmin = false;
+    user.firstLoginCompleted = true;
+    user.resetRequested = false;
+    user.passwordChangedAt = new Date();
+
+    await user.save();
+
+    res.redirect(`${getRoleRedirect(user.role)}?pwd_changed=1`);
+  } catch (err) {
+    console.error('Force password change error:', err);
+    res.render('auth/force-change-password', {
+      title: 'Set New Password',
+      user: req.user,
+      error: 'Unable to update password. Please try again.'
+    });
+  }
+};
+
 // GET /auth/profile
 exports.getProfile = async (req, res) => {
   res.render('auth/profile', { title: 'My Profile', user: req.user });
@@ -111,7 +200,7 @@ exports.getProfile = async (req, res) => {
 
 // POST /auth/profile
 exports.updateProfile = async (req, res) => {
-  const { name, phone, fatherName, motherName, dob, address, city } = req.body;
+  const { name, phone, fatherName, motherName, guardianPhone, dob, address, city } = req.body;
   console.log('👤 Profile update request:', { userId: req.user._id, role: req.user.role, name, phone, hasFile: !!req.file });
   try {
     if (req.user.role === 'student') {
@@ -120,6 +209,7 @@ exports.updateProfile = async (req, res) => {
         phone: phone ? phone.trim() : '',
         fatherName: fatherName ? fatherName.trim() : '',
         motherName: motherName ? motherName.trim() : '',
+        guardianPhone: guardianPhone ? guardianPhone.trim() : '',
         address: address ? address.trim() : '',
         city: city ? city.trim() : '',
         dob: dob ? new Date(dob) : null,
@@ -175,6 +265,10 @@ exports.changePassword = async (req, res) => {
     }
 
     user.password = newPassword.trim();
+    user.mustChangePassword = false;
+    user.passwordSetByAdmin = false;
+    user.firstLoginCompleted = true;
+    user.passwordChangedAt = new Date();
     await user.save(); // triggers bcrypt pre-save hook
     console.log('✅ Password changed successfully:', { userId: req.user._id });
     res.redirect('/auth/profile?updated=1');
@@ -225,7 +319,7 @@ exports.getInbox = async (req, res) => {
       const assignedBatches = teacherProfile ? await Schedule.distinct('batch', { teacher: teacherProfile._id }) : [];
       const batchStudents = await Student.find({ batch: { $in: assignedBatches } }).select('user counsellor');
       const batchUserIds = batchStudents.map(s => s.user).filter(Boolean);
-      
+
       const counsellorProfileIds = batchStudents.map(s => s.counsellor).filter(Boolean);
       const counsellors = await Counsellor.find({ _id: { $in: counsellorProfileIds } }).select('user');
       const counsellorUserIds = counsellors.map(c => c.user).filter(Boolean);
@@ -338,8 +432,55 @@ exports.getInbox = async (req, res) => {
     const selectedId = req.query.chat || (contacts.length > 0 ? contacts[0]._id.toString() : null);
 
     if (selectedId) {
-     selectedContact = await User.findById(selectedId).select('name role profilePic');
+      selectedContact = await User.findById(selectedId).select('name role profilePic phone email status');
       if (selectedContact) {
+        const Teacher = require('../models/Teacher');
+        const Counsellor = require('../models/Counsellor');
+
+        let extraInfo = {};
+        if (selectedContact.role === 'student') {
+          const studentDoc = await Student.findOne({ user: selectedContact._id })
+            .populate('course', 'name')
+            .populate('batch', 'name')
+            .populate({
+              path: 'counsellor',
+              populate: { path: 'user', select: 'name' }
+            })
+            .populate({
+              path: 'teacher',
+              populate: { path: 'user', select: 'name' }
+            });
+          if (studentDoc) {
+            extraInfo = {
+              rollNumber: studentDoc.rollNumber || '',
+              course: studentDoc.course ? studentDoc.course.name : '',
+              batch: studentDoc.batch ? studentDoc.batch.name : '',
+              counsellor: studentDoc.counsellor && studentDoc.counsellor.user ? studentDoc.counsellor.user.name : '',
+              teacher: studentDoc.teacher && studentDoc.teacher.user ? studentDoc.teacher.user.name : ''
+            };
+          }
+        } else if (selectedContact.role === 'teacher') {
+          const teacherDoc = await Teacher.findOne({ user: selectedContact._id }).populate('courses', 'name');
+          if (teacherDoc) {
+            extraInfo = {
+              rollNumber: teacherDoc.rollNumber || '',
+              qualification: teacherDoc.qualification || '',
+              experienceYears: teacherDoc.experienceYears || 0,
+              courses: teacherDoc.courses ? teacherDoc.courses.map(c => c.name).join(', ') : ''
+            };
+          }
+        } else if (selectedContact.role === 'counsellor') {
+          const counsellorDoc = await Counsellor.findOne({ user: selectedContact._id });
+          if (counsellorDoc) {
+            extraInfo = {
+              rollNumber: counsellorDoc.rollNumber || ''
+            };
+          }
+        }
+
+        selectedContact = selectedContact.toObject();
+        selectedContact.extraInfo = extraInfo;
+
         // Load history
         chatHistory = await Message.find({
           $or: [
@@ -413,7 +554,7 @@ exports.getInboxMessages = async (req, res) => {
   try {
     const Message = require('../models/Message');
     const { validateAndSanitizeMessage } = require('../utils/messageValidator');
-    
+
     // Auth check first
     await validateAndSanitizeMessage(req.user, contactId, 'check');
 
@@ -446,7 +587,7 @@ exports.postInboxSend = async (req, res) => {
   try {
     const Message = require('../models/Message');
     const { validateAndSanitizeMessage } = require('../utils/messageValidator');
-    
+
     let validateContent = content;
     const hasFiles = req.files && req.files.length > 0;
     if (!validateContent && hasFiles) {
@@ -467,7 +608,7 @@ exports.postInboxSend = async (req, res) => {
       });
     }
 
-    await Message.create({
+    const newMessage = await Message.create({
       sender: req.user._id,
       recipient: recipientId,
       content: cleanContent,
@@ -475,6 +616,9 @@ exports.postInboxSend = async (req, res) => {
       attachments
     });
 
+    if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
+      return res.json({ ok: true, message: newMessage });
+    }
     res.redirect(`/auth/inbox?chat=${recipientId}`);
   } catch (err) {
     console.error('❌ postInboxSend Error:', err);
@@ -660,5 +804,83 @@ exports.getGuide = async (req, res) => {
   } catch (err) {
     console.error('❌ getGuide Error:', err);
     res.status(500).render('500', { title: 'Error', user: req.user });
+  }
+};
+
+// GET /auth/inbox/user-profile/:id
+exports.getContactProfileData = async (req, res) => {
+  const contactId = req.params.id;
+  try {
+    const User = require('../models/User');
+    const Student = require('../models/Student');
+    const Teacher = require('../models/Teacher');
+    const Counsellor = require('../models/Counsellor');
+    const Course = require('../models/Course');
+    const Batch = require('../models/Batch');
+
+    const { validateAndSanitizeMessage } = require('../utils/messageValidator');
+    await validateAndSanitizeMessage(req.user, contactId, 'check');
+
+    const contact = await User.findById(contactId).select('name role profilePic phone email status');
+    if (!contact) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    let extraInfo = {};
+    if (contact.role === 'student') {
+      const studentDoc = await Student.findOne({ user: contact._id })
+        .populate('course', 'name')
+        .populate('batch', 'name')
+        .populate({
+          path: 'counsellor',
+          populate: { path: 'user', select: 'name' }
+        })
+        .populate({
+          path: 'teacher',
+          populate: { path: 'user', select: 'name' }
+        });
+      if (studentDoc) {
+        extraInfo = {
+          rollNumber: studentDoc.rollNumber || '',
+          course: studentDoc.course ? studentDoc.course.name : '',
+          batch: studentDoc.batch ? studentDoc.batch.name : '',
+          counsellor: studentDoc.counsellor && studentDoc.counsellor.user ? studentDoc.counsellor.user.name : '',
+          teacher: studentDoc.teacher && studentDoc.teacher.user ? studentDoc.teacher.user.name : ''
+        };
+      }
+    } else if (contact.role === 'teacher') {
+      const teacherDoc = await Teacher.findOne({ user: contact._id }).populate('courses', 'name');
+      if (teacherDoc) {
+        extraInfo = {
+          rollNumber: teacherDoc.rollNumber || '',
+          qualification: teacherDoc.qualification || '',
+          experienceYears: teacherDoc.experienceYears || 0,
+          courses: teacherDoc.courses ? teacherDoc.courses.map(c => c.name).join(', ') : ''
+        };
+      }
+    } else if (contact.role === 'counsellor') {
+      const counsellorDoc = await Counsellor.findOne({ user: contact._id });
+      if (counsellorDoc) {
+        extraInfo = {
+          rollNumber: counsellorDoc.rollNumber || ''
+        };
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        name: contact.name,
+        role: contact.role,
+        profilePic: contact.profilePic || '',
+        email: contact.email || '',
+        phone: contact.phone || '',
+        status: contact.status || 'active',
+        extraInfo
+      }
+    });
+  } catch (err) {
+    console.error('❌ getContactProfileData Error:', err);
+    res.status(500).json({ success: false, error: err.message || 'Internal Server Error' });
   }
 };

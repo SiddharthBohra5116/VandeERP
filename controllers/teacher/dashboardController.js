@@ -4,6 +4,7 @@ const Assignment = require('../../models/Assignment');
 const DailyUpdate = require('../../models/DailyUpdate');
 const Message = require('../../models/Message');
 const Schedule = require('../../models/Schedule');
+const Announcement = require('../../models/Announcement');
 const { todayIST } = require('../../utils/dateHelper');
 
 /**
@@ -21,7 +22,7 @@ exports.getDashboard = async (req, res) => {
   console.log('📊 Teacher Dashboard load:', { teacherId: req.user._id, today });
 
   try {
-    const [pendingAssignments, todayAttendance, recentUpdates, messages, schedules, admin, todaySchedules] = await Promise.all([
+    const [pendingAssignments, todayAttendance, recentUpdates, messages, schedules, admin, todaySchedules, activeAnnouncements] = await Promise.all([
       Assignment.find({ teacher: req.user.teacherProfileId, isActive: true, dueDate: { $gte: new Date() } })
         .populate('batch', 'name')
         .sort({ dueDate: 1 }).limit(5),
@@ -37,7 +38,23 @@ exports.getDashboard = async (req, res) => {
         .populate('course', 'name code')
         .populate('batch', 'name')
         .populate('classroom', 'name location').sort({ startTime: 1 }),
+      Announcement.find({
+        isActive: true,
+        $or: [
+          { audienceType: 'all' },
+          { audienceType: 'role', role: 'teacher' }
+        ]
+      }).populate('createdBy', 'name role').sort({ createdAt: -1 }).limit(5)
     ]);
+
+    const mappedAnnouncements = (activeAnnouncements || []).map(ann => ({
+      _id: ann._id,
+      content: `📢 [${ann.title}] ${ann.content}`,
+      sender: ann.createdBy,
+      createdAt: ann.createdAt
+    }));
+
+    const combinedMessages = [...mappedAnnouncements, ...(messages || [])];
 
     // ─── WEEKLY TIMETABLE ────────────────────────────────────────────────────
     const weekOffset = parseInt(req.query.weekOffset, 10) || 0;
@@ -96,7 +113,7 @@ exports.getDashboard = async (req, res) => {
       user: req.user,
       todayAttendance: todayAttendance || 0,
       pendingAssignments: pendingAssignments || [],
-      messages: messages || [],
+      messages: combinedMessages || [],
       schedules: schedules || [],
       todaySchedules: todaySchedules || [],
       recentUpdates: recentUpdates || [],

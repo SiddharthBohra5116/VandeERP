@@ -4,76 +4,230 @@
   title = isEdit ? `Edit: ${lead.name}` : 'Add New Lead';
   subtitle = isEdit ? 'Update prospect lead details' : 'Enter new candidate inquiry details';
   page = isEdit ? 'leads' : 'leads-new';
-  topbarActions = `<a href="/counsellor/leads" class="btn btn-ghost btn-sm">&larr; Back</a>`;
 %>
 
-<div style="max-width:640px;">
-  <div class="card">
+<style>
+  .form-section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 1.5rem 0 1rem 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.03em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .form-section-title:first-of-type {
+    margin-top: 0;
+  }
+
+  .premium-form-card {
+    position: relative;
+    overflow: hidden;
+    padding: 2rem;
+  }
+
+  .sparkle-decorator {
+    position: absolute;
+    bottom: -15px;
+    right: -15px;
+    width: 60px;
+    height: 60px;
+    color: var(--gold-border);
+    opacity: 0.2;
+    pointer-events: none;
+    transition: transform 0.5s ease;
+  }
+
+  .premium-form-card:hover .sparkle-decorator {
+    transform: scale(1.1) rotate(15deg);
+  }
+
+  /* Label Overrides */
+  .premium-label {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    color: var(--gold) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  /* Form Control custom overrides */
+  .premium-input {
+    border: 1px solid var(--border);
+    background: var(--bg-input);
+    color: var(--text);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    width: 100%;
+    min-height: 48px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+  }
+
+  .premium-input:focus {
+    border-color: var(--gold);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--gold-dim);
+  }
+
+  /* Action Buttons custom styling */
+  .btn-premium-save {
+    background: #eab308;
+    color: #000;
+    font-weight: 700;
+    padding: 10px 24px;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(234, 179, 8, 0.15);
+  }
+
+  .btn-premium-save:hover {
+    background: #ca8a04;
+    box-shadow: 0 6px 16px rgba(234, 179, 8, 0.25);
+  }
+
+  .btn-premium-cancel {
+    background: var(--border);
+    color: var(--text);
+    font-weight: 600;
+    padding: 10px 24px;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+  }
+
+  .btn-premium-cancel:hover {
+    background: var(--text-muted);
+    color: var(--bg-card);
+  }
+
+  /* Custom 2-column layout */
+  .form-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+
+  @media (max-width: 768px) {
+    .form-row-2 {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    .premium-form-card {
+      padding: 1.25rem;
+    }
+  }
+</style>
+
+<!-- Page Action Header -->
+<div style="display:flex; justify-content:flex-start; align-items:center; margin-bottom:1.25rem;">
+  <a href="/counsellor/leads" class="btn btn-ghost btn-sm" style="min-height:36px; display:inline-flex; align-items:center;">&larr; Back to Leads</a>
+</div>
+
+<div style="max-width:768px; margin: 0 auto;">
+  <div class="card premium-form-card">
+
+    <!-- Sparkle Decortor SVG -->
+    <svg class="sparkle-decorator" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.5 5.5l3 3M15.5 15.5l3 3M5.5 15.5l3-3M15.5 5.5l3-3" stroke-linecap="round"/>
+    </svg>
+
     <form action="<%= isEdit ? `/counsellor/leads/${lead._id}/edit` : '/counsellor/leads/create' %>" method="POST">
       <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
 
-      <div class="form-row">
+      <!-- SECTION 1: Contact Details -->
+      <div class="form-section-title">Contact Details</div>
+
+      <div class="form-row-2">
         <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Full Name *</label>
-          <input type="text" name="name" class="form-control" placeholder="Prospect name" required
+          <label class="premium-label">Full Name *</label>
+          <input type="text" name="name" class="premium-input" placeholder="Prospect's full name" required
             value="<%= isEdit ? lead.name : '' %>">
         </div>
         <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Phone *</label>
-          <input type="tel" name="phone" class="form-control" placeholder="9876543210" required
+          <label class="premium-label">Phone *</label>
+          <input type="tel" name="phone" class="premium-input" placeholder="e.g., 9876543210" required
             value="<%= isEdit ? lead.phone : '' %>">
         </div>
       </div>
 
-      <div class="form-group">
-        <label class="form-label" style="font-size: 10px;">Email Address</label>
-        <input type="email" name="email" class="form-control" placeholder="name@email.com"
+      <div class="form-group" style="margin-top: 1rem;">
+        <label class="premium-label">Email Address *</label>
+        <input type="email" name="email" class="premium-input" placeholder="your_email@example.com" required
           value="<%= isEdit ? lead.email : '' %>">
       </div>
 
-      <div class="form-row">
+      <!-- SECTION 2: Lead Context -->
+      <div class="form-section-title" style="margin-top: 2rem;">Lead Context</div>
+
+      <div class="form-row-2">
         <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Course Interest *</label>
-          <select name="course" class="form-control" required>
+          <label class="premium-label">Course Interest *</label>
+          <select name="course" class="premium-input" required>
             <% ['Video Editing','Digital Marketing','Both','Undecided'].forEach(c => { %>
-              <option value="<%= c %>" <%= isEdit && lead.course === c ? 'selected' : '' %>><%= c %></option>
+              <option value="<%= c %>" <%= isEdit && (lead.interestedCourse ? lead.interestedCourse.name === c : c === 'Undecided') ? 'selected' : '' %>><%= c %></option>
             <% }); %>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Lead Source *</label>
-          <select name="source" class="form-control" required>
-            <% ['Walk-in','Website','Referral','Social Media','Advertisement','WhatsApp','Other'].forEach(s => { %>
+          <label class="premium-label">Lead Source *</label>
+          <select name="source" class="premium-input" required>
+            <% ['Walk-in','Website','Referral','Instagram','Facebook','LinkedIn','Advertisement','WhatsApp','Other'].forEach(s => { %>
               <option value="<%= s %>" <%= isEdit && lead.source === s ? 'selected' : '' %>><%= s %></option>
             <% }); %>
           </select>
         </div>
       </div>
 
-      <div class="form-row">
+      <!-- SECTION 3: Follow-up & Notes -->
+      <div class="form-section-title" style="margin-top: 2rem;">Follow-up & Notes</div>
+
+      <div class="form-row-2">
         <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Status</label>
-          <select name="status" class="form-control">
+          <label class="premium-label">Status</label>
+          <select name="status" class="premium-input">
             <% ['new','contacted','mentorship_scheduled','mentorship_attended','follow_up','joining_interested','admission_completed','lost'].forEach(s => { %>
               <option value="<%= s %>" <%= isEdit && lead.status === s ? 'selected' : (!isEdit && s === 'new' ? 'selected' : '') %>><%= s.charAt(0).toUpperCase() + s.slice(1) %></option>
             <% }); %>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Next Follow-up Date</label>
-          <input type="date" name="followUpDate" class="form-control"
-            value="<%= isEdit && lead.followUpDate ? new Date(lead.followUpDate).toISOString().split('T')[0] : '' %>">
+          <label class="premium-label">Next Follow-up Date</label>
+          <input type="date" name="followUpDate" class="premium-input"
+            value="<%= isEdit && lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt).toISOString().split('T')[0] : '' %>">
         </div>
       </div>
 
-      <div class="form-group">
-        <label class="form-label" style="font-size: 10px;">Interaction Notes / Remarks</label>
-        <textarea name="notes" class="form-control" placeholder="Any additional context or summary notes..."><%= isEdit ? lead.notes : '' %></textarea>
+      <div class="form-group" style="margin-top: 1rem;">
+        <label class="premium-label">Interaction Notes / Remarks</label>
+        <textarea name="notes" class="premium-input" placeholder="Any additional context or summary notes..." style="min-height: 120px; resize: vertical;"><%= isEdit ? lead.notes : '' %></textarea>
+        <span style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; margin-top: 6px; display: block; letter-spacing: 0.05em;">MAX 500</span>
       </div>
 
-      <div style="display:flex; gap:10px; justify-content:flex-end; padding-top:12px; border-top:1px solid var(--border); margin-top:16px;">
-        <a href="/counsellor/leads" class="btn btn-ghost">Cancel</a>
-        <button type="submit" class="btn btn-primary">
+      <!-- Action Buttons -->
+      <div style="display:flex; gap:12px; justify-content:flex-end; padding-top:1.5rem; border-top:1px solid var(--border); margin-top:2rem;">
+        <a href="/counsellor/leads" class="btn-premium-cancel">Cancel</a>
+        <button type="submit" class="btn-premium-save">
           <%= isEdit ? 'Update Lead File' : 'Save New Lead' %>
         </button>
       </div>

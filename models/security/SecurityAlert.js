@@ -1,5 +1,5 @@
 /**
- * SecurityAlert Model — AntiGravity
+ * SecurityAlert Model — Security
  * Central event log. 7-day auto-expiry via MongoDB TTL index.
  * Always write via createAlert() helper, never directly.
  */

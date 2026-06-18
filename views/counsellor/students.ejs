@@ -1,0 +1,130 @@
+<%
+  layout = 'main';
+  title = 'My Students';
+  subtitle = `${students.length} students assigned to you`;
+  page = 'my-students';
+%>
+
+<!-- Summary Stats -->
+<div class="stats-grid" style="margin-bottom:24px;">
+  <div class="stat-card green">
+    <div class="stat-label">Total Students</div>
+    <div class="stat-value"><%= students.length %></div>
+    <div class="stat-sub">Assigned to you</div>
+  </div>
+  <div class="stat-card blue">
+    <div class="stat-label">Active</div>
+    <div class="stat-value"><%= activeCount %></div>
+    <div class="stat-sub">Currently enrolled</div>
+  </div>
+  <% const courseEntries = Object.entries(courseMap); %>
+  <% if (courseEntries.length > 0) { %>
+    <% courseEntries.slice(0, 2).forEach(([courseName, count]) => { %>
+      <div class="stat-card gold">
+        <div class="stat-label"><%= courseName %></div>
+        <div class="stat-value"><%= count %></div>
+        <div class="stat-sub">students</div>
+      </div>
+    <% }); %>
+  <% } else { %>
+    <div class="stat-card gold">
+      <div class="stat-label">Courses</div>
+      <div class="stat-value">0</div>
+      <div class="stat-sub">No data yet</div>
+    </div>
+  <% } %>
+</div>
+
+<!-- Search Bar -->
+<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+  <form method="GET" action="/counsellor/students" class="filter-bar" style="margin: 0; display: flex; gap: 0.75rem;">
+    <input type="text" name="search" class="form-control" placeholder="Search by name, phone, or email..." value="<%= (typeof filter !== 'undefined' && filter.search) ? filter.search : '' %>" style="flex: 1; padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
+    <a href="/counsellor/students" class="btn btn-ghost btn-sm">Clear</a>
+  </form>
+</div>
+
+<!-- Student Table -->
+<div id="results-container" class="card">
+  <% if (students.length === 0) { %>
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      <p>No students assigned to you yet. Convert leads or ask admin to assign students.</p>
+    </div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Student</th>
+            <th>Roll No.</th>
+            <th>Phone</th>
+            <th>Course</th>
+            <th>Batch</th>
+            <th>Enrolled</th>
+            <th>Status</th>
+            <th>Fee Progress</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% students.forEach((s, i) => { %>
+            <%
+              const statusBadgeClass = {
+                active: 'badge-green',
+                inactive: 'badge-grey',
+                drop: 'badge-red',
+                complete: 'badge-gold'
+              }[s.status] || 'badge-grey';
+
+              const feeBadgeClass = {
+                paid: 'badge-green',
+                partial: 'badge-orange',
+                overdue: 'badge-red',
+                unpaid: 'badge-grey'
+              }[s.feeStatus] || 'badge-grey';
+            %>
+            <tr>
+              <td class="td-mono text-muted"><%= i + 1 %></td>
+              <td>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <div style="width:30px; height:30px; border-radius:8px; background:var(--gold-dim); border:1px solid var(--gold-border); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--gold); flex-shrink:0;">
+                    <%= s.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2) %>
+                  </div>
+                  <div>
+                    <strong style="display:block; line-height:1.2;"><%= s.name %></strong>
+                    <span style="font-size:10px; color:var(--text-muted); font-family:var(--mono);"><%= s.email || '' %></span>
+                  </div>
+                </div>
+              </td>
+              <td class="td-mono" style="font-size:11px; color:var(--gold); font-weight:600;"><%= s.rollNumber || '—' %></td>
+              <td class="td-mono"><%= s.phone %></td>
+              <td><span class="badge badge-orange"><%= s.course %></span></td>
+              <td class="td-muted"><%= s.batch %></td>
+              <td class="td-mono td-muted">
+                <%= s.enrollmentDate ? new Date(s.enrollmentDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'}) : '—' %>
+              </td>
+              <td>
+                <span class="badge <%= statusBadgeClass %>"><%= s.status %></span>
+              </td>
+              <td>
+                <div style="min-width:100px;">
+                  <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted); font-family:var(--mono); margin-bottom:4px;">
+                    <span>₹<%= (s.fees_paid||0).toLocaleString('en-IN') %></span>
+                    <span style="font-weight:600;"><%= s.feePct %>%</span>
+                  </div>
+                  <div class="progress-bar" style="margin-bottom:5px;">
+                    <div class="progress-fill <%= s.feePct === 100 ? 'green' : s.feePct > 50 ? '' : 'red' %>"
+                         style="width:<%= s.feePct %>%"></div>
+                  </div>
+                  <span class="badge <%= feeBadgeClass %>" style="font-size:9px; padding:1px 5px; text-transform:uppercase;"><%= s.feeStatus %></span>
+                </div>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<script src="/js/instant-filter.js"></script>

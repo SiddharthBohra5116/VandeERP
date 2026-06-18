@@ -7,6 +7,7 @@ const pendingProfileUpdateSchema = new mongoose.Schema({
   profilePic: { type: String, default: null },
   fatherName: { type: String, default: null },
   motherName: { type: String, default: null },
+  guardianPhone: { type: String, default: null },
   address: { type: String, default: null },
   city: { type: String, default: null },
   dob: { type: Date, default: null },
@@ -105,6 +106,7 @@ const studentSchema = new mongoose.Schema({
       profilePic: null,
       fatherName: null,
       motherName: null,
+      guardianPhone: null,
       address: null,
       city: null,
       dob: null,
@@ -203,6 +205,30 @@ studentSchema.virtual('status').get(function() {
 
 studentSchema.virtual('profilePic').get(function() {
   return this.user && this.user.profilePic ? this.user.profilePic : '';
+});
+
+studentSchema.virtual('fatherName').get(function() {
+  return this.family && this.family.father && this.family.father.name ? this.family.father.name : '';
+});
+
+studentSchema.virtual('motherName').get(function() {
+  return this.family && this.family.mother && this.family.mother.name ? this.family.mother.name : '';
+});
+
+studentSchema.virtual('guardianPhone').get(function() {
+  return this.family && this.family.guardian && this.family.guardian.phone ? this.family.guardian.phone : '';
+});
+
+studentSchema.virtual('address').get(function() {
+  return this.user && this.user.address ? this.user.address : '';
+});
+
+studentSchema.virtual('city').get(function() {
+  return this.user && this.user.city ? this.user.city : '';
+});
+
+studentSchema.virtual('dob').get(function() {
+  return this.user && this.user.dob ? this.user.dob : null;
 });
 
 studentSchema.pre('save', async function(next) {

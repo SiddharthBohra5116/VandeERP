@@ -71,7 +71,7 @@ async function validateAndSanitizeMessage(sender, recipientId, content) {
     if (recipient.role === 'student') {
       const recipientStudent = await Student.findOne({ user: recipient._id });
       const isAssignedStudent = recipientStudent && recipientStudent.batch && 
-                                assignedBatches.some(bId => bId.toString() === recipientStudent.batch.toString());
+                                assignedBatches.some(bId => bId && bId.toString() === recipientStudent.batch.toString());
       if (!isAssignedStudent) {
         throw new Error('Teachers are only authorized to message students in their assigned batches, other teachers, relevant counsellors, or an administrator.');
       }

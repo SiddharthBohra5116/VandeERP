@@ -1,5 +1,5 @@
 /**
- * TokenBlacklist Model — AntiGravity Module 3 (JWT Sentinel)
+ * TokenBlacklist Model — Security Module 3 (JWT Sentinel)
  * Stores individual JWTs that have been explicitly invalidated.
  * TTL index on expiresAt auto-cleans entries after the token would
  * have expired anyway — keeps collection small.

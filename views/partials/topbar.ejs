@@ -65,7 +65,16 @@
               <% } else { %>
                 <span class="header-unread-count" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500; display: none;">0 Unread</span>
               <% } %>
+              <button type="button" class="notification-close-btn" id="notificationCloseBtn" aria-label="Close notifications">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
             </div>
+          </div>
+          <div class="notification-filters" role="tablist" aria-label="Notification filters">
+            <button class="notification-filter active" type="button" data-filter="all">All <span data-count-for="all">0</span></button>
+            <button class="notification-filter" type="button" data-filter="tasks">Tasks <span data-count-for="tasks">0</span></button>
+            <button class="notification-filter" type="button" data-filter="messages">Messages <span data-count-for="messages">0</span></button>
+            <button class="notification-filter" type="button" data-filter="alerts">Alerts <span data-count-for="alerts">0</span></button>
           </div>
           <div class="notification-list" style="padding: 4px 0;">
             <% if (typeof notifications !== 'undefined' && notifications.length > 0) { %>
@@ -111,21 +120,165 @@
       <!-- Script for Notification Management -->
       <script>
       document.addEventListener('DOMContentLoaded', () => {
-        const dropdown = document.getElementById('notificationDropdown');otificationDropdown');
+        const dropdown = document.getElementById('notificationDropdown');
         if (!dropdown) return;
+        const bellBtn = document.getElementById('notificationBellBtn');
+        const closeBtn = document.getElementById('notificationCloseBtn');
+        const emptyStateHtml = '<div class="notification-empty">No unread notifications</div>';
+        let activeNotificationFilter = 'all';
+        let latestNotifications = [];
+
+        const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[char]));
+
+        const iconForType = (type) => ({
+          message: 'MSG',
+          reset_request: 'KEY',
+          fee_overdue: 'FEE',
+          fee_due_soon: 'FEE',
+          schedule: 'CLS',
+          low_attendance: 'ATT',
+          homework_due: 'HW',
+          homework_overdue: 'HW',
+          assignment_graded: 'GRD',
+          grading_pending: 'GRD',
+          ready_to_convert: 'CRM',
+          followup_gap: 'CRM',
+          profile_request: 'PRF',
+          leave_request: 'LVE',
+          announcement: 'ANN'
+        }[type] || 'NEW');
+
+        const categoryForType = (type) => {
+          if (['message'].includes(type)) return 'messages';
+          if (['assignment_graded', 'grading_pending', 'homework_due', 'homework_overdue', 'schedule', 'profile_request', 'leave_request'].includes(type)) return 'tasks';
+          if (['fee_overdue', 'fee_due_soon', 'low_attendance', 'ready_to_convert', 'followup_gap', 'reset_request'].includes(type)) return 'alerts';
+          return 'updates';
+        };
+
+        const priorityForType = (type) => {
+          if (['fee_overdue', 'low_attendance', 'homework_overdue', 'reset_request', 'profile_request', 'leave_request'].includes(type)) return 'high';
+          if (['fee_due_soon', 'ready_to_convert', 'followup_gap', 'grading_pending', 'assignment_graded'].includes(type)) return 'medium';
+          return 'normal';
+        };
+
+        const actionForType = (type) => ({
+          message: 'Reply',
+          assignment_graded: 'View result',
+          grading_pending: 'Grade',
+          homework_due: 'Open',
+          homework_overdue: 'Review',
+          fee_overdue: 'Open ledger',
+          fee_due_soon: 'Open ledger',
+          schedule: 'View class',
+          ready_to_convert: 'Convert',
+          followup_gap: 'Open lead',
+          reset_request: 'Review',
+          profile_request: 'Review',
+          leave_request: 'Review',
+          announcement: 'Open'
+        }[type] || 'Open');
+
+        const relativeTime = (value) => {
+          if (!value) return '';
+          const then = new Date(value).getTime();
+          if (Number.isNaN(then)) return '';
+          const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000));
+          if (seconds < 60) return 'Just now';
+          const minutes = Math.floor(seconds / 60);
+          if (minutes < 60) return `${minutes} min ago`;
+          const hours = Math.floor(minutes / 60);
+          if (hours < 24) return `${hours} hr ago`;
+          const days = Math.floor(hours / 24);
+          if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
+          return new Date(value).toLocaleDateString();
+        };
+
+        const filterNotifications = (notifications) => {
+          if (activeNotificationFilter === 'all') return notifications;
+          return notifications.filter(n => categoryForType(n.type) === activeNotificationFilter);
+        };
+
+        const renderFilterCounts = (notifications) => {
+          const counts = { all: notifications.length, tasks: 0, messages: 0, alerts: 0 };
+          notifications.forEach(n => {
+            const category = categoryForType(n.type);
+            if (Object.prototype.hasOwnProperty.call(counts, category)) counts[category]++;
+          });
+          Object.entries(counts).forEach(([key, count]) => {
+            const target = dropdown.querySelector(`[data-count-for="${key}"]`);
+            if (target) target.textContent = count;
+          });
+        };
+
+        const setActiveFilter = (filter) => {
+          activeNotificationFilter = filter;
+          dropdown.querySelectorAll('.notification-filter').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.filter === filter);
+          });
+          renderNotifications(latestNotifications);
+        };
+
+        const closeDropdown = () => {
+          dropdown.classList.remove('is-open');
+          dropdown.style.display = 'none';
+        };
+
+        const openDropdown = () => {
+          dropdown.classList.add('is-open');
+          dropdown.style.display = 'block';
+        };
+
+        if (bellBtn) {
+          bellBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (dropdown.classList.contains('is-open')) closeDropdown();
+            else openDropdown();
+          });
+        }
+
+        if (closeBtn) {
+          closeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeDropdown();
+          });
+        }
+
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') closeDropdown();
+        });
+
+        document.addEventListener('click', (e) => {
+          if (!dropdown.contains(e.target) && !bellBtn?.contains(e.target)) {
+            closeDropdown();
+          }
+        });
+
+        dropdown.addEventListener('click', (e) => {
+          const filterBtn = e.target.closest('.notification-filter');
+          if (!filterBtn) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setActiveFilter(filterBtn.dataset.filter || 'all');
+        });
 
         const updateBellBadge = (newCount) => {
-          const bellBtn = document.getElementById('notificationBellBtn');
           if (!bellBtn) return;
-          let badge = bellBtn.querySelector('.badge');
+          let badge = bellBtn.querySelector('.notification-badge');
           if (newCount > 0) {
             if (!badge) {
               badge = document.createElement('span');
-              badge.className = 'badge';
-              badge.style.cssText = 'position: absolute; top: 2px; right: 2px; background: var(--error, #ef4444); color: white; border-radius: 50%; font-size: 0.65rem; min-width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid var(--bg-card);';
+              badge.className = 'notification-badge';
               bellBtn.appendChild(badge);
             }
-            badge.textContent = newCount;
+            badge.textContent = newCount > 99 ? '99+' : newCount;
           } else if (badge) {
             badge.remove();
           }
@@ -143,19 +296,24 @@
         };
 
         const renderNotifications = (notifications) => {
+          latestNotifications = Array.isArray(notifications) ? notifications : [];
+          renderFilterCounts(latestNotifications);
+          const visibleNotifications = filterNotifications(latestNotifications);
           const listContainer = dropdown.querySelector('.notification-list');
           if (!listContainer) return;
           
-          if (!notifications || notifications.length === 0) {
-            listContainer.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">No unread notifications</div>`;
+          if (!visibleNotifications || visibleNotifications.length === 0) {
+            listContainer.innerHTML = latestNotifications.length === 0
+              ? emptyStateHtml
+              : '<div class="notification-empty">No notifications in this filter</div>';
             const markAllBtn = document.getElementById('markAllNotificationsReadBtn');
-            if (markAllBtn) markAllBtn.remove();
+            if (markAllBtn && latestNotifications.length === 0) markAllBtn.remove();
             return;
           }
           
           // Ensure mark all read button exists if there are notifications
           let markAllBtn = document.getElementById('markAllNotificationsReadBtn');
-          const headerRight = dropdown.querySelector('div[style*="display: flex; gap: 8px;"]');
+          const headerRight = dropdown.querySelector('.notification-dropdown-header .d-flex');
           if (headerRight && !markAllBtn) {
             markAllBtn = document.createElement('button');
             markAllBtn.id = 'markAllNotificationsReadBtn';
@@ -167,7 +325,7 @@
               e.preventDefault();
               e.stopPropagation();
               const wrappers = listContainer.querySelectorAll('.notification-wrapper');
-              const ids = Array.from(wrappers).map(w => w.getAttribute('data-id'));
+              const ids = latestNotifications.map(n => String(n.id));
               if (ids.length === 0) return;
               wrappers.forEach((w) => {
                 w.style.transition = 'all 0.3s ease';
@@ -175,7 +333,9 @@
                 w.style.transform = 'translateX(20px)';
               });
               setTimeout(() => {
-                listContainer.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">No unread notifications</div>`;
+                latestNotifications = [];
+                listContainer.innerHTML = emptyStateHtml;
+                renderFilterCounts(latestNotifications);
                 updateBellBadge(0);
                 markAllBtn.remove();
               }, 300);
@@ -191,7 +351,15 @@
             });
           }
           
-          listContainer.innerHTML = notifications.map(n => {
+          const sanitizedNotifications = visibleNotifications.map(n => ({
+            ...n,
+            id: escapeHtml(n.id),
+            title: escapeHtml(n.title),
+            message: escapeHtml(n.message),
+            link: escapeHtml(n.link || '#')
+          }));
+
+          listContainer.innerHTML = sanitizedNotifications.map(n => {
             let icon = '🔔';
             if (n.type === 'message') icon = '💬';
             else if (n.type === 'reset_request') icon = '🔑';
@@ -201,14 +369,24 @@
             
             const timeStr = n.date ? new Date(n.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
             const dateStr = n.date ? new Date(n.date).toLocaleDateString() : '';
+            const category = categoryForType(n.type);
+            const priority = priorityForType(n.type);
+            const action = actionForType(n.type);
+            const timeLabel = relativeTime(n.date);
             
             return `
-              <div class="notification-wrapper" data-id="${n.id}">
+              <div class="notification-wrapper priority-${priority}" data-id="${n.id}" data-category="${category}">
                 <a href="${n.link || '#'}" class="notification-item">
                   <div class="notification-item-title">
-                    ${icon} ${n.title}
+                    <span class="notification-unread-dot"></span>
+                    <span class="notification-type-chip">${iconForType(n.type)}</span>
+                    <span class="notification-title-text">${n.title}</span>
                   </div>
                   <div class="notification-item-body">${n.message}</div>
+                  <div class="notification-item-meta">
+                    <span>${timeLabel}</span>
+                    <span class="notification-action-label">${action}</span>
+                  </div>
                   ${n.date ? `<div class="notification-item-time">${timeStr} — ${dateStr}</div>` : ''}
                 </a>
                 <button class="dismiss-btn dismiss-notification-btn" data-id="${n.id}" aria-label="Dismiss">
@@ -233,6 +411,38 @@
                 resetItem.appendChild(b);
               }
               b.textContent = badges.resetRequests;
+            } else if (b) {
+              b.remove();
+            }
+          }
+
+          const profileRequestsItem = document.querySelector('a[href="/admin/profile-requests"]');
+          if (profileRequestsItem) {
+            let b = profileRequestsItem.querySelector('.badge');
+            if (badges.profileRequests > 0) {
+              if (!b) {
+                b = document.createElement('span');
+                b.className = 'badge badge-gold';
+                b.style.cssText = 'margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 5px;';
+                profileRequestsItem.appendChild(b);
+              }
+              b.textContent = badges.profileRequests;
+            } else if (b) {
+              b.remove();
+            }
+          }
+
+          const leavesItem = document.querySelector('a[href="/admin/holidays-leaves"]');
+          if (leavesItem) {
+            let b = leavesItem.querySelector('.badge');
+            if (badges.pendingLeaves > 0) {
+              if (!b) {
+                b = document.createElement('span');
+                b.className = 'badge badge-gold';
+                b.style.cssText = 'margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 5px;';
+                leavesItem.appendChild(b);
+              }
+              b.textContent = badges.pendingLeaves;
             } else if (b) {
               b.remove();
             }
@@ -346,15 +556,19 @@
             wrapper.style.transform = 'translateX(20px)';
 
             setTimeout(() => {
+              latestNotifications = latestNotifications.filter(n => String(n.id) !== String(id));
+              renderFilterCounts(latestNotifications);
               wrapper.remove();
               const list = dropdown.querySelector('.notification-list');
               const items = list.querySelectorAll('.notification-wrapper');
-              updateBellBadge(items.length);
+              updateBellBadge(latestNotifications.length);
 
               if (items.length === 0) {
-                list.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">No unread notifications</div>`;
+                list.innerHTML = latestNotifications.length === 0
+                  ? emptyStateHtml
+                  : '<div class="notification-empty">No notifications in this filter</div>';
                 const markAllBtn = document.getElementById('markAllNotificationsReadBtn');
-                if (markAllBtn) markAllBtn.remove();
+                if (markAllBtn && latestNotifications.length === 0) markAllBtn.remove();
               }
             }, 300);
 

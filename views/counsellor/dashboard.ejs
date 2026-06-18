@@ -141,7 +141,7 @@
               <div style="flex: 1; min-width: 0; margin-right: 8px;">
                 <div style="font-size:12px; font-weight:600; color:var(--text); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"><%= lead.name %></div>
                 <div style="font-size:10px; color:var(--text-sub); margin-top:2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                  📞 <%= lead.phone %> &nbsp;·&nbsp; <span style="color:var(--red); font-weight:600;"><%= new Date(lead.followUpDate).toLocaleDateString('en-IN') %></span>
+                  📞 <%= lead.phone %> &nbsp;·&nbsp; <span style="color:var(--red); font-weight:600;"><%= new Date(lead.nextFollowUpAt).toLocaleDateString('en-IN') %></span>
                 </div>
               </div>
               <a href="/counsellor/leads/<%= lead._id %>" class="btn btn-ghost btn-xs" style="flex-shrink: 0;">Open</a>
@@ -164,7 +164,7 @@
               <div style="flex: 1; min-width: 0; margin-right: 8px;">
                 <div style="font-size:12px; font-weight:600; color:var(--text); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"><%= lead.name %></div>
                 <div style="font-size:10px; color:var(--text-sub); margin-top:2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                  📞 <%= lead.phone %> &nbsp;·&nbsp; <span style="color:var(--gold); font-weight:600;"><%= lead.followUpDate ? new Date(lead.followUpDate).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : 'Today' %></span>
+                  📞 <%= lead.phone %> &nbsp;·&nbsp; <span style="color:var(--gold); font-weight:600;"><%= lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : 'Today' %></span>
                 </div>
               </div>
               <a href="/counsellor/leads/<%= lead._id %>" class="btn btn-ghost btn-xs" style="flex-shrink: 0;">Open</a>
@@ -251,7 +251,7 @@
             <tr>
               <td><strong><%= lead.name %></strong></td>
               <td class="td-mono"><%= lead.phone %></td>
-              <td><span class="badge badge-orange"><%= lead.course %></span></td>
+              <td><span class="badge badge-orange"><%= lead.interestedCourse ? lead.interestedCourse.name : 'Undecided' %></span></td>
               <td class="td-muted"><%= lead.source %></td>
               <td>
                 <%
@@ -269,7 +269,7 @@
                 <span class="badge <%= statusBadge %>"><%= lead.status %></span>
               </td>
               <td class="td-mono td-muted">
-                <%= lead.followUpDate ? new Date(lead.followUpDate).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) : '—' %>
+                <%= lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) : '—' %>
               </td>
               <td>
                 <a href="/counsellor/leads/<%= lead._id %>" class="btn btn-ghost btn-xs">View</a>

@@ -6,8 +6,76 @@ const Schedule = require('../models/Schedule');
 const Assignment = require('../models/Assignment');
 const Attendance = require('../models/Attendance');
 const Lead = require('../models/Lead');
+const LeaveRequest = require('../models/LeaveRequest');
+const Announcement = require('../models/Announcement');
 const { todayIST } = require('../utils/dateHelper');
 const Student = require('../models/Student');
+const logger = require('../utils/logger');
+
+function getRoleProfileId(user, role) {
+  if (role === 'teacher') return user.teacherProfileId || null;
+  if (role === 'counsellor') return user.counsellorProfileId || null;
+  if (role === 'student') return user.studentProfileId || null;
+  return null;
+}
+
+function isUnread(user, id) {
+  return !user.readNotifications || !user.readNotifications.includes(String(id));
+}
+
+function truncateText(value, maxLength = 90) {
+  const text = String(value || '').trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 3)}...`;
+}
+
+async function getAnnouncementAlerts(user) {
+  const audience = [
+    { audienceType: 'all' },
+    { audienceType: 'role', role: user.role }
+  ];
+
+  if (user.role === 'student') {
+    const studentProfile = getRoleProfileId(user, 'student')
+      ? await Student.findById(getRoleProfileId(user, 'student')).populate({
+        path: 'counsellor',
+        populate: { path: 'user', select: '_id' }
+      })
+      : await Student.findOne({ user: user._id }).populate({
+        path: 'counsellor',
+        populate: { path: 'user', select: '_id' }
+      });
+
+    if (studentProfile?.course) {
+      audience.push({ audienceType: 'course', course: studentProfile.course });
+    }
+    if (studentProfile?.batch) {
+      audience.push({ audienceType: 'batch', batch: studentProfile.batch });
+    }
+    if (studentProfile?.counsellor?.user?._id) {
+      audience.push({ audienceType: 'counsellor', counsellor: studentProfile.counsellor.user._id });
+    }
+  }
+
+  const announcements = await Announcement.find({
+    isActive: true,
+    createdBy: { $ne: user._id },
+    $or: audience
+  })
+    .populate('createdBy', 'name role')
+    .sort({ createdAt: -1 })
+    .limit(8);
+
+  return announcements.map(ann => ({
+    id: `ann-${ann._id}`,
+    type: 'announcement',
+    title: ann.title,
+    message: truncateText(ann.content, 100),
+    link: `/${user.role}/dashboard`,
+    date: ann.createdAt,
+    senderId: ann.createdBy?._id?.toString() || null
+  }));
+}
 
 async function calculateNotifications(user) {
   const alerts = [];
@@ -24,16 +92,23 @@ async function calculateNotifications(user) {
       .limit(5);
 
     unreadMsgs.forEach(m => {
+      const senderId = m.sender ? m.sender._id.toString() : null;
+      const isAssignmentGrade = /^Assignment graded:/i.test(m.content || '');
       alerts.push({
         id: m._id.toString(),
-        type: 'message',
-        senderId: m.sender ? m.sender._id.toString() : null,
-        title: `Message from ${m.sender ? m.sender.name : 'System'}`,
-        message: m.content.length > 60 ? `${m.content.substring(0, 57)}...` : m.content,
-        link: user.role === 'admin' ? '/admin/dashboard' : `/${user.role}/dashboard`,
+        type: isAssignmentGrade ? 'assignment_graded' : 'message',
+        senderId,
+        title: isAssignmentGrade
+          ? 'Assignment Graded'
+          : `Message from ${m.sender ? m.sender.name : 'System'}`,
+        message: truncateText(m.content, 100),
+        link: senderId ? `/auth/inbox?chat=${senderId}` : '/auth/inbox',
         date: m.createdAt
       });
     });
+
+    const announcementAlerts = await getAnnouncementAlerts(user);
+    alerts.push(...announcementAlerts);
 
     // 2. Role-specific alerts
     if (user.role === 'admin') {
@@ -63,10 +138,46 @@ async function calculateNotifications(user) {
         });
       });
 
+      const profileRequests = await Student.find({
+        'pendingProfileUpdate.requestedAt': { $ne: null }
+      })
+        .populate('user', 'name')
+        .sort({ 'pendingProfileUpdate.requestedAt': -1 })
+        .limit(5);
+      profileRequests.forEach(s => {
+        alerts.push({
+          id: `profile-request-${s._id}`,
+          type: 'profile_request',
+          title: 'Profile Update Request',
+          message: `${s.user?.name || 'A student'} submitted profile changes for approval.`,
+          link: '/admin/profile-requests',
+          date: s.pendingProfileUpdate?.requestedAt
+        });
+      });
+
+      const pendingLeaves = await LeaveRequest.find({ status: 'pending' })
+        .populate('user', 'name role')
+        .sort({ appliedAt: -1, createdAt: -1 })
+        .limit(5);
+      pendingLeaves.forEach(l => {
+        alerts.push({
+          id: `leave-request-${l._id}`,
+          type: 'leave_request',
+          title: 'Leave Request Pending',
+          message: `${l.user?.name || 'Staff'} requested leave approval.`,
+          link: '/admin/holidays-leaves',
+          date: l.appliedAt || l.createdAt
+        });
+      });
+
       // Overdue fees
       const now = new Date();
       const fees = await Fee.find({ dueDate: { $lt: now } })
-        .populate('student', 'name _id')
+        .populate({
+          path: 'student',
+          select: 'user',
+          populate: { path: 'user', select: 'name' }
+        })
         .limit(20)
         .lean();
       const overdueFees = fees.filter(f => {
@@ -81,34 +192,43 @@ async function calculateNotifications(user) {
           id: f._id.toString(),
           type: 'fee_overdue',
           title: 'Fee Overdue Alert',
-          message: `${f.student.name}'s fees are overdue (₹${due}).`,
+          message: `${f.student.user?.name || 'Student'}'s fees are overdue (Rs. ${due}).`,
           link: `/admin/fees/${f.student._id}`,
           date: f.updatedAt
         });
       });
 
     } else if (user.role === 'teacher') {
+      const teacherProfileId = getRoleProfileId(user, 'teacher');
+      if (!teacherProfileId) return alerts;
+
       // Upcoming schedules today
       const schedules = await Schedule.find({
-        teacher: user._id,
+        teacher: teacherProfileId,
         date: todayStr, // Simple string match works perfectly
         status: 'scheduled'
-      }).sort({ startTime: 1 });
+      })
+        .populate('course', 'name')
+        .populate('batch', 'name')
+        .sort({ startTime: 1 });
 
       schedules.forEach(s => {
         alerts.push({
           id: s._id.toString(),
           type: 'schedule',
           title: 'Class Scheduled Today',
-          message: `${s.subject} for ${s.batch} at ${s.startTime} - ${s.endTime}`,
+          message: `${s.course?.name || s.note || 'Class'} for ${s.batch?.name || 'Batch'} at ${s.startTime} - ${s.endTime}`,
           link: '/teacher/dashboard',
           date: s.date
         });
       });
 
       // Ungraded submissions
-      const activeAssignments = await Assignment.find({ teacher: user._id, isActive: true })
-        .populate('submissions.student', 'name');
+      const activeAssignments = await Assignment.find({ teacher: teacherProfileId, isActive: true })
+        .populate({
+          path: 'submissions.student',
+          populate: { path: 'user', select: 'name' }
+        });
 
       activeAssignments.forEach(a => {
         a.submissions.forEach(sub => {
@@ -117,7 +237,7 @@ async function calculateNotifications(user) {
               id: sub._id.toString(),
               type: 'grading_pending',
               title: 'Grading Pending',
-              message: `${sub.student ? sub.student.name : 'Student'} submitted ${a.title}`,
+              message: `${sub.student?.user?.name || 'Student'} submitted ${a.title}`,
               link: `/teacher/assignments/${a._id}#submission-${sub._id}`,
               date: sub.submittedAt
             });
@@ -126,12 +246,15 @@ async function calculateNotifications(user) {
       });
 
     } else if (user.role === 'counsellor') {
+      const counsellorProfileId = getRoleProfileId(user, 'counsellor');
+      if (!counsellorProfileId) return alerts;
+
       // Stale leads (Follow-Up Gap > 5 days)
       const fiveDaysAgo = new Date();
       fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
 
       const leads = await Lead.find({
-        assignedTo: user._id,
+        assignedTo: counsellorProfileId,
         status: { $nin: ['admission_completed', 'lost'] }
       });
 
@@ -161,8 +284,18 @@ async function calculateNotifications(user) {
       });
 
       // Converted/assigned students metrics
-      const enrolledProfiles = await Student.find({ counsellor: user._id }).populate('userId', 'name batch');
-      const enrolledStudents = enrolledProfiles.map(p => ({ ...p.userId.toObject(), batch: p.batch, _id: p.userId._id }));
+      const enrolledProfiles = await Student.find({ counsellor: counsellorProfileId })
+        .populate('user', 'name status')
+        .lean();
+      const enrolledStudents = enrolledProfiles
+        .filter(p => p.user)
+        .map(p => ({
+          _id: p._id,
+          userId: p.user._id,
+          name: p.user.name,
+          status: p.user.status,
+          batch: p.batch
+        }));
       if (enrolledStudents.length > 0) {
         const studentIds = enrolledStudents.map(s => s._id);
 
@@ -196,7 +329,7 @@ async function calculateNotifications(user) {
 
         overdueAssignments.forEach(a => {
           // Filter students of this batch
-          const batchStudents = enrolledStudents.filter(s => s.batch === a.batch);
+          const batchStudents = enrolledStudents.filter(s => s.batch && a.batch && s.batch.toString() === a.batch.toString());
           batchStudents.forEach(s => {
             const hasSubmitted = a.submissions.some(sub => sub.student.toString() === s._id.toString());
             if (!hasSubmitted) {
@@ -219,7 +352,11 @@ async function calculateNotifications(user) {
         const fees = await Fee.find({
           student: { $in: studentIds },
           dueDate: { $lte: tenDaysFromNow }
-        }).populate('student', 'name _id').limit(15);
+        }).populate({
+          path: 'student',
+          select: 'user',
+          populate: { path: 'user', select: 'name' }
+        }).limit(15);
 
         fees.forEach(f => {
           const net = (f.totalAmount || 0) - (f.discount || 0);
@@ -231,7 +368,7 @@ async function calculateNotifications(user) {
               id: f._id.toString(),
               type: overdue ? 'fee_overdue' : 'fee_due_soon',
               title: overdue ? '💵 Converted Student Fee Overdue' : '💵 Converted Student Fee Due',
-              message: `${f.student.name}'s fee of ₹${due.toLocaleString('en-IN')} is ${overdue ? 'overdue' : 'due soon'}.`,
+              message: `${f.student.user?.name || 'Student'}'s fee of Rs. ${due.toLocaleString('en-IN')} is ${overdue ? 'overdue' : 'due soon'}.`,
               link: '/counsellor/admissions',
               date: f.dueDate
             });
@@ -241,7 +378,9 @@ async function calculateNotifications(user) {
 
     } else if (user.role === 'student') {
       // Fee reminders
-      const sp = await Student.findOne({ userId: user._id });
+      const sp = getRoleProfileId(user, 'student')
+        ? await Student.findById(getRoleProfileId(user, 'student'))
+        : await Student.findOne({ user: user._id });
       const fee = sp ? await Fee.findOne({ student: sp._id }) : null;
       const dueAmount = fee ? Math.max(0, (fee.totalAmount || 0) - (fee.discount || 0) - (fee.paidAmount || 0)) : 0;
       if (fee && dueAmount > 0 && fee.dueDate) {
@@ -290,7 +429,7 @@ async function calculateNotifications(user) {
 
       // Upcoming class schedules today
       const schedules = await Schedule.find({
-        batch: user.batch,
+        batch: sp?.batch,
         date: todayStr, // Simple string match works perfectly
         status: 'scheduled'
       }).sort({ startTime: 1 });
@@ -300,7 +439,7 @@ async function calculateNotifications(user) {
           id: s._id.toString(),
           type: 'schedule',
           title: 'Class Scheduled Today',
-          message: `${s.subject} at ${s.startTime} - ${s.endTime}`,
+          message: `${s.note || 'Class'} at ${s.startTime} - ${s.endTime}`,
           link: '/student/dashboard',
           date: s.date
         });
@@ -308,7 +447,7 @@ async function calculateNotifications(user) {
 
       // Upcoming Homework deadlines (unsubmitted)
       const assignments = await Assignment.find({
-        batch: user.batch,
+        batch: sp?.batch,
         isActive: true,
         dueDate: { $gte: today }
       });
@@ -330,11 +469,11 @@ async function calculateNotifications(user) {
     }
 
   } catch (err) {
-    console.error('❌ Error compiling dynamic alerts:', err);
+    logger.error('Error compiling dynamic alerts', { err: err.message, stack: err.stack });
   }
 
   // Filter out alerts that have been marked as read/dismissed by the user
-  const unreadAlerts = alerts.filter(a => !user.readNotifications || !user.readNotifications.includes(a.id));
+  const unreadAlerts = alerts.filter(a => isUnread(user, a.id));
 
   // Sort alerts chronologically (latest first)
   return unreadAlerts.sort((a, b) => {
@@ -351,7 +490,9 @@ async function calculateSidebarBadges(user) {
     ungradedAssignments: 0,
     staleLeads: 0,
     unreadMessages: 0,
-    readyToConvert: 0
+    readyToConvert: 0,
+    profileRequests: 0,
+    pendingLeaves: 0
   };
   const today = new Date();
   try {
@@ -361,6 +502,8 @@ async function calculateSidebarBadges(user) {
     if (user.role === 'admin') {
       badges.resetRequests = await User.countDocuments({ resetRequested: true });
       badges.readyToConvert = await Lead.countDocuments({ status: 'joining_interested' });
+      badges.profileRequests = await Student.countDocuments({ 'pendingProfileUpdate.requestedAt': { $ne: null } });
+      badges.pendingLeaves = await LeaveRequest.countDocuments({ status: 'pending' });
       const overdueFeeRaw = await Fee.find({ dueDate: { $lt: today } })
         .select('totalAmount discount paidAmount')
         .lean();
@@ -369,7 +512,10 @@ async function calculateSidebarBadges(user) {
         return Math.max(0, net - (f.paidAmount || 0)) > 0;
       }).length;
     } else if (user.role === 'teacher') {
-      const activeAssignments = await Assignment.find({ teacher: user._id, isActive: true });
+      const teacherProfileId = getRoleProfileId(user, 'teacher');
+      const activeAssignments = teacherProfileId
+        ? await Assignment.find({ teacher: teacherProfileId, isActive: true })
+        : [];
       let ungradedCount = 0;
       activeAssignments.forEach(a => {
         a.submissions.forEach(sub => {
@@ -380,10 +526,12 @@ async function calculateSidebarBadges(user) {
       });
       badges.ungradedAssignments = ungradedCount;
     } else if (user.role === 'counsellor') {
+      const counsellorProfileId = getRoleProfileId(user, 'counsellor');
+      if (!counsellorProfileId) return badges;
       const fiveDaysAgo = new Date();
       fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
       const leads = await Lead.find({
-        assignedTo: user._id,
+        assignedTo: counsellorProfileId,
         status: { $nin: ['admission_completed', 'lost'] }
       });
       let staleCount = 0;
@@ -400,7 +548,7 @@ async function calculateSidebarBadges(user) {
       badges.staleLeads = staleCount;
     }
   } catch (err) {
-    console.error('❌ Error calculating sidebar badges:', err);
+    logger.error('Error calculating sidebar badges', { err: err.message, stack: err.stack });
   }
   return badges;
 }
@@ -413,7 +561,16 @@ const populateNotifications = async (req, res, next) => {
 
   res.locals.notifications = [];
   res.locals.greeting = '';
-  res.locals.sidebarBadges = { resetRequests: 0, feesOverdue: 0, ungradedAssignments: 0, staleLeads: 0, readyToConvert: 0 };
+  res.locals.sidebarBadges = {
+    resetRequests: 0,
+    feesOverdue: 0,
+    ungradedAssignments: 0,
+    staleLeads: 0,
+    readyToConvert: 0,
+    profileRequests: 0,
+    pendingLeaves: 0,
+    unreadMessages: 0
+  };
 
   // 1. Time-aware greeting calculation
   const hour = new Date().getHours();

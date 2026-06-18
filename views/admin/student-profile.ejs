@@ -338,11 +338,11 @@
                                 </strong></span>
                               <span>&middot;</span>
                               <span>Course: <strong style="color:var(--text);">
-                                  <%= student.course %>
+                                  <%= student.course && student.course.name ? student.course.name : 'Unassigned' %>
                                 </strong></span>
                               <span>&middot;</span>
                               <span>Batch: <strong style="color:var(--text);">
-                                  <%= student.batch || 'Unassigned' %>
+                                  <%= student.batch && student.batch.name ? student.batch.name : 'Unassigned' %>
                                 </strong></span>
                               <span>&middot;</span>
                               <span>Status:

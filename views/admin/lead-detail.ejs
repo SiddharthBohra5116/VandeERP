@@ -1,7 +1,7 @@
 <%
   layout = 'main';
   title = lead.name;
-  subtitle = `Lead File · ${lead.course}`;
+  subtitle = `Lead File · ${lead.interestedCourse ? lead.interestedCourse.name : 'Undecided'}`;
   page = 'leads';
 %>
 
@@ -41,7 +41,7 @@
           <div style="font-size:18px; font-weight:700;"><%= lead.name %></div>
           <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
             <span class="badge <%= statusBadge %>"><%= lead.status %></span>
-            <span class="badge badge-orange"><%= lead.course %></span>
+            <span class="badge badge-orange"><%= lead.interestedCourse ? lead.interestedCourse.name : 'Undecided' %></span>
           </div>
           <%
             const calls = lead.followUpHistory.filter(h => h.channel === 'Call');
@@ -93,13 +93,13 @@
         </div>
         <div style="display:flex; justify-content:space-between;">
           <span class="text-muted text-sm">Course Interest</span>
-          <span class="text-sm"><%= lead.course %></span>
+          <span class="text-sm"><%= lead.interestedCourse ? lead.interestedCourse.name : 'Undecided' %></span>
         </div>
         <div style="display:flex; justify-content:space-between;">
           <span class="text-muted text-sm">Follow-up Date</span>
-         <% const isOverdue = lead.followUpDate && new Date(lead.followUpDate) < new Date() && lead.status !== 'admission_completed' && lead.status !== 'lost'; %>
+         <% const isOverdue = lead.nextFollowUpAt && new Date(lead.nextFollowUpAt) < new Date() && lead.status !== 'admission_completed' && lead.status !== 'lost'; %>
           <span class="mono text-sm" <%= isOverdue ? 'style="color: var(--red);"' : 'style="color: var(--text);"' %>>
-            <%= lead.followUpDate ? new Date(lead.followUpDate).toLocaleDateString('en-IN', {weekday:'short',day:'numeric',month:'short',year:'numeric'}) : '—' %>
+            <%= lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt).toLocaleDateString('en-IN', {weekday:'short',day:'numeric',month:'short',year:'numeric'}) : '—' %>
             <% if (isOverdue) { %> ⚠️<% } %>
           </span>
         </div>

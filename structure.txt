@@ -1,908 +1,256 @@
-BasicERPAcademy/
-│
-├── server.js                        ← App entry point
-├── seeder.js                        ← Populates DB with test data
-├── .env                             ← Secret config (DB, JWT, Port)
+BasicERPAcademy
+├── .env
 ├── .gitignore
-├── package.json / package-lock.json
-│
-├── rand.html                        ← ⚠️ Leftover audit/scratch HTML file (not part of app)
-│
-├── config/
-│   └── db.js                        ← MongoDB connection
-│
-├── models/
-│   ├── User.js
-│   ├── Lead.js
-│   ├── Fee.js
+├── Academy_ERP_CRM_System_Guide.md
+├── ARCHITECTURE.md
+├── BasicERPAcademy_Master_Document.docx
+├── debug.log
+├── models (2).zip
+├── package.json
+├── package-lock.json
+├── README.md
+├── seeder.js
+├── server.js
+├── structure.txt
+├── config
+│   ├── constants.js
+│   └── db.js
+├── controllers
+│   ├── adminController.js
+│   ├── authController.js
+│   ├── counsellorController.js
+│   ├── studentController.js
+│   ├── teacherController.js
+│   ├── admin
+│   │   ├── announcementController.js
+│   │   ├── attendanceController.js
+│   │   ├── batchController.js
+│   │   ├── certificateController.js
+│   │   ├── counsellorManagementController.js
+│   │   ├── dashboardController.js
+│   │   ├── feeController.js
+│   │   ├── holidayController.js
+│   │   ├── leadController.js
+│   │   ├── messageController.js
+│   │   ├── passwordController.js
+│   │   ├── profileRequestController.js
+│   │   ├── reportController.js
+│   │   ├── scheduleController.js
+│   │   ├── studentManagementController.js
+│   │   ├── teacherManagementController.js
+│   │   └── userDirectoryController.js
+│   ├── counsellor
+│   │   ├── admissionController.js
+│   │   ├── announcementController.js
+│   │   ├── dashboardController.js
+│   │   ├── leadController.js
+│   │   ├── leaveController.js
+│   │   └── reportController.js
+│   ├── student
+│   │   ├── academicController.js
+│   │   ├── analyticsController.js
+│   │   ├── assignmentController.js
+│   │   ├── attendanceController.js
+│   │   ├── dashboardController.js
+│   │   └── profileController.js
+│   └── teacher
+│       ├── announcementController.js
+│       ├── assignmentController.js
+│       ├── attendanceController.js
+│       ├── communicationController.js
+│       ├── contentController.js
+│       ├── dashboardController.js
+│       └── progressController.js
+├── css
+│   └── main.css
+├── middleware
+│   ├── asyncHandler.js
+│   ├── auth.js
+│   ├── errorHandler.js
+│   ├── notificationMiddleware.js
+│   ├── role.js
+│   ├── security
+│   │   ├── behaviorEngine.js
+│   │   ├── feeIntegrityValidator.js
+│   │   ├── index.js
+│   │   ├── inputMutationGuard.js
+│   │   ├── intelligentRateLimiter.js
+│   │   └── jwtSentinel.js
+│   └── validators
+│       └── index.js
+├── models
+│   ├── Announcement.js
+│   ├── Assignment.js
+│   ├── Attendance.js
 │   ├── Batch.js
 │   ├── Classroom.js
-│   ├── Schedule.js
-│   ├── Timetable.js
-│   ├── Attendance.js
-│   ├── Assignment.js
-│   ├── Progress.js
+│   ├── Counsellor.js
+│   ├── Counter.js
+│   ├── Course.js
 │   ├── Curriculum.js
 │   ├── DailyUpdate.js
-│   ├── Message.js
-│   ├── Holiday.js
-│   ├── LeaveRequest.js
 │   ├── Expense.js
+│   ├── Fee.js
+│   ├── Holiday.js
+│   ├── Lead.js
+│   ├── LeadActivity.js
+│   ├── LeaveRequest.js
+│   ├── Message.js
+│   ├── Progress.js
 │   ├── RevenueTarget.js
-│   └── Counter.js
-│
-├── controllers/
-│   ├── adminController.js           ← Facade: re-exports all admin/* as one object
-│   ├── teacherController.js         ← Facade: re-exports all teacher/* as one object
-│   ├── counsellorController.js      ← Facade: re-exports all counsellor/* as one object
-│   ├── studentController.js         ← Facade: re-exports all student/* as one object
-│   ├── authController.js            ← Login, logout, profile, inbox, notifications
-│   │
-│   ├── admin/
-│   │   ├── userController.js        ← Dashboard, student/teacher/counsellor CRUD
-│   │   ├── leadController.js        ← Lead pipeline, convert lead → student
-│   │   ├── feeController.js         ← Fee listing, payments, receipts
-│   │   ├── attendanceController.js  ← Admin view of all attendance
-│   │   ├── scheduleController.js    ← Class scheduling, clash detection, classrooms
-│   │   ├── batchController.js       ← Batch CRUD
-│   │   ├── holidayController.js     ← Holiday calendar, leave approvals
-│   │   └── reportController.js      ← All reports (attendance, fees, leads, financial)
-│   │
-│   ├── teacher/
-│   │   ├── dashboardController.js
-│   │   ├── attendanceController.js  ← Mark present/absent/late
-│   │   ├── assignmentController.js  ← Create assignments, grade submissions
-│   │   ├── contentController.js     ← Curriculum, daily updates
-│   │   ├── progressController.js    ← Test results, remarks
-│   │   └── communicationController.js ← Messages, leave apply, complete schedule
-│   │
-│   ├── counsellor/
-│   │   ├── dashboardController.js
-│   │   ├── leadController.js        ← Counsellor's own leads, follow-ups
-│   │   ├── admissionController.js   ← Convert lead to student
-│   │   ├── leaveController.js       ← Leave requests
-│   │   └── reportController.js      ← Counsellor performance reports
-│   │
-│   └── student/
-│       ├── dashboardController.js
-│       ├── assignmentController.js  ← View & submit assignments
-│       ├── attendanceController.js  ← View own attendance
-│       ├── academicController.js    ← Daily updates, progress, curriculum, fees
-│       ├── profileController.js     ← Profile update request, ID proof, feedback, certificate
-│       └── analyticsController.js   ← Self-analytics (attendance trends, scores)
-│
-├── routes/
-│   ├── auth.js                      ← /auth/*
-│   ├── admin.js                     ← /admin/*
-│   ├── teacher.js                   ← /teacher/*
-│   ├── counsellor.js                ← /counsellor/*
-│   └── student.js                   ← /student/*
-│
-├── middleware/
-│   ├── auth.js                      ← protect() — JWT verification
-│   ├── role.js                      ← role() — role-based access check
-│   ├── asyncHandler.js              ← Wraps async controllers to auto-catch errors
-│   ├── errorHandler.js              ← Global error renderer (JSON or 500 view)
-│   ├── notificationMiddleware.js    ← Calculates bell-icon alerts per role
-│   └── validators/
-│       └── index.js                 ← express-validator input validation rules
-│
-├── views/
-│   ├── 400.ejs / 403.ejs / 404.ejs / 500.ejs   ← Error pages
-│   │
-│   ├── layouts/
-│   │   ├── main.ejs                 ← Logged-in wrapper (sidebar + topbar + alerts)
-│   │   └── auth.ejs                 ← Simple wrapper for login/forgot-password
-│   │
-│   ├── partials/
-│   │   ├── sidebar.ejs              ← Role-aware navigation
-│   │   ├── topbar.ejs               ← Top bar + notification bell (has AJAX fetch)
-│   │   └── _weekly_timetable.ejs   ← Shared timetable component
-│   │
-│   ├── auth/
-│   │   ├── login.ejs
-│   │   ├── forgot-password.ejs
-│   │   ├── profile.ejs
-│   │   └── inbox.ejs
-│   │
-│   ├── admin/
-│   │   ├── dashboard.ejs
-│   │   ├── users.ejs / user-form.ejs
-│   │   ├── student-profile.ejs      ← ⚠️ 52KB — needs splitting into partials
-│   │   ├── teacher-profile.ejs
-│   │   ├── counsellor-profile.ejs
-│   │   ├── leads.ejs / lead-detail.ejs
-│   │   ├── convert.ejs              ← Lead → student conversion form
-│   │   ├── fees.ejs / fee-detail.ejs
-│   │   ├── attendance.ejs
-│   │   ├── batches.ejs / batch-form.ejs
-│   │   ├── schedules.ejs            ← ⚠️ 73KB — needs splitting into partials
-│   │   ├── schedule-form.ejs
-│   │   ├── holidays.ejs / holidays-leaves.ejs
-│   │   ├── reports.ejs
-│   │   ├── profile-requests.ejs
-│   │   └── certificate.ejs
-│   │
-│   ├── teacher/
-│   │   ├── dashboard.ejs
-│   │   ├── attendance.ejs / attendance-history.ejs
-│   │   ├── assignments.ejs / assignment-form.ejs / assignment-detail.ejs
-│   │   ├── curriculum.ejs / curriculum-detail.ejs
-│   │   ├── daily-updates.ejs / update-form.ejs
-│   │   ├── progress.ejs
-│   │   ├── students.ejs
-│   │   └── leaves.ejs
-│   │
-│   ├── counsellor/
-│   │   ├── dashboard.ejs
-│   │   ├── counsellor.ejs           ← ⚠️ Purpose unclear — may be duplicate of dashboard
-│   │   ├── leads.ejs / lead-detail.ejs / lead-form.ejs
-│   │   ├── admissions.ejs
-│   │   ├── convert.ejs
-│   │   ├── fee-detail.ejs
-│   │   ├── followups.ejs
-│   │   ├── _followup-table.ejs      ← Partial (reused inside followups.ejs)
-│   │   ├── leaves.ejs
-│   │   └── reports.ejs
-│   │
-│   └── student/
-│       ├── dashboard.ejs
-│       ├── assignments.ejs
-│       ├── attendance.ejs
-│       ├── curriculum.ejs
-│       ├── fees.ejs
-│       ├── progress.ejs
-│       ├── analytics.ejs
-│       ├── updates.ejs
-│       └── feedback.ejs
-│
-├── utils/
-│   ├── attendanceHelper.js          ← Calculates attendance % for students
-│   ├── clashDetector.js             ← Detects teacher/classroom time conflicts
-│   ├── dateHelper.js                ← todayIST() — timezone-safe date string
-│   ├── leadAnalytics.js             ← Lead source conversion stats
-│   ├── logger.js                    ← Structured logging wrapper
-│   ├── messageValidator.js          ← Message content validation rules
-│   ├── safeRedirect.js              ← Prevents open redirect attacks
-│   ├── sanitize.js                  ← escapeRegex() for safe DB searches
-│   ├── timetableGenerator.js        ← Generates Schedule docs from Timetable template
-│   └── uploadHelper.js              ← Multer config (5MB, jpeg/png/pdf only)
-│
-├── public/
-│   ├── css/
-│   │   └── main.css                 ← Duplicate of css/main.css ⚠️
-│   └── js/
-│       └── instant-filter.js        ← AJAX instant search (fetch + history.pushState)
-│
-├── css/
-│   └── main.css                     ← ⚠️ Same file also lives in public/css/main.css
-│
-├── private-uploads/                 ← Uploaded files (NOT publicly accessible)
-│
-└── scratch/                         ← ⚠️ Dev/test scripts — should not be in production
-    ├── check_*.js                   ← DB inspection scripts
-    ├── test_*.js                    ← Feature test scripts
-    ├── verify_day*.js               ← Day-by-day build verification scripts
-    ├── migrate_batches.js           ← One-time migration script
-    └── update_user_credentials.js   ← One-time credential update script
-
-
-Academy ERP System
-/
-Master Audit Report
-Academy ERP — Master Audit
-Comprehensive analysis: security, role boundaries, feature gaps, analytics, code quality & implementation roadmap
-🔴 Critical
-Password reset has no validation
-Admin can reset any password with zero input validation or length check — blank password accepted.
-🔴 Critical
-Counsellor can create leads for any counsellor
-Lead assignment ownership not enforced — counsellors can view, comment, and act on other counsellors' leads.
-🟡 High
-No input sanitisation on regex search
-MongoDB regex search (`$regex`) on user input not escaped — potential ReDoS or unintended data exposure.
-🟡 High
-Teacher can mark attendance for any batch
-Attendance marking controller does not verify the teacher is assigned to the batch being marked.
-Total issues found: 34 — 4 Critical · 10 High · 12 Medium · 8 Low. This document covers all of them with exact code locations and recommended fixes in priority order.
-System Snapshot
-4
-User roles — admin, counsellor, teacher, student
-14
-MongoDB models with sparse indexing
-120+
-Controller functions across 5 files
-0
-Input validation middleware — none exists
-3
-Reports tabs — needs 7 more data surfaces
-∞
-DB queries per page load (no caching layer)
-0
-Structured log format — plain console.error only
-0
-JSDoc comments on any controller function
-Security & Critical Bugs
-must fix first
-🔐
-Password reset accepts empty/blank passwords
-Critical
-Security
-adminController.js:resetPassword
-▶
-The resetPassword handler does absolutely no validation on the incoming req.body.password. An admin can submit a blank form and it will hash an empty string, effectively locking the user out — or worse, set a known weak password.
-
-// CURRENT — no guards at all
-exports.resetPassword = async (req, res) => {
-  const u = await User.findById(req.params.id);
-  u.password = req.body.password; // could be "", undefined, "a"
-  u.resetRequested = false;
-  await u.save();
-};
-// FIX — add validation before touching DB
-exports.resetPassword = async (req, res) => {
-  const { password } = req.body;
-  if (!password || password.trim().length < 8) {
-    return res.redirect(`/admin/dashboard?error=Password must be at least 8 characters`);
-  }
-  const u = await User.findById(req.params.id);
-  if (!u) return res.redirect('/admin/dashboard?error=User not found');
-  u.password = password.trim();
-  u.resetRequested = false;
-  await u.save();
-};
-1
-Add min-length 8 check with trimmed password
-2
-Add null check on user lookup — currently crashes if user deleted after request
-3
-Log the reset action with timestamp and admin ID for audit trail
-🔍
-Unescaped MongoDB $regex on user input — ReDoS risk
-Critical
-Security
-adminController.js, counsellorController.js
-▶
-Every search field passes raw user input directly into { $regex: search, $options: 'i' }. A malicious user can craft a catastrophic backtracking regex (e.g. (a+)+b) to exhaust CPU — a classic ReDoS. Additionally, users can probe exact data by treating search as regex.
-
-// CURRENT — dangerous
-filter.name = { $regex: search, $options: 'i' }; // search is raw user input
-// FIX — escape special regex chars
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-filter.name = { $regex: escapeRegex(search), $options: 'i' };
-1
-Create
-utils/sanitize.js
-with an
-escapeRegex()
-helper
-2
-Import and apply in all 6 places that currently use raw $regex
-3
-Add max-length check (50 chars) on search query params
-👩‍💼
-Teacher can mark attendance for any batch (not just their own)
-High
-Logic Bug
-teacherController.js
-▶
-The teacher attendance POST handler accepts batch from the form body and does not verify that the authenticated teacher is assigned to that batch. Any teacher can mark any batch present or absent.
-
-// FIX — verify teacher owns the batch via Schedule
-const validBatch = await Schedule.findOne({
-  teacher: req.user._id,
-  batch: req.body.batch
-});
-if (!validBatch) {
-  return res.status(403).render('403', { title: 'Access Denied', user: req.user });
-}
-1
-Check Schedule collection for teacher+batch combination
-2
-Log unauthorised access attempt with details
-3
-Also apply same check to daily updates posting (same vulnerability exists there)
-💌
-Message system has no recipient validation — any userId can be messaged
-High
-Security
-adminController.js:postSendMessage
-▶
-The postSendMessage handler takes recipientId directly from the form and creates a message with no verification that the recipient exists or that the sender has the right to contact them. A forged form can send messages as admin to anyone.
-
-1
-Verify
-recipientId
-resolves to a real User before creating Message
-2
-Restrict student messaging: students can only message their assigned teacher/counsellor or admin
-3
-Add content length limit (max 2000 chars) and strip HTML from content field
-🪪
-Lead conversion creates student with default password "password123"
-High
-Security
-adminController.js:postConvertLead
-▶
-When converting a lead to a student, if no password is supplied in the form, the code falls back to the hardcoded string 'password123'. This is a known default credential that any attacker would try first.
-
-password: req.body.password || 'password123', // ← terrible fallback
-1
-Remove the hardcoded fallback entirely
-2
-Require password field in the conversion form (mark as required in HTML + validate server-side)
-3">Alternatively: auto-generate a secure random temp password and show it once in the confirmation screen
-4
-Force password-change on first login by setting a
-mustChangePassword
-flag
-Role Permission Matrix — What Should Each Role Do?
-design
-Currently the code either over-permits (teacher can touch any batch) or under-connects (counsellor can't see their converted student's fee status). This matrix defines the desired boundaries:
-
-Feature / Action	Admin	Counsellor	Teacher	Student
-Create / delete users	✓ Full	✗	✗	✗
-Reset any password	✓ Full	✗	✗	Own only (request)
-View all students	✓ Full	Own converted only	Own batch only	✗
-Create leads	✓ Full	Own + reassign	✗	✗
-View all leads	✓ All	Assigned to them	✗	✗
-Convert lead → student	✓ Full	Initiate (admin approves)	✗	✗
-Add fee payment	✓ Full	✗	✗	✗
-View student fee ledger	✓ All	Own students only	✗	Own only
-Mark attendance	View/override	✗	Own batch only	✗
-Post assignments	View all	✗	Own batch only	✗
-Grade submissions	✗	✗	Own assignments only	✗
-Create schedules	✓ Full	✗	✗	✗
-Request leave	✗	✗	✓	✗
-Approve leave	✓ Full	✗	✗	✗
-Add student remarks	✓ Full	Own students	Own batch	✗
-Issue certificates	✓ Full	✗	✗	Download own only
-Manage holidays	✓ Full	✗	✗	✗
-View all reports	✓ Full	Own pipeline KPIs	Own class stats	Own progress only
-Manage classrooms	✓ Full	✗	✗	✗
-Send messages	✓ Any user	Own students + admin	Own batch students + admin	Teacher + counsellor + admin
-Broken connections found: Counsellor currently cannot see fee status of their converted students (the data exists but the view is not wired). Teacher cannot see student progress summary for their batch. These should be connected — not as admin-level access, but scoped read-only views.
-Admin Panel — Missing Flows & Edge Cases
-high priority
-🗑️
-No "Delete User" — only toggle active/inactive. Orphan data accumulates.
-High
-UX
-▶
-When a student drops out and their account should be cleaned up, there's no delete path. Toggling inactive still leaves Fee, Attendance, Message, Progress, Assignment records with dangling references. Over time this pollutes all queries.
-
-1
-Add a
-DELETE /admin/users/:id
-route with confirmation modal
-2
-Cascade delete (or archive) associated Fee, Attendance, Progress, Messages, Submissions
-3
-Restrict hard delete to students with status "drop" or "complete" only
-4
-Log deletion with reason in an admin audit trail collection
-💳
-Fee payment can be entered with negative amount — no guard
-High
-adminController.js:postAddPayment
-▶
-The postAddPayment handler does fee.paidAmount += Number(amount) with no validation. A negative value will reduce paidAmount. NaN input will corrupt the ledger silently.
-
-// FIX — validate before pushing
-const amt = Number(amount);
-if (!Number.isFinite(amt) || amt <= 0) {
-  return res.redirect(`/admin/fees/${req.params.studentId}?error=Invalid amount`);
-}
-if (amt > (fee.totalAmount - fee.paidAmount + 1)) { // overpayment guard
-  return res.redirect(`/admin/fees/${req.params.studentId}?error=Amount exceeds balance`);
-}
-1
-Add NaN/negative/zero guard on amount
-2
-Optionally warn (not block) if amount exceeds outstanding balance
-3
-Add a "payment reversal" / refund flow for admin corrections
-📅
-Schedule clash check only covers classroom+teacher, not batch double-booking
-Medium
-clashDetector.js
-▶
-The existing clash detector checks if a teacher or classroom is double-booked. But if the same batch is scheduled for two different classes at the same time (different teachers, different rooms), students get conflicting schedules with no warning.
-
-1
-Add a third clash check:
-batch
-+ overlapping time window on the same date
-2
-Return all three clash reasons in one pass — currently the function returns on first hit
-3
-Surface all clash details in the error banner, not just a generic message
-🏫
-No classroom capacity enforcement — over-booking is silent
-Medium
-UX
-▶
-Classrooms have a capacity field that is stored but never checked against the batch size when creating a schedule. Admin can book a room for 50 into a room with capacity 10.
-
-1
-During schedule creation, count students in the batch and compare to classroom capacity
-2
-Show a warning (not a block) if batch exceeds capacity
-3
-Display batch size vs capacity in the schedule form classroom dropdown
-📊
-No bulk actions — admin must toggle/update each user one by one
-Medium
-UX
-▶
-The users list has no multi-select or bulk operations. Marking 20 students "complete" at end of batch requires 20 individual page navigations.
-
-1
-Add checkboxes to the users table with a "select all" header checkbox
-2
-Add bulk actions dropdown: Change Status, Send Message, Export CSV
-3
-Add a
-POST /admin/users/bulk
-route that processes an array of IDs
-Counsellor — Missing Connections & Features
-7 gaps
-💰
-Counsellor cannot see fee status of converted students — data exists but unlinked
-High
-Disconnected
-▶
-The counsellor admissions view shows their converted students (linked via student.counsellor) but does not fetch or show fee payment status. Counsellors are responsible for fee follow-up but are flying blind.
-
-Counsellor
-→
-converts Lead
-→
-Student created
-→
-Fee record created
-→
-Counsellor can't see it ✗
-1
-In
-counsellorController.getAdmissions
-, add a
-Fee.find({ student: { $in: studentIds } })
-and join to the student list
-2
-Show a fee status badge (Paid/Partial/Overdue) in the admissions table
-3
-Link to a read-only fee detail view (not the admin edit-capable version)
-📋
-Counsellor can view and comment on leads assigned to other counsellors
-High
-Logic Bug
-▶
-The getLeads handler filters by assignedTo: req.user._id correctly, but the getLeadDetail and postAddFollowUp handlers only check that the lead exists — not that it belongs to the requesting counsellor.
-
-1
-In all counsellor lead handlers that take
-:id
-— add ownership check:
-{ _id: req.params.id, assignedTo: req.user._id }
-2
-Return 403 if ownership fails, not a redirect to /leads
-📤
-No way for counsellor to create new leads directly — must go to admin
-High
-Missing Feature
-▶
-The counsellor view shows a lead form (lead-form.ejs exists) but the flow is not wired. Counsellors should be able to create leads that auto-assign to themselves, then admin can reassign.
-
-1
-Wire
-GET /counsellor/leads/create
-and
-POST /counsellor/leads/create
-2
-Auto-set
-assignedTo: req.user._id
-on creation
-3
-Prevent counsellor from setting
-assignedTo
-to another counsellor (admin-only action)
-📆
-No lead conversion initiation by counsellor — only admin can convert
-Medium
-Workflow Gap
-▶
-The real-world flow is: counsellor closes the deal, counsellor marks the lead ready for conversion, admin completes the conversion (sets roll number, batch, fees). Currently, the counsellor can't initiate this at all — they just stop hearing about the lead after it converts.
-
-1
-Add a "Mark as Ready to Convert" action for counsellors that sets
-lead.status = 'ready_to_convert'
-2
-Show this status on the admin leads list as a priority highlight
-3
-Admin still performs the actual conversion (fee, batch assignment)
-Teacher — Scope & Feature Gaps
-5 gaps
-📝
-Teacher can post daily updates for any batch — no scope restriction
-High
-Logic Bug
-▶
-Daily updates take batch from the form. No check that the authenticated teacher teaches that batch. Same pattern as the attendance bug but in teacherController.postDailyUpdate.
-
-1
-Lookup teacher's batches via
-Schedule.distinct('batch', { teacher: req.user._id })
-2
-Verify submitted batch is in that list before saving
-3
-Pre-populate batch dropdown from teacher's actual batches (not all batches)
-📊
-Teacher has no view of their students' overall progress / grades summary
-Medium
-Missing Feature
-▶
-Teacher's "My Students" view (/teacher/students) shows a list but has no aggregated grade data, no assignment submission rates, no at-a-glance progress. The Progress model has this data; it's just not fetched.
-
-1
-Enrich
-teacherController.getStudents
-with Progress, attendance %, and ungraded submissions count per student
-2
-Add visual progress bar (using existing
-attendancePct
-logic)
-3
-Add quick-action "Grade" link per student directly from the list
-🗓️
-Teacher can't edit or cancel their own schedules — admin-only
-Medium
-Workflow
-▶
-All schedule management routes are in admin routes with role('admin') guard. Teachers can see their schedule but can't mark a class as "completed" or request a reschedule — a basic operational need.
-
-1
-Add
-POST /teacher/schedules/:id/complete
-— marks status to "completed" (doesn't delete)
-2
-Teacher cannot change date/time/classroom — only mark complete or add a note
-3
-Optionally: add a "request reschedule" feature that creates an admin notification
-Student — Experience Gaps
-4 gaps
-📥
-Student feedback forces full dashboard block — even on second visit
-High
-UX Bug
-▶
-In studentController.getDashboard, if status is "complete" and feedback not submitted, the entire dashboard is replaced with the feedback form. This means a completed student can't see their attendance, grades, or fees until feedback is submitted — which feels punitive and confusing.
-
-1
-Show the feedback form as a prominent banner/modal overlay, not a full page replacement
-2
-Allow dismissal with "remind me later" — block only after 3 visits without submission
-3
-Still load and render the full dashboard behind the feedback prompt
-🧾
-Student fee view shows raw installments but no "what I still owe" summary
-Medium
-UX
-▶
-The student fees page renders the installment breakdown but doesn't display the computed dueAmount prominently. Students often don't know what to pay next. The data is there — it's a view issue.
-
-1
-Add a "Next Payment Due" card at the top with amount, date, and days remaining
-2
-Show total paid vs total due visually (progress bar)
-3
-Display payment receipt/transaction history table clearly
-📎
-No confirmation screen on profile update request — silent submission
-Low
-UX
-▶
-When a student submits a profile update request, they're redirected with a query param. There's no visual feedback about what's pending, when it was submitted, or that it needs admin approval.
-
-1
-Show a "Pending review" banner on the student profile page when
-pendingProfileUpdate.requestedAt
-is not null
-2
-Prevent submitting a second request while one is pending (disable the form)
-3
-Send an inbox notification when admin approves or rejects
-Reports & Analytics — Full Overhaul Plan
-7 new surfaces
-The current 4-tab report system (General, Revenue, Counsellors, Attendance) is solid groundwork but misses the key operational intelligence an academy director needs daily. Here's the expansion plan:
-
-📈
-Batch Health Score
-Composite score per batch: attendance %, assignment completion rate, fee collection rate. Single number tells the story.
-🔄
-Lead Funnel Velocity
-Avg days at each stage: new → contacted → interested → converted. Identify where leads stall.
-🎓
-Graduation Pipeline
-Students by projected completion date vs actual. Who's on track, behind, or dropped.
-💰
-Fee Collection Aging
-Outstanding amounts bucketed by overdue duration: 0-30d, 30-60d, 60-90d, 90d+.
-👩‍🏫
-Teacher Load vs Output
-Classes conducted, attendance rates in their batches, assignment grading speed, daily updates frequency.
-📅
-Schedule Utilisation
-Classroom occupancy rates, cancelled vs conducted ratio per teacher/batch, peak hour analysis.
-🔔
-At-Risk Student Alerts
-Auto-list students with: attendance <75%, overdue fees, 3+ unsubmitted assignments. Actionable weekly digest.
-📊
-Cohort Comparison
-Side-by-side comparison of two or more batches across all KPIs. Benchmark performance over time.
-📤
-Export to CSV/PDF
-Every report tab needs a download button. Currently all data is view-only — no export path exists.
-Key missing analytics logic: The current revenue tab computes "target = invoice created month" which is misleading — it conflates when a student enrolled with when payment is due. A proper revenue forecast should use installment due dates, not the Fee document's createdAt. This is a data accuracy issue, not just presentation.
-📉
-Revenue forecast uses wrong date anchor — createdAt instead of installment dueDate
-High
-adminController.js:getReports revenue tab
-▶
-The "Target" series in the Revenue Trends chart groups by f.createdAt (when the fee record was created). But if a student enrolled in January with installments due in March and June, January shows the full target — creating a false spike followed by nothing. The correct target is per-installment dueDate.
-
-// FIX — use installment-level dueDate for target
-fees.forEach(f => {
-  f.installments.forEach(inst => {
-    const targetMonth = inst.dueDate
-      ? inst.dueDate.toISOString().slice(0, 7)
-      : 'unknown';
-    if (!monthlyStats[targetMonth]) {
-      monthlyStats[targetMonth] = { month: targetMonth, target: 0, actual: 0 };
-    }
-    monthlyStats[targetMonth].target += inst.amount; // per-installment
-  });
-});
-1
-Switch target to installment.dueDate loop instead of fee.createdAt
-2
-Handle fees with no installments gracefully (0-installment fee fallback to createdAt)
-3
-Add a "forecast" line extending beyond today using future installment dueDates
-🔁
-Source quality stats are computed twice — in admin leads page AND reports — duplicated logic
-Medium
-DRY Violation
-▶
-The exact same ~30-line loop that computes sourceStatsMap exists identically in adminController.getLeads and counsellorController.getDashboard. Any fix to the calculation must be done in two places.
-
-1
-Extract to
-utils/leadAnalytics.js
-as
-computeSourceStats(leads)
-2
-Import and call it in both controllers
-3
-Add JSDoc comment explaining what "conversion time" means and how avgDays is computed
-Code Quality — Structure & Architecture
-refactor
-🧱
-adminController.js is a 1000+ line monolith — split into domain modules
-Medium
-Architecture
-▶
-The admin controller handles users, fees, leads, attendance, schedules, timetables, classrooms, certificates, messages, holidays, and leaves — all in one file. This makes finding things slow and PRs large and conflict-prone.
-
-// Proposed split:
-controllers/
-  admin/
-    userController.js      // users CRUD, status, profile approvals
-    feeController.js       // payments, ledger, installments
-    leadController.js      // pipeline, assign, convert
-    scheduleController.js  // schedules, timetables, classrooms
-    reportController.js    // all analytics tabs
-    holidayController.js   // holidays + leave approvals
-1
-Create
-controllers/admin/
-directory
-2
-Move functions into domain files — keep exports identical so routes don't change
-3
-Update
-routes/admin.js
-to import from the new paths
-⚠️
-Error handling is inconsistent — some functions crash on null, others silently redirect
-High
-Multiple controllers
-▶
-Some handlers do if (!u) return res.redirect('/admin/dashboard'). Others do u.isActive = !u.isActive without checking if u is null — which throws Cannot read properties of null and hits the generic 500 page.
-
-1
-Add a
-middleware/asyncHandler.js
-wrapper that catches async errors and calls
-next(err)
-2
-Create a centralised
-errorHandler.js
-Express middleware
-3
-Audit all
-findById
-calls — every one needs a null check before property access
-4
-Use consistent pattern: 404 render for missing resources, 500 for server errors, 403 for permission failures
-🔔
-Notification middleware runs heavy DB queries on every page load
-High
-Performance
-▶
-The populateNotifications middleware fires on every request and runs 5-12 separate DB queries (messages, fees, schedules, assignments, leads) for each page load. For a page that opens fast, this is a hidden latency hit every time.
-
-1
-Move notification calculation to a client-side AJAX call (e.g.
-GET /api/notifications
-) polled every 60 seconds
-2
-Or cache the result in the session object with a 30-second TTL
-3
-At minimum, use
-Promise.all
-for all notification queries (currently some are sequential)
-📦
-No input validation layer — all sanitisation happens ad hoc inside controllers
-High
-Architecture
-▶
-There is zero shared validation. Each controller trusts req.body entirely. Numbers may be strings, required fields may be missing, and date strings are unparsed.
-
-1
-Install
-express-validator
-(already a common pattern in Express apps)
-2
-Create
-middleware/validators/
-directory with schemas per route group
-3
-Add validators for: user creation (name, email, role required), fee payment (amount > 0, valid method), lead creation (name, phone required), schedule creation (valid date, startTime < endTime)
-🔗
-Duplicate route defined twice in admin.js — messages/:id/read registered twice
-Medium
-routes/admin.js
-▶
-The route POST /admin/messages/:id/read is registered twice in routes/admin.js — once calling the controller and once inline. Express will use the first match, making the second dead code — but it's a sign of inconsistent development practices.
-
-1
-Remove the duplicate inline route handler
-2
-Move all route logic to controller functions — no inline handlers in route files
-3
-Add a lint rule or comment convention to catch this pattern
-Performance — N+1 Queries & DB Optimisation
-perf
-🔄
-Counsellor performance report runs a DB query per counsellor — N+1 problem
-High
-N+1
-adminController.js:getReports counsellors tab
-▶
-The counsellors KPI tab does a for (const c of counsellors) loop and runs 3 Lead.find() calls per counsellor. With 10 counsellors that's 30+ sequential DB queries.
-
-// FIX — single aggregation instead of N queries
-const counsellorStats = await Lead.aggregate([
-  { $group: {
-    _id: '$assignedTo',
-    total:     { $sum: 1 },
-    converted: { $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] } },
-    lost:      { $sum: { $cond: [{ $eq: ['$status', 'lost'] }, 1, 0] } },
-    followUps: { $sum: { $size: '$followUpHistory' } }
-  }},
-  { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'counsellor' } }
-]);
-1
-Replace the counsellor loop with a single
-Lead.aggregate()
-with $group
-2
-Use
-$lookup
-to join counsellor user details
-3
-Apply the same pattern to the attendance report batch loop
-📇
-Missing database indexes on high-frequency query fields
-Medium
-Index
-▶
-Several fields used in frequent queries have no index: Attendance.date, Attendance.student, Lead.assignedTo, Lead.status, Schedule.date, Schedule.teacher, Schedule.batch. As data grows, these queries will slow down significantly.
-
-// Add to each model's schema definition:
-attendanceSchema.index({ student: 1, date: -1 });
-attendanceSchema.index({ date: 1, batch: 1 });
-leadSchema.index({ assignedTo: 1, status: 1 });
-scheduleSchema.index({ teacher: 1, date: 1 });
-scheduleSchema.index({ batch: 1, date: 1 });
-Logging, Documentation & Developer Experience
-improve
-📋
-Logging uses emoji + console.log — replace with structured logger
-Medium
-All controllers
-▶
-Current logging style is console.error('❌ Create User Error:', err). While it looks friendly, it's hard to query in production log systems and loses structured context.
-
-// utils/logger.js — simple structured logger
-const logger = {
-  info:  (msg, meta = {}) => console.log(JSON.stringify({ level: 'info',  msg, ...meta, ts: new Date() })),
-  warn:  (msg, meta = {}) => console.warn(JSON.stringify({ level: 'warn',  msg, ...meta, ts: new Date() })),
-  error: (msg, meta = {}) => console.error(JSON.stringify({ level: 'error', msg, ...meta, ts: new Date() })),
-};
-module.exports = logger;
-
-// Usage in controllers:
-logger.error('Create User failed', { userId: req.user._id, targetRole: data.role, err: err.message });
-1
-Create
-utils/logger.js
-with the above structure (or install
-pino
-/
-winston
-)
-2
-Replace all
-console.log/error
-calls in controllers with
-logger.info/error
-3
-Always include: action name, relevant IDs, user role/id, and error message in the meta object
-📖
-Zero JSDoc on controller functions — add documentation headers
-Low
-All controllers
-▶
-No controller function has a JSDoc comment. Adding minimal headers (route, who can call it, what it does, what it renders/returns) makes onboarding new devs significantly faster and is especially important for this codebase where the same model is touched from 3 different controllers.
-
-/**
- * GET /admin/fees/:studentId
- * Admin only. Renders the full fee ledger for a student.
- * Populates: student user, payment receivers.
- * @param {string} req.params.studentId - MongoDB student _id
- * @renders admin/fee-detail with { fee, title, user }
- */
-exports.getStudentFee = async (req, res) => { ... };
-1
-Add JSDoc block to every exported controller function (80+ functions to cover)
-2
-Document: HTTP method + path, roles allowed, what it renders, key params
-3
-Generate API reference with
-jsdoc
-CLI as part of the project README
-Implementation Roadmap
-prioritised
-Phase 1 — Week 1–2 · Security & Critical Bugs
-Fix everything that's broken or dangerous right now
-Password reset validation · Regex escaping · Lead ownership enforcement · Message recipient validation · Default "password123" removal · Teacher batch scope enforcement · Fee payment amount validation · Duplicate route cleanup
-Phase 2 — Week 2–3 · Architecture Foundation
-Shared infrastructure before adding features
-Split adminController.js into domain modules · Add asyncHandler middleware · Create centralised errorHandler · Add escapeRegex util · Create structured logger · Add MongoDB indexes to all query fields
-Phase 3 — Week 3–4 · Disconnected Features
-Wire up existing data that's just not surfaced
-Counsellor fee visibility for converted students · Student "pending update" banner · Teacher student progress summary · Batch clash detection in schedules · Classroom capacity warning · Batch scope enforcement for teacher forms
-Phase 4 — Week 4–6 · New Features
-Fill the workflow gaps that cause daily friction
-Counsellor lead creation flow · Ready-to-convert status + admin notification · Bulk user actions (status change, message, export) · Teacher schedule completion marking · User deletion with cascade archive · Student fee "next payment" summary card · Input validation layer with express-validator
-Phase 5 — Week 6–8 · Analytics Overhaul
-Make reports actually decision-useful
-Fix revenue forecast anchor to installment dueDate · Add 5 new report tabs · Batch health score composite metric · Lead funnel velocity calculation · Fee collection aging buckets · At-risk student digest · CSV/PDF export for all tabs · Replace N+1 counsellor loop with aggregate pipeline
-Phase 6 — Ongoing · DX & Documentation
-Make the codebase maintainable long-term
-JSDoc all controller functions · Move notification fetching to AJAX (performance) · Extract leadAnalytics utility · Add request logging middleware · Write CONTRIBUTING.md with code patterns and naming conventions
-Total estimated effort: ~6–8 weeks for a solo dev working part-time, or ~3 weeks pair-programming. Phase 1–2 are mandatory before any feature work resumes. The security issues are live risks.
+│   ├── Schedule.js
+│   ├── Student.js
+│   ├── Teacher.js
+│   ├── Timetable.js
+│   ├── User.js
+│   └── security
+│       ├── FeeAuditLog.js
+│       ├── SecurityAlert.js
+│       ├── TokenBlacklist.js
+│       └── UserBehaviorLog.js
+├── public
+│   ├── css
+│   │   └── main.css
+│   ├── js
+│   │   └── instant-filter.js
+│   └── uploads
+│       └── many uploaded files
+├── private-uploads
+│   └── many uploaded files
+├── routes
+│   ├── admin.js
+│   ├── auth.js
+│   ├── counsellor.js
+│   ├── student.js
+│   ├── teacher.js
+│   └── security
+│       └── adminSecurityRoutes.js
+├── scratch
+│   ├── check_aditya.js
+│   ├── check_assignments_data.js
+│   ├── check_attendance.js
+│   ├── check_dashboard.js
+│   ├── check_db.js
+│   ├── check_debug.js
+│   ├── check_js_syntax.js
+│   ├── check_missing_profiles.js
+│   ├── check_schedules.js
+│   ├── check_students.js
+│   ├── compiled_source.js
+│   ├── create_admin.js
+│   ├── debug_ejs.js
+│   ├── drop_index.js
+│   ├── fetch_html.js
+│   ├── fix_leads.js
+│   ├── fix_report_controller.js
+│   ├── fix_schedule_controller.js
+│   ├── fix_student_controllers.js
+│   ├── fix_teacher_controllers.js
+│   ├── migrate_batches.js
+│   ├── qa_browser_flow.js
+│   ├── run_all_tests.js
+│   ├── seed_tests.js
+│   └── multiple test/verify scripts
+├── tests
+│   ├── liveSecurityTest.js
+│   └── security.test.js
+├── testsprite_tests
+│   └── tmp
+│       └── mcp.log
+├── utils
+│   ├── attendanceHelper.js
+│   ├── clashDetector.js
+│   ├── dateHelper.js
+│   ├── leadAnalytics.js
+│   ├── logger.js
+│   ├── messageValidator.js
+│   ├── rollNumberHelper.js
+│   ├── safeRedirect.js
+│   ├── sanitize.js
+│   ├── timetableGenerator.js
+│   └── uploadHelper.js
+└── views
+    ├── 400.ejs
+    ├── 403.ejs
+    ├── 404.ejs
+    ├── 500.ejs
+    ├── admin
+    │   ├── announcement-form.ejs
+    │   ├── announcements.ejs
+    │   ├── attendance.ejs
+    │   ├── batches.ejs
+    │   ├── batch-form.ejs
+    │   ├── certificate.ejs
+    │   ├── convert.ejs
+    │   ├── counsellor-profile.ejs
+    │   ├── dashboard.ejs
+    │   ├── fee-detail.ejs
+    │   ├── fees.ejs
+    │   ├── holidays.ejs
+    │   ├── holidays-leaves.ejs
+    │   ├── lead-detail.ejs
+    │   ├── leads.ejs
+    │   ├── profile-requests.ejs
+    │   ├── reports.ejs
+    │   ├── schedule-form.ejs
+    │   ├── schedules.ejs
+    │   ├── securityDashboard.ejs
+    │   ├── student-profile.ejs
+    │   ├── teacher-profile.ejs
+    │   ├── user-form.ejs
+    │   └── users.ejs
+    ├── auth
+    │   ├── forgot-password.ejs
+    │   ├── guide.ejs
+    │   ├── inbox.ejs
+    │   ├── login.ejs
+    │   └── profile.ejs
+    ├── counsellor
+    │   ├── _followup-table.ejs
+    │   ├── admissions.ejs
+    │   ├── announcement-form.ejs
+    │   ├── announcements.ejs
+    │   ├── convert.ejs
+    │   ├── counsellor.ejs
+    │   ├── dashboard.ejs
+    │   ├── fee-detail.ejs
+    │   ├── followups.ejs
+    │   ├── lead-detail.ejs
+    │   ├── lead-form.ejs
+    │   ├── leads.ejs
+    │   ├── leaves.ejs
+    │   ├── reports.ejs
+    │   └── students.ejs
+    ├── layouts
+    │   ├── auth.ejs
+    │   └── main.ejs
+    ├── partials
+    │   ├── _weekly_timetable.ejs
+    │   ├── sidebar.ejs
+    │   └── topbar.ejs
+    ├── student
+    │   ├── analytics.ejs
+    │   ├── assignments.ejs
+    │   ├── attendance.ejs
+    │   ├── curriculum.ejs
+    │   ├── dashboard.ejs
+    │   ├── feedback.ejs
+    │   ├── fees.ejs
+    │   ├── progress.ejs
+    │   └── updates.ejs
+    └── teacher
+        ├── announcement-form.ejs
+        ├── announcements.ejs
+        ├── assignment-detail.ejs
+        ├── assignment-form.ejs
+        ├── assignments.ejs
+        ├── attendance.ejs
+        ├── attendance-history.ejs
+        ├── curriculum.ejs
+        ├── curriculum-detail.ejs
+        ├── daily-updates.ejs
+        ├── dashboard.ejs
+        ├── leaves.ejs
+        ├── progress.ejs
+        ├── students.ejs
+        └── update-form.ejs

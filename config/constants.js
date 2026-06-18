@@ -5,7 +5,7 @@ module.exports = {
   ROLES: ['student', 'teacher', 'counsellor', 'admin'],
   
   ANNOUNCEMENT_ROLES: ['', 'student', 'teacher', 'counsellor', 'admin'],
-  ANNOUNCEMENT_AUDIENCE: ['all', 'course', 'batch', 'role'],
+  ANNOUNCEMENT_AUDIENCE: ['all', 'course', 'batch', 'role', 'counsellor'],
 
   USER_STATUSES: ['active', 'inactive', 'drop', 'complete'],
 

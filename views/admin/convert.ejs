@@ -1,168 +1,352 @@
 <%
   layout = 'main';
   title = `Convert Lead: ${lead.name}`;
-  subtitle = 'Establish student portal account & fee ledger';
+  subtitle = 'Create student account and initialize fee ledger';
   page = 'leads';
-  topbarActions = `<a href="/admin/leads/${lead._id}" class="btn btn-ghost btn-sm">&larr; Back</a>`;
 %>
 
-<div style="max-width:640px;">
-  <% if (typeof error !== 'undefined' && error) { %>
-    <div class="card" style="border-color:var(--red); background:rgba(239,68,68,0.05); margin-bottom:20px; padding:12px 16px; color:var(--red); font-size:13px; font-weight:500; border-left:4px solid var(--red);">
-      ❌ <%= error %>
+<div class="convert-page">
+  <div class="convert-hero">
+    <div>
+      <div class="convert-kicker">Lead Conversion</div>
+      <h2>Enroll <%= lead.name %> as a student</h2>
+      <p>Create the portal account, assign course and batch, then generate the fee ledger in one step.</p>
+    </div>
+    <a href="/admin/leads/<%= lead._id %>" class="btn btn-ghost btn-sm">Back to Lead</a>
+  </div>
+
+  <% if (typeof error !== 'undefined' && error && String(error).trim() && String(error).trim() !== '1') { %>
+    <div class="convert-alert convert-alert-error">
+      <strong>Could not convert lead.</strong>
+      <span><%= error %></span>
     </div>
   <% } %>
 
-  <div class="card" style="border-color:rgba(34,197,94,0.25); background: linear-gradient(180deg, rgba(34,197,94,0.02) 0%, rgba(0,0,0,0) 100%); margin-bottom:20px; padding:16px 20px;">
-    <div style="display:flex; gap:12px; align-items:center;">
-      <div style="font-size:24px;">🎓</div>
-      <div>
-        <div style="font-size:14px; font-weight:600; color:var(--green);">Converting Lead to Student Profile (Administrator)</div>
-        <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
-          This will generate an active student account in the registry and initialize their financial record.
-        </div>
-      </div>
+  <div class="convert-summary">
+    <div class="convert-summary-item">
+      <span>Lead</span>
+      <strong><%= lead.name %></strong>
+    </div>
+    <div class="convert-summary-item">
+      <span>Phone</span>
+      <strong><%= lead.phone || 'Not set' %></strong>
+    </div>
+    <div class="convert-summary-item">
+      <span>Suggested Course</span>
+      <strong><%= lead.interestedCourse && lead.interestedCourse.name ? lead.interestedCourse.name : 'Select below' %></strong>
     </div>
   </div>
 
-  <div class="card">
-    <form action="/admin/leads/<%= lead._id %>/convert" method="POST">
+  <form action="/admin/leads/<%= lead._id %>/convert" method="POST" class="convert-card">
+    <section class="convert-section">
+      <div class="convert-section-head">
+        <div>
+          <h3>Portal Account</h3>
+          <p>The student will be forced to set a new password on first login.</p>
+        </div>
+      </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Student Name *</label>
+          <label class="form-label">Student Name *</label>
           <input type="text" name="name" class="form-control" value="<%= lead.name %>" required>
         </div>
         <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Phone Contact *</label>
+          <label class="form-label">Phone Contact *</label>
           <input type="tel" name="phone" class="form-control" value="<%= lead.phone %>" required>
         </div>
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Portal Login Email *</label>
+          <label class="form-label">Portal Login Email *</label>
           <input type="email" name="email" class="form-control" value="<%= lead.email || '' %>" placeholder="student@email.com" required>
         </div>
         <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Portal Password *</label>
-          <input type="text" name="password" class="form-control" placeholder="Minimum 8 characters" required>
-          <div class="form-hint">Student can reset this on first login.</div>
+          <label class="form-label">Temporary Password *</label>
+          <input type="text" name="password" class="form-control" placeholder="Minimum 8 characters" minlength="8" required>
+          <div class="form-hint">This is only for first login. The student must replace it immediately.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="convert-section">
+      <div class="convert-section-head">
+        <div>
+          <h3>Course & Batch</h3>
+          <p>Assign the student to the right roster and primary teacher.</p>
         </div>
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Selected Course *</label>
-          <select name="course" class="form-control" required>
-            <% ['Video Editing','Digital Marketing','Both'].forEach(c => { %>
-              <option value="<%= c %>" <%= lead.course === c ? 'selected' : '' %>><%= c %></option>
-            <% }); %>
+          <label class="form-label">Selected Course *</label>
+          <select id="course_select" name="course" class="form-control" required>
+            <% if (typeof courses !== 'undefined' && courses && courses.length > 0) { %>
+              <% courses.forEach(course => { %>
+                <option value="<%= course._id || course.name %>" <%= (lead.interestedCourse && String(lead.interestedCourse._id || '') === String(course._id || '')) ? 'selected' : '' %>><%= course.name %></option>
+              <% }); %>
+            <% } else { %>
+              <% ['Video Editing','Digital Marketing','Both'].forEach(c => { %>
+                <option value="<%= c %>" <%= (lead.interestedCourse && lead.interestedCourse.name === c) ? 'selected' : '' %>><%= c %></option>
+              <% }); %>
+            <% } %>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Assign Roster Batch *</label>
+          <label class="form-label">Assign Roster Batch *</label>
           <select id="batch_select" name="batch" class="form-control" onchange="toggleCustomBatch()">
             <% if (batches && batches.length > 0) { %>
               <% batches.forEach(b => { %>
-                <option value="<%= b %>"><%= b %></option>
+                <% const batchValue = b && b._id ? b._id : b; const batchLabel = b && b.name ? b.name : b; %>
+                <option value="<%= batchValue %>"><%= batchLabel %></option>
               <% }); %>
             <% } %>
-            <option value="">-- Create New Batch --</option>
+            <option value="">Create New Batch</option>
           </select>
         </div>
       </div>
 
-      <div class="form-row" id="custom_batch_container" <%= `style="display: ${(batches && batches.length > 0) ? 'none' : 'block'};"` %>>
+      <div class="form-row" id="custom_batch_container" style="display: <%= (batches && batches.length > 0) ? 'none' : 'grid' %>;">
         <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">New Batch Name *</label>
+          <label class="form-label">New Batch Name *</label>
           <input type="text" id="customBatch" name="customBatch" class="form-control" placeholder="e.g. DM-03PM-A2" <%= (batches && batches.length > 0) ? '' : 'required' %>>
         </div>
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Total Invoice Fees (₹) *</label>
-          <input type="number" id="fees_total" name="fees_total" class="form-control" placeholder="30000" required min="0" oninput="checkDownpayment()">
-        </div>
-        <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Initial Down Payment (₹)</label>
-          <input type="number" id="fees_paid" name="fees_paid" class="form-control" placeholder="0" value="0" min="0" oninput="checkDownpayment()">
-        </div>
-      </div>
-
-      <div id="downpayment_warning" style="display:none; color:var(--orange); font-size:12px; font-weight:500; margin-bottom:12px; border-left:2px solid var(--orange); padding-left:8px;">
-        ⚠️ Warning: Paid amount is less than the standard 50% down payment requirement. Admin authorization will bypass this check.
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Assign Primary Teacher *</label>
-          <select name="teacherId" class="form-control" required>
-            <option value="">-- Select Teacher --</option>
+          <label class="form-label">Assign Primary Teacher *</label>
+          <select id="teacher_select" name="teacherId" class="form-control" required>
+            <option value="">Select Teacher</option>
             <% teachers.forEach(t => { %>
               <option value="<%= t._id %>"><%= t.name %></option>
             <% }); %>
           </select>
+          <div class="form-hint">Only teachers assigned to the selected batch are shown.</div>
         </div>
         <div class="form-group">
-          <label class="form-label" style="font-size: 10px;">Registration/Enrollment Date</label>
-          <input type="date" name="enrollmentDate" class="form-control"
-            value="<%= new Date().toISOString().split('T')[0] %>">
+          <label class="form-label">Registration Date</label>
+          <input type="date" name="enrollmentDate" class="form-control" value="<%= new Date().toISOString().split('T')[0] %>">
+        </div>
+      </div>
+    </section>
+
+    <section class="convert-section">
+      <div class="convert-section-head">
+        <div>
+          <h3>Fee Setup</h3>
+          <p>Set the invoice amount, initial payment, and installment schedule.</p>
         </div>
       </div>
 
-      <!-- Day 4: Installment configuration section -->
-      <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed var(--border);">
-        <div style="font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
-          <span>Define Fee Installments</span>
-          <button type="button" class="btn btn-ghost btn-xs" onclick="addInstallmentRow()">+ Add Installment</button>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Total Invoice Fees (Rs.) *</label>
+          <input type="number" id="fees_total" name="fees_total" class="form-control" placeholder="30000" required min="0" oninput="checkDownpayment()">
         </div>
+        <div class="form-group">
+          <label class="form-label">Initial Down Payment (Rs.)</label>
+          <input type="number" id="fees_paid" name="fees_paid" class="form-control" placeholder="0" value="0" min="0" oninput="checkDownpayment()">
+        </div>
+      </div>
+
+      <div id="downpayment_warning" class="convert-alert convert-alert-warning" style="display:none;">
+        <strong>Low down payment.</strong>
+        <span>Paid amount is below 50%. Admin conversion will still continue with an authorization note.</span>
+      </div>
+
+      <div class="fee-live-summary">
+        <div>
+          <span>Suggested Down Payment</span>
+          <strong id="suggested_downpayment">Rs. 0</strong>
+        </div>
+        <div>
+          <span>Balance After Payment</span>
+          <strong id="balance_due">Rs. 0</strong>
+        </div>
+        <div>
+          <span>Default Plan</span>
+          <strong>50 / 25 / 25</strong>
+        </div>
+      </div>
+
+      <div class="installment-panel">
+        <div class="installment-panel-head">
+          <div>
+            <h4>Fee Installments</h4>
+            <p>Delete all rows to let the system generate default 50% / 25% / 25% installments.</p>
+          </div>
+          <button type="button" class="btn btn-ghost btn-xs" onclick="addInstallmentRow()">Add Installment</button>
+        </div>
+
         <div id="installments_container">
-          <!-- Initial template row 1 -->
-          <div class="form-row installment-row" style="margin-bottom: 0.5rem;">
-            <div class="form-group" style="flex: 2;">
-              <label class="form-label" style="font-size: 9px;">Name</label>
+          <div class="installment-row">
+            <div class="form-group" data-label="Name">
               <input type="text" name="instName[]" class="form-control form-control-sm" value="Down Payment (50%)" required>
             </div>
-            <div class="form-group" style="flex: 1.5;">
-              <label class="form-label" style="font-size: 9px;">Amount (₹)</label>
+            <div class="form-group" data-label="Amount (Rs.)">
               <input type="number" name="instAmount[]" class="form-control form-control-sm" placeholder="0" required>
             </div>
-            <div class="form-group" style="flex: 2;">
-              <label class="form-label" style="font-size: 9px;">Due Date</label>
+            <div class="form-group" data-label="Due Date">
               <input type="date" name="instDueDate[]" class="form-control form-control-sm" value="<%= new Date().toISOString().split('T')[0] %>" required>
             </div>
-            <div style="display: flex; align-items: flex-end; padding-bottom: 6px;">
-              <button type="button" class="btn btn-red btn-xs" style="padding: 4px 8px;" onclick="removeInstallmentRow(this)">Delete</button>
-            </div>
+            <button type="button" class="btn btn-red btn-xs" onclick="removeInstallmentRow(this)">Delete</button>
           </div>
         </div>
-        <div class="form-hint" style="margin-top: 0.25rem; color: var(--text-muted);">
-          Leave empty or delete all rows to automatically generate default 50% / 25% / 25% installments.
-        </div>
       </div>
+    </section>
 
-      <div style="display:flex; gap:10px; justify-content:flex-end; padding-top:12px; border-top:1px solid var(--border); margin-top:16px;">
-        <a href="/admin/leads/<%= lead._id %>" class="btn btn-ghost">Cancel</a>
-        <button type="submit" class="btn btn-success">Confirm & Enroll Student</button>
-      </div>
-    </form>
-  </div>
+    <div class="convert-actions">
+      <a href="/admin/leads/<%= lead._id %>" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-success">Confirm & Enroll Student</button>
+    </div>
+  </form>
 </div>
 
 <script>
+  const courseOptions = <%- JSON.stringify((courses || []).map(course => ({
+    id: String(course._id || course.name || ''),
+    name: course.name || String(course),
+    fees: Number(course.fees || 0),
+    durationMonths: Number(course.durationMonths || 3)
+  }))).replace(/</g, '\\u003c') %>;
+
+  const batchOptions = <%- JSON.stringify((batches || []).map(batch => {
+    if (batch && batch._id) {
+      return {
+        id: String(batch._id),
+        name: batch.name || '',
+        courseId: String(batch.courseId || ''),
+        courseName: batch.courseName || '',
+        teacherProfileId: String(batch.teacherProfileId || ''),
+        teacherProfileIds: (batch.teacherProfileIds || []).map(String),
+        teacherName: batch.teacherName || ''
+      };
+    }
+    return {
+      id: String(batch || ''),
+      name: String(batch || ''),
+      courseId: '',
+      courseName: '',
+      teacherProfileId: '',
+      teacherProfileIds: [],
+      teacherName: ''
+    };
+  })).replace(/</g, '\\u003c') %>;
+
+  const teacherOptions = <%- JSON.stringify((teachers || []).map(teacher => ({
+    id: String(teacher._id || ''),
+    name: teacher.name || '',
+    courseIds: (teacher.courseIds || []).map(String)
+  }))).replace(/</g, '\\u003c') %>;
+
+  const formatINR = (value) => `Rs. ${Math.max(0, Math.round(Number(value) || 0)).toLocaleString('en-IN')}`;
+
+  function selectedCourse() {
+    const value = document.getElementById('course_select').value;
+    return courseOptions.find(course => course.id === value || course.name === value) || null;
+  }
+
+  function selectedBatch() {
+    const value = document.getElementById('batch_select').value;
+    return batchOptions.find(batch => batch.id === value || batch.name === value) || null;
+  }
+
+  function filterBatchesForCourse() {
+    const course = selectedCourse();
+    const batchSelect = document.getElementById('batch_select');
+    const currentValue = batchSelect.value;
+    const matchingBatches = batchOptions.filter(batch => {
+      if (!course || !batch.courseId) return true;
+      return batch.courseId === course.id || batch.courseName === course.name;
+    });
+
+    batchSelect.innerHTML = '';
+    matchingBatches.forEach(batch => {
+      const option = document.createElement('option');
+      option.value = batch.id || batch.name;
+      option.textContent = batch.name;
+      batchSelect.appendChild(option);
+    });
+
+    const createOption = document.createElement('option');
+    createOption.value = '';
+    createOption.textContent = 'Create New Batch';
+    batchSelect.appendChild(createOption);
+
+    if (matchingBatches.some(batch => batch.id === currentValue || batch.name === currentValue)) {
+      batchSelect.value = currentValue;
+    } else if (matchingBatches.length > 0) {
+      batchSelect.value = matchingBatches[0].id || matchingBatches[0].name;
+    } else {
+      batchSelect.value = '';
+    }
+  }
+
+  function syncFeesFromCourse() {
+    const course = selectedCourse();
+    const totalInput = document.getElementById('fees_total');
+    const paidInput = document.getElementById('fees_paid');
+
+    if (course && course.fees > 0 && (!totalInput.value || Number(totalInput.value) === 0)) {
+      totalInput.value = course.fees;
+    }
+
+    if (Number(totalInput.value) > 0 && (!paidInput.value || Number(paidInput.value) === 0)) {
+      paidInput.value = Math.round(Number(totalInput.value) * 0.5);
+    }
+  }
+
+  function syncTeacherFromBatch() {
+    const batch = selectedBatch();
+    const teacherSelect = document.getElementById('teacher_select');
+    const course = selectedCourse();
+    const allowedTeacherIds = batch && batch.teacherProfileIds && batch.teacherProfileIds.length
+      ? batch.teacherProfileIds
+      : (course ? teacherOptions.filter(teacher => teacher.courseIds.includes(course.id)).map(teacher => teacher.id) : []);
+
+    teacherSelect.innerHTML = '';
+
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = allowedTeacherIds.length ? 'Select Teacher' : 'No teacher linked to this batch';
+    teacherSelect.appendChild(placeholder);
+
+    const visibleTeachers = allowedTeacherIds.length
+      ? teacherOptions.filter(teacher => allowedTeacherIds.includes(teacher.id))
+      : [];
+
+    visibleTeachers.forEach(teacher => {
+      const option = document.createElement('option');
+      option.value = teacher.id;
+      option.textContent = teacher.name;
+      teacherSelect.appendChild(option);
+    });
+
+    if (batch && batch.teacherProfileId) {
+      teacherSelect.value = batch.teacherProfileId;
+      return;
+    }
+
+    if (visibleTeachers.length === 1) {
+      teacherSelect.value = visibleTeachers[0].id;
+    }
+  }
+
   function toggleCustomBatch() {
     const select = document.getElementById('batch_select');
     const container = document.getElementById('custom_batch_container');
     const input = document.getElementById('customBatch');
     if (select.value === '') {
-      container.style.display = 'block';
+      container.style.display = 'grid';
       input.setAttribute('required', 'required');
     } else {
       container.style.display = 'none';
       input.removeAttribute('required');
     }
+
+    syncTeacherFromBatch();
   }
 
   function checkDownpayment() {
@@ -170,42 +354,87 @@
     const paid = Number(document.getElementById('fees_paid').value) || 0;
     const warning = document.getElementById('downpayment_warning');
     if (total > 0 && paid < total * 0.5) {
-      warning.style.display = 'block';
+      warning.style.display = 'flex';
     } else {
       warning.style.display = 'none';
     }
+
+    document.getElementById('suggested_downpayment').textContent = formatINR(total * 0.5);
+    document.getElementById('balance_due').textContent = formatINR(total - paid);
+    recalcInstallments();
   }
 
-  function addInstallmentRow() {
+  function setInstallmentRows(rows) {
     const container = document.getElementById('installments_container');
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = document.querySelector('input[name="enrollmentDate"]').value || new Date().toISOString().split('T')[0];
+    container.innerHTML = '';
+
+    rows.forEach((row, index) => {
+      const dueDate = new Date(todayStr);
+      dueDate.setMonth(dueDate.getMonth() + index);
+      const dueValue = dueDate.toISOString().split('T')[0];
+      addInstallmentRow(row.name, row.amount, dueValue);
+    });
+  }
+
+  function recalcInstallments() {
+    const total = Number(document.getElementById('fees_total').value) || 0;
+    const paid = Number(document.getElementById('fees_paid').value) || 0;
+    const rows = document.querySelectorAll('.installment-row');
+
+    if (rows.length !== 3 && rows.length !== 1) return;
+
+    const remaining = Math.max(0, total - paid);
+    setInstallmentRows([
+      { name: 'Down Payment (50%)', amount: paid || Math.round(total * 0.5) },
+      { name: 'Installment 2 (25%)', amount: Math.round(remaining / 2) },
+      { name: 'Installment 3 (25%)', amount: remaining - Math.round(remaining / 2) }
+    ]);
+  }
+
+  function addInstallmentRow(name = '', amount = '', dueDate = '') {
+    const container = document.getElementById('installments_container');
+    const todayStr = dueDate || new Date().toISOString().split('T')[0];
     const row = document.createElement('div');
-    row.className = 'form-row installment-row';
-    row.style.marginBottom = '0.5rem';
+    row.className = 'installment-row';
     row.innerHTML = `
-      <div class="form-group" style="flex: 2;">
-        <label class="form-label" style="font-size: 9px;">Name</label>
-        <input type="text" name="instName[]" class="form-control form-control-sm" placeholder="e.g. Month 1" required>
+      <div class="form-group" data-label="Name">
+        <input type="text" name="instName[]" class="form-control form-control-sm" placeholder="e.g. Month 1" value="${String(name).replace(/"/g, '&quot;')}" required>
       </div>
-      <div class="form-group" style="flex: 1.5;">
-        <label class="form-label" style="font-size: 9px;">Amount (₹)</label>
-        <input type="number" name="instAmount[]" class="form-control form-control-sm" placeholder="0" required>
+      <div class="form-group" data-label="Amount (Rs.)">
+        <input type="number" name="instAmount[]" class="form-control form-control-sm" placeholder="0" value="${amount}" required>
       </div>
-      <div class="form-group" style="flex: 2;">
-        <label class="form-label" style="font-size: 9px;">Due Date</label>
+      <div class="form-group" data-label="Due Date">
         <input type="date" name="instDueDate[]" class="form-control form-control-sm" value="${todayStr}" required>
       </div>
-      <div style="display: flex; align-items: flex-end; padding-bottom: 6px;">
-        <button type="button" class="btn btn-red btn-xs" style="padding: 4px 8px;" onclick="removeInstallmentRow(this)">Delete</button>
-      </div>
+      <button type="button" class="btn btn-red btn-xs" onclick="removeInstallmentRow(this)">Delete</button>
     `;
     container.appendChild(row);
   }
 
   function removeInstallmentRow(btn) {
     const row = btn.closest('.installment-row');
-    if (row) {
-      row.remove();
-    }
+    if (row) row.remove();
   }
+
+  document.getElementById('course_select').addEventListener('change', () => {
+    const totalInput = document.getElementById('fees_total');
+    totalInput.value = '';
+    filterBatchesForCourse();
+    syncFeesFromCourse();
+    syncTeacherFromBatch();
+    checkDownpayment();
+  });
+
+  document.getElementById('batch_select').addEventListener('change', () => {
+    toggleCustomBatch();
+    checkDownpayment();
+  });
+
+  document.querySelector('input[name="enrollmentDate"]').addEventListener('change', recalcInstallments);
+
+  filterBatchesForCourse();
+  syncFeesFromCourse();
+  syncTeacherFromBatch();
+  checkDownpayment();
 </script>

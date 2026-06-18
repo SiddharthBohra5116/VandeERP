@@ -17,6 +17,7 @@ const scheduleController = require('./admin/scheduleController');
 const holidayController = require('./admin/holidayController');
 const reportController = require('./admin/reportController');
 const batchController = require('./admin/batchController');
+const announcementController = require('./admin/announcementController');
 
 module.exports = {
   ...dashboardController,
@@ -37,5 +38,6 @@ module.exports = {
   ...scheduleController,
   ...holidayController,
   ...reportController,
-  ...batchController
+  ...batchController,
+  ...announcementController
 };

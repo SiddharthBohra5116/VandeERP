@@ -1,5 +1,5 @@
 /**
- * JWT Sentinel — AntiGravity Module 3
+ * JWT Sentinel — Security Module 3
  *
  * Wraps the existing protect middleware with two additional layers:
  *  1. Per-token blacklist check (TokenBlacklist collection)
@@ -42,7 +42,7 @@ async function blacklistToken(token, reason, expiresAt) {
   } catch (err) {
     // Duplicate key = already blacklisted, that's fine
     if (err.code !== 11000) {
-      console.error('[AntiGravity/Sentinel] blacklistToken error:', err.message);
+      console.error('[Security/Sentinel] blacklistToken error:', err.message);
     }
   }
 }
@@ -102,7 +102,7 @@ function jwtSentinel(protect) {
         return forceReLogin(req, res, 'Session has been revoked');
       }
     } catch (err) {
-      console.error('[AntiGravity/Sentinel] Blacklist DB check failed (fail-closed):', err.message);
+      console.error('[Security/Sentinel] Blacklist DB check failed (fail-closed):', err.message);
       return forceReLogin(req, res, 'Session validation unavailable');
     }
 
@@ -176,7 +176,7 @@ function jwtSentinel(protect) {
         }
       } catch (err) {
         // FAIL-CLOSED on user sentinel checks
-        console.error('[AntiGravity/Sentinel] User check failed (fail-closed):', err.message);
+        console.error('[Security/Sentinel] User check failed (fail-closed):', err.message);
         return forceReLogin(req, res, 'Session validation failed');
       }
 

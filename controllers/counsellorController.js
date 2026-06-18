@@ -3,11 +3,13 @@ const leadController = require('./counsellor/leadController');
 const admissionController = require('./counsellor/admissionController');
 const leaveController = require('./counsellor/leaveController');
 const reportController = require('./counsellor/reportController');
+const announcementController = require('./counsellor/announcementController');
 
 module.exports = {
   ...dashboardController,
   ...leadController,
   ...admissionController,
   ...leaveController,
-  ...reportController
+  ...reportController,
+  ...announcementController
 };

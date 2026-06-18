@@ -29,10 +29,11 @@ exports.resetPassword = async (req, res) => {
     }
 
     user.password = password.trim();
-
-    if ('resetRequested' in user) {
-      user.resetRequested = false;
-    }
+    user.resetRequested = false;
+    user.mustChangePassword = true;
+    user.passwordSetByAdmin = true;
+    user.firstLoginCompleted = false;
+    user.passwordChangedAt = new Date();
 
     await user.save();
 

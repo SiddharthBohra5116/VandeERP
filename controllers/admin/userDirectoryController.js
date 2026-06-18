@@ -135,7 +135,10 @@ exports.postCreateUser = async (req, res) => {
       status: data.status || 'active',
       address: data.address || '',
       city: data.city || '',
-      dob: data.dob || null
+      dob: data.dob || null,
+      mustChangePassword: true,
+      passwordSetByAdmin: true,
+      firstLoginCompleted: false
     };
 
     if (req.file) {

@@ -80,12 +80,18 @@ exports.postApproveProfileUpdate = async (req, res) => {
         student.family.mother.name = pending.motherName;
       }
 
+      if (pending.guardianPhone !== null && pending.guardianPhone !== undefined) {
+        if (!student.family.guardian) student.family.guardian = {};
+        student.family.guardian.phone = pending.guardianPhone;
+      }
+
       student.pendingProfileUpdate = {
         name: null,
         phone: null,
         profilePic: null,
         fatherName: null,
         motherName: null,
+        guardianPhone: null,
         address: null,
         city: null,
         dob: null,

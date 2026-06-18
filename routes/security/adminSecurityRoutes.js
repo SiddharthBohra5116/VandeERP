@@ -1,5 +1,5 @@
 /**
- * Admin Security Dashboard Routes — AntiGravity Module 6
+ * Admin Security Dashboard Routes — Security Module 6
  * Mounted at /admin/security
  *
  * All routes require: protect + role('admin')
@@ -74,14 +74,14 @@ router.get('/dashboard', async (req, res) => {
     res.render('admin/securityDashboard', {
       layout:        'main',
       title:         'Security Dashboard',
-      subtitle:      'AntiGravity — Real-Time Threat Monitor',
+      subtitle:      'Security — Real-Time Threat Monitor',
       page:          'security',
       recentAlerts,
       threat,
       flaggedUsers
     });
   } catch (err) {
-    console.error('[AntiGravity/ASD] Dashboard error:', err);
+    console.error('[Security/ASD] Dashboard error:', err);
     res.status(500).render('500', { title: 'Server Error', layout: 'main', errorDetail: err.message });
   }
 });
@@ -157,7 +157,7 @@ router.post('/blacklist', async (req, res) => {
 
     res.json({ success: true, message: `User ${target.name} has been deactivated and all tokens revoked.` });
   } catch (err) {
-    console.error('[AntiGravity/ASD] Blacklist error:', err);
+    console.error('[Security/ASD] Blacklist error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -219,7 +219,7 @@ router.post('/unblacklist', async (req, res) => {
 
     res.json({ success: true, message: `User ${target.name} has been restored.` });
   } catch (err) {
-    console.error('[AntiGravity/ASD] Unblacklist error:', err);
+    console.error('[Security/ASD] Unblacklist error:', err);
     res.status(500).json({ error: err.message });
   }
 });

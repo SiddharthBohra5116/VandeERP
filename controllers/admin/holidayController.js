@@ -1,5 +1,6 @@
 const Holiday = require('../../models/Holiday');
 const LeaveRequest = require('../../models/LeaveRequest');
+const Message = require('../../models/Message');
 const logger = require('../../utils/logger');
 
 /**
@@ -68,7 +69,18 @@ exports.postDeleteHoliday = async (req, res) => {
  */
 exports.postApproveLeave = async (req, res) => {
   try {
-    await LeaveRequest.findByIdAndUpdate(req.params.id, { status: 'approved' });
+    const leave = await LeaveRequest.findByIdAndUpdate(
+      req.params.id,
+      { status: 'approved', approvedBy: req.user._id, approvedAt: new Date() },
+      { new: true }
+    ).populate('user', '_id');
+    if (leave?.user?._id) {
+      await Message.create({
+        sender: req.user._id,
+        recipient: leave.user._id,
+        content: `Your leave request from ${new Date(leave.startDate).toLocaleDateString('en-IN')} to ${new Date(leave.endDate).toLocaleDateString('en-IN')} has been approved.`
+      });
+    }
     logger.info('Teacher leave request approved', { leaveId: req.params.id });
     res.redirect('/admin/holidays-leaves?saved=1');
   } catch (err) {
@@ -83,7 +95,18 @@ exports.postApproveLeave = async (req, res) => {
  */
 exports.postRejectLeave = async (req, res) => {
   try {
-    await LeaveRequest.findByIdAndUpdate(req.params.id, { status: 'rejected' });
+    const leave = await LeaveRequest.findByIdAndUpdate(
+      req.params.id,
+      { status: 'rejected', approvedBy: req.user._id, approvedAt: new Date() },
+      { new: true }
+    ).populate('user', '_id');
+    if (leave?.user?._id) {
+      await Message.create({
+        sender: req.user._id,
+        recipient: leave.user._id,
+        content: `Your leave request from ${new Date(leave.startDate).toLocaleDateString('en-IN')} to ${new Date(leave.endDate).toLocaleDateString('en-IN')} has been rejected.`
+      });
+    }
     logger.info('Teacher leave request rejected', { leaveId: req.params.id });
     res.redirect('/admin/holidays-leaves?saved=1');
   } catch (err) {

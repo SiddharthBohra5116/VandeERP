@@ -2,6 +2,20 @@ const User = require('../../models/User');
 const Assignment = require('../../models/Assignment');
 const Batch = require('../../models/Batch');
 const Student = require('../../models/Student');
+const Message = require('../../models/Message');
+
+async function notifyBatchStudents({ teacherId, batchId, content }) {
+  const students = await Student.find({ batch: batchId }).populate('user', '_id status');
+  const notifications = students
+    .filter(student => student.user && student.user.status === 'active')
+    .map(student => Message.create({
+      sender: teacherId,
+      recipient: student.user._id,
+      content
+    }));
+
+  await Promise.all(notifications);
+}
 
 /**
  * GET /teacher/assignments
@@ -62,6 +76,11 @@ exports.postCreateAssignment = async (req, res) => {
       data.fileName = req.file.originalname;
     }
     const assign = await Assignment.create(data);
+    await notifyBatchStudents({
+      teacherId: req.user._id,
+      batchId: assign.batch,
+      content: `New assignment posted: "${assign.title}". Due date: ${new Date(assign.dueDate).toLocaleDateString('en-IN')}.`
+    });
     console.log('✅ Assignment created successfully:', { assignmentId: assign._id, title: assign.title });
     res.redirect('/teacher/assignments?created=1');
   } catch (err) {
@@ -81,7 +100,11 @@ exports.getAssignmentDetail = async (req, res) => {
   console.log('📄 Assignment Detail load:', { teacherId: req.user._id, assignmentId: req.params.id });
   try {
     const assignment = await Assignment.findOne({ _id: req.params.id, teacher: req.user.teacherProfileId })
-      .populate('submissions.student', 'name batch');
+      .populate('batch', 'name')
+      .populate({
+        path: 'submissions.student',
+        populate: { path: 'user', select: 'name status' }
+      });
 
     if (!assignment) {
       console.warn('⚠️ Assignment not found or not owned by teacher:', { assignmentId: req.params.id });
@@ -91,34 +114,41 @@ exports.getAssignmentDetail = async (req, res) => {
     const { status } = req.query;
     
     // Find all active students in the batch via Student profile
-    const studentProfiles = await Student.find({ batch: assignment.batch })
-      .populate('user');
-    const activeStudents = studentProfiles
+    const studentProfiles = await Student.find({ batch: assignment.batch?._id || assignment.batch })
+      .populate('user')
+      .populate('batch', 'name');
+    const activeStudentProfiles = studentProfiles
       .filter(sp => sp.user && sp.user.isActive)
-      .map(sp => sp.user)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => spDisplayName(a).localeCompare(spDisplayName(b)));
     
     // Find any students who submitted the assignment (even if currently completed/inactive)
     const submittedStudentIds = assignment.submissions.map(s => s.student).filter(Boolean);
-    const submittedStudents = await User.find({ _id: { $in: submittedStudentIds } });
+    const submittedProfiles = await Student.find({ _id: { $in: submittedStudentIds } })
+      .populate('user')
+      .populate('batch', 'name');
 
     // Combine uniquely: all active batch students + any inactive students who submitted
     const studentMap = new Map();
-    activeStudents.forEach(s => studentMap.set(s._id.toString(), s));
-    submittedStudents.forEach(s => {
-      if (!studentMap.has(s._id.toString())) {
-        studentMap.set(s._id.toString(), s);
+    activeStudentProfiles.forEach(sp => studentMap.set(sp._id.toString(), sp));
+    submittedProfiles.forEach(sp => {
+      if (!studentMap.has(sp._id.toString())) {
+        studentMap.set(sp._id.toString(), sp);
       }
     });
 
-    const studentsToProcess = Array.from(studentMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    const studentsToProcess = Array.from(studentMap.values()).sort((a, b) => spDisplayName(a).localeCompare(spDisplayName(b)));
 
     const now = new Date();
     const dueDate = new Date(assignment.dueDate);
 
-    let allSubmissions = studentsToProcess.map(student => {
-      const profile = studentProfiles.find(sp => sp.user && sp.user._id.toString() === student._id.toString());
-      const studentProfileId = profile ? profile._id.toString() : null;
+    let allSubmissions = studentsToProcess.map(profile => {
+      const studentProfileId = profile._id.toString();
+      const student = {
+        _id: profile.user?._id || profile._id,
+        name: profile.user?.name || 'Deleted Student',
+        status: profile.user?.status || profile.status,
+        batch: profile.batch || assignment.batch || null
+      };
 
       const sub = assignment.submissions.find(
         s => s.student && (s.student._id || s.student).toString() === studentProfileId
@@ -165,6 +195,10 @@ exports.getAssignmentDetail = async (req, res) => {
   }
 };
 
+function spDisplayName(studentProfile) {
+  return studentProfile?.user?.name || 'Deleted Student';
+}
+
 /**
  * POST /teacher/assignments/:id/grade/:subId
  * Grades a single student's submission — sets marks, feedback, and status.
@@ -177,6 +211,21 @@ exports.postGradeSubmission = async (req, res) => {
     submissionId: req.params.subId, marks: Number(marks), status,
   });
   try {
+    const assignment = await Assignment.findOne({
+      _id: req.params.id,
+      teacher: req.user.teacherProfileId,
+      'submissions._id': req.params.subId
+    }).populate({
+      path: 'submissions.student',
+      populate: { path: 'user', select: '_id status' }
+    });
+
+    if (!assignment) {
+      return res.redirect('/teacher/assignments?error=1');
+    }
+
+    const submission = assignment.submissions.id(req.params.subId);
+
     await Assignment.updateOne(
       { _id: req.params.id, 'submissions._id': req.params.subId },
       {
@@ -187,6 +236,26 @@ exports.postGradeSubmission = async (req, res) => {
         },
       }
     );
+    if (submission?.student?.user && submission.student.user.status === 'active') {
+      const markText = Number.isFinite(Number(marks))
+        ? `${Number(marks)} / ${assignment.totalMarks}`
+        : `Not scored / ${assignment.totalMarks}`;
+      const statusText = status || 'graded';
+      const feedbackText = feedback && feedback.trim()
+        ? `\nFeedback: ${feedback.trim()}`
+        : '\nFeedback: No written feedback added.';
+
+      await Message.create({
+        sender: req.user._id,
+        recipient: submission.student.user._id,
+        content:
+          `Assignment graded: "${assignment.title}"\n` +
+          `Score: ${markText}\n` +
+          `Status: ${statusText}\n` +
+          `${feedbackText}\n` +
+          'Open Student Portal > Assignments to review the result.'
+      });
+    }
     console.log('✅ Submission graded successfully:', { submissionId: req.params.subId });
     res.redirect(`/teacher/assignments/${req.params.id}?graded=1`);
   } catch (err) {
@@ -209,6 +278,11 @@ exports.postExtendDueDate = async (req, res) => {
     }
     assignment.dueDate = new Date(dueDate);
     await assignment.save();
+    await notifyBatchStudents({
+      teacherId: req.user._id,
+      batchId: assignment.batch,
+      content: `Assignment deadline updated: "${assignment.title}" is now due on ${assignment.dueDate.toLocaleDateString('en-IN')}.`
+    });
     console.log('✅ Assignment due date extended:', { assignmentId: assignment._id, newDueDate: assignment.dueDate });
     res.redirect(`/teacher/assignments/${assignment._id}?extended=1`);
   } catch (err) {

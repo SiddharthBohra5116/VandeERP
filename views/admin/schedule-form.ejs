@@ -63,12 +63,12 @@
     <div class="form-row">
       <div class="form-group">
         <label class="form-label" for="batch">Target Batch *</label>
-        <input type="text" id="batch" name="batch" class="form-control" list="batch-list" value="<%= isEdit ? target.batch : '' %>" placeholder="e.g. Batch Video Editing Morning" required>
-        <datalist id="batch-list">
+        <select id="batch" name="batch" class="form-control" required>
+          <option value="" disabled <%= !isEdit ? 'selected' : '' %>>Select Batch</option>
           <% batches.forEach(b => { %>
-            <option value="<%= b %>"></option>
+            <option value="<%= b._id %>" <%= isEdit && target.batch && target.batch._id && target.batch._id.toString() === b._id.toString() ? 'selected' : '' %>><%= b.name %></option>
           <% }) %>
-        </datalist>
+        </select>
       </div>
 
       <div class="form-group">
@@ -76,7 +76,7 @@
         <select id="teacher" name="teacher" class="form-control" required>
           <option value="" disabled <%= !isEdit ? 'selected' : '' %>>Select Teacher</option>
           <% teachers.forEach(t => { %>
-            <option value="<%= t._id %>" <%= isEdit && target.teacher && target.teacher.toString() === t._id.toString() ? 'selected' : '' %>><%= t.name %> (<%= t.subject || 'Faculty' %>)</option>
+            <option value="<%= t._id %>" <%= isEdit && target.teacher && target.teacher.toString() === t._id.toString() ? 'selected' : '' %>><%= t.name %> (Faculty)</option>
           <% }) %>
         </select>
       </div>

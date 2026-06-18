@@ -1,5 +1,5 @@
 /**
- * AntiGravity Unit Tests
+ * Security Unit Tests
  * Run with: node tests/security.test.js
  *
  * Uses Node's built-in assert module — zero new dependencies.
@@ -317,5 +317,5 @@ if (failed > 0) {
   console.log(`  ⚠️  ${failed} test(s) failed.`);
   process.exit(1);
 } else {
-  console.log(`  🛡️  All AntiGravity tests passed.\n`);
+  console.log(`  🛡️  All Security tests passed.\n`);
 }

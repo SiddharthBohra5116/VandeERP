@@ -35,7 +35,7 @@
       <label class="form-label" style="font-size: 10px;">Source</label>
       <select name="source" class="form-control" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
         <option value="">All Sources</option>
-        <% ['Walk-in','Website','Referral','Social Media','Advertisement','WhatsApp','Other'].forEach(s => { %>
+        <% ['Walk-in','Website','Referral','Instagram','Facebook','LinkedIn','Advertisement','WhatsApp','Other'].forEach(s => { %>
           <option value="<%= s %>" <%= filters.source === s ? 'selected' : '' %>><%= s %></option>
         <% }); %>
       </select>
@@ -83,17 +83,17 @@
                 lost: 'badge-red'
               }[lead.status] || 'badge-grey';
 
-              const isOverdue = lead.followUpDate && new Date(lead.followUpDate) < new Date() && lead.status !== 'admission_completed' && lead.status !== 'lost';
+              const isOverdue = lead.nextFollowUpAt && new Date(lead.nextFollowUpAt) < new Date() && lead.status !== 'admission_completed' && lead.status !== 'lost';
             %>
             <tr>
               <td class="td-mono text-muted"><%= i + 1 %></td>
               <td><strong><%= lead.name %></strong></td>
               <td class="td-mono"><%= lead.phone %></td>
-              <td><span class="badge badge-orange"><%= lead.course %></span></td>
+              <td><span class="badge badge-orange"><%= lead.interestedCourse ? lead.interestedCourse.name : 'Undecided' %></span></td>
               <td class="td-muted"><%= lead.source %></td>
               <td><span class="badge <%= statusBadge %>"><%= lead.status %></span></td>
               <td class="td-mono" <%= isOverdue ? 'style="color: var(--red); font-weight: bold;"' : '' %>>
-                <%= lead.followUpDate ? new Date(lead.followUpDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'}) : '—' %>
+                <%= lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'}) : '—' %>
                 <% if (isOverdue) { %> ⚠️<% } %>
               </td>
               <td class="td-mono text-muted">
@@ -103,11 +103,6 @@
                 <div style="display:flex; gap:5px;">
                   <a href="/counsellor/leads/<%= lead._id %>" class="btn btn-ghost btn-xs">View</a>
                   <a href="/counsellor/leads/<%= lead._id %>/edit" class="btn btn-ghost btn-xs">Edit</a>
-                  <form action="/counsellor/leads/<%= lead._id %>?_method=DELETE" method="POST"
-                        onsubmit="return confirm('Delete this lead permanently? This cannot be undone.')" style="display:inline; margin:0;">
-                    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
-                    <button type="submit" class="btn btn-danger btn-xs">✕</button>
-                  </form>
                 </div>
               </td>
             </tr>
@@ -119,4 +114,3 @@
 </div>
 
 <script src="/js/instant-filter.js"></script>
-

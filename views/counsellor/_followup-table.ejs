@@ -34,10 +34,10 @@
           <td class="td-mono">
             <a href="tel:<%= lead.phone %>" style="color:var(--gold); font-weight:600;"><%= lead.phone %></a>
           </td>
-          <td><span class="badge badge-orange"><%= lead.course %></span></td>
+          <td><span class="badge badge-orange"><%= lead.interestedCourse ? lead.interestedCourse.name : 'Undecided' %></span></td>
           <td><span class="badge <%= statusBadge %>"><%= lead.status %></span></td>
           <td class="td-mono" style="color:var(--red); font-weight:600;">
-            <%= new Date(lead.followUpDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'}) %>
+            <%= lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'}) : '—' %>
           </td>
           <td class="td-muted text-sm" style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             <%= lastNote ? lastNote : '—' %>

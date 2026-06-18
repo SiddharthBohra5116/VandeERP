@@ -2,6 +2,8 @@ const User = require('../../models/User');
 const Student = require('../../models/Student');
 const Batch = require('../../models/Batch');
 const Course = require('../../models/Course');
+const Teacher = require('../../models/Teacher');
+const Message = require('../../models/Message');
 
 const logger = require('../../utils/logger');
 
@@ -276,6 +278,9 @@ exports.postEditBatch = async (req, res) => {
       return res.redirect('/admin/batches');
     }
 
+    const oldTeacherIds = (batch.teachers || []).map(id => id.toString()).sort();
+    const oldCourseId = batch.course ? batch.course.toString() : '';
+
     batch.name = name.trim();
     batch.course = course;
     batch.capacity = Number(capacity) || 20;
@@ -285,6 +290,50 @@ exports.postEditBatch = async (req, res) => {
     batch.isActive = isActive === 'true' || isActive === 'on';
 
     await batch.save();
+
+    const newTeacherIds = teachersArray.map(id => id.toString()).sort();
+    const teachersChanged = oldTeacherIds.join(',') !== newTeacherIds.join(',');
+    const courseChanged = oldCourseId !== String(batch.course || '');
+
+    if (teachersChanged || courseChanged) {
+      const newPrimaryTeacher = teachersArray.length
+        ? await Teacher.findOne({ user: teachersArray[0] }).populate('user', 'name')
+        : null;
+
+      const students = await Student.find({ batch: batch._id })
+        .populate('user', '_id name status')
+        .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
+
+      await Student.updateMany(
+        { batch: batch._id },
+        {
+          ...(teachersChanged ? { teacher: newPrimaryTeacher ? newPrimaryTeacher._id : null } : {}),
+          ...(courseChanged ? { course: batch.course } : {})
+        }
+      );
+
+      const newTeacherName = newPrimaryTeacher?.user?.name || 'Unassigned';
+      const notifications = students
+        .filter(student => student.user)
+        .map(student => {
+          const oldTeacherName = student.teacher?.user?.name || 'Unassigned';
+          const messages = [];
+          if (teachersChanged) {
+            messages.push(`your primary teacher changed from ${oldTeacherName} to ${newTeacherName}`);
+          }
+          if (courseChanged) {
+            messages.push('your course assignment was updated to match the batch');
+          }
+
+          return Message.create({
+            sender: req.user._id,
+            recipient: student.user._id,
+            content: `Batch "${batch.name}" update: ${messages.join(' and ')}.`
+          });
+        });
+
+      await Promise.all(notifications);
+    }
 
     logger.info('Batch updated successfully', {
       id: req.params.id,

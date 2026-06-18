@@ -1,0 +1,111 @@
+<%
+  layout = 'main';
+  title = 'Create Announcement';
+  page = 'announcements';
+%>
+
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+  <form action="/admin/announcements/create" method="POST">
+    <div class="form-group">
+      <label class="form-label" for="title">Title *</label>
+      <input type="text" id="title" name="title" class="form-control" placeholder="e.g. Academy Holiday / Scheduled Server Maintenance" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="content">Content *</label>
+      <textarea id="content" name="content" class="form-control" style="min-height: 120px;" placeholder="Write the announcement description..." required></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="audienceType">Audience Type *</label>
+      <select id="audienceType" name="audienceType" class="form-control" required onchange="toggleAudienceFields()">
+        <option value="all" selected>All Users</option>
+        <option value="role">Specific Role</option>
+        <option value="course">Specific Course</option>
+        <option value="batch">Specific Batch</option>
+        <option value="counsellor">Specific Counsellor (Assigned Students)</option>
+      </select>
+    </div>
+
+    <!-- TARGET DEPENDENT FIELDS -->
+    <div id="roleField" class="form-group audience-sub-field" style="display: none;">
+      <label class="form-label" for="role">Target Role</label>
+      <select id="role" name="role" class="form-control">
+        <option value="student">Students</option>
+        <option value="teacher">Teachers</option>
+        <option value="counsellor">Counsellors</option>
+      </select>
+    </div>
+
+    <div id="courseField" class="form-group audience-sub-field" style="display: none;">
+      <label class="form-label" for="course">Target Course</label>
+      <select id="course" name="course" class="form-control">
+        <option value="" disabled selected>Select Course</option>
+        <% courses.forEach(c => { %>
+          <option value="<%= c._id %>"><%= c.name %> (<%= c.code %>)</option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div id="batchField" class="form-group audience-sub-field" style="display: none;">
+      <label class="form-label" for="batch">Target Batch</label>
+      <select id="batch" name="batch" class="form-control">
+        <option value="" disabled selected>Select Batch</option>
+        <% batches.forEach(b => { %>
+          <option value="<%= b._id %>"><%= b.name %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div id="counsellorField" class="form-group audience-sub-field" style="display: none;">
+      <label class="form-label" for="counsellor">Target Counsellor</label>
+      <select id="counsellor" name="counsellor" class="form-control">
+        <option value="" disabled selected>Select Counsellor</option>
+        <% counsellors.forEach(c => { %>
+          <option value="<%= c._id %>"><%= c.name %></option>
+        <% }) %>
+      </select>
+      <div class="form-hint">Only students assigned to this counsellor will see this announcement.</div>
+    </div>
+
+    <div style="display:flex; gap:10px; justify-content:flex-end; padding-top:12px; border-top:1px solid var(--border); margin-top:20px;">
+      <a href="/admin/announcements" class="btn btn-ghost btn-sm">Cancel</a>
+      <button type="submit" class="btn btn-primary btn-sm">Create Announcement</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  function toggleAudienceFields() {
+    const audienceType = document.getElementById('audienceType').value;
+
+    // Hide all first
+    document.querySelectorAll('.audience-sub-field').forEach(el => {
+      el.style.display = 'none';
+      const select = el.querySelector('select');
+      if (select) select.required = false;
+    });
+
+    // Show selected
+    if (audienceType === 'role') {
+      const field = document.getElementById('roleField');
+      field.style.display = 'block';
+      field.querySelector('select').required = true;
+    } else if (audienceType === 'course') {
+      const field = document.getElementById('courseField');
+      field.style.display = 'block';
+      field.querySelector('select').required = true;
+    } else if (audienceType === 'batch') {
+      const field = document.getElementById('batchField');
+      field.style.display = 'block';
+      field.querySelector('select').required = true;
+    } else if (audienceType === 'counsellor') {
+      const field = document.getElementById('counsellorField');
+      field.style.display = 'block';
+      field.querySelector('select').required = true;
+    }
+  }
+
+  // Run on load
+  document.addEventListener('DOMContentLoaded', toggleAudienceFields);
+</script>
