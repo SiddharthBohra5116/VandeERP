@@ -10,12 +10,13 @@
       assignment,
       totalStudents: assignment.submissions ? assignment.submissions.length : 0,
       handinsCount: assignment.submissions ? assignment.submissions.length : 0,
-      gradedCount: assignment.submissions ? assignment.submissions.filter(s => s.status === 'graded' || s.marks !== null).length : 0
+      gradedCount: assignment.submissions ? assignment.submissions.filter(s => s.status === 'graded' || s.marks !== null).length : 0,
+      ungradedCount: assignment.submissions ? assignment.submissions.filter(s => ['submitted', 'late'].includes(s.status) && s.marks === null).length : 0
     }));
   const now = new Date();
   const activeCount = rows.filter(row => row.assignment.isActive).length;
   const overdueCount = rows.filter(row => new Date(row.assignment.dueDate) < now).length;
-  const ungradedCount = rows.reduce((sum, row) => sum + Math.max(0, row.handinsCount - row.gradedCount), 0);
+  const ungradedCount = rows.reduce((sum, row) => sum + (row.ungradedCount || 0), 0);
 %>
 
 <div class="assignment-board">
@@ -28,27 +29,27 @@
     <a href="/teacher/assignments/create" class="btn btn-primary">Create assignment</a>
   </section>
 
-  <section class="assignment-board-summary">
-    <div>
+  <section class="assignment-board-summary" aria-label="Assignment filters">
+    <button type="button" class="assignment-summary-card is-active" data-assignment-filter="all" aria-pressed="true">
       <span>Total</span>
       <strong><%= rows.length %></strong>
       <small>Assignments posted</small>
-    </div>
-    <div>
+    </button>
+    <button type="button" class="assignment-summary-card" data-assignment-filter="active" aria-pressed="false">
       <span>Active</span>
       <strong><%= activeCount %></strong>
       <small>Open assignment goals</small>
-    </div>
-    <div class="<%= overdueCount ? 'is-danger' : '' %>">
+    </button>
+    <button type="button" class="assignment-summary-card <%= overdueCount ? 'is-danger' : '' %>" data-assignment-filter="overdue" aria-pressed="false">
       <span>Past due</span>
       <strong><%= overdueCount %></strong>
       <small>Need review or follow-up</small>
-    </div>
-    <div class="<%= ungradedCount ? 'is-warning' : '' %>">
+    </button>
+    <button type="button" class="assignment-summary-card <%= ungradedCount ? 'is-warning' : '' %>" data-assignment-filter="ungraded" aria-pressed="false">
       <span>Ungraded</span>
       <strong><%= ungradedCount %></strong>
       <small>Submitted work pending</small>
-    </div>
+    </button>
   </section>
 
   <% if (rows.length === 0) { %>
@@ -59,7 +60,12 @@
       </div>
     </div>
   <% } else { %>
-    <section class="assignment-card-grid">
+    <div id="assignmentFilterEmpty" class="card assignment-filter-empty" hidden>
+      <div class="empty-state">
+        <p>No assignments match this filter.</p>
+      </div>
+    </div>
+    <section class="assignment-card-grid" id="assignmentCardGrid">
       <% rows.forEach(row => { %>
         <%
           const assign = row.assignment;
@@ -69,9 +75,13 @@
           const handinsCount = row.handinsCount || 0;
           const gradedCount = row.gradedCount || 0;
           const progress = totalStudents > 0 ? Math.min(100, Math.round((handinsCount / totalStudents) * 100)) : 0;
-          const ungraded = Math.max(0, handinsCount - gradedCount);
+          const ungraded = row.ungradedCount || 0;
         %>
-        <article class="assignment-card <%= isOverdue ? 'is-overdue' : '' %>">
+        <article class="assignment-card <%= isOverdue ? 'is-overdue' : '' %>"
+          data-assignment-card
+          data-active="<%= assign.isActive ? 'true' : 'false' %>"
+          data-overdue="<%= isOverdue ? 'true' : 'false' %>"
+          data-ungraded="<%= ungraded > 0 ? 'true' : 'false' %>">
           <div class="assignment-card-head">
             <div>
               <span class="assignment-card-kicker"><%= assign.course && assign.course.name ? assign.course.name : 'Course not set' %></span>
@@ -123,3 +133,48 @@
     </section>
   <% } %>
 </div>
+
+<script>
+  (() => {
+    const buttons = document.querySelectorAll('[data-assignment-filter]');
+    const cards = document.querySelectorAll('[data-assignment-card]');
+    const empty = document.getElementById('assignmentFilterEmpty');
+
+    const applyAssignmentFilter = (filter) => {
+      let shown = 0;
+      cards.forEach(card => {
+        const visible =
+          filter === 'all' ||
+          (filter === 'active' && card.dataset.active === 'true' && card.dataset.overdue !== 'true') ||
+          (filter === 'overdue' && card.dataset.overdue === 'true') ||
+          (filter === 'ungraded' && card.dataset.ungraded === 'true');
+
+        card.hidden = !visible;
+        if (visible) shown++;
+      });
+
+      if (empty) empty.hidden = shown !== 0;
+
+      buttons.forEach(button => {
+        const isActive = button.dataset.assignmentFilter === filter;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', String(isActive));
+      });
+
+      const url = new URL(window.location.href);
+      if (filter === 'all') url.searchParams.delete('view');
+      else url.searchParams.set('view', filter);
+      window.history.replaceState(window.history.state || {}, document.title, url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : ''));
+    };
+
+    buttons.forEach(button => {
+      button.addEventListener('click', () => {
+        applyAssignmentFilter(button.dataset.assignmentFilter);
+        document.getElementById('assignmentCardGrid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    const initialView = new URL(window.location.href).searchParams.get('view') || 'all';
+    applyAssignmentFilter(['all', 'active', 'overdue', 'ungraded'].includes(initialView) ? initialView : 'all');
+  })();
+</script>

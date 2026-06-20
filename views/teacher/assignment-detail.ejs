@@ -128,11 +128,7 @@
                 %>
                 <span class="badge <%= badgeClass %>"><%= sub.status %></span>
                 <% if (sub.hasSubmitted) { %>
-                  <select name="grades[<%= sub.submissionId %>][status]" class="form-control text-xs" style="margin-top:6px; padding:0.35rem 0.45rem;">
-                    <option value="graded">Graded</option>
-                    <option value="submitted" <%= sub.status === 'submitted' ? 'selected' : '' %>>Submitted</option>
-                    <option value="late" <%= sub.status === 'late' ? 'selected' : '' %>>Late</option>
-                  </select>
+                  <div class="td-muted text-xs" style="margin-top:6px;">Entering marks will mark this as graded.</div>
                 <% } %>
               </td>
               <td class="text-sm" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
@@ -183,12 +179,8 @@
           <input type="number" id="marks" name="marks" class="form-control" min="0" max="<%= assignment.totalMarks %>" required>
         </div>
         <div class="form-group">
-          <label class="form-label" for="status">Submission Status</label>
-          <select id="status" name="status" class="form-control" required>
-            <option value="graded">Graded</option>
-            <option value="submitted">Submitted (Pending review)</option>
-            <option value="late">Late Submission</option>
-          </select>
+          <label class="form-label">Result Status</label>
+          <div class="locked-context-pill">Graded after saving marks</div>
         </div>
       </div>
 
@@ -245,8 +237,6 @@
     document.getElementById('gradeStudentName').innerText = studentName;
     document.getElementById('marks').value = marks;
     document.getElementById('feedback').value = feedback;
-    document.getElementById('status').value = status === 'submitted' || status === 'late' || status === 'graded' ? status : 'graded';
-    
     document.getElementById('gradeModal').classList.add('open');
   }
 

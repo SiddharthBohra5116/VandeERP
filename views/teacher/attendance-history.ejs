@@ -6,11 +6,13 @@
 %>
 
 <%
+  const absentList = typeof absentRoster !== 'undefined' ? absentRoster : [];
   let totalLogs = records.length;
   let presentCount = records.filter(r => r.status === 'present').length;
   let absentCount = records.filter(r => r.status === 'absent').length;
   let lateCount = records.filter(r => r.status === 'late').length;
   let presentRate = totalLogs ? Math.round((presentCount / totalLogs) * 100) : 0;
+  let sessionCount = sessions.length;
 %>
 
 <style>
@@ -30,19 +32,22 @@
   }
 
   .stat-card-premium {
-    background: linear-gradient(145deg, var(--bg-card), #1b1b1b);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015)),
+      var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: 1.25rem 1.5rem;
     position: relative;
     overflow: hidden;
     transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: var(--ring-soft), var(--shadow-md);
   }
 
   .stat-card-premium:hover {
     transform: translateY(-2px);
     border-color: var(--gold-border);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(255, 204, 0, 0.05);
+    box-shadow: var(--ring-soft), var(--shadow-lg);
   }
 
   .stat-card-premium::after {
@@ -56,6 +61,17 @@
   .stat-card-premium.present::after { background: var(--green); }
   .stat-card-premium.absent::after { background: var(--red); }
   .stat-card-premium.late::after { background: var(--orange); }
+
+  .stat-card-premium.is-clickable {
+    width: 100%;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .stat-card-premium.is-clickable:hover .stat-desc {
+    color: var(--red);
+  }
 
   .stat-value {
     font-size: 2.2rem;
@@ -79,7 +95,9 @@
   }
 
   .premium-filter-bar {
-    background: var(--bg-card);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015)),
+      var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: 1.25rem;
@@ -88,6 +106,7 @@
     flex-wrap: wrap;
     gap: 1.25rem;
     align-items: flex-end;
+    box-shadow: var(--ring-soft), var(--shadow-md);
   }
 
   .premium-filter-group {
@@ -107,7 +126,9 @@
   }
 
   .premium-select, .premium-input {
-    background: var(--bg-input);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018)),
+      var(--bg-input);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     color: var(--text);
@@ -121,6 +142,33 @@
     border-color: var(--gold);
     outline: none;
     box-shadow: 0 0 0 3px var(--gold-dim);
+  }
+
+  html[data-theme="light"] .stat-card-premium,
+  body.light-theme .stat-card-premium,
+  html[data-theme="light"] .premium-filter-bar,
+  body.light-theme .premium-filter-bar {
+    background:
+      linear-gradient(180deg, #ffffff, #ffffff),
+      #fff;
+    border-color: var(--border);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 14px 34px rgba(18,18,20,0.075);
+  }
+
+  html[data-theme="light"] .stat-card-premium:hover,
+  body.light-theme .stat-card-premium:hover {
+    border-color: var(--gold-border);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 18px 44px rgba(18,18,20,0.105);
+  }
+
+  html[data-theme="light"] .premium-select,
+  html[data-theme="light"] .premium-input,
+  body.light-theme .premium-select,
+  body.light-theme .premium-input {
+    background:
+      linear-gradient(180deg, #ffffff, #ffffff),
+      #ffffff;
+    border-color: var(--border);
   }
 
   .premium-table {
@@ -250,72 +298,355 @@
   .roster-status.present { background: rgba(34, 197, 94, 0.08); color: var(--green); border: 1px solid rgba(34, 197, 94, 0.15); }
   .roster-status.absent { background: rgba(239, 68, 68, 0.08); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.15); }
   .roster-status.late { background: rgba(249, 115, 22, 0.08); color: var(--orange); border: 1px solid rgba(249, 115, 22, 0.15); }
+
+  .range-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .range-chip-row a {
+    text-decoration: none;
+  }
+
+  .absent-modal-tools {
+    margin-bottom: 1rem;
+  }
+
+  .absent-session-group {
+    margin-bottom: 1rem;
+  }
+
+  .absent-session-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.55rem;
+    color: var(--text-sub);
+    font-size: 0.82rem;
+  }
+
+  .absent-session-head strong {
+    color: var(--text);
+  }
+
+  .attendance-history-shell {
+    display: grid;
+    gap: 1.15rem;
+  }
+
+  .attendance-history-overview {
+    border: 1px solid rgba(255, 204, 0, 0.18);
+    border-radius: var(--radius-lg);
+    background:
+      radial-gradient(circle at top left, rgba(255, 204, 0, 0.12), transparent 34%),
+      linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.01)),
+      var(--bg-card);
+    box-shadow: var(--ring-soft), var(--shadow-lg);
+    padding: 1.15rem;
+  }
+
+  .attendance-history-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .attendance-history-head h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.28rem;
+  }
+
+  .attendance-history-head p {
+    margin: 0.32rem 0 0;
+    color: var(--text-sub);
+    font-size: 0.86rem;
+  }
+
+  .history-health-chip {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.035);
+    padding: 0.45rem 0.7rem;
+    color: var(--text-sub);
+    font-size: 0.78rem;
+    font-weight: 800;
+  }
+
+  .history-health-chip strong {
+    color: <%= presentRate >= 85 ? 'var(--green)' : presentRate >= 75 ? 'var(--orange)' : 'var(--red)' %>;
+    font-family: var(--mono);
+  }
+
+  .attendance-history-overview .stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+
+  .attendance-history-overview .stat-card-premium {
+    border-radius: var(--radius);
+    padding: 1rem;
+    box-shadow: none;
+  }
+
+  .attendance-history-overview .stat-value {
+    font-size: 2.1rem;
+  }
+
+  .attendance-history-overview .premium-filter-bar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(180px, 1fr)) auto;
+    gap: 0.8rem;
+    padding: 0.85rem;
+    margin-bottom: 0;
+    box-shadow: none;
+  }
+
+  .attendance-history-overview .premium-filter-group {
+    min-width: 0;
+  }
+
+  .attendance-history-overview .premium-select,
+  .attendance-history-overview .premium-input {
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 750;
+  }
+
+  .attendance-history-overview .range-chip-row {
+    margin-bottom: 0.85rem;
+  }
+
+  .attendance-history-overview .range-chip-row .btn {
+    border-radius: 999px;
+  }
+
+  .sessions-board {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-card);
+    box-shadow: var(--ring-soft), var(--shadow-md);
+    overflow: hidden;
+  }
+
+  .sessions-board-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.01));
+  }
+
+  .sessions-board-header h3 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1rem;
+  }
+
+  .sessions-board-header p {
+    margin: 0.25rem 0 0;
+    color: var(--text-sub);
+    font-size: 0.78rem;
+  }
+
+  .session-card-list {
+    display: grid;
+  }
+
+  .session-card {
+    display: grid;
+    grid-template-columns: minmax(130px, 0.7fr) minmax(220px, 1.3fr) minmax(280px, 1.5fr) auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .session-card:last-child {
+    border-bottom: 0;
+  }
+
+  .session-card:hover {
+    background: rgba(255,204,0,0.035);
+  }
+
+  .session-date-block strong {
+    display: block;
+    color: var(--gold);
+    font-family: var(--mono);
+    font-size: 0.92rem;
+  }
+
+  .session-date-block span,
+  .session-context span,
+  .session-rate-label {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .session-context strong {
+    display: block;
+    color: var(--text);
+    font-size: 0.95rem;
+    overflow-wrap: anywhere;
+  }
+
+  .session-summary-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-bottom: 0.55rem;
+  }
+
+  .session-rate-track {
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.07);
+    overflow: hidden;
+  }
+
+  .session-rate-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--green), #86efac);
+  }
+
+  .session-action {
+    justify-self: end;
+  }
+
+  @media (max-width: 1100px) {
+    .attendance-history-overview .stats-grid,
+    .attendance-history-overview .premium-filter-bar {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .session-card {
+      grid-template-columns: 1fr;
+      align-items: stretch;
+    }
+
+    .session-action,
+    .session-action .btn {
+      width: 100%;
+      justify-self: stretch;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .attendance-history-head {
+      flex-direction: column;
+    }
+
+    .attendance-history-overview .stats-grid,
+    .attendance-history-overview .premium-filter-bar {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
 
-<!-- Top Statistics Cards -->
-<div class="stats-grid">
-  <div class="stat-card-premium total">
-    <div class="stat-label">Total Student Check-ins</div>
-    <div class="stat-value"><%= totalLogs %></div>
-    <div class="stat-desc">Historical logged records</div>
-  </div>
-  <div class="stat-card-premium present">
-    <div class="stat-label">Average Present Rate</div>
-    <div class="stat-value text-green"><%= presentRate %>%</div>
-    <div class="stat-desc"><%= presentCount %> present logs</div>
-  </div>
-  <div class="stat-card-premium absent">
-    <div class="stat-label">Total Absentees</div>
-    <div class="stat-value text-red"><%= absentCount %></div>
-    <div class="stat-desc">Required class follow-ups</div>
-  </div>
-  <div class="stat-card-premium late">
-    <div class="stat-label">Total Late Checks</div>
-    <div class="stat-value text-orange"><%= lateCount %></div>
-    <div class="stat-desc">Exceptional late arrivals</div>
-  </div>
-</div>
-
-<!-- Filters Bar -->
-<div class="card" style="padding: 0; border: none; background: transparent; margin-bottom: 1.5rem;">
-  <form method="GET" action="/teacher/attendance/history" class="filter-bar filter-form-container" style="margin:0;">
-    <div class="premium-filter-bar">
-      <!-- Course Selection First -->
-      <div class="premium-filter-group">
-        <label class="premium-filter-label">Course</label>
-        <select name="course" id="historyCourseSelect" class="premium-select">
-          <option value="">All Courses</option>
-          <% courses.forEach(c => { %>
-            <option value="<%= c._id %>" <%= String(filter.course) === String(c._id) ? 'selected' : '' %>><%= c.name %></option>
-          <% }) %>
-        </select>
+<div class="attendance-history-shell">
+  <section class="attendance-history-overview">
+    <div class="attendance-history-head">
+      <div>
+        <h2>Attendance Review</h2>
+        <p>Track class sessions, absence patterns, late checks, and session rosters from one place.</p>
       </div>
+      <div class="history-health-chip">Current view rate <strong><%= presentRate %>%</strong></div>
+    </div>
 
-      <!-- Batch Selection Second -->
-      <div class="premium-filter-group">
-        <label class="premium-filter-label">Batch</label>
-        <select name="batch" id="historyBatchSelect" class="premium-select">
-          <option value="">All Batches</option>
-          <% batches.forEach(b => { %>
-            <option value="<%= b._id %>" <%= String(filter.batch) === String(b._id) ? 'selected' : '' %>><%= b.name %></option>
-          <% }) %>
-        </select>
+    <div class="stats-grid">
+      <div class="stat-card-premium total">
+        <div class="stat-label">Sessions</div>
+        <div class="stat-value"><%= sessionCount %></div>
+        <div class="stat-desc"><%= totalLogs %> student entries</div>
       </div>
-
-      <div class="premium-filter-group">
-        <label class="premium-filter-label">Month</label>
-        <input type="month" name="month" class="premium-input" value="<%= filter.month || '' %>">
+      <div class="stat-card-premium present">
+        <div class="stat-label">Present Rate</div>
+        <div class="stat-value text-green"><%= presentRate %>%</div>
+        <div class="stat-desc"><%= presentCount %> present entries</div>
       </div>
-
-      <div style="display:flex; gap:0.5rem; align-items:flex-end; justify-content: flex-end;">
-        <a href="/teacher/attendance/history" class="btn btn-ghost btn-sm" style="padding: 0.65rem 1.25rem; border-color: var(--border);">Reset Filters</a>
+      <button type="button" class="stat-card-premium absent is-clickable" data-open-absent-modal>
+        <div class="stat-label">Absences</div>
+        <div class="stat-value text-red"><%= absentCount %></div>
+        <div class="stat-desc"><%= absentCount ? 'Open absent students' : 'No absent students' %></div>
+      </button>
+      <div class="stat-card-premium late">
+        <div class="stat-label">Late Checks</div>
+        <div class="stat-value text-orange"><%= lateCount %></div>
+        <div class="stat-desc">Late arrivals in view</div>
       </div>
     </div>
-  </form>
-</div>
 
-<!-- Results Data Board -->
-<div class="card" id="results-container" style="padding:0; overflow: hidden; border: 1px solid var(--border);">
+    <div class="range-chip-row">
+      <a href="/teacher/attendance/history?range=last_7<%= filter.course ? '&course=' + filter.course : '' %><%= filter.batch ? '&batch=' + filter.batch : '' %>" class="btn btn-sm <%= filter.range === 'last_7' ? 'btn-primary' : 'btn-ghost' %>">Last 7 days</a>
+      <a href="/teacher/attendance/history?range=this_month<%= filter.course ? '&course=' + filter.course : '' %><%= filter.batch ? '&batch=' + filter.batch : '' %>" class="btn btn-sm <%= filter.range === 'this_month' ? 'btn-primary' : 'btn-ghost' %>">This month</a>
+      <a href="/teacher/attendance/history?range=last_30<%= filter.course ? '&course=' + filter.course : '' %><%= filter.batch ? '&batch=' + filter.batch : '' %>" class="btn btn-sm <%= filter.range === 'last_30' ? 'btn-primary' : 'btn-ghost' %>">Last 30 days</a>
+      <a href="/teacher/attendance/history?range=all<%= filter.course ? '&course=' + filter.course : '' %><%= filter.batch ? '&batch=' + filter.batch : '' %>" class="btn btn-sm <%= filter.range === 'all' ? 'btn-primary' : 'btn-ghost' %>">All time</a>
+    </div>
+
+    <form method="GET" action="/teacher/attendance/history" class="filter-bar filter-form-container" style="margin:0;">
+      <div class="premium-filter-bar">
+        <input type="hidden" name="range" value="<%= filter.range || 'this_month' %>">
+        <div class="premium-filter-group">
+          <label for="historyCourseSelect" class="premium-filter-label">Course</label>
+          <select name="course" id="historyCourseSelect" class="premium-select">
+            <option value="">All Courses</option>
+            <% courses.forEach(c => { %>
+              <option value="<%= c._id %>" <%= String(filter.course) === String(c._id) ? 'selected' : '' %>><%= c.name %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="premium-filter-group">
+          <label for="historyBatchSelect" class="premium-filter-label">Batch</label>
+          <select name="batch" id="historyBatchSelect" class="premium-select">
+            <option value="">All Batches</option>
+            <% batches.forEach(b => { %>
+              <option value="<%= b._id %>" <%= String(filter.batch) === String(b._id) ? 'selected' : '' %>><%= b.name %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="premium-filter-group">
+          <label for="historyMonthInput" class="premium-filter-label">Month</label>
+          <input type="month" name="month" id="historyMonthInput" class="premium-input" value="<%= filter.month || '' %>">
+        </div>
+
+        <div style="display:flex; gap:0.5rem; align-items:flex-end; justify-content: flex-end;">
+          <a href="/teacher/attendance/history" class="btn btn-ghost btn-sm" style="padding: 0.65rem 1.25rem; border-color: var(--border);">Reset</a>
+        </div>
+      </div>
+    </form>
+  </section>
+
+<div class="sessions-board" id="results-container">
+  <div class="sessions-board-header">
+    <div>
+      <h3>Class Session Log</h3>
+      <p>Open any session to inspect the full roster and notes.</p>
+    </div>
+    <span class="badge badge-grey"><%= sessionCount %> sessions</span>
+  </div>
   <% if (sessions.length === 0) { %>
     <div class="empty-state" style="padding: 4rem 2rem;">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width: 48px; height: 48px; margin-bottom: 1rem; color: var(--text-muted);">
@@ -325,41 +656,37 @@
       <span style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Try choosing a different month or batch.</span>
     </div>
   <% } else { %>
-    <div class="table-wrap">
-      <table class="premium-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Course</th>
-            <th>Batch</th>
-            <th>Attendance Summary</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% sessions.forEach((s, idx) => { %>
-            <tr class="session-row" data-students="<%= JSON.stringify(s.roster) %>" data-date="<%= s.date %>" data-batch="<%= s.batchName %>" data-course="<%= s.courseName %>">
-              <td class="mono text-sm fw-600" style="color: var(--gold);"><%= s.date %></td>
-              <td style="font-weight: 600;"><%= s.courseName %></td>
-              <td>
-                <span class="badge badge-grey" style="font-weight:600;"><%= s.batchName %></span>
-              </td>
-              <td>
-                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                  <span class="summary-pill present">🟢 <%= s.presentCount %> Present</span>
-                  <span class="summary-pill absent">🔴 <%= s.absentCount %> Absent</span>
-                  <span class="summary-pill late">🟡 <%= s.lateCount %> Late</span>
-                </div>
-              </td>
-              <td>
-                <button class="btn btn-ghost btn-xs" style="padding: 3px 8px; border-color: var(--border);">Details</button>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
+    <div class="session-card-list">
+      <% sessions.forEach((s) => { %>
+        <% const sessionRate = s.totalCount ? Math.round(((s.presentCount + s.lateCount) / s.totalCount) * 100) : 0; %>
+        <div class="session-card session-row" data-students="<%= JSON.stringify(s.roster) %>" data-date="<%= s.date %>" data-batch="<%= s.batchName %>" data-course="<%= s.courseName %>">
+          <div class="session-date-block">
+            <strong><%= s.date %></strong>
+            <span><%= s.totalCount %> students</span>
+          </div>
+          <div class="session-context">
+            <strong><%= s.courseName %></strong>
+            <span><%= s.batchName %></span>
+          </div>
+          <div class="session-summary-block">
+            <div class="session-summary-line">
+              <span class="summary-pill present">Present <%= s.presentCount %></span>
+              <span class="summary-pill absent">Absent <%= s.absentCount %></span>
+              <span class="summary-pill late">Late <%= s.lateCount %></span>
+            </div>
+            <div class="session-rate-track" aria-label="Session present rate">
+              <div class="session-rate-fill" style="width:<%= sessionRate %>%"></div>
+            </div>
+            <span class="session-rate-label"><%= sessionRate %>% present including late</span>
+          </div>
+          <div class="session-action">
+            <button type="button" class="btn btn-ghost btn-sm" data-session-details>Details</button>
+          </div>
+        </div>
+      <% }) %>
     </div>
   <% } %>
+</div>
 </div>
 
 <!-- Class Session Details Modal -->
@@ -380,9 +707,10 @@
 
 <script>
 // Cascading dropdown configuration
-const teacherSchedules = <%- JSON.stringify(teacherSchedules || []) %>;
+var teacherSchedules = <%- JSON.stringify(teacherSchedules || []) %>;
+var absentRoster = <%- JSON.stringify(absentList || []) %>;
 
-const setupCascadingDropdowns = () => {
+var setupCascadingDropdowns = () => {
   const courseSelect = document.getElementById('historyCourseSelect');
   const batchSelect = document.getElementById('historyBatchSelect');
 
@@ -446,7 +774,7 @@ const setupCascadingDropdowns = () => {
   }
 };
 
-const openSessionDetailsModal = (sessionRow) => {
+window.openSessionDetailsModal = (sessionRow) => {
   const date = sessionRow.dataset.date;
   const batch = sessionRow.dataset.batch;
   const course = sessionRow.dataset.course;
@@ -475,19 +803,121 @@ const openSessionDetailsModal = (sessionRow) => {
   document.getElementById('sessionDetailsModal').classList.add('open');
 };
 
-const closeSessionDetailsModal = () => {
-  document.getElementById('sessionDetailsModal').classList.remove('open');
+window.closeSessionDetailsModal = () => {
+  document.getElementById('sessionDetailsModal')?.classList.remove('open');
 };
 
-const initHistoryPage = () => {
+window.openAbsentListModal = () => {
+  document.getElementById('modalSessionTitle').textContent = 'Absent Students';
+  document.getElementById('modalSessionSubtitle').textContent = absentRoster.length
+    ? `${absentRoster.length} absence entries in the current view`
+    : 'No absent students in the current view';
+
+  const groupedByDate = absentRoster.reduce((groups, item) => {
+    const key = `${item.date} · ${item.courseName} · ${item.batchName}`;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(item);
+    return groups;
+  }, {});
+
+  const html = absentRoster.length
+    ? `
+      <div class="absent-modal-tools">
+        <input type="search" id="absentSearchInput" class="form-control" placeholder="Search absent student...">
+      </div>
+      <div id="absentGroupedList">
+        ${Object.entries(groupedByDate).map(([label, items]) => `
+          <section class="absent-session-group" data-absent-group>
+            <div class="absent-session-head">
+              <strong>${label}</strong>
+              <span class="badge badge-red">${items.length} absent</span>
+            </div>
+            <div class="roster-list">
+              ${items.map(item => `
+                <div class="roster-item" data-absent-name="${item.studentName.toLowerCase()}">
+                  <div>
+                    <div style="font-weight:600; color:var(--text);">${item.studentName}</div>
+                    ${item.note ? `<div style="font-size:0.75rem; color:var(--gold); margin-top:0.15rem;">Note: ${item.note}</div>` : ''}
+                  </div>
+                  <span class="roster-status absent">Absent</span>
+                </div>
+              `).join('')}
+            </div>
+          </section>
+        `).join('')}
+      </div>
+    `
+    : '<div class="empty-state compact">No absent students found for the active filters.</div>';
+
+  document.getElementById('modalRosterList').innerHTML = html;
+  document.getElementById('sessionDetailsModal').classList.add('open');
+  const searchInput = document.getElementById('absentSearchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => window.filterAbsentModal(searchInput.value));
+    searchInput.focus();
+  }
+};
+
+window.filterAbsentModal = (query) => {
+  const q = String(query || '').trim().toLowerCase();
+  document.querySelectorAll('[data-absent-group]').forEach(group => {
+    let visibleCount = 0;
+    group.querySelectorAll('[data-absent-name]').forEach(item => {
+      const visible = !q || item.dataset.absentName.includes(q);
+      item.style.display = visible ? 'flex' : 'none';
+      if (visible) visibleCount++;
+    });
+    group.style.display = visibleCount > 0 ? 'block' : 'none';
+  });
+};
+
+var initHistoryPage = () => {
   setupCascadingDropdowns();
 
-  // Attach session row click listener
-  document.querySelectorAll('tr.session-row').forEach(row => {
-    row.addEventListener('click', () => {
-      openSessionDetailsModal(row);
+  const filterForm = document.querySelector('form.filter-bar');
+  if (filterForm && !filterForm.dataset.autoSubmitReady) {
+    filterForm.dataset.autoSubmitReady = 'true';
+    filterForm.addEventListener('change', (event) => {
+      if (event.target.matches('select, input')) {
+        filterForm.submit();
+      }
     });
-  });
+  }
+
+  const modal = document.getElementById('sessionDetailsModal');
+  if (modal && !modal.dataset.closeBound) {
+    modal.addEventListener('click', function(e) {
+      if (e.target === this) {
+        window.closeSessionDetailsModal();
+      }
+    });
+    modal.dataset.closeBound = '1';
+  }
+
+  const searchInput = document.getElementById('absentSearchInput');
+  if (searchInput && !searchInput.dataset.filterBound) {
+    searchInput.addEventListener('input', () => window.filterAbsentModal(searchInput.value));
+    searchInput.dataset.filterBound = '1';
+  }
+
+  if (!document.body.dataset.attendanceHistoryDelegated) {
+    document.addEventListener('click', event => {
+      const absentCard = event.target.closest('[data-open-absent-modal]');
+      if (absentCard) {
+        window.openAbsentListModal();
+        return;
+      }
+
+      const row = event.target.closest('tr.session-row');
+      const card = event.target.closest('.session-card.session-row');
+      const sessionTarget = row || card;
+      if (!sessionTarget) return;
+      if (event.target.closest('a, input, select, textarea, label')) return;
+      if (event.target.closest('button') && !event.target.closest('[data-session-details]')) return;
+      window.openSessionDetailsModal(sessionTarget);
+    });
+    document.body.dataset.attendanceHistoryDelegated = '1';
+  }
 };
 
 if (document.readyState === 'loading') {
@@ -496,11 +926,5 @@ if (document.readyState === 'loading') {
   initHistoryPage();
 }
 document.addEventListener('resultsUpdated', initHistoryPage);
-
-document.getElementById('sessionDetailsModal').addEventListener('click', function(e) {
-  if (e.target === this) {
-    closeSessionDetailsModal();
-  }
-});
+document.addEventListener('softnav:load', initHistoryPage);
 </script>
-<script src="/js/instant-filter.js"></script>

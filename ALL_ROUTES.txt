@@ -1,0 +1,172 @@
+routes/admin.js:50:router.get('/dashboard', ...guard, dashboardCtrl.getDashboard);
+routes/admin.js:57:router.get(
+routes/admin.js:68:router.get('/users', ...guard, userDirectoryCtrl.getUsers);
+routes/admin.js:70:router.get('/students', ...guard, studentCtrl.getStudents);
+routes/admin.js:71:router.get('/teachers', ...guard, teacherCtrl.getTeachers);
+routes/admin.js:72:router.get('/counsellors', ...guard, counsellorCtrl.getCounsellors);
+routes/admin.js:79:router.get(
+routes/admin.js:85:router.post(
+routes/admin.js:93:router.get(
+routes/admin.js:99:router.post(
+routes/admin.js:107:router.post(
+routes/admin.js:118:router.post(
+routes/admin.js:124:router.post(
+routes/admin.js:135:router.get('/batches', ...guard, batchCtrl.getBatches);
+routes/admin.js:137:router.get(
+routes/admin.js:143:router.post(
+routes/admin.js:150:router.get(
+routes/admin.js:156:router.post(
+routes/admin.js:163:router.post(
+routes/admin.js:174:router.get(
+routes/admin.js:180:router.post(
+routes/admin.js:186:router.post(
+routes/admin.js:192:router.post(
+routes/admin.js:198:router.post(
+routes/admin.js:204:router.post(
+routes/admin.js:210:router.post(
+routes/admin.js:221:router.get(
+routes/admin.js:232:router.get(
+routes/admin.js:243:router.post(
+routes/admin.js:249:router.post(
+routes/admin.js:255:router.post(
+routes/admin.js:266:router.get('/fees', ...guard, feeCtrl.getFees);
+routes/admin.js:268:router.get(
+routes/admin.js:274:router.post(
+routes/admin.js:281:router.post(
+routes/admin.js:292:router.get('/leads', ...guard, leadCtrl.getLeads);
+routes/admin.js:294:router.get(
+routes/admin.js:300:router.post(
+routes/admin.js:306:router.get(
+routes/admin.js:312:router.post(
+routes/admin.js:318:router.post(
+routes/admin.js:329:router.get(
+routes/admin.js:340:router.get(
+routes/admin.js:346:router.get(
+routes/admin.js:352:router.post(
+routes/admin.js:359:router.get(
+routes/admin.js:365:router.post(
+routes/admin.js:372:router.post(
+routes/admin.js:383:router.post(
+routes/admin.js:389:router.post(
+routes/admin.js:400:router.post(
+routes/admin.js:406:router.post(
+routes/admin.js:412:router.post(
+routes/admin.js:423:router.get('/reports', ...guard, reportCtrl.getReports);
+routes/admin.js:425:router.post(
+routes/admin.js:431:router.post(
+routes/admin.js:437:router.post(
+routes/admin.js:448:router.get(
+routes/admin.js:454:router.post(
+routes/admin.js:460:router.post(
+routes/admin.js:466:router.post(
+routes/admin.js:472:router.post(
+routes/admin.js:483:router.get(
+routes/admin.js:494:router.get(
+routes/admin.js:500:router.get(
+routes/admin.js:506:router.post(
+routes/admin.js:512:router.post(
+routes/auth.js:30:router.get('/login', ctrl.getLogin);
+routes/auth.js:31:router.post('/login', loginLimiter, ctrl.postLogin);
+routes/auth.js:32:router.get('/forgot-password', ctrl.getForgotPassword);
+routes/auth.js:33:router.post('/forgot-password', forgotPasswordLimiter, ctrl.postForgotPassword);
+routes/auth.js:34:router.get('/logout', ctrl.logout);
+routes/auth.js:36:router.get('/force-change-password', protect, ctrl.getForceChangePassword);
+routes/auth.js:37:router.post('/force-change-password', protect, ctrl.postForceChangePassword);
+routes/auth.js:39:router.get('/profile', protect, ctrl.getProfile);
+routes/auth.js:40:router.post('/profile', protect, upload.single('profilePic'), ctrl.updateProfile);
+routes/auth.js:41:router.post('/change-password', protect, ctrl.changePassword);
+routes/auth.js:44:router.get('/inbox', protect, ctrl.getInbox);
+routes/auth.js:45:router.get('/inbox/messages', protect, ctrl.getInboxMessages);
+routes/auth.js:46:router.post('/inbox/send', protect, upload.array('attachments', 5), ctrl.postInboxSend);
+routes/auth.js:47:router.post('/inbox/react', protect, ctrl.postAddReaction);
+routes/auth.js:48:router.get('/inbox/user-profile/:id', protect, ctrl.getContactProfileData);
+routes/auth.js:51:router.post('/notifications/:id/read', protect, ctrl.postReadNotification);
+routes/auth.js:52:router.post('/notifications/read-all', protect, ctrl.postReadAllNotifications);
+routes/auth.js:53:router.post('/announcements/:id/read', protect, ctrl.postReadAnnouncement);
+routes/auth.js:56:router.post('/messages/:id/edit', protect, ctrl.editMessage);
+routes/auth.js:57:router.put('/messages/:id/edit', protect, ctrl.editMessage);
+routes/auth.js:59:router.get('/guide', protect, ctrl.getGuide);
+routes/counsellor.js:41:router.get('/dashboard', ...guard, ctrl.getDashboard);
+routes/counsellor.js:42:router.get('/leads', ...guard, ctrl.getLeads);
+routes/counsellor.js:43:router.get('/leads/create', ...guard, ctrl.getCreateLead);
+routes/counsellor.js:44:router.get('/leads/new', ...guard, ctrl.getCreateLead); // alias for layout links
+routes/counsellor.js:45:router.post('/leads/create', ...guard, leadValidator, ctrl.postCreateLead);
+routes/counsellor.js:46:router.get('/leads/followups', ...guard, ctrl.getFollowUps);
+routes/counsellor.js:47:router.post('/leads/walkin', ...guard, leadValidator, ctrl.postWalkIn);
+routes/counsellor.js:48:router.get('/students', ...guard, ctrl.getMyStudents);
+routes/counsellor.js:49:router.get('/admissions', ...guard, ctrl.getAdmissions);
+routes/counsellor.js:50:router.get('/admissions/:id/fee', ...guard, ctrl.getStudentFee);
+routes/counsellor.js:52:router.get('/leads/:id', ...guard, ctrl.getLeadDetail);
+routes/counsellor.js:53:router.get('/leads/:id/edit', ...guard, ctrl.getEditLead);
+routes/counsellor.js:54:router.get('/leads/:id/convert', ...guard, ctrl.getConvertLead);
+routes/counsellor.js:55:router.post('/leads/:id/convert', ...guard, ctrl.postConvertLead);
+routes/counsellor.js:56:router.post('/leads/:id/edit', ...guard, leadValidator, ctrl.postEditLead);
+routes/counsellor.js:57:router.post('/leads/:id/followup', ...guard, ctrl.postAddFollowUp);
+routes/counsellor.js:58:router.post('/leads/:id/followup/:index/edit', ...guard, ctrl.postEditFollowUp);
+routes/counsellor.js:59:router.post('/leads/:id/lost', ...guard, ctrl.postMarkLost);
+routes/counsellor.js:60:router.post('/leads/:id/ready', ...guard, ctrl.postMarkReady);
+routes/counsellor.js:63:router.post('/messages/send', ...guard, ctrl.postSendMessage);
+routes/counsellor.js:64:router.post('/messages/:id/read', ...guard, async (req, res) => {
+routes/counsellor.js:70:router.get('/leaves', ...guard, ctrl.getLeavesPage);
+routes/counsellor.js:71:router.post('/leaves/apply', ...guard, ctrl.postApplyLeave);
+routes/counsellor.js:74:router.get('/reports', ...guard, ctrl.getReports);
+routes/counsellor.js:77:router.get('/announcements', ...guard, ctrl.getCounsellorAnnouncements);
+routes/counsellor.js:78:router.get('/announcements/create', ...guard, ctrl.getCounsellorCreateAnnouncement);
+routes/counsellor.js:79:router.post('/announcements/create', ...guard, ctrl.postCounsellorCreateAnnouncement);
+routes/counsellor.js:80:router.post('/announcements/:id/toggle', ...guard, ctrl.postCounsellorToggleAnnouncement);
+routes/security/adminSecurityRoutes.js:63:router.use(protect, role('admin'));
+routes/security/adminSecurityRoutes.js:66:router.get('/dashboard', async (req, res) => {
+routes/security/adminSecurityRoutes.js:90:router.get('/alerts', async (req, res) => {
+routes/security/adminSecurityRoutes.js:118:router.post('/blacklist', async (req, res) => {
+routes/security/adminSecurityRoutes.js:166:router.get('/otp/:userId', async (req, res) => {
+routes/security/adminSecurityRoutes.js:184:router.post('/unblacklist', async (req, res) => {
+routes/security/adminSecurityRoutes.js:228:router.get('/fee-audit', async (req, res) => {
+routes/student.js:12:router.get('/dashboard', ...guard, ctrl.getDashboard);
+routes/student.js:13:router.get('/assignments', ...guard, ctrl.getAssignments);
+routes/student.js:14:router.post('/assignments/:id/submit', ...guard, upload.single('file'), ctrl.postSubmitAssignment);
+routes/student.js:15:router.get('/attendance', ...guard, ctrl.getAttendance);
+routes/student.js:16:router.get('/updates', ...guard, ctrl.getDailyUpdates);
+routes/student.js:17:router.get('/progress', ...guard, ctrl.getProgress);
+routes/student.js:18:router.get('/curriculum', ...guard, ctrl.getCurriculum);
+routes/student.js:19:router.get('/fees', ...guard, ctrl.getFees);
+routes/student.js:20:router.get('/analytics', ...guard, ctrl.getAnalytics);
+routes/student.js:23:router.post('/profile/upload-id', ...guard, upload.single('idProof'), ctrl.postUploadIdProof);
+routes/student.js:24:router.post('/feedback', ...guard, ctrl.postSubmitFeedback);
+routes/student.js:25:router.get('/certificate', ...guard, ctrl.getCertificate);
+routes/student.js:28:router.post('/messages/send', ...guard, ctrl.postSendMessage);
+routes/student.js:29:router.post('/messages/:id/read', ...guard, async (req, res) => {
+routes/teacher.js:11:router.get('/dashboard', ...guard, ctrl.getDashboard);
+routes/teacher.js:14:router.get('/attendance', ...guard, ctrl.getAttendancePage);
+routes/teacher.js:15:router.post('/attendance', ...guard, ctrl.postMarkAttendance);
+routes/teacher.js:16:router.get('/attendance/history', ...guard, ctrl.getAttendanceHistory);
+routes/teacher.js:19:router.get('/assignments', ...guard, ctrl.getAssignments);
+routes/teacher.js:20:router.get('/assignments/create', ...guard, ctrl.getCreateAssignment);
+routes/teacher.js:21:router.post('/assignments/create', ...guard, upload.single('file'), ctrl.postCreateAssignment);
+routes/teacher.js:22:router.get('/assignments/:id', ...guard, ctrl.getAssignmentDetail);
+routes/teacher.js:23:router.post('/assignments/:id/extend', ...guard, ctrl.postExtendDueDate);
+routes/teacher.js:24:router.post('/assignments/:id/bulk-grade', ...guard, ctrl.postBulkGradeSubmissions);
+routes/teacher.js:25:router.post('/assignments/:id/grade/:subId', ...guard, ctrl.postGradeSubmission);
+routes/teacher.js:28:router.get('/updates', ...guard, ctrl.getDailyUpdates);
+routes/teacher.js:29:router.get('/updates/create', ...guard, ctrl.getCreateUpdate);
+routes/teacher.js:30:router.post('/updates/create', ...guard, upload.single('file'), ctrl.postCreateUpdate);
+routes/teacher.js:33:router.get('/curriculum', ...guard, ctrl.getCurriculum);
+routes/teacher.js:34:router.post('/curriculum', ...guard, ctrl.postCreateCurriculum);
+routes/teacher.js:35:router.get('/curriculum/:id', ...guard, ctrl.getCurriculumDetail);
+routes/teacher.js:36:router.post('/curriculum/:id/topics', ...guard, ctrl.postAddTopic);
+routes/teacher.js:37:router.post('/curriculum/:id/topics/:topicId/toggle', ...guard, ctrl.postToggleTopic);
+routes/teacher.js:40:router.get('/progress', ...guard, ctrl.getProgress);
+routes/teacher.js:41:router.post('/progress/test', ...guard, ctrl.postAddTestResult);
+routes/teacher.js:42:router.post('/progress/bulk-test', ...guard, ctrl.postBulkAddTestResult);
+routes/teacher.js:43:router.post('/progress/delete-test', ...guard, ctrl.postDeleteTest);
+routes/teacher.js:44:router.post('/progress/:studentId/remark', ...guard, ctrl.postUpdateRemark);
+routes/teacher.js:47:router.get('/students', ...guard, ctrl.getMyStudents);
+routes/teacher.js:48:router.get('/students/:id/profile-summary', ...guard, ctrl.getStudentProfileSummary);
+routes/teacher.js:51:router.post('/messages/send', ...guard, ctrl.postSendMessage);
+routes/teacher.js:52:router.post('/messages/:id/read', ...guard, async (req, res) => {
+routes/teacher.js:58:router.get('/leaves', ...guard, ctrl.getLeavesPage);
+routes/teacher.js:59:router.post('/leaves/apply', ...guard, ctrl.postApplyLeave);
+routes/teacher.js:62:router.post('/schedules/:id/complete', ...guard, ctrl.postCompleteSchedule);
+routes/teacher.js:65:router.get('/announcements', ...guard, ctrl.getTeacherAnnouncements);
+routes/teacher.js:66:router.get('/announcements/create', ...guard, ctrl.getTeacherCreateAnnouncement);
+routes/teacher.js:67:router.post('/announcements/create', ...guard, ctrl.postTeacherCreateAnnouncement);
+routes/teacher.js:68:router.post('/announcements/:id/toggle', ...guard, ctrl.postTeacherToggleAnnouncement);

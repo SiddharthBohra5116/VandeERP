@@ -44,7 +44,7 @@ router.get('/leads/create', ...guard, ctrl.getCreateLead);
 router.get('/leads/new', ...guard, ctrl.getCreateLead); // alias for layout links
 router.post('/leads/create', ...guard, leadValidator, ctrl.postCreateLead);
 router.get('/leads/followups', ...guard, ctrl.getFollowUps);
-router.post('/leads/walkin', ...guard, ctrl.postWalkIn);
+router.post('/leads/walkin', ...guard, leadValidator, ctrl.postWalkIn);
 router.get('/students', ...guard, ctrl.getMyStudents);
 router.get('/admissions', ...guard, ctrl.getAdmissions);
 router.get('/admissions/:id/fee', ...guard, ctrl.getStudentFee);
@@ -53,7 +53,7 @@ router.get('/leads/:id', ...guard, ctrl.getLeadDetail);
 router.get('/leads/:id/edit', ...guard, ctrl.getEditLead);
 router.get('/leads/:id/convert', ...guard, ctrl.getConvertLead);
 router.post('/leads/:id/convert', ...guard, ctrl.postConvertLead);
-router.post('/leads/:id/edit', ...guard, ctrl.postEditLead);
+router.post('/leads/:id/edit', ...guard, leadValidator, ctrl.postEditLead);
 router.post('/leads/:id/followup', ...guard, ctrl.postAddFollowUp);
 router.post('/leads/:id/followup/:index/edit', ...guard, ctrl.postEditFollowUp);
 router.post('/leads/:id/lost', ...guard, ctrl.postMarkLost);

@@ -18,6 +18,14 @@ async function notifyBatchStudents({ teacherId, batchId, content }) {
   await Promise.all(notifications);
 }
 
+function isSubmittedWork(submission) {
+  return ['submitted', 'late', 'graded'].includes(submission.status) || !!submission.fileUrl || !!submission.submittedAt;
+}
+
+function isUngradedSubmission(submission) {
+  return ['submitted', 'late'].includes(submission.status) && submission.marks === null;
+}
+
 /**
  * GET /teacher/assignments
  * Lists all assignments created by this teacher (or all if admin), newest first.
@@ -44,9 +52,10 @@ exports.getAssignments = async (req, res) => {
     const assignmentCards = assignments.map(assignment => {
       const batchId = assignment.batch?._id || assignment.batch;
       const totalStudents = batchId ? (batchCountMap.get(String(batchId)) || 0) : 0;
-      const handinsCount = assignment.submissions.filter(s => s.status && s.status !== 'pending' && s.status !== 'overdue').length;
+      const handinsCount = assignment.submissions.filter(isSubmittedWork).length;
       const gradedCount = assignment.submissions.filter(s => s.status === 'graded' || s.marks !== null).length;
-      return { assignment, totalStudents, handinsCount, gradedCount };
+      const ungradedCount = assignment.submissions.filter(isUngradedSubmission).length;
+      return { assignment, totalStudents, handinsCount, gradedCount, ungradedCount };
     });
     console.log('✅ Assignments fetched:', { count: assignments.length });
     res.render('teacher/assignments', { title: 'Assignments', user: req.user, assignments, assignmentCards });
@@ -230,10 +239,10 @@ function spDisplayName(studentProfile) {
  * Uses MongoDB's positional $ operator to update the embedded subdocument.
  */
 exports.postGradeSubmission = async (req, res) => {
-  const { marks, feedback, status } = req.body;
+  const { marks, feedback } = req.body;
   console.log('💯 Grade Submission request:', {
     teacherId: req.user._id, assignmentId: req.params.id,
-    submissionId: req.params.subId, marks: Number(marks), status,
+    submissionId: req.params.subId, marks: Number(marks),
   });
   try {
     const assignment = await Assignment.findOne({
@@ -250,22 +259,23 @@ exports.postGradeSubmission = async (req, res) => {
     }
 
     const submission = assignment.submissions.id(req.params.subId);
+    const numericMarks = Number(marks);
+    if (!Number.isFinite(numericMarks) || numericMarks < 0 || numericMarks > assignment.totalMarks) {
+      return res.redirect(`/teacher/assignments/${req.params.id}?error=Invalid+marks`);
+    }
 
     await Assignment.updateOne(
       { _id: req.params.id, 'submissions._id': req.params.subId },
       {
         $set: {
-          'submissions.$.marks': Number(marks),
+          'submissions.$.marks': numericMarks,
           'submissions.$.feedback': feedback,
-          'submissions.$.status': status || 'graded',
+          'submissions.$.status': 'graded',
         },
       }
     );
     if (submission?.student?.user && submission.student.user.status === 'active') {
-      const markText = Number.isFinite(Number(marks))
-        ? `${Number(marks)} / ${assignment.totalMarks}`
-        : `Not scored / ${assignment.totalMarks}`;
-      const statusText = status || 'graded';
+      const markText = `${numericMarks} / ${assignment.totalMarks}`;
       const feedbackText = feedback && feedback.trim()
         ? `\nFeedback: ${feedback.trim()}`
         : '\nFeedback: No written feedback added.';
@@ -276,7 +286,7 @@ exports.postGradeSubmission = async (req, res) => {
         content:
           `Assignment graded: "${assignment.title}"\n` +
           `Score: ${markText}\n` +
-          `Status: ${statusText}\n` +
+          `Status: graded\n` +
           `${feedbackText}\n` +
           'Open Student Portal > Assignments to review the result.'
       });
@@ -325,7 +335,7 @@ exports.postBulkGradeSubmissions = async (req, res) => {
 
       submission.marks = marks;
       submission.feedback = payload.feedback || '';
-      submission.status = payload.status || 'graded';
+      submission.status = 'graded';
       updatedCount++;
 
       if (submission.student?.user && submission.student.user.status === 'active') {
@@ -338,7 +348,7 @@ exports.postBulkGradeSubmissions = async (req, res) => {
           content:
             `Assignment graded: "${assignment.title}"\n` +
             `Score: ${marks} / ${assignment.totalMarks}\n` +
-            `Status: ${submission.status}\n` +
+            `Status: graded\n` +
             `${feedbackText}\n` +
             'Open Student Portal > Assignments to review the result.'
         });

@@ -1,0 +1,43 @@
+<%
+  layout = 'auth';
+  title = 'Admin Recovery';
+%>
+
+<p style="font-size: 0.85rem; color: var(--text-sub); text-align: center; margin-bottom: 1.5rem;">
+  Emergency admin access for self-hosted setups. Use the recovery key stored on the server.
+</p>
+
+<form action="/auth/admin-recovery" method="POST">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+
+  <div class="form-group">
+    <label class="form-label" for="email">Admin Email</label>
+    <input type="email" id="email" name="email" class="form-control" placeholder="admin@example.com" required autocomplete="username">
+  </div>
+
+  <div class="form-group">
+    <label class="form-label" for="recoveryKey">Recovery Key</label>
+    <input type="password" id="recoveryKey" name="recoveryKey" class="form-control" placeholder="Server recovery key" required autocomplete="off">
+  </div>
+
+  <div class="form-group">
+    <label class="form-label" for="newPassword">New Password</label>
+    <input type="password" id="newPassword" name="newPassword" class="form-control" placeholder="Minimum 8 characters" minlength="8" required autocomplete="new-password">
+  </div>
+
+  <div class="form-group">
+    <label class="form-label" for="confirmPassword">Confirm Password</label>
+    <input type="password" id="confirmPassword" name="confirmPassword" class="form-control" placeholder="Repeat new password" minlength="8" required autocomplete="new-password">
+  </div>
+
+  <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">
+    Reset Admin Password
+  </button>
+</form>
+
+<div class="divider" style="margin: 1.5rem 0 1rem;"></div>
+<div style="text-align: center;">
+  <a href="/auth/login" class="btn btn-ghost btn-sm btn-block">
+    &larr; Back to Sign In
+  </a>
+</div>

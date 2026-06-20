@@ -11,6 +11,9 @@ const Message = require('../../models/Message');
 exports.getLeads = async (req, res) => {
   try {
     const { status, search, course } = req.query;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 10), 100);
+    const skip = (page - 1) * limit;
     const filter = { assignedTo: req.user.counsellorProfileId };
     if (status) filter.status = status;
     if (search) {
@@ -31,9 +34,26 @@ exports.getLeads = async (req, res) => {
         }
       }
     }
-    const leads = await Lead.find(filter).populate('interestedCourse').sort({ nextFollowUpAt: 1, createdAt: -1 });
+    const [leads, totalLeads] = await Promise.all([
+      Lead.find(filter)
+        .populate('interestedCourse')
+        .sort({ nextFollowUpAt: 1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Lead.countDocuments(filter)
+    ]);
     res.render('counsellor/leads', {
-      title: 'My Leads', user: req.user, leads, filter: req.query, filters: req.query,
+      title: 'My Leads',
+      user: req.user,
+      leads,
+      pagination: {
+        page,
+        limit,
+        total: totalLeads,
+        pages: Math.max(Math.ceil(totalLeads / limit), 1)
+      },
+      filter: req.query,
+      filters: req.query,
     });
   } catch (err) {
     logger.error('Counsellor Leads Fetch Error', { err: err.message });
@@ -57,6 +77,17 @@ exports.postCreateLead = async (req, res) => {
   try {
     const Course = require('../../models/Course');
     const { name, phone, email, course, source, status, followUpDate, notes } = req.body;
+    const cleanPhone = String(phone || '').trim();
+    const duplicate = await Lead.findOne({ phone: cleanPhone }).select('_id name assignedTo status');
+    if (duplicate) {
+      return res.render('counsellor/lead-form', {
+        title: 'New Lead',
+        user: req.user,
+        target: null,
+        error: `A lead with this phone number already exists for ${duplicate.name}.`
+      });
+    }
+
     let interestedCourse = null;
     if (course && course !== 'Both' && course !== 'Undecided') {
       const courseDoc = await Course.findOne({ name: course });
@@ -64,7 +95,7 @@ exports.postCreateLead = async (req, res) => {
     }
     const leadData = {
       name,
-      phone,
+      phone: cleanPhone,
       email,
       interestedCourse,
       source,
@@ -130,6 +161,15 @@ exports.postEditLead = async (req, res) => {
   try {
     const Course = require('../../models/Course');
     const { name, phone, email, course, source, notes, followUpDate } = req.body;
+    const cleanPhone = String(phone || '').trim();
+    const duplicate = await Lead.findOne({
+      phone: cleanPhone,
+      _id: { $ne: req.params.id }
+    }).select('_id name');
+    if (duplicate) {
+      return res.redirect(`/counsellor/leads/${req.params.id}/edit?error=${encodeURIComponent('Another lead already uses this phone number')}`);
+    }
+
     let interestedCourse = null;
     if (course && course !== 'Both' && course !== 'Undecided') {
       const courseDoc = await Course.findOne({ name: course });
@@ -139,7 +179,7 @@ exports.postEditLead = async (req, res) => {
       { _id: req.params.id, assignedTo: req.user.counsellorProfileId },
       {
         name,
-        phone,
+        phone: cleanPhone,
         email,
         interestedCourse,
         source,
@@ -262,13 +302,19 @@ exports.postWalkIn = async (req, res) => {
   logger.info('Walk-in entry request', { name, phone, course });
   try {
     const Course = require('../../models/Course');
+    const cleanPhone = String(phone || '').trim();
+    const duplicate = await Lead.findOne({ phone: cleanPhone }).select('_id name');
+    if (duplicate) {
+      return res.redirect(`/counsellor/leads?error=${encodeURIComponent('A lead with this phone number already exists')}`);
+    }
+
     let interestedCourse = null;
     if (course && course !== 'Both' && course !== 'Undecided') {
       const courseDoc = await Course.findOne({ name: course });
       if (courseDoc) interestedCourse = courseDoc._id;
     }
     const lead = await Lead.create({
-      name, phone,
+      name, phone: cleanPhone,
       interestedCourse,
       source: 'Walk-in',
       status: 'new',

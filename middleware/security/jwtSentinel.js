@@ -161,7 +161,7 @@ function jwtSentinel(protect) {
           }
 
           // 3b. Password change freshness
-          if (user.passwordChangedAt && tokenIssuedAt < user.passwordChangedAt.getTime()) {
+          if (user.passwordChangedAt && tokenIssuedAt + 1000 < user.passwordChangedAt.getTime()) {
             await blacklistToken(token, 'password_changed', new Date(decoded.exp * 1000)).catch(() => {});
             await createAlert({
               type:     'token_anomaly',

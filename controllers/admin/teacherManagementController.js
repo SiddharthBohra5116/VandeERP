@@ -92,7 +92,7 @@ exports.getTeacherProfile = async (req, res) => {
 
     const teacherProfile = await Teacher.findOne({
       user: teacherUser._id
-    });
+    }).populate('courses', 'name code');
 
     const [curricula, updates, schedules, messages] = await Promise.all([
 
@@ -122,7 +122,10 @@ exports.getTeacherProfile = async (req, res) => {
       teacherProfile,
       rollNumber: teacherProfile?.rollNumber || teacherUser.rollNumber || '',
       qualification: teacherProfile?.qualification || '',
-      experienceYears: teacherProfile?.experienceYears || 0
+      experienceYears: teacherProfile?.experienceYears || 0,
+      subject: teacherProfile?.courses?.length
+        ? teacherProfile.courses.map(course => course.name).filter(Boolean).join(', ')
+        : ''
     };
 
     res.render('admin/teacher-profile', {

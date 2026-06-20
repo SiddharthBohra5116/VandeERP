@@ -31,6 +31,8 @@ router.get('/login', ctrl.getLogin);
 router.post('/login', loginLimiter, ctrl.postLogin);
 router.get('/forgot-password', ctrl.getForgotPassword);
 router.post('/forgot-password', forgotPasswordLimiter, ctrl.postForgotPassword);
+router.get('/admin-recovery', ctrl.getAdminRecovery);
+router.post('/admin-recovery', forgotPasswordLimiter, ctrl.postAdminRecovery);
 router.get('/logout', ctrl.logout);
 
 router.get('/force-change-password', protect, ctrl.getForceChangePassword);
@@ -50,6 +52,7 @@ router.get('/inbox/user-profile/:id', protect, ctrl.getContactProfileData);
 // Notifications
 router.post('/notifications/:id/read', protect, ctrl.postReadNotification);
 router.post('/notifications/read-all', protect, ctrl.postReadAllNotifications);
+router.post('/announcements/:id/read', protect, ctrl.postReadAnnouncement);
 
 // Message Edit Window
 router.post('/messages/:id/edit', protect, ctrl.editMessage);

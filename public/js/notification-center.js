@@ -472,8 +472,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial fetch
   fetchNotifications();
 
-  // Poll often enough that new work feels live without making the dashboard noisy.
-  setInterval(fetchNotifications, 20000);
+  // Keep the UI feeling alive while avoiding background noise on hidden tabs.
+  setInterval(() => {
+    if (!document.hidden) fetchNotifications();
+  }, 5000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) fetchNotifications();
+  });
 
   // Mark single notification as read
   dropdown.addEventListener('click', async (e) => {

@@ -16,6 +16,9 @@ const logger = require('../../utils/logger');
 exports.getStudents = async (req, res) => {
   try {
     const { search, attendance } = req.query;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 10), 100);
+    const skip = (page - 1) * limit;
 
     const userFilter = {
       role: 'student'
@@ -53,7 +56,10 @@ exports.getStudents = async (req, res) => {
       ];
     }
 
-    const users = await User.find(userFilter).sort({ createdAt: -1 });
+    const [users, totalUsers] = await Promise.all([
+      User.find(userFilter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      User.countDocuments(userFilter)
+    ]);
 
     const userIds = users.map(user => user._id);
 
@@ -147,6 +153,12 @@ exports.getStudents = async (req, res) => {
       users: mergedStudents,
       roleActive: 'student',
       page: 'students',
+      pagination: {
+        page,
+        limit,
+        total: totalUsers,
+        pages: Math.max(Math.ceil(totalUsers / limit), 1)
+      },
       filter: req.query
     });
 
@@ -163,6 +175,8 @@ exports.getStudents = async (req, res) => {
     });
   }
 };
+
+
 
 
 // GET /admin/students/:id
@@ -238,11 +252,74 @@ exports.postVerifyStudentId = async (req, res) => {
     student.idVerified = true;
     await student.save();
 
+    // Send chat message to student
+    try {
+      await Message.create({
+        sender: req.user._id,
+        recipient: student.user,
+        content: "Your document verification request has been approved. Your ID proof is verified successfully."
+      });
+    } catch (msgErr) {
+      logger.error('Failed to send verification approval message', { err: msgErr.message });
+    }
+
     res.redirect(`/admin/students/${student._id}?verified=1`);
 
   } catch (err) {
     logger.error('Verify Student ID Error', { err: err.message });
     res.redirect(`/admin/students/${req.params.id}?error=1`);
+  }
+};
+
+// POST /admin/students/bulk-verify-id
+exports.postBulkVerifyStudentIds = async (req, res) => {
+  try {
+    const selectedIds = Array.isArray(req.body.studentIds)
+      ? req.body.studentIds
+      : req.body.studentIds ? [req.body.studentIds] : [];
+
+    if (selectedIds.length === 0) {
+      return res.redirect('/admin/students?error=no_students_selected');
+    }
+
+    const verifiedStudents = await Student.find({
+      _id: { $in: selectedIds },
+      'documents.idProof': { $nin: [null, ''] }
+    }).select('user');
+
+    const result = await Student.updateMany(
+      {
+        _id: { $in: selectedIds },
+        'documents.idProof': { $nin: [null, ''] }
+      },
+      { $set: { idVerified: true } }
+    );
+
+    // Send chat message to all verified students
+    if (verifiedStudents.length > 0) {
+      try {
+        const messagePromises = verifiedStudents.map(s => {
+          return Message.create({
+            sender: req.user._id,
+            recipient: s.user,
+            content: "Your document verification request has been approved. Your ID proof is verified successfully."
+          });
+        });
+        await Promise.all(messagePromises);
+      } catch (msgErr) {
+        logger.error('Failed to send bulk verification approval messages', { err: msgErr.message });
+      }
+    }
+
+    logger.info('Bulk student ID verification completed', {
+      matchedCount: result.matchedCount,
+      modifiedCount: result.modifiedCount
+    });
+
+    res.redirect(`/admin/students?bulk_verified=${result.modifiedCount || 0}`);
+  } catch (err) {
+    logger.error('Bulk Verify Student IDs Error', { err: err.message });
+    res.redirect('/admin/students?error=bulk_verify_failed');
   }
 };
 

@@ -35,6 +35,10 @@ function timeToMinutes(value) {
   return Number(match[1]) * 60 + Number(match[2]);
 }
 
+function isGradingPendingSubmission(submission) {
+  return ['submitted', 'late'].includes(submission.status) && submission.marks === null;
+}
+
 async function getAnnouncementAlerts(user) {
   const audience = [
     { audienceType: 'all' },
@@ -267,7 +271,7 @@ async function calculateNotifications(user) {
 
       activeAssignments.forEach(a => {
         a.submissions.forEach(sub => {
-          if (sub.marks === null || sub.status === 'submitted' || sub.status === 'late') {
+          if (isGradingPendingSubmission(sub)) {
             alerts.push({
               id: sub._id.toString(),
               type: 'grading_pending',
@@ -554,7 +558,7 @@ async function calculateSidebarBadges(user) {
       let ungradedCount = 0;
       activeAssignments.forEach(a => {
         a.submissions.forEach(sub => {
-          if (sub.marks === null || sub.status === 'submitted' || sub.status === 'late') {
+          if (isGradingPendingSubmission(sub)) {
             ungradedCount++;
           }
         });

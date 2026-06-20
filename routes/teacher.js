@@ -21,6 +21,7 @@ router.get('/assignments/create', ...guard, ctrl.getCreateAssignment);
 router.post('/assignments/create', ...guard, upload.single('file'), ctrl.postCreateAssignment);
 router.get('/assignments/:id', ...guard, ctrl.getAssignmentDetail);
 router.post('/assignments/:id/extend', ...guard, ctrl.postExtendDueDate);
+router.post('/assignments/:id/bulk-grade', ...guard, ctrl.postBulkGradeSubmissions);
 router.post('/assignments/:id/grade/:subId', ...guard, ctrl.postGradeSubmission);
 
 // Daily updates

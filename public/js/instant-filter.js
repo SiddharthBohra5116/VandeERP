@@ -69,3 +69,4 @@ if (document.readyState === 'loading') {
   initInstantFilter();
 }
 
+document.addEventListener('softnav:load', initInstantFilter);

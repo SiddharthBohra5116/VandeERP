@@ -4,7 +4,7 @@
   page = 'teacher-announcements';
 %>
 
-<div class="card" style="max-width: 600px; margin: 0 auto;">
+<div class="card form-shell-narrow">
   <form action="/teacher/announcements/create" method="POST">
     <div class="form-group">
       <label class="form-label" for="title">Title *</label>
@@ -27,7 +27,7 @@
       <div class="form-hint">Only students enrolled in this batch will see this announcement.</div>
     </div>
 
-    <div style="display:flex; gap:10px; justify-content:flex-end; padding-top:12px; border-top:1px solid var(--border); margin-top:20px;">
+    <div class="form-actions">
       <a href="/teacher/announcements" class="btn btn-ghost btn-sm">Cancel</a>
       <button type="submit" class="btn btn-primary btn-sm">Post Announcement</button>
     </div>

@@ -12,35 +12,49 @@
   </div>
 <% } %>
 
-<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+<%
+  const singleCourse = courses.length === 1 ? courses[0] : null;
+  const singleBatch = batches.length === 1 ? batches[0] : null;
+%>
+
+<div class="card attendance-filter-card">
   <form method="GET" action="/teacher/attendance" class="filter-bar" style="margin:0; display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
     
     <!-- Course select first -->
-    <div class="form-group" style="margin:0; min-width:200px; flex: 1;">
-      <label class="form-label" style="margin-bottom:0.25rem;">Select Course</label>
-      <select name="course" id="courseSelect" class="form-control" style="padding:0.45rem 0.75rem;" required>
-        <option value="" <%= !filter.course ? 'selected' : '' %>>All Courses</option>
-        <% courses.forEach(c => { %>
-          <option value="<%= c._id %>" <%= String(filter.course) === String(c._id) ? 'selected' : '' %>><%= c.name %></option>
-        <% }) %>
-      </select>
+    <div class="form-group attendance-context-field" style="margin:0; min-width:200px; flex: 1;">
+      <label class="form-label" style="margin-bottom:0.25rem;">Course</label>
+      <% if (singleCourse) { %>
+        <input type="hidden" name="course" id="courseSelect" value="<%= singleCourse._id %>">
+        <div class="locked-context-pill"><%= singleCourse.name %></div>
+      <% } else { %>
+        <select name="course" id="courseSelect" class="form-control" style="padding:0.45rem 0.75rem;" required>
+          <option value="" <%= !filter.course ? 'selected' : '' %>>Select Course</option>
+          <% courses.forEach(c => { %>
+            <option value="<%= c._id %>" <%= String(filter.course) === String(c._id) ? 'selected' : '' %>><%= c.name %></option>
+          <% }) %>
+        </select>
+      <% } %>
     </div>
 
     <!-- Batch select second -->
-    <div class="form-group" style="margin:0; min-width:200px; flex: 1;">
-      <label class="form-label" style="margin-bottom:0.25rem;">Select Batch</label>
-      <select name="batch" id="batchSelect" class="form-control" style="padding:0.45rem 0.75rem;" required>
-        <option value="" <%= !filter.batch ? 'selected' : '' %>>Select Batch</option>
-        <% batches.forEach(b => { %>
-          <option value="<%= b._id %>" <%= String(filter.batch) === String(b._id) ? 'selected' : '' %>><%= b.name %></option>
-        <% }) %>
-      </select>
+    <div class="form-group attendance-context-field" style="margin:0; min-width:200px; flex: 1;">
+      <label class="form-label" style="margin-bottom:0.25rem;">Batch</label>
+      <% if (singleBatch) { %>
+        <input type="hidden" name="batch" id="batchSelect" value="<%= singleBatch._id %>">
+        <div class="locked-context-pill"><%= singleBatch.name %></div>
+      <% } else { %>
+        <select name="batch" id="batchSelect" class="form-control" style="padding:0.45rem 0.75rem;" required>
+          <option value="" <%= !filter.batch ? 'selected' : '' %>>Select Batch</option>
+          <% batches.forEach(b => { %>
+            <option value="<%= b._id %>" <%= String(filter.batch) === String(b._id) ? 'selected' : '' %>><%= b.name %></option>
+          <% }) %>
+        </select>
+      <% } %>
     </div>
 
-    <!-- Date input locked to today -->
-    <div class="form-group" style="margin:0; min-width:160px;">
+    <div class="form-group attendance-context-field" style="margin:0; min-width:160px;">
       <label class="form-label" style="margin-bottom:0.25rem;">Session Date</label>
-      <input type="date" name="date" class="form-control" style="padding:0.45rem 0.75rem; background: var(--bg-hover); cursor: not-allowed;" value="<%= filter.date %>" readonly disabled>
+      <div class="locked-context-pill"><%= filter.date %></div>
     </div>
 
     <a href="/teacher/attendance" class="btn btn-ghost">Reset</a>
@@ -65,6 +79,53 @@
       <% if (timeSlot) { %>
         <span class="badge badge-orange" style="font-size: 11px; padding: 4px 8px;">Scheduled Time: <%= timeSlot %></span>
       <% } %>
+    </div>
+  <% } else if (attendanceSaved && !allowAttendanceEdit) { %>
+    <%
+      const currentBatchDoc = batches.find(b => String(b._id) === String(filter.batch));
+      const currentCourseDoc = courses.find(c => String(c._id) === String(filter.course));
+    %>
+    <div class="card attendance-saved-card">
+      <div class="attendance-saved-head">
+        <div>
+          <span class="badge badge-green">Saved</span>
+          <h3>Attendance already marked for today</h3>
+          <p>
+            <strong><%= currentCourseDoc ? currentCourseDoc.name : 'Course' %></strong>
+            <span>·</span>
+            <strong><%= currentBatchDoc ? currentBatchDoc.name : 'Batch' %></strong>
+            <span>·</span>
+            <strong><%= filter.date %></strong>
+            <% if (timeSlot) { %>
+              <span>·</span>
+              <strong><%= timeSlot %></strong>
+            <% } %>
+          </p>
+        </div>
+        <div class="attendance-saved-actions">
+          <a href="/teacher/attendance/history?course=<%= filter.course %>&batch=<%= filter.batch %>&range=last_7" class="btn btn-ghost">View history</a>
+          <a href="/teacher/attendance?course=<%= filter.course %>&batch=<%= filter.batch %>&edit=1" class="btn btn-primary">Edit attendance</a>
+        </div>
+      </div>
+
+      <div class="attendance-saved-grid">
+        <div class="attendance-saved-stat">
+          <span>Total students</span>
+          <strong><%= attendanceSummary.total %></strong>
+        </div>
+        <div class="attendance-saved-stat is-present">
+          <span>Present</span>
+          <strong><%= attendanceSummary.present %></strong>
+        </div>
+        <div class="attendance-saved-stat is-absent">
+          <span>Absent</span>
+          <strong><%= attendanceSummary.absent %></strong>
+        </div>
+        <div class="attendance-saved-stat is-late">
+          <span>Late</span>
+          <strong><%= attendanceSummary.late %></strong>
+        </div>
+      </div>
     </div>
   <% } else { %>
     <!-- Marking sheet -->
@@ -183,9 +244,12 @@ const setupDependentDropdowns = () => {
   const batchSelect = document.getElementById('batchSelect');
 
   if (!courseSelect || !batchSelect) return;
+  const courseIsSelect = courseSelect.tagName === 'SELECT';
+  const batchIsSelect = batchSelect.tagName === 'SELECT';
+  if (!courseIsSelect && !batchIsSelect) return;
 
   // Cache the complete set of original batch options
-  if (!batchSelect.dataset.originalOptions) {
+  if (batchIsSelect && !batchSelect.dataset.originalOptions) {
     const opts = Array.from(batchSelect.options).map(opt => ({
       value: opt.value,
       text: opt.textContent
@@ -193,10 +257,10 @@ const setupDependentDropdowns = () => {
     batchSelect.dataset.originalOptions = JSON.stringify(opts);
   }
 
-  const allBatchOptions = JSON.parse(batchSelect.dataset.originalOptions);
+  const allBatchOptions = batchIsSelect ? JSON.parse(batchSelect.dataset.originalOptions) : [];
 
   // 1. Course Change Handler
-  courseSelect.addEventListener('change', () => {
+  if (courseIsSelect && batchIsSelect) courseSelect.addEventListener('change', () => {
     const selectedCourse = courseSelect.value;
     if (!selectedCourse) {
       // Re-populate all batches
@@ -232,7 +296,7 @@ const setupDependentDropdowns = () => {
   });
 
   // 2. Batch Change Handler (Direct auto-setting of Course)
-  batchSelect.addEventListener('change', () => {
+  if (batchIsSelect && courseIsSelect) batchSelect.addEventListener('change', () => {
     const selectedBatch = batchSelect.value;
     if (!selectedBatch) return;
 
@@ -249,7 +313,7 @@ const setupDependentDropdowns = () => {
   });
 
   // Initial trigger to filter batches on load if course is selected
-  if (courseSelect.value) {
+  if (courseIsSelect && courseSelect.value) {
     courseSelect.dispatchEvent(new Event('change'));
   }
 };

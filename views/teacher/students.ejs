@@ -84,29 +84,33 @@
   .profile-modal-tabs {
     display: flex;
     border-bottom: 1px solid var(--border);
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--bg);
+    padding: 0.35rem 0.35rem 0;
+    gap: 0.25rem;
   }
   .profile-modal-tab {
     flex: 1;
-    padding: 1rem 0.5rem;
-    background: none;
-    border: none;
+    padding: 0.8rem 0.5rem;
+    background: transparent;
+    border: 1px solid transparent;
     color: var(--text-muted);
     font-weight: 600;
     font-size: 0.85rem;
     cursor: pointer;
     text-align: center;
     transition: all 0.2s ease;
-    border-bottom: 2px solid transparent;
+    border-radius: var(--radius) var(--radius) 0 0;
+    border-bottom-color: transparent;
   }
   .profile-modal-tab:hover {
     color: var(--text);
-    background: rgba(255, 255, 255, 0.01);
+    background: var(--bg-hover);
   }
   .profile-modal-tab.active {
     color: var(--gold);
-    border-bottom-color: var(--gold);
-    background: rgba(255, 204, 0, 0.02);
+    border-color: var(--border);
+    border-bottom-color: var(--bg-card);
+    background: var(--bg-card);
   }
 
   .profile-modal-body {
@@ -137,7 +141,7 @@
     margin-bottom: 1.5rem;
   }
   .profile-info-box {
-    background: var(--bg-hover);
+    background: var(--bg);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 0.75rem 1rem;
@@ -205,7 +209,7 @@
     gap: 0.75rem;
   }
   .list-item-card {
-    background: var(--bg-hover);
+    background: var(--bg);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 0.95rem 1.25rem;
@@ -217,6 +221,7 @@
   }
   .list-item-card:hover {
     border-color: var(--border-light);
+    background: var(--bg-hover);
   }
   .list-item-title {
     font-weight: 600;
@@ -243,7 +248,7 @@
   }
 
   .remarks-block {
-    background: rgba(255, 204, 0, 0.02);
+    background: var(--gold-dim);
     border-left: 3px solid var(--gold);
     padding: 0.75rem 1rem;
     border-radius: 0 var(--radius) var(--radius) 0;
@@ -251,6 +256,26 @@
     font-size: 0.82rem;
     color: var(--text-sub);
     line-height: 1.4;
+  }
+
+  .profile-test-list {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0 1rem;
+  }
+
+  .profile-test-row {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .profile-test-row:last-child {
+    border-bottom: 0;
   }
 
   .remarks-title {
@@ -261,18 +286,65 @@
     letter-spacing: 0.05em;
     margin-bottom: 0.2rem;
   }
+
+  .student-progress-cell {
+    width: 245px;
+    max-width: 100%;
+  }
+
+  .student-progress-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    margin-bottom: 0.42rem;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+
+  .student-progress-label {
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  .student-progress-value {
+    color: var(--text-sub);
+    font-weight: 700;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    line-height: 1;
+  }
+
+  .student-progress-track {
+    height: 4px;
+    width: 100%;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .student-progress-track .progress-fill {
+    min-width: 4px;
+  }
+
+  @media (max-width: 760px) {
+    .student-progress-cell {
+      width: 210px;
+    }
+  }
 </style>
 
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
   <form method="GET" action="/teacher/students" class="filter-bar" style="margin:0; gap:0.75rem;">
     <div class="form-group" style="margin:0; flex:1; min-width:200px;">
-      <label class="form-label" style="margin-bottom:0.25rem;">Search by Student Name</label>
-      <input type="text" name="search" class="form-control" placeholder="Type student name..." value="<%= filter.search || '' %>" style="padding:0.45rem 0.75rem;" onchange="this.form.submit()">
+      <label for="studentSearchInput" class="form-label" style="margin-bottom:0.25rem;">Search by Student Name</label>
+      <input type="text" name="search" id="studentSearchInput" class="form-control" placeholder="Type student name..." value="<%= filter.search || '' %>" style="padding:0.45rem 0.75rem;" onchange="this.form.submit()">
     </div>
 
     <div class="form-group" style="margin:0; min-width:160px;">
-      <label class="form-label" style="margin-bottom:0.25rem;">Batch</label>
-      <select name="batch" class="form-control" style="padding:0.45rem 0.75rem;" onchange="this.form.submit()">
+      <label for="studentBatchSelect" class="form-label" style="margin-bottom:0.25rem;">Batch</label>
+      <select name="batch" id="studentBatchSelect" class="form-control" style="padding:0.45rem 0.75rem;" onchange="this.form.submit()">
         <option value="">All Batches</option>
         <% batches.forEach(b => { %>
           <option value="<%= b %>" <%= filter.batch === b ? 'selected' : '' %>><%= b %></option>
@@ -281,8 +353,8 @@
     </div>
 
     <div class="form-group" style="margin:0; min-width:160px;">
-      <label class="form-label" style="margin-bottom:0.25rem;">Attendance Tier</label>
-      <select name="attendance" class="form-control" style="padding:0.45rem 0.75rem;" onchange="this.form.submit()">
+      <label for="studentAttendanceTierSelect" class="form-label" style="margin-bottom:0.25rem;">Attendance Tier</label>
+      <select name="attendance" id="studentAttendanceTierSelect" class="form-control" style="padding:0.45rem 0.75rem;" onchange="this.form.submit()">
         <option value="">All Attendance Tiers</option>
         <option value="low" <%= filter.attendance === 'low' ? 'selected' : '' %>>Low (< 75%)</option>
         <option value="medium" <%= filter.attendance === 'medium' ? 'selected' : '' %>>Medium (75% - 85%)</option>
@@ -342,18 +414,21 @@
                   const pctBadge = pct < 75 ? 'badge-red' : pct >= 85 ? 'badge-green' : 'badge-gold';
                 %>
                 <span class="badge <%= pctBadge %>" style="font-family: var(--mono);"><%= pct %>%</span>
-                <% if (!s.isMarkedToday) { %>
-                  <span class="badge badge-grey" style="font-size: 8px; padding: 1px 3px; display: block; margin-top: 4px; width: max-content;">Unmarked today</span>
-                <% } %>
+                <% 
+                  const todayStatus = s.todayAttendanceStatus || '';
+                  const todayBadgeClass = todayStatus === 'present' ? 'badge-green' : todayStatus === 'absent' ? 'badge-red' : todayStatus === 'late' ? 'badge-orange' : 'badge-grey';
+                  const todayBadgeText = todayStatus ? `${todayStatus.charAt(0).toUpperCase()}${todayStatus.slice(1)} today` : 'Unmarked today';
+                %>
+                <span class="badge <%= todayBadgeClass %> student-today-attendance"><%= todayBadgeText %></span>
               </td>
               <td>
                 <% const progressVal = s.overallProgress || 0; %>
-                <div style="min-width:110px;">
-                  <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted); font-family:var(--mono); margin-bottom:4px;">
-                    <span>Overall Score</span>
-                    <span style="font-weight:600;"><%= progressVal %>%</span>
+                <div class="student-progress-cell">
+                  <div class="student-progress-head">
+                    <span class="student-progress-label">Overall Score</span>
+                    <span class="student-progress-value"><%= progressVal %>%</span>
                   </div>
-                  <div class="progress-bar" style="height:4px; background:rgba(255,255,255,0.05); border-radius: 4px;">
+                  <div class="student-progress-track">
                     <div class="progress-fill <%= progressVal >= 80 ? 'green' : progressVal >= 50 ? 'orange' : 'red' %>"
                          style="width:<%= progressVal %>%"></div>
                   </div>
@@ -452,8 +527,9 @@
 </div>
 
 <script>
-  function openStudentProfileModal(studentId) {
+  window.openStudentProfileModal = function(studentId) {
     const overlay = document.getElementById('studentProfileModal');
+    if (!overlay) return;
     
     // Clear lists & show loading placeholder
     document.getElementById('modalStudentName').textContent = 'Loading Student Info...';
@@ -564,7 +640,7 @@
             } else {
               prog.testResults.forEach(test => {
                 testsListHtml += `
-                  <div style="padding:0.6rem 0; border-bottom:1px solid rgba(255,255,255,0.03); display:flex; justify-content:space-between; align-items:center;">
+                  <div class="profile-test-row">
                     <div>
                       <div style="font-size:0.85rem; font-weight:600; color:var(--text);">${test.testName}</div>
                       <div style="font-size:0.75rem; color:var(--text-muted);">${test.date}</div>
@@ -601,7 +677,7 @@
 
                 <div style="margin-top:0.25rem;">
                   <h5 style="margin:0 0 0.5rem 0; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.04em;">Recorded Exams & Tests</h5>
-                  <div style="background:rgba(0,0,0,0.15); border:1px solid rgba(255,255,255,0.03); border-radius:var(--radius); padding:0 1rem;">
+                  <div class="profile-test-list">
                     ${testsListHtml}
                   </div>
                 </div>
@@ -615,48 +691,55 @@
         console.error('Fetch student error:', err);
         alert('Failed to fetch student profile summary details.');
       });
-  }
+  };
 
-  function closeStudentProfileModal() {
-    document.getElementById('studentProfileModal').classList.remove('open');
-  }
+  window.closeStudentProfileModal = function() {
+    document.getElementById('studentProfileModal')?.classList.remove('open');
+  };
 
-  function switchProfileTab(event, tabId) {
+  window.switchProfileTab = function(event, tabId) {
     // Tab toggling
     const modal = document.getElementById('studentProfileModal');
+    if (!modal) return;
     modal.querySelectorAll('.profile-modal-tab').forEach(btn => btn.classList.remove('active'));
     modal.querySelectorAll('.profile-tab-content').forEach(content => content.classList.remove('active'));
 
     event.currentTarget.classList.add('active');
     document.getElementById(tabId).classList.add('active');
-  }
+  };
 
-  // Close modal on background overlay click
-  document.getElementById('studentProfileModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-      closeStudentProfileModal();
-    }
-  });
-
-  // Attach click delegate to row actions
-  document.addEventListener('DOMContentLoaded', () => {
-    const bindRowClicks = () => {
-      document.querySelectorAll('tr.student-row').forEach(row => {
-        row.addEventListener('click', (e) => {
-          // Ignore clicks on anchor links or actions
-          if (e.target.closest('a') || e.target.closest('button')) return;
-          const studentId = row.dataset.studentId;
-          if (studentId) {
-            openStudentProfileModal(studentId);
-          }
-        });
+  window.initStudentsPage = function() {
+    const overlay = document.getElementById('studentProfileModal');
+    if (overlay && !overlay.dataset.closeBound) {
+      overlay.addEventListener('click', function(e) {
+        if (e.target === this) {
+          window.closeStudentProfileModal();
+        }
       });
-    };
+      overlay.dataset.closeBound = '1';
+    }
 
-    bindRowClicks();
-    
-    // Re-bind when AJAX finishes instant filtering
-    document.addEventListener('resultsUpdated', bindRowClicks);
-  });
+    if (!document.body.dataset.studentRowsDelegated) {
+      document.addEventListener('click', event => {
+        const row = event.target.closest('tr.student-row');
+        if (!row) return;
+        if (event.target.closest('a, button, input, select, textarea, label')) return;
+
+        const studentId = row.dataset.studentId;
+        if (studentId) {
+          window.openStudentProfileModal(studentId);
+        }
+      });
+      document.body.dataset.studentRowsDelegated = '1';
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.initStudentsPage);
+  } else {
+    window.initStudentsPage();
+  }
+  document.addEventListener('softnav:load', window.initStudentsPage);
+  document.addEventListener('resultsUpdated', window.initStudentsPage);
 </script>
 <script src="/js/instant-filter.js"></script>

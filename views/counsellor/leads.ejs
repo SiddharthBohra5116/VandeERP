@@ -1,7 +1,7 @@
 <%
   layout = 'main';
   title = 'All Leads';
-  subtitle = `${leads.length} total leads`;
+  subtitle = `${typeof pagination !== 'undefined' && pagination ? pagination.total : leads.length} total leads`;
   page = 'leads';
   topbarActions = `<a href="/counsellor/leads/new" class="btn btn-primary btn-sm">+ Add Lead</a>`;
 %>
@@ -110,6 +110,26 @@
         </tbody>
       </table>
     </div>
+    <% if (typeof pagination !== 'undefined' && pagination && pagination.pages > 1) { %>
+      <% const pageUrl = (p) => {
+        const params = new URLSearchParams(filters || {});
+        params.set('page', p);
+        params.set('limit', pagination.limit);
+        return '?' + params.toString();
+      }; %>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border);">
+        <div class="td-muted text-sm">
+          Showing page <strong><%= pagination.page %></strong> of <strong><%= pagination.pages %></strong> · <%= pagination.total %> leads
+        </div>
+        <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+          <a class="btn btn-ghost btn-sm <%= pagination.page <= 1 ? 'disabled' : '' %>" href="<%= pagination.page <= 1 ? '#' : pageUrl(pagination.page - 1) %>">Previous</a>
+          <% for (let p = Math.max(1, pagination.page - 2); p <= Math.min(pagination.pages, pagination.page + 2); p++) { %>
+            <a class="btn btn-sm <%= p === pagination.page ? 'btn-primary' : 'btn-ghost' %>" href="<%= pageUrl(p) %>"><%= p %></a>
+          <% } %>
+          <a class="btn btn-ghost btn-sm <%= pagination.page >= pagination.pages ? 'disabled' : '' %>" href="<%= pagination.page >= pagination.pages ? '#' : pageUrl(pagination.page + 1) %>">Next</a>
+        </div>
+      </div>
+    <% } %>
   <% } %>
 </div>
 

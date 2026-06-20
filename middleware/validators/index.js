@@ -32,6 +32,17 @@ const userValidator = validate([
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').trim().isEmail().withMessage('A valid email address is required').normalizeEmail(),
   body('role').isIn(['admin', 'teacher', 'counsellor', 'student']).withMessage('A valid user role is required'),
+  body('phone').optional({ checkFalsy: true }).trim().matches(/^\d{10}$/).withMessage('Phone number must be exactly 10 digits'),
+  body('guardianPhone').optional({ checkFalsy: true }).trim().matches(/^\d{10}$/).withMessage('Guardian phone number must be exactly 10 digits'),
+  body('dob').optional({ checkFalsy: true }).isISO8601().withMessage('Date of Birth must be a valid date').custom(value => {
+    const dob = new Date(value);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    if (dob > today) {
+      throw new Error('Date of Birth cannot be in the future');
+    }
+    return true;
+  }),
   body('password').optional({ checkFalsy: true }).isLength({ min: 8 }).withMessage('Password must be at least 8 characters long')
 ]);
 
@@ -48,7 +59,28 @@ const paymentValidator = validate([
 
 const leadValidator = validate([
   body('name').trim().notEmpty().withMessage('Lead name is required'),
-  body('phone').trim().isLength({ min: 10, max: 15 }).withMessage('A valid phone number (10-15 digits) is required')
+  body('phone').trim().matches(/^\d{10}$/).withMessage('Lead phone number must be exactly 10 digits')
+]);
+
+const batchValidator = validate([
+  body('name').trim().notEmpty().withMessage('Batch name is required'),
+  body('course').isMongoId().withMessage('A valid course is required'),
+  body('capacity').custom(value => {
+    const capacity = Number(value);
+    if (!Number.isInteger(capacity) || capacity < 1) {
+      throw new Error('Batch capacity must be at least 1');
+    }
+    return true;
+  }),
+  body('startDate').optional({ checkFalsy: true }).isISO8601().withMessage('Start date must be valid'),
+  body('endDate').optional({ checkFalsy: true }).isISO8601().withMessage('End date must be valid'),
+  body('endDate').custom((endDate, { req }) => {
+    if (!req.body.startDate || !endDate) return true;
+    if (new Date(req.body.startDate) > new Date(endDate)) {
+      throw new Error('Batch start date must be before end date');
+    }
+    return true;
+  })
 ]);
 
 const scheduleValidator = validate([
@@ -66,5 +98,6 @@ module.exports = {
   userValidator,
   paymentValidator,
   leadValidator,
+  batchValidator,
   scheduleValidator
 };

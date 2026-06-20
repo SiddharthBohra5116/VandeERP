@@ -1,7 +1,11 @@
 <% if (typeof user !== 'undefined' && user) { %>
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <div class="brand">Vande <span>Digital</span></div>
+    <div class="brand">
+      <span class="brand-main">Vande <span>Digital</span></span>
+      <span class="brand-academy">Academy</span>
+      <span class="brand-mark" aria-label="Vande Digital Academy">VDA</span>
+    </div>
     <div class="role-badge"><%= user.role %> portal</div>
   </div>
   

@@ -36,6 +36,7 @@ const announcementCtrl = require('../controllers/admin/announcementController');
 const {
   userValidator,
   paymentValidator,
+  batchValidator,
   scheduleValidator
 } = require('../middleware/validators');
 
@@ -142,6 +143,7 @@ router.get(
 router.post(
   '/batches/create',
   ...guard,
+  batchValidator,
   batchCtrl.postCreateBatch
 );
 
@@ -154,6 +156,7 @@ router.get(
 router.post(
   '/batches/:id/edit',
   ...guard,
+  batchValidator,
   batchCtrl.postEditBatch
 );
 
@@ -172,6 +175,12 @@ router.get(
   '/students/:id',
   ...guard,
   studentCtrl.getStudentProfile
+);
+
+router.post(
+  '/students/bulk-verify-id',
+  ...guard,
+  studentCtrl.postBulkVerifyStudentIds
 );
 
 router.post(

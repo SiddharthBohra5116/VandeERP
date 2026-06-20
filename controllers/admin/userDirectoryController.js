@@ -26,6 +26,9 @@ function getRoleRedirect(role, queryParams = '') {
 exports.getUsers = async (req, res) => {
   try {
     const { role, search } = req.query;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 10), 100);
+    const skip = (page - 1) * limit;
 
     const filter = {};
 
@@ -40,12 +43,21 @@ exports.getUsers = async (req, res) => {
       };
     }
 
-    const users = await User.find(filter).sort({ createdAt: -1 });
+    const [users, totalUsers] = await Promise.all([
+      User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      User.countDocuments(filter)
+    ]);
 
     res.render('admin/users', {
       title: 'Manage Users',
       user: req.user,
       users,
+      pagination: {
+        page,
+        limit,
+        total: totalUsers,
+        pages: Math.max(Math.ceil(totalUsers / limit), 1)
+      },
       filter: req.query
     });
 

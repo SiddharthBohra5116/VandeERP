@@ -233,52 +233,49 @@ exports.getForceChangePassword = (req, res) => {
 // POST /auth/force-change-password
 exports.postForceChangePassword = async (req, res) => {
   const { newPassword, confirmPassword } = req.body;
+  const renderForcePasswordError = (message) => res.status(400).render('auth/force-change-password', {
+    title: 'Set New Password',
+    user: req.user,
+    error: message
+  });
 
   try {
-    if (!newPassword || newPassword.trim().length < 8) {
-      return res.render('auth/force-change-password', {
-        title: 'Set New Password',
-        user: req.user,
-        error: 'Password must be at least 8 characters long.'
-      });
+    const password = String(newPassword || '').trim();
+    const confirmation = String(confirmPassword || '').trim();
+
+    if (!password || password.length < 8) {
+      return renderForcePasswordError('Password must be at least 8 characters long.');
     }
 
-    if (newPassword !== confirmPassword) {
-      return res.render('auth/force-change-password', {
-        title: 'Set New Password',
-        user: req.user,
-        error: 'New password and confirmation do not match.'
-      });
+    if (password !== confirmation) {
+      return renderForcePasswordError('New password and confirmation do not match.');
     }
 
     const user = await User.findById(req.user._id);
-    const sameAsCurrent = await user.matchPassword(newPassword.trim());
-
-    if (sameAsCurrent) {
-      return res.render('auth/force-change-password', {
-        title: 'Set New Password',
-        user: req.user,
-        error: 'Please choose a password different from the temporary or initial password.'
-      });
+    if (!user) {
+      return renderForcePasswordError('Session user could not be found. Please log in again.');
     }
 
-    user.password = newPassword.trim();
+    const sameAsCurrent = await user.matchPassword(password);
+
+    if (sameAsCurrent) {
+      return renderForcePasswordError('Please choose a password different from the temporary or initial password.');
+    }
+
+    user.password = password;
     user.mustChangePassword = false;
     user.passwordSetByAdmin = false;
     user.firstLoginCompleted = true;
     user.resetRequested = false;
-    user.passwordChangedAt = new Date();
+    user.passwordChangedAt = new Date(Date.now() - 1000);
 
     await user.save();
 
+    setCookie(res, signToken(user._id));
     res.redirect(`${getRoleRedirect(user.role)}?pwd_changed=1`);
   } catch (err) {
     console.error('Force password change error:', err);
-    res.render('auth/force-change-password', {
-      title: 'Set New Password',
-      user: req.user,
-      error: 'Unable to update password. Please try again.'
-    });
+    renderForcePasswordError('Unable to update password. Please try again.');
   }
 };
 
@@ -416,8 +413,9 @@ exports.changePassword = async (req, res) => {
     user.mustChangePassword = false;
     user.passwordSetByAdmin = false;
     user.firstLoginCompleted = true;
-    user.passwordChangedAt = new Date();
+    user.passwordChangedAt = new Date(Date.now() - 1000);
     await user.save(); // triggers bcrypt pre-save hook
+    setCookie(res, signToken(user._id));
     console.log('✅ Password changed successfully:', { userId: req.user._id });
     res.redirect('/auth/profile?updated=1');
   } catch (err) {
@@ -673,6 +671,10 @@ exports.getInbox = async (req, res) => {
         const unreadFromThisContact = unreadMap[selectedId.toString()] || 0;
         if (res.locals.sidebarBadges) {
           res.locals.sidebarBadges.unreadMessages = Math.max(0, (res.locals.sidebarBadges.unreadMessages || 0) - unreadFromThisContact);
+        }
+
+        if (unreadFromThisContact > 0) {
+          unreadMap[selectedId.toString()] = 0;
         }
       }
     }

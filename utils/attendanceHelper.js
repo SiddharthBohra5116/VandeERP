@@ -62,10 +62,14 @@ async function filterValidAttendance(records) {
  */
 async function calculateStudentsAttendance(students, allAttendanceRecords, todayRecords = []) {
   const validRecords = await filterValidAttendance(allAttendanceRecords);
+  const getStudentKey = student => {
+    const id = student?.studentId || student?.studentProfileId || student?._id || '';
+    return id ? id.toString() : '';
+  };
   
   const studentMap = {};
   students.forEach(u => {
-    const id = u._id ? u._id.toString() : '';
+    const id = getStudentKey(u);
     if (id) {
       studentMap[id] = { total: 0, present: 0, absent: 0, late: 0, lastAbsenceDate: null };
     }
@@ -93,10 +97,15 @@ async function calculateStudentsAttendance(students, allAttendanceRecords, today
   const markedTodaySet = new Set((todayRecords || []).map(r => r.student && r.student._id ? r.student._id.toString() : (r.student ? r.student.toString() : '')));
 
   students.forEach(u => {
-    const id = u._id ? u._id.toString() : '';
+    const id = getStudentKey(u);
     const stats = studentMap[id] || { total: 0, present: 0, absent: 0, late: 0, lastAbsenceDate: null };
     u.attendancePct = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 100;
     u.isMarkedToday = markedTodaySet.has(id);
+    const todayRecord = (todayRecords || []).find(r => {
+      const recordStudentId = r.student && r.student._id ? r.student._id.toString() : (r.student ? r.student.toString() : '');
+      return recordStudentId === id;
+    });
+    u.todayAttendanceStatus = todayRecord ? todayRecord.status : '';
     u.attendanceStats = stats;
   });
 

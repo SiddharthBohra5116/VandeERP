@@ -38,6 +38,9 @@ async function resolveCourse(courseValue, fallbackCourseId = null) {
 exports.getLeads = async (req, res) => {
   try {
     const { status, course, source, search } = req.query;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 10), 100);
+    const skip = (page - 1) * limit;
 
     const filter = {};
 
@@ -58,10 +61,15 @@ exports.getLeads = async (req, res) => {
       ];
     }
 
-    const leads = await Lead.find(filter)
-      .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name email phone' } })
-      .populate('interestedCourse', 'name code')
-      .sort({ createdAt: -1 });
+    const [leads, totalLeads] = await Promise.all([
+      Lead.find(filter)
+        .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name email phone' } })
+        .populate('interestedCourse', 'name code')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Lead.countDocuments(filter)
+    ]);
 
     const Counsellor = require('../../models/Counsellor');
     const counsellorProfiles = await Counsellor.find().populate('user', 'name email phone status');
@@ -86,6 +94,12 @@ exports.getLeads = async (req, res) => {
       counsellors,
       courses,
       sourceStats: sourceStatsMap,
+      pagination: {
+        page,
+        limit,
+        total: totalLeads,
+        pages: Math.max(Math.ceil(totalLeads / limit), 1)
+      },
       filter: req.query
     });
 

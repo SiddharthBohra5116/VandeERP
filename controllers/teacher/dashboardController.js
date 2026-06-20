@@ -23,9 +23,9 @@ exports.getDashboard = async (req, res) => {
 
   try {
     const [pendingAssignments, todayAttendance, recentUpdates, messages, schedules, admin, todaySchedules, activeAnnouncements] = await Promise.all([
-      Assignment.find({ teacher: req.user.teacherProfileId, isActive: true, dueDate: { $gte: new Date() } })
+      Assignment.find({ teacher: req.user.teacherProfileId, isActive: true })
         .populate('batch', 'name')
-        .sort({ dueDate: 1 }).limit(5),
+        .sort({ createdAt: -1 }).limit(5),
       Attendance.countDocuments({ teacher: req.user.teacherProfileId, date: today }),
       DailyUpdate.find({ teacher: req.user.teacherProfileId }).populate('course', 'name code').populate('batch', 'name').sort({ createdAt: -1 }).limit(5),
       Message.find({ recipient: req.user._id }).populate('sender', 'name role').sort({ createdAt: -1 }).limit(5),
@@ -51,7 +51,9 @@ exports.getDashboard = async (req, res) => {
       _id: ann._id,
       content: `📢 [${ann.title}] ${ann.content}`,
       sender: ann.createdBy,
-      createdAt: ann.createdAt
+      createdAt: ann.createdAt,
+      isAnnouncement: true,
+      isRead: (ann.readBy || []).some(read => read.user && read.user.toString() === req.user._id.toString())
     }));
 
     const combinedMessages = [...mappedAnnouncements, ...(messages || [])];

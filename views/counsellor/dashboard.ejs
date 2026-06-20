@@ -37,6 +37,55 @@
   </a>
 </div>
 
+<% if (stats && stats.followupsDue > 0) { %>
+  <div class="card" id="followupNotificationPrompt" style="margin-top:1.25rem; display:none; border-color:var(--gold-border);">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+      <div>
+        <div class="card-title">Follow-up Reminder Notifications</div>
+        <div class="card-sub"><%= stats.followupsDue %> follow-up<%= stats.followupsDue === 1 ? '' : 's' %> due. Enable browser alerts so you do not miss callbacks.</div>
+      </div>
+      <button type="button" class="btn btn-primary btn-sm" id="enableFollowupNotificationsBtn">Enable Notifications</button>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const dueCount = <%= stats.followupsDue %>;
+      if (!('Notification' in window) || dueCount <= 0) return;
+
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const storageKey = 'followup-notified-' + todayKey;
+      const prompt = document.getElementById('followupNotificationPrompt');
+      const enableBtn = document.getElementById('enableFollowupNotificationsBtn');
+
+      function showReminder() {
+        if (localStorage.getItem(storageKey) === '1') return;
+        new Notification('Follow-ups due today', {
+          body: dueCount + ' lead follow-up' + (dueCount === 1 ? ' is' : 's are') + ' due or overdue.',
+          tag: 'counsellor-followups'
+        });
+        localStorage.setItem(storageKey, '1');
+      }
+
+      if (Notification.permission === 'granted') {
+        showReminder();
+      } else if (Notification.permission === 'default' && prompt) {
+        prompt.style.display = 'block';
+      }
+
+      if (enableBtn) {
+        enableBtn.addEventListener('click', async () => {
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            prompt.style.display = 'none';
+            showReminder();
+          }
+        });
+      }
+    })();
+  </script>
+<% } %>
+
 <!-- Admin Notifications / Alerts -->
 <div class="card" style="margin-bottom: 1.5rem; border-color: var(--gold-border); background: linear-gradient(180deg, rgba(255,204,0,0.02) 0%, rgba(0,0,0,0) 100%);">
   <div class="card-header card-header--divided">
@@ -55,6 +104,16 @@
       <% messages.forEach(msg => { %>
         <div style="background:var(--bg-input); padding:0.65rem 0.85rem; border-radius:var(--radius); border-left: 2px solid var(--gold); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); border-right: 1px solid var(--border);">
           <p style="font-size:0.85rem; color:var(--text); line-height:1.4; margin: 0;"><%= msg.content %></p>
+          <% if (msg.isAnnouncement) { %>
+            <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.45rem; flex-wrap:wrap;">
+              <span class="badge <%= msg.isRead ? 'badge-grey' : 'badge-gold' %>"><%= msg.isRead ? 'Read' : 'Unread' %></span>
+              <% if (!msg.isRead) { %>
+                <form action="/auth/announcements/<%= msg._id %>/read" method="POST" style="margin:0;">
+                  <button type="submit" class="btn btn-ghost btn-xs">Mark read</button>
+                </form>
+              <% } %>
+            </div>
+          <% } %>
           <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted); margin-top:0.35rem;">
             <span>From: <%= msg.sender ? msg.sender.name : 'Admin' %> (<%= msg.sender ? msg.sender.role : 'System' %>)</span>
             <span><%= new Date(msg.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %> · <%= new Date(msg.createdAt).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}) %></span>

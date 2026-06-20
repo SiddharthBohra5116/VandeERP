@@ -41,7 +41,7 @@ exports.getAttendancePage = async (req, res) => {
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
 
-        existing = await Attendance.find({ batch, date: today });
+        existing = await Attendance.find({ batch, course, date: today });
 
         // Retrieve time slot for this batch today
         const scheduleDoc = await Schedule.findOne({
@@ -87,11 +87,28 @@ exports.getAttendancePage = async (req, res) => {
     const courses = await Course.find({ _id: { $in: teacherProfile ? teacherProfile.courses : [] } }).select('name');
     const noCoursesConfigured = courses.length === 0;
 
+    if (!batch && !course && courses.length === 1 && batches.length === 1) {
+      return res.redirect(`/teacher/attendance?course=${courses[0]._id}&batch=${batches[0]._id}`);
+    }
+
+    const attendanceSummary = existing.reduce((summary, record) => {
+      summary.total += 1;
+      if (record.status === 'present') summary.present += 1;
+      if (record.status === 'absent') summary.absent += 1;
+      if (record.status === 'late') summary.late += 1;
+      return summary;
+    }, { total: 0, present: 0, absent: 0, late: 0 });
+    const attendanceSaved = Boolean(batch && course && students.length > 0 && attendanceSummary.total >= students.length);
+    const allowAttendanceEdit = req.query.edit === '1';
+
     res.render('teacher/attendance', {
       title: 'Mark Attendance',
       user: req.user,
       students,
       existing,
+      attendanceSaved,
+      attendanceSummary,
+      allowAttendanceEdit,
       batches,
       courses,
       teacherSchedules,
@@ -196,8 +213,8 @@ exports.postMarkAttendance = async (req, res) => {
  * filterable by batch, course, and month (YYYY-MM format).
  */
 exports.getAttendanceHistory = async (req, res) => {
-  const { batch, course, month } = req.query;
-  console.log('📅 Attendance History load:', { teacherId: req.user._id, batch, course, month });
+  const { batch, course, month, range } = req.query;
+  console.log('📅 Attendance History load:', { teacherId: req.user._id, batch, course, month, range });
 
   try {
     const filter = { teacher: req.user.teacherProfileId };
@@ -211,7 +228,24 @@ exports.getAttendanceHistory = async (req, res) => {
       filter.course = course;
     }
     
-    if (month) filter.date = { $regex: `^${month}` };
+    const formatDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const now = new Date();
+    const activeRange = month ? '' : (range || 'this_month');
+
+    if (month) {
+      filter.date = { $regex: `^${month}` };
+    } else if (activeRange === 'last_7') {
+      const start = new Date(now);
+      start.setDate(now.getDate() - 6);
+      filter.date = { $gte: formatDate(start), $lte: formatDate(now) };
+    } else if (activeRange === 'last_30') {
+      const start = new Date(now);
+      start.setDate(now.getDate() - 29);
+      filter.date = { $gte: formatDate(start), $lte: formatDate(now) };
+    } else if (activeRange === 'this_month') {
+      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      filter.date = { $regex: `^${monthStart}` };
+    }
 
     const Teacher = require('../../models/Teacher');
     const assignedBatches = await Schedule.distinct('batch', { teacher: req.user.teacherProfileId });
@@ -273,6 +307,15 @@ exports.getAttendanceHistory = async (req, res) => {
     });
 
     const sessions = Object.values(sessionsMap).sort((a, b) => b.date.localeCompare(a.date));
+    const absentRoster = records
+      .filter(r => r.status === 'absent')
+      .map(r => ({
+        studentName: r.student ? (r.student.user ? r.student.user.name : 'Unknown Student') : 'Deleted Student',
+        date: r.date,
+        courseName: r.course ? r.course.name : 'Course',
+        batchName: r.batch ? r.batch.name : 'Batch',
+        note: r.note || ''
+      }));
 
     console.log('✅ Attendance History fetched:', { recordCount: records.length, sessionCount: sessions.length });
     res.render('teacher/attendance-history', {
@@ -280,10 +323,11 @@ exports.getAttendanceHistory = async (req, res) => {
       user: req.user,
       records,
       sessions,
+      absentRoster,
       batches,
       courses,
       teacherSchedules,
-      filter: { batch: batch || '', course: course || '', month: month || '' },
+      filter: { batch: batch || '', course: course || '', month: month || '', range: activeRange },
     });
   } catch (err) {
     console.error('❌ Attendance History Load Error:', { teacherId: req.user._id, error: err.message });

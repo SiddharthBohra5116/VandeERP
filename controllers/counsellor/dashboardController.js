@@ -87,7 +87,9 @@ exports.getDashboard = async (req, res) => {
       _id: ann._id,
       content: `📢 [${ann.title}] ${ann.content}`,
       sender: ann.createdBy,
-      createdAt: ann.createdAt
+      createdAt: ann.createdAt,
+      isAnnouncement: true,
+      isRead: (ann.readBy || []).some(read => read.user && read.user.toString() === req.user._id.toString())
     }));
 
     const combinedMessages = [...mappedAnnouncements, ...(messages || [])];

@@ -13,7 +13,7 @@
     </div>
   <% } %>
 
-  <form action="<%= isEdit ? '/admin/batches/' + target._id + '/edit' : '/admin/batches/create' %>" method="POST">
+  <form action="<%= isEdit ? '/admin/batches/' + target._id + '/edit' : '/admin/batches/create' %>" method="POST" id="batchForm">
     <div class="form-group">
       <label class="form-label" for="name">Batch Code / Name *</label>
       <input type="text" id="name" name="name" class="form-control" value="<%= isEdit ? target.name : '' %>" placeholder="e.g. VE-09AM-A2" required>
@@ -77,3 +77,28 @@
     </div>
   </form>
 </div>
+
+<script>
+  const batchForm = document.getElementById('batchForm');
+  const batchStartDate = document.getElementById('startDate');
+  const batchEndDate = document.getElementById('endDate');
+
+  function syncBatchDateLimits() {
+    if (batchStartDate.value) {
+      batchEndDate.min = batchStartDate.value;
+    } else {
+      batchEndDate.removeAttribute('min');
+    }
+  }
+
+  batchStartDate.addEventListener('change', syncBatchDateLimits);
+  syncBatchDateLimits();
+
+  batchForm.addEventListener('submit', function(e) {
+    if (batchStartDate.value && batchEndDate.value && batchStartDate.value > batchEndDate.value) {
+      e.preventDefault();
+      alert('Batch start date must be before end date.');
+      batchEndDate.focus();
+    }
+  });
+</script>
