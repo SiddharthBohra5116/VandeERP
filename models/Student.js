@@ -6,7 +6,11 @@ const pendingProfileUpdateSchema = new mongoose.Schema({
   phone: { type: String, default: null },
   profilePic: { type: String, default: null },
   fatherName: { type: String, default: null },
+  fatherPhone: { type: String, default: null },
   motherName: { type: String, default: null },
+  motherPhone: { type: String, default: null },
+  guardianName: { type: String, default: null },
+  guardianRelation: { type: String, default: null },
   guardianPhone: { type: String, default: null },
   address: { type: String, default: null },
   city: { type: String, default: null },
@@ -105,7 +109,11 @@ const studentSchema = new mongoose.Schema({
       phone: null,
       profilePic: null,
       fatherName: null,
+      fatherPhone: null,
       motherName: null,
+      motherPhone: null,
+      guardianName: null,
+      guardianRelation: null,
       guardianPhone: null,
       address: null,
       city: null,
@@ -211,8 +219,24 @@ studentSchema.virtual('fatherName').get(function() {
   return this.family && this.family.father && this.family.father.name ? this.family.father.name : '';
 });
 
+studentSchema.virtual('fatherPhone').get(function() {
+  return this.family && this.family.father && this.family.father.phone ? this.family.father.phone : '';
+});
+
 studentSchema.virtual('motherName').get(function() {
   return this.family && this.family.mother && this.family.mother.name ? this.family.mother.name : '';
+});
+
+studentSchema.virtual('motherPhone').get(function() {
+  return this.family && this.family.mother && this.family.mother.phone ? this.family.mother.phone : '';
+});
+
+studentSchema.virtual('guardianName').get(function() {
+  return this.family && this.family.guardian && this.family.guardian.name ? this.family.guardian.name : '';
+});
+
+studentSchema.virtual('guardianRelation').get(function() {
+  return this.family && this.family.guardian && this.family.guardian.relation ? this.family.guardian.relation : '';
 });
 
 studentSchema.virtual('guardianPhone').get(function() {
@@ -229,6 +253,10 @@ studentSchema.virtual('city').get(function() {
 
 studentSchema.virtual('dob').get(function() {
   return this.user && this.user.dob ? this.user.dob : null;
+});
+
+studentSchema.virtual('idProof').get(function() {
+  return this.documents && this.documents.idProof ? this.documents.idProof : '';
 });
 
 studentSchema.pre('save', async function(next) {

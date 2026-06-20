@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Student = require('../models/Student');
+const logger = require('../utils/logger');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'vande_secret_key';
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
@@ -75,6 +76,94 @@ exports.getForgotPassword = (req, res) => {
   res.render('auth/forgot-password', { title: 'Forgot Password — Vande Digital Academy', error: null });
 };
 
+// GET /auth/admin-recovery
+exports.getAdminRecovery = (req, res) => {
+  res.render('auth/admin-recovery', {
+    title: 'Admin Recovery',
+    error: null,
+    success: null
+  });
+};
+
+// POST /auth/admin-recovery
+exports.postAdminRecovery = async (req, res) => {
+  const { email, recoveryKey, newPassword, confirmPassword } = req.body;
+  const recoveryEnabled = process.env.ALLOW_ADMIN_RECOVERY === 'true';
+  const configuredKey = process.env.ADMIN_RECOVERY_KEY;
+
+  const renderRecovery = (error, success = null) => res.status(error ? 400 : 200).render('auth/admin-recovery', {
+    title: 'Admin Recovery',
+    error,
+    success
+  });
+
+  try {
+    if (!recoveryEnabled || !configuredKey) {
+      logger.warn('Blocked admin recovery attempt because recovery is disabled', {
+        email,
+        ip: req.ip
+      });
+      return renderRecovery('Admin recovery is disabled on this server.');
+    }
+
+    if (!email || !recoveryKey || !newPassword || !confirmPassword) {
+      return renderRecovery('Please fill all recovery fields.');
+    }
+
+    if (newPassword.trim().length < 8) {
+      return renderRecovery('New password must be at least 8 characters long.');
+    }
+
+    if (newPassword !== confirmPassword) {
+      return renderRecovery('New password and confirmation do not match.');
+    }
+
+    if (recoveryKey.trim() !== configuredKey.trim()) {
+      logger.warn('Invalid admin recovery key attempt', {
+        email,
+        ip: req.ip
+      });
+      return renderRecovery('Invalid recovery details.');
+    }
+
+    const admin = await User.findOne({
+      email: email.toLowerCase().trim(),
+      role: 'admin',
+      isActive: true
+    });
+
+    if (!admin) {
+      logger.warn('Admin recovery attempted for unknown or inactive admin', {
+        email,
+        ip: req.ip
+      });
+      return renderRecovery('Invalid recovery details.');
+    }
+
+    admin.password = newPassword.trim();
+    admin.mustChangePassword = false;
+    admin.passwordSetByAdmin = false;
+    admin.firstLoginCompleted = true;
+    admin.resetRequested = false;
+    admin.passwordChangedAt = new Date();
+    admin.tokenBlacklistedBefore = new Date();
+    await admin.save();
+
+    res.clearCookie('token');
+
+    logger.warn('Admin password recovered using recovery key', {
+      adminId: admin._id,
+      email: admin.email,
+      ip: req.ip
+    });
+
+    return renderRecovery(null, 'Admin password reset successfully. Please sign in with the new password.');
+  } catch (err) {
+    logger.error('Admin recovery failed', { error: err.message, email, ip: req.ip });
+    return renderRecovery('Unable to recover admin password. Please try again.');
+  }
+};
+
 // POST /auth/forgot-password
 exports.postForgotPassword = async (req, res) => {
   const { email, phone } = req.body;
@@ -103,7 +192,7 @@ exports.postForgotPassword = async (req, res) => {
       if (activeAdminCount <= 1) {
         return res.render('auth/forgot-password', {
           title: 'Forgot Password',
-          error: 'Only one admin exists. Admin password recovery must be done from the server console with: npm run reset-admin-password'
+          error: 'Only one admin exists. Use Admin Recovery with the server recovery key.'
         });
       }
     }
@@ -193,32 +282,86 @@ exports.postForceChangePassword = async (req, res) => {
   }
 };
 
+async function getRoleProfile(user) {
+  if (!user || !user.role) return null;
+
+  if (user.role === 'student') {
+    return Student.findOne({ user: user._id })
+      .populate('course', 'name code')
+      .populate('batch', 'name')
+      .populate({ path: 'teacher', populate: { path: 'user', select: 'name email phone profilePic' } })
+      .populate({ path: 'counsellor', populate: { path: 'user', select: 'name email phone profilePic' } });
+  }
+
+  if (user.role === 'teacher') {
+    const Teacher = require('../models/Teacher');
+    return Teacher.findOne({ user: user._id }).populate('courses', 'name code');
+  }
+
+  if (user.role === 'counsellor') {
+    const Counsellor = require('../models/Counsellor');
+    return Counsellor.findOne({ user: user._id });
+  }
+
+  return null;
+}
+
 // GET /auth/profile
 exports.getProfile = async (req, res) => {
-  res.render('auth/profile', { title: 'My Profile', user: req.user });
+  const roleProfile = await getRoleProfile(req.user);
+  if (req.query.updated || req.query.saved || req.query.request_submitted) {
+    res.locals.success = [];
+  }
+  if (req.query.error) {
+    res.locals.error = [];
+  }
+  res.render('auth/profile', { title: 'My Profile', user: req.user, roleProfile, query: req.query });
 };
 
 // POST /auth/profile
 exports.updateProfile = async (req, res) => {
-  const { name, phone, fatherName, motherName, guardianPhone, dob, address, city } = req.body;
+  const { name, phone, fatherName, fatherPhone, motherName, motherPhone, guardianName, guardianRelation, guardianPhone, dob, address, city, removeProfilePic } = req.body;
   console.log('👤 Profile update request:', { userId: req.user._id, role: req.user.role, name, phone, hasFile: !!req.file });
+
+  if (phone && !/^\d{10}$/.test(phone.trim())) {
+    const roleProfile = await getRoleProfile(req.user);
+    return res.render('auth/profile', { title: 'My Profile', user: req.user, roleProfile, query: req.query, error: 'Phone number must be exactly 10 digits' });
+  }
+  if (req.user.role === 'student' && guardianPhone && !/^\d{10}$/.test(guardianPhone.trim())) {
+    const roleProfile = await getRoleProfile(req.user);
+    return res.render('auth/profile', { title: 'My Profile', user: req.user, roleProfile, query: req.query, error: 'Guardian phone number must be exactly 10 digits' });
+  }
+  if (req.user.role === 'student' && fatherPhone && !/^\d{10}$/.test(fatherPhone.trim())) {
+    const roleProfile = await getRoleProfile(req.user);
+    return res.render('auth/profile', { title: 'My Profile', user: req.user, roleProfile, query: req.query, error: 'Father phone number must be exactly 10 digits' });
+  }
+  if (req.user.role === 'student' && motherPhone && !/^\d{10}$/.test(motherPhone.trim())) {
+    const roleProfile = await getRoleProfile(req.user);
+    return res.render('auth/profile', { title: 'My Profile', user: req.user, roleProfile, query: req.query, error: 'Mother phone number must be exactly 10 digits' });
+  }
+
   try {
     if (req.user.role === 'student') {
       const updateRequest = {
         name: name ? name.trim() : '',
         phone: phone ? phone.trim() : '',
         fatherName: fatherName ? fatherName.trim() : '',
+        fatherPhone: fatherPhone ? fatherPhone.trim() : '',
         motherName: motherName ? motherName.trim() : '',
+        motherPhone: motherPhone ? motherPhone.trim() : '',
+        guardianName: guardianName ? guardianName.trim() : '',
+        guardianRelation: guardianRelation ? guardianRelation.trim() : '',
         guardianPhone: guardianPhone ? guardianPhone.trim() : '',
         address: address ? address.trim() : '',
         city: city ? city.trim() : '',
         dob: dob ? new Date(dob) : null,
         requestedAt: new Date()
       };
-      if (req.file) {
+      if (removeProfilePic === '1') {
+        updateRequest.profilePic = '';
+      } else if (req.file) {
         updateRequest.profilePic = `/files/${req.file.filename}`;
       }
-      const Student = require('../models/Student');
       await Student.findOneAndUpdate({ user: req.user._id }, {
         pendingProfileUpdate: updateRequest
       });
@@ -236,14 +379,19 @@ exports.updateProfile = async (req, res) => {
       city: city ? city.trim() : '',
       dob: dob ? new Date(dob) : null
     };
-    if (req.file) update.profilePic = `/files/${req.file.filename}`;
+    if (removeProfilePic === '1') {
+      update.profilePic = null;
+    } else if (req.file) {
+      update.profilePic = `/files/${req.file.filename}`;
+    }
 
     await User.findByIdAndUpdate(req.user._id, update);
     console.log('✅ Profile updated immediately by staff:', { userId: req.user._id });
     res.redirect('/auth/profile?updated=1');
   } catch (err) {
     console.error('❌ Profile update error:', err);
-    res.render('auth/profile', { title: 'My Profile', user: req.user, error: 'Update failed' });
+    const roleProfile = await getRoleProfile(req.user);
+    res.render('auth/profile', { title: 'My Profile', user: req.user, roleProfile, query: req.query, error: 'Update failed' });
   }
 };
 
@@ -882,5 +1030,31 @@ exports.getContactProfileData = async (req, res) => {
   } catch (err) {
     console.error('❌ getContactProfileData Error:', err);
     res.status(500).json({ success: false, error: err.message || 'Internal Server Error' });
+  }
+};
+
+// POST /auth/announcements/:id/read
+exports.postReadAnnouncement = async (req, res) => {
+  try {
+    const Announcement = require('../models/Announcement');
+    await Announcement.updateOne(
+      {
+        _id: req.params.id,
+        'readBy.user': { $ne: req.user._id }
+      },
+      {
+        $push: {
+          readBy: {
+            user: req.user._id,
+            readAt: new Date()
+          }
+        }
+      }
+    );
+
+    res.redirect(req.header('Referer') || getRoleRedirect(req.user.role));
+  } catch (err) {
+    console.error('Failed to mark announcement read:', err);
+    res.redirect(req.header('Referer') || getRoleRedirect(req.user.role));
   }
 };

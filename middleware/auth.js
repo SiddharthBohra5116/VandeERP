@@ -41,6 +41,11 @@ const protect = async (req, res, next) => {
         req.user.remarks = studentProfile.remarks;
         req.user.statusHistory = studentProfile.statusHistory;
         req.user.fatherName = studentProfile.family?.father?.name || '';
+        req.user.fatherPhone = studentProfile.family?.father?.phone || '';
+        req.user.motherName = studentProfile.family?.mother?.name || '';
+        req.user.motherPhone = studentProfile.family?.mother?.phone || '';
+        req.user.guardianName = studentProfile.family?.guardian?.name || '';
+        req.user.guardianRelation = studentProfile.family?.guardian?.relation || '';
         req.user.guardianPhone = studentProfile.family?.guardian?.phone || '';
         req.user.pendingProfileUpdate = studentProfile.pendingProfileUpdate;
       }

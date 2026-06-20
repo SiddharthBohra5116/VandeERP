@@ -2,158 +2,416 @@
   layout = 'main';
   title = 'My Profile';
   page = 'profile';
+
+  const profile = typeof roleProfile !== 'undefined' ? roleProfile : null;
+  const initials = (user.name || 'User').split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const roleLabel = (user.role || 'user').charAt(0).toUpperCase() + (user.role || 'user').slice(1);
+  const formatDate = (value) => value ? new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Not added';
+  const showValue = (value) => value || 'Not added';
+  const currentPic = user.profilePic || (profile && profile.documents && profile.documents.profilePic) || '';
+  const isCurrentPicImage = currentPic && /\.(jpe?g|png|webp)($|\?)/i.test(currentPic);
+  const localSuccessList = Array.isArray(success) ? success.filter(msg => String(msg || '').trim()) : (success ? [success] : []);
+  const localErrorList = Array.isArray(error) ? error.filter(msg => String(msg || '').trim() && String(msg).trim() !== '1') : (error && String(error).trim() !== '1' ? [error] : []);
+
+  const studentFamily = profile && profile.family ? profile.family : {};
+  const fatherName = user.fatherName || (studentFamily.father && studentFamily.father.name) || '';
+  const fatherPhone = user.fatherPhone || (studentFamily.father && studentFamily.father.phone) || '';
+  const motherName = user.motherName || (studentFamily.mother && studentFamily.mother.name) || '';
+  const motherPhone = user.motherPhone || (studentFamily.mother && studentFamily.mother.phone) || '';
+  const guardianName = user.guardianName || (studentFamily.guardian && studentFamily.guardian.name) || '';
+  const guardianRelation = user.guardianRelation || (studentFamily.guardian && studentFamily.guardian.relation) || '';
+  const guardianPhone = user.guardianPhone || (studentFamily.guardian && studentFamily.guardian.phone) || '';
 %>
 
-<div class="profile-header">
-  <div class="avatar-lg">
-    <% if (user.profilePic) { %>
-      <img src="<%= user.profilePic %>" alt="<%= user.name %>">
-    <% } else { %>
-      <%= user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) %>
-    <% } %>
-  </div>
-  <div>
-    <div class="profile-name"><%= user.name %></div>
-    <div class="profile-meta"><%= user.role.toUpperCase() %> &nbsp;·&nbsp; <%= user.email %></div>
-  </div>
-</div>
-
-<div class="grid-2">
-  <!-- Update Info Form -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">Update Info</div>
-    </div>
-    <% if (user.role === 'student') { %>
-      <div class="alert alert-info" style="font-size: 0.8rem; line-height: 1.4; padding: 0.6rem 0.85rem; margin-bottom: 1rem; border-color: rgba(59, 130, 246, 0.2); background: rgba(59, 130, 246, 0.05); color: var(--text);">
-        ℹ️ <strong>Profile Notice:</strong> Changing your profile details requires verification. Submitting the changes below will log a profile update request for admin approval.
-      </div>
-      <% if (user.pendingProfileUpdate && user.pendingProfileUpdate.requestedAt) { %>
-        <div class="alert alert-warning" style="font-size: 0.8rem; line-height: 1.4; padding: 0.6rem 0.85rem; margin-bottom: 1rem; color: var(--text); border-color: var(--gold-border); background: var(--gold-dim);">
-          ⚠️ <strong>Pending Request:</strong> You already have a pending change request:<br>
-          &middot; Name: <em>"<%= user.pendingProfileUpdate.name %>"</em><br>
-          &middot; Phone: <em>"<%= user.pendingProfileUpdate.phone || '—' %>"</em><br>
-          &middot; Father's Name: <em>"<%= user.pendingProfileUpdate.fatherName || '—' %>"</em><br>
-          &middot; Mother's Name: <em>"<%= user.pendingProfileUpdate.motherName || '—' %>"</em><br>
-          &middot; Guardian's Phone: <em>"<%= user.pendingProfileUpdate.guardianPhone || '—' %>"</em><br>
-          &middot; Date of Birth: <em>"<%= user.pendingProfileUpdate.dob ? new Date(user.pendingProfileUpdate.dob).toLocaleDateString() : '—' %>"</em><br>
-          &middot; Address: <em>"<%= user.pendingProfileUpdate.address || '—' %>"</em><br>
-          &middot; City: <em>"<%= user.pendingProfileUpdate.city || '—' %>"</em><br>
-          Waiting for admin review. Re-submitting will overwrite this pending request.
-        </div>
-      <% } %>
-    <% } %>
-    <form action="/auth/profile" method="POST" enctype="multipart/form-data">
-      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
-      <div class="form-group">
-        <label class="form-label" for="name">Full Name</label>
-        <input type="text" id="name" name="name" class="form-control" value="<%= user.name %>" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="phone">Phone Number</label>
-        <input type="text" id="phone" name="phone" class="form-control" value="<%= user.phone || '' %>">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="fatherName">Father's Name</label>
-        <input type="text" id="fatherName" name="fatherName" class="form-control" value="<%= user.fatherName || '' %>">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="motherName">Mother's Name</label>
-        <input type="text" id="motherName" name="motherName" class="form-control" value="<%= user.motherName || '' %>">
-      </div>
-      <% if (user.role === 'student') { %>
-        <div class="form-group">
-          <label class="form-label" for="guardianPhone">Guardian's Phone Number</label>
-          <input type="text" id="guardianPhone" name="guardianPhone" class="form-control" value="<%= user.guardianPhone || '' %>">
-        </div>
-      <% } %>
-      <div class="form-group">
-        <label class="form-label" for="dob">Date of Birth</label>
-        <input type="date" id="dob" name="dob" class="form-control" value="<%= user.dob ? new Date(user.dob).toISOString().split('T')[0] : '' %>">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="address">Address</label>
-        <input type="text" id="address" name="address" class="form-control" value="<%= user.address || '' %>">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="city">City</label>
-        <input type="text" id="city" name="city" class="form-control" value="<%= user.city || '' %>">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="profilePic">Profile Picture</label>
-        <input type="file" id="profilePic" name="profilePic" class="form-control" accept="image/*">
-        <div class="form-hint">Upload a JPG, PNG, or GIF file.</div>
-      </div>
-      <button type="submit" class="btn btn-primary mt-2">Save Changes</button>
-    </form>
-  </div>
-
-  <!-- Change Password Form -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">Change Password</div>
-    </div>
-    <form action="/auth/change-password" method="POST">
-      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
-      <div class="form-group">
-        <label class="form-label" for="currentPassword">Current Password</label>
-        <input type="password" id="currentPassword" name="currentPassword" class="form-control" placeholder="••••••••" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="newPassword">New Password</label>
-        <input type="password" id="newPassword" name="newPassword" class="form-control" placeholder="•••••••• (Min. 8 chars)" minlength="8" required>
-      </div>
-      <button type="submit" class="btn btn-ghost mt-2">Change Password</button>
-    </form>
-  </div>
-</div>
-
-<% if (user.role === 'student') { %>
-<!-- Document Verification Section -->
-<div id="document-verification" class="card" style="margin-top: 1.5rem;">
-  <div class="card-header" style="display: flex; align-items: center; gap: 0.75rem;">
-    <div <%= (user.idProof && user.idVerified) ? 'style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(34,197,94,0.1); color: #16a34a;"' : (user.idProof && !user.idVerified) ? 'style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(195,155,52,0.12); color: var(--gold);"' : 'style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(239,68,68,0.1); color: var(--red);"' %>>
-      <% if (user.idProof && user.idVerified) { %>
-        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-      <% } else { %>
-        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="13" y2="13"/></svg>
-      <% } %>
-    </div>
-    <div>
-      <div class="card-title" style="margin: 0;">Document Verification</div>
-      <div style="font-size: 0.78rem; color: var(--text-sub); margin-top: 1px;">
-        <% if (user.idProof && user.idVerified) { %>
-          <span style="color: #16a34a; font-weight: 600;">✓ Verified</span> — Your document has been approved by the academy.
-        <% } else if (user.idProof && !user.idVerified) { %>
-          <span style="color: var(--gold); font-weight: 600;">Under review</span> — Submitted and awaiting admin approval.
-        <% } else { %>
-          <span style="color: var(--red); font-weight: 600;">Action required</span> — No document uploaded yet.
+<div class="profile-shell">
+  <section class="profile-hero">
+    <div class="profile-avatar-wrap">
+      <div class="avatar-lg profile-avatar <%= isCurrentPicImage ? '' : 'avatar-fallback-visible' %>">
+        <% if (isCurrentPicImage) { %>
+          <img src="<%= currentPic %>" alt="<%= user.name %>" onerror="this.hidden=true; this.parentElement.classList.add('avatar-fallback-visible');">
         <% } %>
+        <span class="avatar-fallback"><%= initials %></span>
+      </div>
+      <span class="profile-role-pill"><%= roleLabel %></span>
+    </div>
+    <div class="profile-hero-main">
+      <div class="profile-eyebrow">Account profile</div>
+      <h1 class="profile-name"><%= user.name %></h1>
+      <div class="profile-meta">
+        <span><%= user.email %></span>
+        <span><%= showValue(user.phone) %></span>
       </div>
     </div>
-  </div>
-
-  <% if (user.idProof) { %>
-    <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: var(--bg-sub); border-radius: var(--radius); margin-bottom: 1rem; font-size: 0.84rem;">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-sub); flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <span style="color: var(--text-sub);">Current document on file:</span>
-      <a href="<%= user.idProof %>" target="_blank" style="color: var(--gold); text-decoration: underline; word-break: break-all;">View uploaded document</a>
+    <div class="profile-status-card">
+      <div class="profile-status-label">Status</div>
+      <div class="profile-status-value"><%= user.status || 'active' %></div>
+      <div class="profile-status-sub">Joined <%= formatDate(user.createdAt) %></div>
     </div>
+  </section>
+
+  <% if (localErrorList.length) { %>
+    <div class="alert alert-error profile-alert"><span><%= localErrorList[0] %></span></div>
+  <% } %>
+  <% if (localSuccessList.length && !(typeof query !== 'undefined' && (query.updated || query.saved || query.request_submitted))) { %>
+    <div class="alert alert-success profile-alert"><span><%= localSuccessList[0] %></span></div>
+  <% } %>
+  <% if (typeof query !== 'undefined' && query.updated) { %>
+    <div class="alert alert-success profile-alert"><span>Your profile was updated successfully.</span></div>
+  <% } %>
+  <% if (typeof query !== 'undefined' && query.saved) { %>
+    <div class="alert alert-success profile-alert"><span>Your document was uploaded and is ready for review.</span></div>
+  <% } %>
+  <% if (typeof query !== 'undefined' && query.error) { %>
+    <div class="alert alert-error profile-alert"><span>Something went wrong. Please check the details and try again.</span></div>
+  <% } %>
+  <% if (user.role === 'student') { %>
+    <% if (typeof request_submitted !== 'undefined' || (typeof query !== 'undefined' && query.request_submitted)) { %>
+      <div class="alert alert-success profile-alert"><span>Your profile update request was submitted for admin approval.</span></div>
+    <% } %>
   <% } %>
 
-  <p style="font-size: 0.84rem; color: var(--text-sub); margin-bottom: 1rem; line-height: 1.5;">
-    Upload a clear photo or scan of a government-issued photo ID (Aadhaar card, passport, voter ID, or school/college ID card). Accepted formats: JPG, PNG, PDF — max 5 MB.
-    <% if (user.idProof) { %> Re-uploading will reset verification status and require admin re-approval.<% } %>
-  </p>
+  <div class="profile-summary-grid">
+    <% if (user.role === 'student') { %>
+      <div class="profile-info-tile">
+        <span>Roll number</span>
+        <strong><%= showValue(profile && profile.rollNumber) %></strong>
+      </div>
+      <div class="profile-info-tile">
+        <span>Course</span>
+        <strong><%= showValue(profile && profile.course && profile.course.name) %></strong>
+      </div>
+      <div class="profile-info-tile">
+        <span>Batch</span>
+        <strong><%= showValue(profile && profile.batch && profile.batch.name) %></strong>
+      </div>
+      <div class="profile-info-tile">
+        <span>Fees due</span>
+        <strong>Rs. <%= profile ? (profile.fees_due || 0).toLocaleString('en-IN') : '0' %></strong>
+      </div>
+    <% } else if (user.role === 'teacher') { %>
+      <div class="profile-info-tile">
+        <span>Teacher ID</span>
+        <strong><%= showValue(profile && profile.rollNumber) %></strong>
+      </div>
+      <div class="profile-info-tile">
+        <span>Qualification</span>
+        <strong><%= showValue(profile && profile.qualification) %></strong>
+      </div>
+      <div class="profile-info-tile">
+        <span>Experience</span>
+        <strong><%= profile ? `${profile.experienceYears || 0} yrs` : 'Not added' %></strong>
+      </div>
+      <div class="profile-info-tile">
+        <span>Courses</span>
+        <strong><%= profile && profile.courses && profile.courses.length ? profile.courses.map(c => c.name).join(', ') : 'Not assigned' %></strong>
+      </div>
+    <% } else if (user.role === 'counsellor') { %>
+      <div class="profile-info-tile">
+        <span>Counsellor ID</span>
+        <strong><%= showValue(profile && profile.rollNumber) %></strong>
+      </div>
+      <div class="profile-info-tile">
+        <span>Email</span>
+        <strong><%= user.email %></strong>
+      </div>
+      <div class="profile-info-tile">
+        <span>Phone</span>
+        <strong><%= showValue(user.phone) %></strong>
+      </div>
+      <div class="profile-info-tile">
+        <span>Location</span>
+        <strong><%= [user.city, user.address].filter(Boolean).join(', ') || 'Not added' %></strong>
+      </div>
+    <% } else { %>
+      <div class="profile-info-tile">
+        <span>Email</span>
+        <strong><%= user.email %></strong>
+      </div>
+      <div class="profile-info-tile">
+        <span>Phone</span>
+        <strong><%= showValue(user.phone) %></strong>
+      </div>
+      <div class="profile-info-tile">
+        <span>City</span>
+        <strong><%= showValue(user.city) %></strong>
+      </div>
+      <div class="profile-info-tile">
+        <span>Date of birth</span>
+        <strong><%= formatDate(user.dob) %></strong>
+      </div>
+    <% } %>
+  </div>
 
-  <form action="/student/profile/upload-id" method="POST" enctype="multipart/form-data">
-    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
-    <div class="form-group" style="margin-bottom: 1rem;">
-      <label class="form-label" for="idProof"><%= user.idProof ? 'Replace document' : 'Upload ID document' %></label>
-      <input type="file" id="idProof" name="idProof" class="form-control" accept="image/jpeg,image/png,application/pdf" required>
-      <div class="form-hint">Max file size: 5 MB. JPG, PNG or PDF only.</div>
+  <div class="profile-layout">
+    <div class="profile-main-col">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Profile Details</div>
+            <div class="profile-card-subtitle">
+              <% if (user.role === 'student') { %>
+                Student edits are sent to admin for verification.
+              <% } else { %>
+                Keep your academy contact details current.
+              <% } %>
+            </div>
+          </div>
+        </div>
+
+        <% if (user.role === 'student' && user.pendingProfileUpdate && user.pendingProfileUpdate.requestedAt) { %>
+          <div class="profile-pending-box">
+            <div class="profile-pending-title">Pending approval</div>
+            <div class="profile-pending-grid">
+              <span>Name: <strong><%= user.pendingProfileUpdate.name || 'Not added' %></strong></span>
+              <span>Phone: <strong><%= user.pendingProfileUpdate.phone || 'Not added' %></strong></span>
+              <span>Father: <strong><%= user.pendingProfileUpdate.fatherName || 'Not added' %></strong></span>
+              <span>Father phone: <strong><%= user.pendingProfileUpdate.fatherPhone || 'Not added' %></strong></span>
+              <span>Mother: <strong><%= user.pendingProfileUpdate.motherName || 'Not added' %></strong></span>
+              <span>Mother phone: <strong><%= user.pendingProfileUpdate.motherPhone || 'Not added' %></strong></span>
+              <span>Guardian: <strong><%= user.pendingProfileUpdate.guardianName || 'Not added' %></strong></span>
+              <span>Guardian phone: <strong><%= user.pendingProfileUpdate.guardianPhone || 'Not added' %></strong></span>
+            </div>
+          </div>
+        <% } %>
+
+        <form action="/auth/profile" method="POST" enctype="multipart/form-data" class="profile-form">
+          <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+
+          <div class="profile-form-section">
+            <div class="profile-section-heading">Personal Information</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="name">Full Name</label>
+                <input type="text" id="name" name="name" class="form-control" value="<%= user.name %>" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="phone">Phone Number</label>
+                <input type="tel" id="phone" name="phone" class="form-control js-phone-input" value="<%= user.phone || '' %>" maxlength="10" pattern="[0-9]{10}" inputmode="numeric">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="dob">Date of Birth</label>
+                <input type="date" id="dob" name="dob" class="form-control" value="<%= user.dob ? new Date(user.dob).toISOString().split('T')[0] : '' %>">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="city">City</label>
+                <input type="text" id="city" name="city" class="form-control" value="<%= user.city || '' %>">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="address">Address</label>
+              <input type="text" id="address" name="address" class="form-control" value="<%= user.address || '' %>">
+            </div>
+          </div>
+
+          <% if (user.role === 'student') { %>
+            <div class="profile-form-section">
+              <div class="profile-section-heading">Parent / Guardian Information</div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="fatherName">Father's Name</label>
+                  <input type="text" id="fatherName" name="fatherName" class="form-control" value="<%= fatherName %>">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="fatherPhone">Father's Phone</label>
+                  <input type="tel" id="fatherPhone" name="fatherPhone" class="form-control js-phone-input" value="<%= fatherPhone %>" maxlength="10" pattern="[0-9]{10}" inputmode="numeric">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="motherName">Mother's Name</label>
+                  <input type="text" id="motherName" name="motherName" class="form-control" value="<%= motherName %>">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="motherPhone">Mother's Phone</label>
+                  <input type="tel" id="motherPhone" name="motherPhone" class="form-control js-phone-input" value="<%= motherPhone %>" maxlength="10" pattern="[0-9]{10}" inputmode="numeric">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="guardianName">Guardian Name</label>
+                  <input type="text" id="guardianName" name="guardianName" class="form-control" value="<%= guardianName %>">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="guardianRelation">Relationship</label>
+                  <input type="text" id="guardianRelation" name="guardianRelation" class="form-control" value="<%= guardianRelation %>">
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="guardianPhone">Guardian Phone Number</label>
+                <input type="tel" id="guardianPhone" name="guardianPhone" class="form-control js-phone-input" value="<%= guardianPhone %>" maxlength="10" pattern="[0-9]{10}" inputmode="numeric">
+              </div>
+            </div>
+          <% } %>
+
+          <div class="profile-form-section">
+            <div class="profile-section-heading">Profile Photo</div>
+            <div class="profile-photo-control">
+              <div class="profile-photo-preview <%= isCurrentPicImage ? '' : 'is-empty' %>" id="profilePhotoPreview">
+                <% if (isCurrentPicImage) { %>
+                  <img src="<%= currentPic %>" alt="Current profile photo" onerror="this.hidden=true; this.parentElement.classList.add('is-empty');">
+                <% } %>
+                <span><%= initials %></span>
+              </div>
+              <div class="profile-photo-input">
+                <label class="form-label" for="profilePic">Upload New Picture</label>
+                <input type="file" id="profilePic" name="profilePic" class="form-control" accept="image/jpeg,image/png,image/webp">
+                <div class="form-hint">Use a clear JPG, PNG, or WebP image. Square photos look best.</div>
+                <% if (currentPic) { %>
+                  <label class="profile-remove-photo">
+                    <input type="checkbox" name="removeProfilePic" value="1">
+                    <span>Remove current photo and use initials</span>
+                  </label>
+                <% } %>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary mt-2"><%= user.role === 'student' ? 'Submit for Approval' : 'Save Changes' %></button>
+        </form>
+      </div>
     </div>
-    <button type="submit" class="btn btn-primary"><%= user.idProof ? 'Re-upload Document' : 'Submit for Verification' %></button>
-  </form>
+
+    <aside class="profile-side-col">
+      <% if (user.role === 'teacher') { %>
+        <div class="card profile-side-card">
+          <div class="card-header"><div class="card-title">Teaching Profile</div></div>
+          <div class="profile-detail-list">
+            <div><span>ID</span><strong><%= showValue(profile && profile.rollNumber) %></strong></div>
+            <div><span>Qualification</span><strong><%= showValue(profile && profile.qualification) %></strong></div>
+            <div><span>Experience</span><strong><%= profile ? `${profile.experienceYears || 0} years` : 'Not added' %></strong></div>
+            <div><span>Joining date</span><strong><%= formatDate(profile && profile.joiningDate) %></strong></div>
+          </div>
+        </div>
+      <% } else if (user.role === 'counsellor') { %>
+        <div class="card profile-side-card">
+          <div class="card-header"><div class="card-title">Counsellor Profile</div></div>
+          <div class="profile-detail-list">
+            <div><span>ID</span><strong><%= showValue(profile && profile.rollNumber) %></strong></div>
+            <div><span>Email</span><strong><%= user.email %></strong></div>
+            <div><span>Phone</span><strong><%= showValue(user.phone) %></strong></div>
+            <div><span>Joined</span><strong><%= formatDate(user.createdAt) %></strong></div>
+          </div>
+        </div>
+      <% } else if (user.role === 'student') { %>
+        <div class="card profile-side-card">
+          <div class="card-header"><div class="card-title">Assigned Team</div></div>
+          <div class="profile-detail-list">
+            <div><span>Teacher</span><strong><%= profile && profile.teacher && profile.teacher.user ? profile.teacher.user.name : 'Not assigned' %></strong></div>
+            <div><span>Counsellor</span><strong><%= profile && profile.counsellor && profile.counsellor.user ? profile.counsellor.user.name : 'Not assigned' %></strong></div>
+            <div><span>Enrollment</span><strong><%= formatDate(profile && profile.enrollmentDate) %></strong></div>
+          </div>
+        </div>
+      <% } %>
+
+      <div class="card profile-side-card">
+        <div class="card-header"><div class="card-title">Change Password</div></div>
+        <form action="/auth/change-password" method="POST">
+          <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+          <div class="form-group">
+            <label class="form-label" for="currentPassword">Current Password</label>
+            <input type="password" id="currentPassword" name="currentPassword" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="newPassword">New Password</label>
+            <input type="password" id="newPassword" name="newPassword" class="form-control" minlength="8" required>
+            <div class="form-hint">Minimum 8 characters.</div>
+          </div>
+          <button type="submit" class="btn btn-ghost mt-2">Change Password</button>
+        </form>
+      </div>
+    </aside>
+  </div>
+
+  <% if (user.role === 'student') { %>
+    <section id="document-verification" class="card profile-document-card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Document Verification</div>
+          <div class="profile-card-subtitle">
+            <% if (user.idProof && user.idVerified) { %>
+              Verified by the academy.
+            <% } else if (user.idProof) { %>
+              Submitted and waiting for admin review.
+            <% } else { %>
+              Upload one identity document to complete verification.
+            <% } %>
+          </div>
+        </div>
+        <span class="profile-doc-status <%= user.idProof && user.idVerified ? 'is-verified' : user.idProof ? 'is-review' : 'is-missing' %>">
+          <%= user.idProof && user.idVerified ? 'Verified' : user.idProof ? 'Under review' : 'Required' %>
+        </span>
+      </div>
+
+      <% if (user.idProof) { %>
+        <div class="profile-current-document">
+          <a href="<%= user.idProof %>" target="_blank">View uploaded document</a>
+          <% if (user.idProof.match(/\.(jpeg|jpg|png|gif|webp)($|\?)/i)) { %>
+            <img src="<%= user.idProof %>" alt="ID proof preview">
+          <% } else { %>
+            <div class="profile-pdf-chip">PDF document uploaded</div>
+          <% } %>
+        </div>
+      <% } %>
+
+      <form action="/student/profile/upload-id" method="POST" enctype="multipart/form-data" class="profile-document-form">
+        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+        <div class="form-group">
+          <label class="form-label" for="idProof"><%= user.idProof ? 'Replace document' : 'Upload ID document' %></label>
+          <input type="file" id="idProof" name="idProof" class="form-control" accept="image/jpeg,image/png,application/pdf" required>
+          <div class="form-hint">Accepted formats: JPG, PNG, or PDF. Maximum file size: 5 MB.</div>
+        </div>
+        <div id="local-preview-container" class="profile-local-preview" hidden>
+          <img id="local-preview-img" src="" alt="Selected document preview" hidden>
+          <div id="local-preview-pdf" hidden>Selected PDF document</div>
+        </div>
+        <button type="submit" class="btn btn-primary"><%= user.idProof ? 'Re-upload Document' : 'Submit for Verification' %></button>
+      </form>
+    </section>
+  <% } %>
 </div>
-<% } %>
+
+<script>
+  document.querySelectorAll('.js-phone-input').forEach((input) => {
+    input.addEventListener('input', () => {
+      input.value = input.value.replace(/[^0-9]/g, '').slice(0, 10);
+    });
+  });
+
+  document.getElementById('profilePic')?.addEventListener('change', (event) => {
+    const file = event.target.files && event.target.files[0];
+    const preview = document.getElementById('profilePhotoPreview');
+    if (!file || !preview || !file.type.startsWith('image/')) return;
+
+    let image = preview.querySelector('img');
+    if (!image) {
+      image = document.createElement('img');
+      image.alt = 'Selected profile photo';
+      preview.prepend(image);
+    }
+    image.hidden = false;
+    preview.classList.remove('is-empty');
+    image.src = URL.createObjectURL(file);
+  });
+
+  document.getElementById('idProof')?.addEventListener('change', (event) => {
+    const file = event.target.files && event.target.files[0];
+    const previewContainer = document.getElementById('local-preview-container');
+    const previewImg = document.getElementById('local-preview-img');
+    const previewPdf = document.getElementById('local-preview-pdf');
+    if (!file || !previewContainer) return;
+
+    previewContainer.hidden = false;
+    if (file.type.startsWith('image/')) {
+      previewImg.hidden = false;
+      previewPdf.hidden = true;
+      previewImg.src = URL.createObjectURL(file);
+    } else if (file.type === 'application/pdf') {
+      previewImg.hidden = true;
+      previewPdf.hidden = false;
+    } else {
+      previewContainer.hidden = true;
+    }
+  });
+</script>

@@ -56,8 +56,8 @@ exports.postApproveProfileUpdate = async (req, res) => {
       }
 
       if (pending.profilePic !== null && pending.profilePic !== undefined) {
-        student.user.profilePic = pending.profilePic;
-        student.documents.profilePic = pending.profilePic;
+        student.user.profilePic = pending.profilePic || null;
+        student.documents.profilePic = pending.profilePic || null;
       }
 
       if (pending.address !== null && pending.address !== undefined) {
@@ -73,11 +73,33 @@ exports.postApproveProfileUpdate = async (req, res) => {
       }
 
       if (pending.fatherName !== null && pending.fatherName !== undefined) {
+        if (!student.family.father) student.family.father = {};
         student.family.father.name = pending.fatherName;
       }
 
+      if (pending.fatherPhone !== null && pending.fatherPhone !== undefined) {
+        if (!student.family.father) student.family.father = {};
+        student.family.father.phone = pending.fatherPhone;
+      }
+
       if (pending.motherName !== null && pending.motherName !== undefined) {
+        if (!student.family.mother) student.family.mother = {};
         student.family.mother.name = pending.motherName;
+      }
+
+      if (pending.motherPhone !== null && pending.motherPhone !== undefined) {
+        if (!student.family.mother) student.family.mother = {};
+        student.family.mother.phone = pending.motherPhone;
+      }
+
+      if (pending.guardianName !== null && pending.guardianName !== undefined) {
+        if (!student.family.guardian) student.family.guardian = {};
+        student.family.guardian.name = pending.guardianName;
+      }
+
+      if (pending.guardianRelation !== null && pending.guardianRelation !== undefined) {
+        if (!student.family.guardian) student.family.guardian = {};
+        student.family.guardian.relation = pending.guardianRelation;
       }
 
       if (pending.guardianPhone !== null && pending.guardianPhone !== undefined) {
@@ -90,7 +112,11 @@ exports.postApproveProfileUpdate = async (req, res) => {
         phone: null,
         profilePic: null,
         fatherName: null,
+        fatherPhone: null,
         motherName: null,
+        motherPhone: null,
+        guardianName: null,
+        guardianRelation: null,
         guardianPhone: null,
         address: null,
         city: null,
@@ -140,7 +166,12 @@ exports.postRejectProfileUpdate = async (req, res) => {
       phone: null,
       profilePic: null,
       fatherName: null,
+      fatherPhone: null,
       motherName: null,
+      motherPhone: null,
+      guardianName: null,
+      guardianRelation: null,
+      guardianPhone: null,
       address: null,
       city: null,
       dob: null,
