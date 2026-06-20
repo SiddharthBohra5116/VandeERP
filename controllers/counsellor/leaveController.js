@@ -22,6 +22,13 @@ exports.getLeavesPage = async (req, res) => {
 exports.postApplyLeave = async (req, res) => {
   const { startDate, endDate, reason } = req.body;
   try {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (!startDate || !endDate || !reason) {
+      return res.redirect('/counsellor/leaves?error=1');
+    }
+    if (startDate < todayStr || endDate < startDate) {
+      return res.redirect('/counsellor/leaves?invalid_dates=1');
+    }
     await LeaveRequest.create({ user: req.user._id, startDate, endDate, reason });
     res.redirect('/counsellor/leaves?created=1');
   } catch (err) {

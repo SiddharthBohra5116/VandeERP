@@ -173,7 +173,8 @@ app.use((req, res, next) => {
   const errorMessages = {
     error: 'An error occurred. Please try again.',
     exists: 'Record already exists.',
-    already: 'You have already submitted this assignment.'
+    already: 'You have already submitted this assignment.',
+    invalid_dates: 'Invalid dates selected. Start date cannot be in the past, and end date cannot be earlier than start date.'
   };
 
   for (const [key, val] of Object.entries(req.query)) {

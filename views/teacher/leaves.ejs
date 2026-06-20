@@ -33,6 +33,39 @@
       </div>
       <button type="submit" class="btn btn-primary btn-sm" style="margin-top: 0.5rem;">Submit Leave Request</button>
     </form>
+    <script>
+      (function() {
+        const today = new Date().toISOString().split('T')[0];
+        const startDateInput = document.getElementById('start_date');
+        const endDateInput = document.getElementById('end_date');
+        
+        if (startDateInput && endDateInput) {
+          startDateInput.setAttribute('min', today);
+          
+          startDateInput.addEventListener('change', function() {
+            endDateInput.setAttribute('min', this.value);
+            if (endDateInput.value && endDateInput.value < this.value) {
+              endDateInput.value = '';
+            }
+          });
+          
+          const form = startDateInput.closest('form');
+          if (form) {
+            form.addEventListener('submit', function(e) {
+              const startVal = startDateInput.value;
+              const endVal = endDateInput.value;
+              if (startVal < today) {
+                e.preventDefault();
+                alert('Start date cannot be in the past!');
+              } else if (endVal < startVal) {
+                e.preventDefault();
+                alert('End date cannot be earlier than start date!');
+              }
+            });
+          }
+        }
+      })();
+    </script>
   </div>
 
   <!-- Leave History List -->
