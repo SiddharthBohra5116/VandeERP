@@ -1279,7 +1279,9 @@ window.viewContactProfile = async (contactId) => {
   }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+window.initInboxPage = () => {
+  if (window.location.pathname !== '/auth/inbox') return;
+
   // 1. Search & Filter Tab Logic
   const searchInput = document.getElementById('contactSearchInput');
   const filterTabs = document.querySelectorAll('.filter-tab');
@@ -1336,31 +1338,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 2. Scroll Chat Window to Bottom
   const chatWindow = document.getElementById('chatMessagesWindow');
-  const messageSearchInput = document.getElementById('messageSearchInput');
-  const messageSearchCount = document.getElementById('messageSearchCount');
-
-  window.applyMessageSearchFilter = function() {
-    if (!chatWindow || !messageSearchInput) return;
-    const term = messageSearchInput.value.trim().toLowerCase();
-    const rows = Array.from(chatWindow.querySelectorAll('.message-row'));
-    let matchCount = 0;
-
-    rows.forEach(row => {
-      const text = row.textContent.toLowerCase();
-      const matches = !term || text.includes(term);
-      row.style.display = matches ? 'flex' : 'none';
-      if (term && matches) matchCount++;
-    });
-
-    if (messageSearchCount) {
-      messageSearchCount.textContent = term ? `${matchCount} match${matchCount === 1 ? '' : 'es'}` : '';
-    }
-  };
-
-  if (messageSearchInput) {
-    messageSearchInput.addEventListener('input', window.applyMessageSearchFilter);
-  }
-
   if (chatWindow) {
     chatWindow.scrollTop = chatWindow.scrollHeight;
   }
@@ -1787,9 +1764,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     chatMessagesWindow.innerHTML = html;
     clearActiveChatUnreadBadge();
-    if (window.applyMessageSearchFilter) {
-      window.applyMessageSearchFilter();
-    }
 
     if (isScrolledToBottom) {
       chatMessagesWindow.scrollTop = chatMessagesWindow.scrollHeight;
@@ -1835,8 +1809,17 @@ document.addEventListener('DOMContentLoaded', () => {
     messageForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
+      const submitBtn = messageForm.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        if (submitBtn.disabled) return;
+        submitBtn.disabled = true;
+        if (!submitBtn.getAttribute('data-original-text')) {
+          submitBtn.setAttribute('data-original-text', submitBtn.innerHTML);
+        }
+        submitBtn.innerHTML = `<span>Sending...</span>`;
+      }
+
       const restoreSubmitBtn = () => {
-        const submitBtn = messageForm.querySelector('button[type="submit"]');
         if (submitBtn) {
           submitBtn.disabled = false;
           const origText = submitBtn.getAttribute('data-original-text') || `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> <span>Send</span>`;
@@ -1847,6 +1830,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const editMessageId = editMessageIdInput ? editMessageIdInput.value : '';
 
       if (editMessageId) {
+        e.stopPropagation();
         const content = chatInput ? chatInput.value.trim() : '';
         if (!content) {
           restoreSubmitBtn();
@@ -1921,5 +1905,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   clearActiveChatUnreadBadge();
-});
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', window.initInboxPage);
+} else {
+  window.initInboxPage();
+}
+document.addEventListener('softnav:load', window.initInboxPage);
 </script>
