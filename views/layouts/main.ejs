@@ -98,22 +98,16 @@
     // 2. Responsive Mobile Sidebar with persistence
     const menuToggleBtn = document.getElementById('menuToggleBtn');
     const sidebar = document.querySelector('.sidebar');
-    const sidebarBackdrop = document.getElementById('sidebarBackdrop');    const restoreSidebarState = () => {
+    const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+    const restoreSidebarState = () => {
       const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
       if (window.innerWidth > 900) {
-        const btn = document.getElementById('desktopSidebarCollapseBtn');
-        const span = btn ? btn.querySelector('span') : null;
-        const svg = btn ? btn.querySelector('svg') : null;
         if (isCollapsed) {
           sidebar.classList.add('collapsed');
           document.querySelector('.main-wrap').classList.add('expanded');
-          if (span) span.style.display = 'none';
-          if (svg) svg.innerHTML = '<path d="M9 18l6-6-6-6"/>';
         } else {
           sidebar.classList.remove('collapsed');
           document.querySelector('.main-wrap').classList.remove('expanded');
-          if (span) span.style.display = 'inline';
-          if (svg) svg.innerHTML = '<path d="M15 18l-6-6 6-6"/>';
         }
       }
     };
@@ -149,16 +143,6 @@
           document.querySelector('.main-wrap').classList.toggle('expanded');
           const isCollapsed = sidebar.classList.contains('collapsed');
           localStorage.setItem('sidebar-collapsed', isCollapsed);
-
-          const span = desktopSidebarCollapseBtn.querySelector('span');
-          const svg = desktopSidebarCollapseBtn.querySelector('svg');
-          if (isCollapsed) {
-            if (span) span.style.display = 'none';
-            if (svg) svg.innerHTML = '<path d="M9 18l6-6-6-6"/>';
-          } else {
-            if (span) span.style.display = 'inline';
-            if (svg) svg.innerHTML = '<path d="M15 18l-6-6 6-6"/>';
-          }
         });
       }
 
