@@ -3,6 +3,7 @@ const Assignment = require('../../models/Assignment');
 const Batch = require('../../models/Batch');
 const Student = require('../../models/Student');
 const Message = require('../../models/Message');
+const mongoose = require('mongoose');
 
 async function notifyBatchStudents({ teacherId, batchId, content }) {
   const students = await Student.find({ batch: batchId }).populate('user', '_id status');
@@ -29,8 +30,26 @@ exports.getAssignments = async (req, res) => {
       .populate('course', 'name code')
       .populate('batch', 'name')
       .sort({ createdAt: -1 });
+    const batchIds = [...new Set(assignments
+      .map(a => a.batch?._id || a.batch)
+      .filter(Boolean)
+      .map(String))];
+    const studentCounts = batchIds.length
+      ? await Student.aggregate([
+        { $match: { batch: { $in: batchIds.map(id => new mongoose.Types.ObjectId(id)) } } },
+        { $group: { _id: '$batch', count: { $sum: 1 } } }
+      ])
+      : [];
+    const batchCountMap = new Map(studentCounts.map(item => [String(item._id), item.count]));
+    const assignmentCards = assignments.map(assignment => {
+      const batchId = assignment.batch?._id || assignment.batch;
+      const totalStudents = batchId ? (batchCountMap.get(String(batchId)) || 0) : 0;
+      const handinsCount = assignment.submissions.filter(s => s.status && s.status !== 'pending' && s.status !== 'overdue').length;
+      const gradedCount = assignment.submissions.filter(s => s.status === 'graded' || s.marks !== null).length;
+      return { assignment, totalStudents, handinsCount, gradedCount };
+    });
     console.log('✅ Assignments fetched:', { count: assignments.length });
-    res.render('teacher/assignments', { title: 'Assignments', user: req.user, assignments });
+    res.render('teacher/assignments', { title: 'Assignments', user: req.user, assignments, assignmentCards });
   } catch (err) {
     console.error('❌ Teacher Assignments List Load Error:', { teacherId: req.user._id, error: err.message });
     res.status(500).render('500', { title: 'Error', user: req.user, layout: 'main' });

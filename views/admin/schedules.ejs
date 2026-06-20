@@ -518,7 +518,7 @@
         <select id="v_select_batch" class="form-control" onchange="loadBatchTemplate(this.value)">
           <option value="">-- Select Batch to Configure --</option>
           <% batches.forEach(b => { %>
-            <option value="<%= b._id %>" data-course="<%= b.course ? (b.course._id || b.course) : '' %>"><%= b.name %></option>
+            <option value="<%= b._id %>" data-course="<%= b.course ? (b.course._id || b.course) : '' %>" data-course-name="<%= b.course && b.course.name ? b.course.name : '' %>"><%= b.name %></option>
           <% }) %>
         </select>
       </div>
@@ -580,11 +580,6 @@
               <option value="Saturday">Saturday</option>
               <option value="Sunday">Sunday</option>
             </select>
-          </div>
-          
-          <div class="form-group" style="margin-bottom: 0.5rem;">
-            <label style="font-size: 0.6rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Subject *</label>
-            <input type="text" id="pop_subject" class="form-control" style="font-size: 0.75rem; padding: 0.3rem;" list="subjectDatalist" placeholder="e.g. Color Grading">
           </div>
           
           <div class="form-group" style="margin-bottom: 0.5rem;">
@@ -895,25 +890,12 @@
   <div class="drawer-body">
     <form action="/admin/schedules/create" method="POST" id="createScheduleForm" style="margin: 0;">
       <div class="form-group">
-        <label class="form-label" for="c_subject">Subject Title *</label>
-        <input type="text" id="c_subject" name="subject" class="form-control" placeholder="e.g. Color Grading Basics" list="subjectDatalist" required>
-        <datalist id="subjectDatalist">
-          <option value="Video Editing Basics">
-          <option value="Advanced Premiere & DaVinci Resolve">
-          <option value="Syllabus Term Overview">
-          <option value="Digital Marketing Mastery">
-          <option value="SEO & Copywriting Fundamentals">
-          <option value="Social Media Strategy & Ad Campaigns">
-        </datalist>
-      </div>
-
-      <div class="form-group">
         <label class="form-label" for="c_batch">Target Batch *</label>
         <input type="hidden" id="c_course" name="course">
         <select id="c_batch" name="batch" class="form-control" onchange="updateCourseField(this, 'c_course')" required>
           <option value="">-- Select Batch --</option>
           <% batches.forEach(b => { %>
-            <option value="<%= b._id %>" data-course="<%= b.course ? (b.course._id || b.course) : '' %>"><%= b.name %></option>
+            <option value="<%= b._id %>" data-course="<%= b.course ? (b.course._id || b.course) : '' %>"><%= b.name %><%= b.course && b.course.name ? ' - ' + b.course.name : '' %></option>
           <% }) %>
         </select>
       </div>
@@ -980,17 +962,12 @@
   <div class="drawer-body">
     <form action="" method="POST" id="editScheduleForm" style="margin: 0;">
       <div class="form-group">
-        <label class="form-label" for="e_subject">Subject Title *</label>
-        <input type="text" id="e_subject" name="subject" class="form-control" list="subjectDatalist" required>
-      </div>
-
-      <div class="form-group">
         <label class="form-label" for="e_batch">Target Batch *</label>
         <input type="hidden" id="e_course" name="course">
         <select id="e_batch" name="batch" class="form-control" onchange="updateCourseField(this, 'e_course')" required>
           <option value="">-- Select Batch --</option>
           <% batches.forEach(b => { %>
-            <option value="<%= b._id %>" data-course="<%= b.course ? (b.course._id || b.course) : '' %>"><%= b.name %></option>
+            <option value="<%= b._id %>" data-course="<%= b.course ? (b.course._id || b.course) : '' %>"><%= b.name %><%= b.course && b.course.name ? ' - ' + b.course.name : '' %></option>
           <% }) %>
         </select>
       </div>
@@ -1157,7 +1134,6 @@
   // Slide-over drawer actions
   function openCreateDrawer(dateStr) {
     closeAllDrawers();
-    document.getElementById('c_subject').value = '';
     document.getElementById('c_batch').value = '';
     document.getElementById('c_course').value = '';
     document.getElementById('c_teacher').value = '';
@@ -1184,7 +1160,6 @@
     }
     
     const id = target.getAttribute('data-id');
-    const subject = target.getAttribute('data-subject');
     const batch = target.getAttribute('data-batch');
     const teacher = target.getAttribute('data-teacher');
     const classroom = target.getAttribute('data-classroom');
@@ -1197,7 +1172,6 @@
     document.getElementById('editScheduleForm').action = `/admin/schedules/${id}/edit`;
     document.getElementById('deleteScheduleForm').action = `/admin/schedules/${id}/delete`;
     
-    document.getElementById('e_subject').value = subject;
     document.getElementById('e_batch').value = batch;
     document.getElementById('e_course').value = course || '';
     document.getElementById('e_teacher').value = teacher;
@@ -1250,6 +1224,13 @@
     document.getElementById(hiddenInputId).value = courseId || '';
   }
 
+  function getActiveBatchCourseLabel() {
+    const selectEl = document.getElementById('v_select_batch');
+    if (!selectEl || selectEl.selectedIndex < 0) return 'Class';
+    const selectedOpt = selectEl.options[selectEl.selectedIndex];
+    return selectedOpt?.getAttribute('data-course-name') || selectedOpt?.textContent?.trim() || 'Class';
+  }
+
   function loadBatchTemplate(batchId) {
     activeBatch = batchId;
     if (!batchId) {
@@ -1271,7 +1252,7 @@
       activeSlots = t.slots.map(s => ({
         id: s._id,
         dayOfWeek: s.dayOfWeek,
-        subject: s.note || '',
+        subject: s.note || getActiveBatchCourseLabel(),
         teacher: s.teacher ? (s.teacher._id || s.teacher) : '',
         classroom: s.classroom ? (s.classroom._id || s.classroom) : '',
         startTime: s.startTime,
@@ -1439,7 +1420,7 @@
 
     openSlotPopover(event.currentTarget, {
       dayOfWeek: day,
-      subject: '',
+      subject: getActiveBatchCourseLabel(),
       teacher: teachersData[0] ? teachersData[0]._id : '',
       classroom: classroomsData[0] ? classroomsData[0]._id : '',
       startTime: format24hToAMPM(startTimeStr),
@@ -1452,7 +1433,6 @@
     
     document.getElementById('pop_slot_id').value = index;
     document.getElementById('pop_day').value = slot.dayOfWeek;
-    document.getElementById('pop_subject').value = slot.subject || '';
     document.getElementById('pop_teacher').value = slot.teacher || '';
     document.getElementById('pop_classroom').value = slot.classroom || '';
     document.getElementById('pop_start').value = formatTimeTo24h(slot.startTime);
@@ -1494,13 +1474,13 @@
   function savePopoverSlot() {
     const index = parseInt(document.getElementById('pop_slot_id').value, 10);
     const day = document.getElementById('pop_day').value;
-    const subject = document.getElementById('pop_subject').value;
+    const subject = getActiveBatchCourseLabel();
     const teacher = document.getElementById('pop_teacher').value;
     const classroom = document.getElementById('pop_classroom').value;
     const start = document.getElementById('pop_start').value;
     const end = document.getElementById('pop_end').value;
 
-    if (!subject || !teacher || !classroom || !start || !end) {
+    if (!teacher || !classroom || !start || !end) {
       alert("All fields are required!");
       return;
     }
@@ -1559,6 +1539,10 @@
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '/admin/timetables';
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (csrfToken) {
+      appendHiddenField(form, '_csrf', csrfToken);
+    }
 
     const selectEl = document.getElementById('v_select_batch');
     const selectedOpt = selectEl.options[selectEl.selectedIndex];
@@ -1575,7 +1559,6 @@
     // Append slot vectors
     activeSlots.forEach(slot => {
       appendHiddenField(form, 'dayOfWeek', slot.dayOfWeek);
-      appendHiddenField(form, 'subject', slot.subject);
       appendHiddenField(form, 'teacher', slot.teacher);
       appendHiddenField(form, 'classroom', slot.classroom);
       appendHiddenField(form, 'startTime', slot.startTime);
@@ -1626,7 +1609,6 @@
     const openEdit = urlParams.get('openEdit');
     if (openCreate) {
       openCreateDrawer(urlParams.get('date'));
-      document.getElementById('c_subject').value = urlParams.get('subject') || '';
       document.getElementById('c_batch').value = urlParams.get('batch') || '';
       updateCourseField(document.getElementById('c_batch'), 'c_course');
       document.getElementById('c_teacher').value = urlParams.get('teacher') || '';

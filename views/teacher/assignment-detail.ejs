@@ -5,10 +5,13 @@
   page = 'assignments';
 %>
 
-<div style="margin-bottom: 1.25rem;">
-  <a href="/teacher/assignments" class="btn btn-ghost btn-sm" style="display: inline-flex; align-items: center; gap: 6px; padding: 0.45rem 0.75rem; border-color: var(--border); border-radius: var(--radius);">
+<div class="assignment-detail-topbar">
+  <a href="/teacher/assignments" class="btn btn-ghost btn-sm">
     ← Back to Assignments
   </a>
+  <span class="badge <%= new Date(assignment.dueDate) < new Date() ? 'badge-orange' : 'badge-green' %>">
+    <%= new Date(assignment.dueDate) < new Date() ? 'Past due' : 'Active deadline' %>
+  </span>
 </div>
 
 <div class="grid-3" style="margin-bottom:1.25rem;">
@@ -28,11 +31,11 @@
   </div>
 </div>
 
-<div class="card" style="margin-bottom:1.25rem;">
-  <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+<div class="card assignment-description-card">
+  <div class="card-header assignment-description-head">
     <div class="card-title">Assignment Description</div>
-    <div style="display: flex; gap: 0.5rem;">
-      <button onclick="openExtendModal()" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 4px; font-weight: 600; cursor: pointer;">
+    <div class="assignment-description-actions">
+      <button onclick="openExtendModal()" class="btn btn-primary btn-sm" type="button">
         📅 Extend Deadline
       </button>
       <% if (assignment.fileUrl) { %>
@@ -46,12 +49,12 @@
 </div>
 
 <!-- Submissions Table -->
-<div class="card">
-  <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom:10px; margin-bottom:12px; flex-wrap: wrap; gap: 10px;">
+<div class="card assignment-submission-card">
+  <div class="card-header assignment-submission-head">
     <div class="card-title">Student Submissions & Hand-ins</div>
     
     <!-- Submission Filter Tabs -->
-    <form method="GET" action="/teacher/assignments/<%= assignment._id %>" class="filter-bar" style="margin: 0; padding: 0; border: none; background: none; display: flex; gap: 4px; overflow-x: auto; width: 100%;">
+    <form method="GET" action="/teacher/assignments/<%= assignment._id %>" class="assignment-status-tabs">
       <a href="/teacher/assignments/<%= assignment._id %>" class="btn btn-xs <%= !filter.status ? 'btn-primary' : 'btn-ghost' %>">All (<%= counts.all %>)</a>
       <a href="/teacher/assignments/<%= assignment._id %>?status=pending" class="btn btn-xs <%= filter.status === 'pending' ? 'btn-primary' : 'btn-ghost' %>">Pending (<%= counts.pending %>)</a>
       <a href="/teacher/assignments/<%= assignment._id %>?status=submitted" class="btn btn-xs <%= filter.status === 'submitted' ? 'btn-primary' : 'btn-ghost' %>">Submitted (<%= counts.submitted %>)</a>

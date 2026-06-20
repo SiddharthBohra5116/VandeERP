@@ -3,70 +3,123 @@
   title = 'Assignments';
   subtitle = 'Manage assignment goals, deadlines, and grade student submissions';
   page = 'assignments';
+
+  const rows = typeof assignmentCards !== 'undefined'
+    ? assignmentCards
+    : (assignments || []).map(assignment => ({
+      assignment,
+      totalStudents: assignment.submissions ? assignment.submissions.length : 0,
+      handinsCount: assignment.submissions ? assignment.submissions.length : 0,
+      gradedCount: assignment.submissions ? assignment.submissions.filter(s => s.status === 'graded' || s.marks !== null).length : 0
+    }));
+  const now = new Date();
+  const activeCount = rows.filter(row => row.assignment.isActive).length;
+  const overdueCount = rows.filter(row => new Date(row.assignment.dueDate) < now).length;
+  const ungradedCount = rows.reduce((sum, row) => sum + Math.max(0, row.handinsCount - row.gradedCount), 0);
 %>
 
-<div style="display:flex; justify-content:flex-end; margin-bottom:1.25rem;">
-  <a href="/teacher/assignments/create" class="btn btn-primary btn-sm">+ Create Assignment</a>
-</div>
+<div class="assignment-board">
+  <section class="assignment-board-hero">
+    <div>
+      <span class="student-kicker">Assignment board</span>
+      <h2>Review work without digging through rows</h2>
+      <p>Each assignment now shows deadline health, batch context, submission progress, and grading workload in one place.</p>
+    </div>
+    <a href="/teacher/assignments/create" class="btn btn-primary">Create assignment</a>
+  </section>
 
-<div class="card">
-  <% if (assignments.length === 0) { %>
-    <div class="empty-state">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
-      <p>No assignments posted yet. Click "+ Create Assignment" to post one.</p>
+  <section class="assignment-board-summary">
+    <div>
+      <span>Total</span>
+      <strong><%= rows.length %></strong>
+      <small>Assignments posted</small>
+    </div>
+    <div>
+      <span>Active</span>
+      <strong><%= activeCount %></strong>
+      <small>Open assignment goals</small>
+    </div>
+    <div class="<%= overdueCount ? 'is-danger' : '' %>">
+      <span>Past due</span>
+      <strong><%= overdueCount %></strong>
+      <small>Need review or follow-up</small>
+    </div>
+    <div class="<%= ungradedCount ? 'is-warning' : '' %>">
+      <span>Ungraded</span>
+      <strong><%= ungradedCount %></strong>
+      <small>Submitted work pending</small>
+    </div>
+  </section>
+
+  <% if (rows.length === 0) { %>
+    <div class="card">
+      <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+        <p>No assignments posted yet. Create the first one when homework is ready.</p>
+      </div>
     </div>
   <% } else { %>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Assignment Title</th>
-            <th>Batch & Course</th>
-            <th>Due Date</th>
-            <th>Max Marks</th>
-            <th>Submissions</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% assignments.forEach(assign => { %>
-            <% 
-              const isOverdue = new Date(assign.dueDate) < new Date();
-              const totalStudents = assign.submissions.length;
-              const handinsCount = assign.submissions.filter(s => s.status && s.status !== 'pending' && s.status !== 'overdue').length;
-            %>
-            <tr>
-              <td class="td-name">
-                <a href="/teacher/assignments/<%= assign._id %>" style="color:var(--gold); font-weight:600;"><%= assign.title %></a>
-                <% if (assign.fileName) { %>
-                  <div class="td-muted text-xs" style="margin-top:2px;">📎 <%= assign.fileName %></div>
-                <% } %>
-              </td>
-              <td>
-                <div><%= assign.course && assign.course.name ? assign.course.name : '—' %></div>
-                <div class="td-muted text-sm">Batch: <%= assign.batch && assign.batch.name ? assign.batch.name : (assign.batch || '—') %></div>
-              </td>
-              <td class="mono text-sm <%= isOverdue ? 'text-red' : 'text-sub' %>" <%= isOverdue ? 'style="font-weight:600;"' : '' %>>
-                <%= new Date(assign.dueDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %>
-                <%= isOverdue ? ' (Past Due)' : '' %>
-              </td>
-              <td class="mono text-sm text-center"><%= assign.totalMarks %></td>
-              <td class="mono text-sm fw-700 text-center text-gold">
-                <%= handinsCount %> / <%= totalStudents %>
-              </td>
-              <td>
-                <span class="badge <%= assign.isActive ? 'badge-green' : 'badge-grey' %>">
-                  <%= assign.isActive ? 'Active' : 'Archived' %>
-                </span>
-              </td>
-              <td>
-                <a href="/teacher/assignments/<%= assign._id %>" class="btn btn-ghost btn-xs">View Submissions</a>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
+    <section class="assignment-card-grid">
+      <% rows.forEach(row => { %>
+        <%
+          const assign = row.assignment;
+          const due = new Date(assign.dueDate);
+          const isOverdue = due < now;
+          const totalStudents = row.totalStudents || 0;
+          const handinsCount = row.handinsCount || 0;
+          const gradedCount = row.gradedCount || 0;
+          const progress = totalStudents > 0 ? Math.min(100, Math.round((handinsCount / totalStudents) * 100)) : 0;
+          const ungraded = Math.max(0, handinsCount - gradedCount);
+        %>
+        <article class="assignment-card <%= isOverdue ? 'is-overdue' : '' %>">
+          <div class="assignment-card-head">
+            <div>
+              <span class="assignment-card-kicker"><%= assign.course && assign.course.name ? assign.course.name : 'Course not set' %></span>
+              <h3><a href="/teacher/assignments/<%= assign._id %>"><%= assign.title %></a></h3>
+              <p><%= assign.batch && assign.batch.name ? assign.batch.name : 'Batch not assigned' %></p>
+            </div>
+            <span class="badge <%= assign.isActive ? (isOverdue ? 'badge-orange' : 'badge-green') : 'badge-grey' %>">
+              <%= assign.isActive ? (isOverdue ? 'Past due' : 'Active') : 'Archived' %>
+            </span>
+          </div>
+
+          <div class="assignment-card-meta">
+            <div>
+              <span>Due</span>
+              <strong class="<%= isOverdue ? 'text-red' : '' %>"><%= due.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %></strong>
+            </div>
+            <div>
+              <span>Marks</span>
+              <strong><%= assign.totalMarks %></strong>
+            </div>
+            <div>
+              <span>Submitted</span>
+              <strong><%= handinsCount %>/<%= totalStudents %></strong>
+            </div>
+            <div>
+              <span>Ungraded</span>
+              <strong class="<%= ungraded ? 'text-gold' : '' %>"><%= ungraded %></strong>
+            </div>
+          </div>
+
+          <div class="assignment-progress">
+            <div>
+              <span>Submission progress</span>
+              <strong><%= progress %>%</strong>
+            </div>
+            <div class="student-mini-progress"><span style="width:<%= progress %>%"></span></div>
+          </div>
+
+          <div class="assignment-card-foot">
+            <% if (assign.fileName) { %>
+              <span class="assignment-file-chip"><%= assign.fileName %></span>
+            <% } else { %>
+              <span class="td-muted text-xs">No reference file</span>
+            <% } %>
+            <a href="/teacher/assignments/<%= assign._id %>" class="btn btn-ghost btn-sm">Open grading</a>
+          </div>
+        </article>
+      <% }) %>
+    </section>
   <% } %>
 </div>
