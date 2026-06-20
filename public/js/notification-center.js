@@ -159,6 +159,17 @@ document.addEventListener('DOMContentLoaded', () => {
     renderNotifications(latestNotifications);
   };
 
+  const adjustMobilePosition = () => {
+    if (window.innerWidth <= 900) {
+      const topbar = document.querySelector('.topbar');
+      if (topbar && dropdown.classList.contains('is-open')) {
+        dropdown.style.top = `${topbar.offsetHeight + 6}px`;
+      }
+    } else {
+      dropdown.style.top = '';
+    }
+  };
+
   const closeDropdown = () => {
     dropdown.classList.remove('is-open');
     dropdown.style.display = 'none';
@@ -167,6 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const openDropdown = () => {
     dropdown.classList.add('is-open');
     dropdown.style.display = 'block';
+    adjustMobilePosition();
   };
 
   if (bellBtn) {
@@ -202,6 +214,12 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     e.stopPropagation();
     setActiveFilter(filterBtn.dataset.filter || 'all');
+  });
+
+  window.addEventListener('resize', adjustMobilePosition);
+
+  document.addEventListener('softnav:load', () => {
+    closeDropdown();
   });
 
   const updateBellBadge = (newCount) => {
