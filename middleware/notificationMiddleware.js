@@ -29,6 +29,12 @@ function truncateText(value, maxLength = 90) {
   return `${text.slice(0, maxLength - 3)}...`;
 }
 
+function timeToMinutes(value) {
+  const match = String(value || '').match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
 async function getAnnouncementAlerts(user) {
   const audience = [
     { audienceType: 'all' },
@@ -155,6 +161,30 @@ async function calculateNotifications(user) {
         });
       });
 
+      // KYC Document Verification Requests
+      try {
+        const kycRequests = await Student.find({
+          'documents.idProof': { $ne: null, $ne: '' },
+          idVerified: false
+        })
+          .populate('user', 'name')
+          .sort({ updatedAt: -1 })
+          .limit(5);
+
+        kycRequests.forEach(s => {
+          alerts.push({
+            id: `kyc-request-${s._id}`,
+            type: 'kyc_request',
+            title: 'KYC Verification Pending',
+            message: `${s.user?.name || 'A student'} uploaded their ID proof for verification.`,
+            link: `/admin/students/${s._id}`,
+            date: s.updatedAt
+          });
+        });
+      } catch (kycErr) {
+        logger.error('Error fetching KYC requests for notifications', { err: kycErr.message });
+      }
+
       const pendingLeaves = await LeaveRequest.find({ status: 'pending' })
         .populate('user', 'name role')
         .sort({ appliedAt: -1, createdAt: -1 })
@@ -212,12 +242,17 @@ async function calculateNotifications(user) {
         .populate('batch', 'name')
         .sort({ startTime: 1 });
 
+      const currentMinutes = today.getHours() * 60 + today.getMinutes();
       schedules.forEach(s => {
+        const endMinutes = timeToMinutes(s.endTime);
+        const shouldComplete = endMinutes !== null && currentMinutes >= endMinutes;
         alerts.push({
-          id: s._id.toString(),
-          type: 'schedule',
-          title: 'Class Scheduled Today',
-          message: `${s.course?.name || s.note || 'Class'} for ${s.batch?.name || 'Batch'} at ${s.startTime} - ${s.endTime}`,
+          id: shouldComplete ? `complete-${s._id}` : s._id.toString(),
+          type: shouldComplete ? 'class_completion_due' : 'schedule',
+          title: shouldComplete ? 'Mark Class Complete' : 'Class Scheduled Today',
+          message: shouldComplete
+            ? `${s.course?.name || s.note || 'Class'} for ${s.batch?.name || 'Batch'} ended at ${s.endTime}. Mark it complete, then post the daily update.`
+            : `${s.course?.name || s.note || 'Class'} for ${s.batch?.name || 'Batch'} at ${s.startTime} - ${s.endTime}`,
           link: '/teacher/dashboard',
           date: s.date
         });

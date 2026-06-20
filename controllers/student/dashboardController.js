@@ -19,7 +19,9 @@ const { todayIST } = require('../../utils/dateHelper');
 exports.getDashboard = async (req, res) => {
   try {
     const studentProfile = await Student.findOne({ user: req.user._id })
-      .populate('user', 'name email phone status profilePic')
+      .populate('user', 'name email phone status profilePic address city dob')
+      .populate('course', 'name')
+      .populate('batch', 'name startDate endDate')
       .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
       .populate({ path: 'counsellor', populate: { path: 'user', select: 'name' } });
 
@@ -29,6 +31,7 @@ exports.getDashboard = async (req, res) => {
         title: 'My Dashboard', user: fallbackUser,
         fee: null, pendingAssignments: [], attendancePct: null,
         totalClasses: 0, presentCount: 0, updates: [], admin: null, messages: [], schedules: [],
+        batchDetails: null,
         daysTimetable: { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] },
         weekDates: [], weekOffset: 0,
         notEnrolled: true
@@ -48,6 +51,7 @@ exports.getDashboard = async (req, res) => {
     student.fatherName = studentProfile.family?.father?.name || '';
     student.guardianPhone = studentProfile.family?.guardian?.phone || '';
     student.idProof = studentProfile.documents?.idProof || null;
+    student.idVerified = studentProfile.idVerified || false;
 
     if (student.status === 'complete' && (!student.feedback || !student.feedback.submitted)) {
       return res.render('student/feedback', {
@@ -65,7 +69,7 @@ exports.getDashboard = async (req, res) => {
 
     const [fee, assignments, attendance, updates, admin, messages, schedules, activeAnnouncements] = await Promise.all([
       Fee.findOne({ student: student._id }),
-      Assignment.find({ batch: student.batch, isActive: true, dueDate: { $gte: new Date() } }).populate('course', 'name').sort({ dueDate: 1 }).limit(5),
+      Assignment.find({ batch: student.batch, isActive: true }).populate('course', 'name').sort({ dueDate: 1 }),
       Attendance.find({ student: student._id, date: { $gte: thirtyDaysStr } }),
       DailyUpdate.find({ batch: student.batch }).populate('course', 'name').populate({ path: 'teacher', populate: { path: 'user', select: 'name' } }).sort({ date: -1 }).limit(5),
       User.findOne({ role: 'admin' }),
@@ -95,7 +99,9 @@ exports.getDashboard = async (req, res) => {
       _id: ann._id,
       content: `📢 [${ann.title}] ${ann.content}`,
       sender: ann.createdBy,
-      createdAt: ann.createdAt
+      createdAt: ann.createdAt,
+      isAnnouncement: true,
+      isRead: (ann.readBy || []).some(read => read.user && read.user.toString() === req.user._id.toString())
     }));
 
     const combinedMessages = [...mappedAnnouncements, ...(messages || [])];
@@ -153,16 +159,52 @@ exports.getDashboard = async (req, res) => {
       ? Math.round((presentCount / validAttendance.length) * 100)
       : 0;
 
+    const primarySchedule = schedules.find(s => s.status === 'scheduled') || schedules[0] || null;
+    const batchDetails = {
+      rollNumber: student.rollNumber || 'Not generated',
+      batchName: studentProfile.batch?.name || 'Not assigned',
+      courseName: studentProfile.course?.name || 'Not assigned',
+      teacherName: studentProfile.teacher?.user?.name || primarySchedule?.teacher?.user?.name || 'Not assigned',
+      timing: primarySchedule ? `${primarySchedule.startTime} - ${primarySchedule.endTime}` : 'No upcoming class',
+      classroom: primarySchedule?.classroom
+        ? `${primarySchedule.classroom.name}${primarySchedule.classroom.location ? ' - ' + primarySchedule.classroom.location : ''}`
+        : 'Not assigned'
+    };
+
+    const now = new Date();
     const pendingAssignments = assignments.filter(a => {
       const sub = a.submissions.find(s => s.student.toString() === student._id.toString());
-      return !sub;
+      return !sub && new Date(a.dueDate) >= now;
     });
+    const assignmentStats = (assignments || []).reduce((stats, assignment) => {
+      const sub = assignment.submissions.find(s => s.student.toString() === student._id.toString());
+      if (!sub) {
+        if (new Date(assignment.dueDate) >= now) stats.pending += 1;
+        else stats.closed += 1;
+      } else if (sub.status === 'graded' || sub.marks !== null) {
+        stats.graded += 1;
+      } else {
+        stats.submitted += 1;
+      }
+      return stats;
+    }, { pending: 0, submitted: 0, graded: 0, closed: 0 });
+
+    const recentAssignmentResults = (assignments || [])
+      .map(assignment => {
+        const submission = assignment.submissions.find(s => s.student.toString() === student._id.toString());
+        return submission ? { assignment, submission } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.submission.updatedAt || b.submission.submittedAt) - new Date(a.submission.updatedAt || a.submission.submittedAt))
+      .slice(0, 3);
 
     res.render('student/dashboard', {
       title: 'My Dashboard',
       user: student,
       fee,
-      pendingAssignments,
+      pendingAssignments: pendingAssignments.slice(0, 5),
+      assignmentStats,
+      recentAssignmentResults,
       attendancePct,
       totalClasses: validAttendance.length,
       presentCount,
@@ -170,6 +212,7 @@ exports.getDashboard = async (req, res) => {
       admin,
       messages: combinedMessages,
       schedules,
+      batchDetails,
       today,
       daysTimetable,
       weekDates,

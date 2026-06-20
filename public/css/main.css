@@ -1991,6 +1991,13 @@ body.light-theme .slide-over-drawer {
   font-weight: 700;
   border: 2px solid var(--bg-card);
 }
+.notification-badge.is-popping,
+.has-new-notification .notification-badge {
+  animation: badgePop 0.65s ease;
+}
+.has-new-notification {
+  animation: bellGlow 1.4s ease;
+}
 .notification-dropdown {
   display: none;
   position: absolute;
@@ -2170,6 +2177,10 @@ body.light-theme .slide-over-drawer {
 .notification-wrapper.priority-normal {
   border-left-color: rgba(107, 114, 128, 0.45);
 }
+.notification-wrapper.is-new {
+  animation: notificationNewRow 1.8s ease;
+  border-color: var(--gold-border);
+}
 .notification-empty {
   padding: 2rem 1.5rem;
   text-align: center;
@@ -2204,6 +2215,64 @@ body.light-theme .slide-over-drawer {
   font-size: 1.6rem;
   color: var(--gold);
   margin-bottom: 1.5rem;
+}
+.notification-live-toast {
+  position: fixed;
+  top: 4.6rem;
+  right: 1.5rem;
+  z-index: 100000;
+  width: min(360px, calc(100vw - 2rem));
+  opacity: 0;
+  transform: translateY(-10px) scale(0.98);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.notification-live-toast.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.notification-live-toast-body {
+  width: 100%;
+  border: 1px solid var(--gold-border);
+  border-left: 4px solid var(--gold);
+  border-radius: 10px;
+  background: rgba(22, 22, 22, 0.96);
+  color: var(--text);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.34);
+  padding: 0.8rem 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+.notification-live-toast-body strong,
+.notification-live-toast-body small,
+.notification-live-toast-body span {
+  display: block;
+}
+.notification-live-toast-body small {
+  margin-top: 0.2rem;
+  color: var(--text-sub);
+  line-height: 1.35;
+}
+.notification-live-toast-body span {
+  margin-top: 0.35rem;
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+@keyframes bellGlow {
+  0% { transform: scale(1); color: var(--text-muted); }
+  35% { transform: scale(1.12); color: var(--gold); filter: drop-shadow(0 0 12px rgba(255,204,0,0.45)); }
+  100% { transform: scale(1); color: inherit; filter: none; }
+}
+@keyframes badgePop {
+  0% { transform: scale(0.85); }
+  45% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+@keyframes notificationNewRow {
+  0% { background: rgba(255, 204, 0, 0.16); transform: translateX(-4px); }
+  100% { background: rgba(255, 255, 255, 0.025); transform: translateX(0); }
 }
 .student-dashboard {
   display: flex;
@@ -2603,10 +2672,202 @@ body.light-theme .slide-over-drawer {
 .teacher-inline-form {
   margin: 0.35rem 0 0;
 }
+.assignment-status-strip {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+.assignment-status-strip span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-input);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  padding: 0.32rem 0.6rem;
+}
+.assignment-status-strip strong {
+  color: var(--gold);
+  margin-right: 0.2rem;
+}
 .teacher-update-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
+}
+.daily-update-toolbar {
+  margin-bottom: 1rem;
+  padding: 1.05rem 1.1rem;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018)),
+    var(--bg-card);
+}
+.daily-update-filter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  align-items: end;
+  margin: 0;
+}
+.daily-update-fields {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.55fr) minmax(220px, 0.85fr) minmax(190px, 0.7fr);
+  gap: 0.75rem;
+  align-items: end;
+}
+.daily-update-filter .form-group {
+  margin: 0;
+}
+.daily-update-filter .form-label {
+  margin-bottom: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+}
+.daily-update-filter .form-control,
+.daily-update-filter .app-select-button {
+  height: 48px;
+  min-height: 48px;
+}
+.daily-update-actions {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding-top: 1.5rem;
+}
+.daily-update-actions .btn,
+.daily-update-post-btn {
+  height: 48px;
+  min-height: 48px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.daily-update-post-btn {
+  padding-inline: 1.1rem;
+  box-shadow: 0 12px 28px rgba(255, 204, 0, 0.14);
+}
+.daily-update-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.daily-update-summary > div {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  padding: 0.85rem 1rem;
+}
+.daily-update-summary span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.daily-update-summary strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--gold);
+  font-size: 1.45rem;
+  line-height: 1;
+}
+.daily-update-board {
+  display: grid;
+  gap: 0.85rem;
+}
+.daily-update-card {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  padding: 1rem;
+}
+.daily-update-date {
+  border: 1px solid var(--gold-border);
+  border-radius: var(--radius);
+  background: var(--gold-dim);
+  color: var(--gold);
+  min-height: 84px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.daily-update-date strong {
+  font-size: 1rem;
+  line-height: 1.1;
+}
+.daily-update-date span {
+  margin-top: 0.3rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.daily-update-body {
+  min-width: 0;
+}
+.daily-update-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.daily-update-head h3 {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+.daily-update-head p {
+  margin: 0.1rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+.daily-update-homework {
+  margin-top: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  padding: 0.75rem;
+}
+.daily-update-homework.is-empty {
+  opacity: 0.72;
+}
+.daily-update-homework span,
+.class-update-context span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.daily-update-homework p {
+  margin: 0.25rem 0 0;
+  color: var(--text-sub);
+  line-height: 1.45;
+}
+.class-update-context {
+  border: 1px solid var(--gold-border);
+  border-radius: var(--radius);
+  background: var(--gold-dim);
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 1rem;
+}
+.class-update-context strong {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--gold);
 }
 .card-header--divided {
   border-bottom: 1px solid var(--border);
@@ -3445,8 +3706,38 @@ tbody td {
   .student-week-strip,
   .teacher-metric-grid,
   .teacher-update-grid,
+  .daily-update-toolbar,
+  .daily-update-filter,
+  .daily-update-fields,
+  .daily-update-summary,
   .teacher-complete-form {
     grid-template-columns: 1fr;
+  }
+
+  .daily-update-card {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-update-toolbar {
+    align-items: stretch;
+    padding: 0.85rem;
+  }
+
+  .daily-update-actions,
+  .daily-update-post-btn {
+    width: 100%;
+    padding-top: 0;
+  }
+
+  .daily-update-actions .btn,
+  .daily-update-post-btn {
+    justify-content: center;
+  }
+
+  .daily-update-date {
+    min-height: auto;
+    align-items: flex-start;
+    padding: 0.7rem 0.85rem;
   }
 
   .student-class-item {

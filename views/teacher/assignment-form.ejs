@@ -1,11 +1,14 @@
 <%
   layout = 'main';
   title = 'Create Assignment';
-  subtitle = 'Post new instructions, reference documents, and deadliness for student groups';
+  subtitle = 'Post new instructions, reference documents, and deadlines for student groups';
   page = 'assignments';
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset() + 5);
+  const minDueDate = now.toISOString().slice(0, 16);
 %>
 
-<div class="card" style="max-width: 650px; margin: 0 auto;">
+<div class="card form-shell">
   <form action="/teacher/assignments/create" method="POST" enctype="multipart/form-data">
     <div class="form-group">
       <label class="form-label" for="title">Assignment Title</label>
@@ -41,7 +44,8 @@
     <div class="form-row">
       <div class="form-group">
         <label class="form-label" for="dueDate">Due Date & Time</label>
-        <input type="datetime-local" id="dueDate" name="dueDate" class="form-control" required>
+        <input type="datetime-local" id="dueDate" name="dueDate" class="form-control" min="<%= minDueDate %>" required>
+        <div class="form-hint">Pick a future deadline. Past dates and times are blocked.</div>
       </div>
 
       <div class="form-group">
@@ -53,9 +57,37 @@
 
     <div class="divider"></div>
 
-    <div class="d-flex gap-2">
+    <div class="form-actions">
       <button type="submit" class="btn btn-primary">Publish Assignment</button>
       <a href="/teacher/assignments" class="btn btn-ghost">Cancel</a>
     </div>
   </form>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const dueDate = document.getElementById('dueDate');
+    const form = dueDate ? dueDate.closest('form') : null;
+    const toLocalDateTime = (date) => {
+      const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+      return local.toISOString().slice(0, 16);
+    };
+    const refreshMin = () => {
+      if (!dueDate) return;
+      const next = new Date();
+      next.setMinutes(next.getMinutes() + 5);
+      dueDate.min = toLocalDateTime(next);
+    };
+
+    refreshMin();
+    dueDate?.addEventListener('focus', refreshMin);
+    form?.addEventListener('submit', (event) => {
+      refreshMin();
+      if (!dueDate.value || new Date(dueDate.value) <= new Date()) {
+        event.preventDefault();
+        alert('Please choose a future due date and time.');
+        dueDate.focus();
+      }
+    });
+  });
+</script>

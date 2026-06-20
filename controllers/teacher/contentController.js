@@ -2,6 +2,7 @@ const User = require('../../models/User');
 const DailyUpdate = require('../../models/DailyUpdate');
 const Curriculum = require('../../models/Curriculum');
 const Schedule = require('../../models/Schedule');
+const Student = require('../../models/Student');
 const Batch = require('../../models/Batch');
 const Course = require('../../models/Course');
 const { todayIST } = require('../../utils/dateHelper');
@@ -14,12 +15,33 @@ const { todayIST } = require('../../utils/dateHelper');
 exports.getDailyUpdates = async (req, res) => {
   console.log('📰 Daily Updates list load:', { teacherId: req.user._id });
   try {
-    const updates = await DailyUpdate.find({ teacher: req.user.teacherProfileId })
-      .populate('batch')
-      .populate('course')
-      .sort({ date: -1 })
-      .limit(30);
-    res.render('teacher/daily-updates', { title: 'Daily Updates', user: req.user, updates });
+    const { batch = 'all', date = '', q = '' } = req.query;
+    const updateFilter = { teacher: req.user.teacherProfileId };
+    if (batch !== 'all') updateFilter.batch = batch;
+    if (date) updateFilter.date = date;
+
+    const [updates, batchIds] = await Promise.all([
+      DailyUpdate.find(updateFilter)
+        .populate('batch')
+        .populate('course')
+        .sort({ date: -1 })
+        .limit(60),
+      Schedule.distinct('batch', { teacher: req.user.teacherProfileId })
+    ]);
+    const batches = await Batch.find({ _id: { $in: batchIds }, isActive: true }).select('name');
+    const search = String(q || '').trim().toLowerCase();
+    const visibleUpdates = search
+      ? updates.filter(up => [up.content, up.homework, up.batch?.name, up.course?.name]
+        .some(value => String(value || '').toLowerCase().includes(search)))
+      : updates;
+
+    res.render('teacher/daily-updates', {
+      title: 'Daily Updates',
+      user: req.user,
+      updates: visibleUpdates,
+      batches,
+      filter: { batch, date, q }
+    });
   } catch (err) {
     console.error('❌ Daily Updates List Load Error:', { teacherId: req.user._id, error: err.message });
     res.status(500).render('500', { title: 'Error', user: req.user, layout: 'main' });
@@ -36,7 +58,24 @@ exports.getCreateUpdate = async (req, res) => {
       batchIds = await Schedule.distinct('batch', { teacher: req.user.teacherProfileId });
     }
     const batches = await Batch.find({ _id: { $in: batchIds }, isActive: true }).select('name');
-    res.render('teacher/update-form', { title: 'Post Update', user: req.user, batches });
+    const schedule = req.query.schedule
+      ? await Schedule.findOne({ _id: req.query.schedule, teacher: req.user.teacherProfileId })
+        .populate('batch', 'name')
+        .populate('course', 'name')
+      : null;
+
+    res.render('teacher/update-form', {
+      title: 'Post Update',
+      user: req.user,
+      batches,
+      prefill: {
+        scheduleId: schedule?._id || '',
+        batch: schedule?.batch?._id || '',
+        date: schedule?.date || todayIST(),
+        courseName: schedule?.course?.name || '',
+        completed: req.query.completed === '1'
+      }
+    });
   } catch (err) {
     console.error('❌ Create Update Form Load Error:', { teacherId: req.user._id, error: err.message });
     res.status(500).render('500', { title: 'Error', user: req.user, layout: 'main' });
@@ -73,15 +112,16 @@ exports.postCreateUpdate = async (req, res) => {
       return res.redirect('/teacher/updates?error=batch_not_found');
     }
 
+    const topicsText = String(req.body.topics || '').trim();
+    const topicList = topicsText.split(',').map(t => t.trim()).filter(Boolean);
     const data = { 
       ...req.body, 
+      content: topicsText,
+      topics: topicList,
+      title: topicsText ? topicsText.split(',')[0].trim() : 'Class update',
       teacher: req.user.teacherProfileId,
       course: batchDoc.course, // Set the required course ref from the batch
     };
-    
-    if (data.topics && typeof data.topics === 'string') {
-      data.topics = data.topics.split(',').map(t => t.trim()).filter(Boolean);
-    }
     if (req.file) {
       data.fileUrl = `/uploads/${req.file.filename}`;
       data.fileName = req.file.originalname;

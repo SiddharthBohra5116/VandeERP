@@ -73,7 +73,7 @@ exports.postCompleteSchedule = async (req, res) => {
     schedule.note = req.body.note || '';
     await schedule.save();
     logger.info('Schedule marked complete by teacher', { scheduleId: schedule._id });
-    res.redirect('/teacher/dashboard?success=1');
+    res.redirect(`/teacher/updates/create?schedule=${schedule._id}&completed=1`);
   } catch (err) {
     logger.error('Complete Schedule Error', { err: err.message });
     res.redirect('/teacher/dashboard?error=1');

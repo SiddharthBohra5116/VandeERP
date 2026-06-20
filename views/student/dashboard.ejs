@@ -17,6 +17,8 @@
   const nextUpdate = (updates || [])[0] || null;
   const nextMessage = (messages || [])[0] || null;
   const latestRemarks = user.remarks && user.remarks.length ? user.remarks.slice().reverse().slice(0, 2) : [];
+  const assignmentSummary = assignmentStats || { pending: (pendingAssignments || []).length, submitted: 0, graded: 0, closed: 0 };
+  const assignmentResults = recentAssignmentResults || [];
   const weekClasses = [];
   const weekdayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -117,8 +119,8 @@
     </a>
     <a href="/student/assignments" class="student-metric-card">
       <span>Homework</span>
-      <strong><%= (pendingAssignments || []).length %></strong>
-      <small><%= (pendingAssignments || []).length ? 'Waiting for submission' : 'No pending work' %></small>
+      <strong><%= assignmentSummary.pending %></strong>
+      <small><%= assignmentSummary.graded %> graded, <%= assignmentSummary.submitted %> submitted</small>
     </a>
     <a href="/student/fees" class="student-metric-card">
       <span>Fees</span>
@@ -196,8 +198,32 @@
       </div>
 
       <% if ((pendingAssignments || []).length === 0) { %>
-        <div class="student-empty">You are all caught up.</div>
+        <% if (assignmentResults.length === 0) { %>
+          <div class="student-empty">You are all caught up.</div>
+        <% } else { %>
+          <div class="assignment-status-strip" aria-label="Assignment status summary">
+            <span><strong><%= assignmentSummary.pending %></strong> pending</span>
+            <span><strong><%= assignmentSummary.submitted %></strong> submitted</span>
+            <span><strong><%= assignmentSummary.graded %></strong> graded</span>
+          </div>
+          <div class="student-task-list">
+            <% assignmentResults.forEach(item => { %>
+              <% const sub = item.submission; const assign = item.assignment; %>
+              <a href="/student/assignments#assignment-<%= assign._id %>" class="student-task-item">
+                <strong><%= assign.title %></strong>
+                <span>
+                  <%= sub.status === 'graded' || sub.marks !== null ? `Graded${sub.marks !== null ? `: ${sub.marks}/${assign.totalMarks}` : ''}` : 'Submitted for review' %>
+                </span>
+              </a>
+            <% }) %>
+          </div>
+        <% } %>
       <% } else { %>
+        <div class="assignment-status-strip" aria-label="Assignment status summary">
+          <span><strong><%= assignmentSummary.pending %></strong> pending</span>
+          <span><strong><%= assignmentSummary.submitted %></strong> submitted</span>
+          <span><strong><%= assignmentSummary.graded %></strong> graded</span>
+        </div>
         <div class="student-task-list">
           <% pendingAssignments.slice(0, 3).forEach(assign => { %>
             <a href="/student/assignments" class="student-task-item">
@@ -283,9 +309,18 @@
       <% } else { %>
         <div class="student-update-list">
           <% (updates || []).slice(0, 3).forEach(up => { %>
+            <%
+              const updateTopics = (up.coveredTopics || []).map(t => t.title).filter(Boolean);
+              if (updateTopics.length === 0 && up.topics && up.topics.length) {
+                updateTopics.push(...up.topics);
+              }
+              if (updateTopics.length === 0 && up.content) {
+                updateTopics.push(...String(up.content).split(',').map(t => t.trim()).filter(Boolean));
+              }
+            %>
             <a href="/student/updates" class="student-update-item">
               <strong><%= up.subject || (up.course && up.course.name) || 'Class update' %></strong>
-              <span><%= up.homework ? up.homework : (up.topics && up.topics.length ? up.topics.join(', ') : 'Update posted') %></span>
+              <span><%= up.homework ? up.homework : (updateTopics.length ? updateTopics.join(', ') : 'Update posted') %></span>
               <small><%= new Date(up.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) %></small>
             </a>
           <% }) %>

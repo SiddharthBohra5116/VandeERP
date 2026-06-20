@@ -67,6 +67,7 @@
       <p>No submissions match the selected status.</p>
     </div>
   <% } else { %>
+    <form action="/teacher/assignments/<%= assignment._id %>/bulk-grade" method="POST" id="bulkGradeForm">
     <div class="table-wrap">
       <table>
         <thead>
@@ -108,6 +109,9 @@
                 <% } else { %>
                   <span class="td-muted">—</span>
                 <% } %>
+                <% if (sub.hasSubmitted) { %>
+                  <input type="number" name="grades[<%= sub.submissionId %>][marks]" class="form-control text-xs bulk-grade-mark" min="0" max="<%= assignment.totalMarks %>" placeholder="Marks to save" aria-label="Marks for <%= sub.student ? sub.student.name : 'student' %>" style="margin-top:6px; padding:0.35rem 0.45rem;">
+                <% } %>
               </td>
               <td>
                 <% 
@@ -120,13 +124,23 @@
                   }[sub.status] || 'badge-grey';
                 %>
                 <span class="badge <%= badgeClass %>"><%= sub.status %></span>
+                <% if (sub.hasSubmitted) { %>
+                  <select name="grades[<%= sub.submissionId %>][status]" class="form-control text-xs" style="margin-top:6px; padding:0.35rem 0.45rem;">
+                    <option value="graded">Graded</option>
+                    <option value="submitted" <%= sub.status === 'submitted' ? 'selected' : '' %>>Submitted</option>
+                    <option value="late" <%= sub.status === 'late' ? 'selected' : '' %>>Late</option>
+                  </select>
+                <% } %>
               </td>
               <td class="text-sm" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                 <%= sub.feedback || '—' %>
+                <% if (sub.hasSubmitted) { %>
+                  <input type="text" name="grades[<%= sub.submissionId %>][feedback]" class="form-control text-xs" placeholder="Feedback for this student" value="<%= sub.feedback || '' %>" aria-label="Feedback for <%= sub.student ? sub.student.name : 'student' %>" style="margin-top:6px; padding:0.35rem 0.45rem;">
+                <% } %>
               </td>
               <td>
                 <% if (sub.hasSubmitted) { %>
-                  <button class="btn btn-primary btn-xs" 
+                  <button type="button" class="btn btn-primary btn-xs" 
                           onclick="triggerGradingModal('<%= assignment._id %>', '<%= sub.submissionId %>', '<%= sub.student ? sub.student.name : 'Student' %>', '<%= sub.marks || '' %>', '<%= sub.feedback || '' %>', '<%= sub.status %>')">
                     <%= sub.marks !== null ? 'Re-grade' : 'Grade' %>
                   </button>
@@ -139,6 +153,12 @@
         </tbody>
       </table>
     </div>
+    <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem; flex-wrap:wrap;">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="clearBulkGradeInputs()">Clear quick marks</button>
+      <button type="submit" class="btn btn-primary btn-sm">Save entered marks</button>
+    </div>
+    <p class="td-muted text-xs" style="margin:0.65rem 0 0; text-align:right;">Quick grading saves only the rows where you typed marks. Use the Grade button for one student at a time.</p>
+    </form>
   <% } %>
 </div>
 
@@ -202,7 +222,8 @@
           const offset = d.getTimezoneOffset() * 60000;
           const localIso = new Date(d.getTime() - offset).toISOString().slice(0, 16);
         %>
-        <input type="datetime-local" id="dueDate" name="dueDate" class="form-control" value="<%= localIso %>" required>
+        <input type="datetime-local" id="dueDate" name="dueDate" class="form-control" value="<%= localIso %>" min="<%= new Date(Date.now() - (new Date().getTimezoneOffset() * 60000) + 300000).toISOString().slice(0, 16) %>" required>
+        <div class="form-hint">The new deadline must be a future date and time.</div>
       </div>
 
       <div class="modal-footer">
@@ -229,6 +250,59 @@
   function closeGradeModal() {
     document.getElementById('gradeModal').classList.remove('open');
   }
+
+  function clearBulkGradeInputs() {
+    document.querySelectorAll('#bulkGradeForm .bulk-grade-mark').forEach(input => {
+      input.value = '';
+    });
+    document.querySelectorAll('#bulkGradeForm input[name$="[feedback]"]').forEach(input => {
+      input.value = '';
+    });
+  }
+
+  const bulkGradeForm = document.getElementById('bulkGradeForm');
+  if (bulkGradeForm) {
+    bulkGradeForm.addEventListener('submit', function(e) {
+      const maxMarks = Number('<%= assignment.totalMarks %>');
+      const markInputs = Array.from(document.querySelectorAll('#bulkGradeForm .bulk-grade-mark'));
+      const filled = markInputs.filter(input => input.value.trim() !== '');
+
+      if (filled.length === 0) {
+        e.preventDefault();
+        alert('Enter marks for at least one submitted student before saving bulk grades.');
+        return;
+      }
+
+      const invalid = filled.find(input => {
+        const value = Number(input.value);
+        return !Number.isFinite(value) || value < 0 || value > maxMarks;
+      });
+
+      if (invalid) {
+        e.preventDefault();
+        alert('Marks must be between 0 and ' + maxMarks + '.');
+        invalid.focus();
+      }
+    });
+  }
+
+  const extendDueDateInput = document.querySelector('#extendModal input[name="dueDate"]');
+  const extendForm = extendDueDateInput ? extendDueDateInput.closest('form') : null;
+  const localDateTimeValue = (date) => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  const refreshExtendMin = () => {
+    if (!extendDueDateInput) return;
+    const next = new Date();
+    next.setMinutes(next.getMinutes() + 5);
+    extendDueDateInput.min = localDateTimeValue(next);
+  };
+  extendForm?.addEventListener('submit', (e) => {
+    refreshExtendMin();
+    if (!extendDueDateInput.value || new Date(extendDueDateInput.value) <= new Date()) {
+      e.preventDefault();
+      alert('Choose a future deadline before saving.');
+      extendDueDateInput.focus();
+    }
+  });
 
   document.getElementById('gradeModal').addEventListener('click', function(e) {
     if (e.target === this) {

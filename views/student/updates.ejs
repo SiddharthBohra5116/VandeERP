@@ -46,16 +46,25 @@
         </thead>
         <tbody>
           <% updates.forEach(up => { %>
+            <%
+              const topics = (up.coveredTopics || []).map(t => t.title).filter(Boolean);
+              if (topics.length === 0 && up.topics && up.topics.length) {
+                topics.push(...up.topics);
+              }
+              if (topics.length === 0 && up.content) {
+                topics.push(...String(up.content).split(',').map(t => t.trim()).filter(Boolean));
+              }
+            %>
             <tr>
               <td class="mono text-sm fw-600"><%= up.date %></td>
               <td>
-                <div style="font-weight:600;"><%= up.subject %></div>
-                <div class="td-muted text-sm">Instructor: <%= up.teacher ? up.teacher.name : 'Faculty' %></div>
+                <div style="font-weight:600;"><%= up.course && up.course.name ? up.course.name : up.subject %></div>
+                <div class="td-muted text-sm">Instructor: <%= up.teacher && up.teacher.user ? up.teacher.user.name : 'Faculty' %></div>
               </td>
               <td>
                 <div class="topics-list" style="margin-top:0;">
-                  <% if (up.topics && up.topics.length > 0) { %>
-                    <% up.topics.forEach(topic => { %>
+                  <% if (topics.length > 0) { %>
+                    <% topics.forEach(topic => { %>
                       <span class="topic-tag"><%= topic %></span>
                     <% }) %>
                   <% } else { %>

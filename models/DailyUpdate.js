@@ -52,6 +52,11 @@ const dailyUpdateSchema = new mongoose.Schema({
     default: ''
   },
 
+  topics: [{
+    type: String,
+    trim: true
+  }],
+
   homework: {
     type: String,
     default: ''

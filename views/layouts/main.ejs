@@ -393,6 +393,28 @@
       const closeBtn = e.target.closest('.alert-close');
       if (closeBtn) dismissAlert(closeBtn.closest('.alert'));
     });
+
+    // Remove one-shot flash query flags after rendering so refresh does not replay old success/error messages.
+    (() => {
+      const flashKeys = [
+        'created', 'updated', 'saved', 'posted', 'success', 'paid', 'converted', 'followup',
+        'submitted', 'graded', 'verified', 'deleted', 'walkin', 'request_submitted',
+        'profile_approved', 'profile_rejected', 'extended', 'bulk_empty', 'bulk_graded',
+        'pwd_reset', 'pwd_changed', 'pwd_request', 'exists', 'already', 'error'
+      ];
+      const url = new URL(window.location.href);
+      let changed = false;
+      flashKeys.forEach(key => {
+        if (url.searchParams.has(key)) {
+          url.searchParams.delete(key);
+          changed = true;
+        }
+      });
+      if (changed) {
+        const clean = url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : '') + url.hash;
+        window.history.replaceState({}, document.title, clean);
+      }
+    })();
     // 11. CSRF Token Injection for POST Forms and AJAX calls
     document.addEventListener("DOMContentLoaded", () => {
       const tokenMeta = document.querySelector('meta[name="csrf-token"]');

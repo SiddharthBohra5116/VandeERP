@@ -64,9 +64,15 @@ exports.postCreateAssignment = async (req, res) => {
     batch: req.body.batch, dueDate: req.body.dueDate, hasFile: !!req.file,
   });
   try {
+    const dueDate = new Date(req.body.dueDate);
+    if (!req.body.dueDate || Number.isNaN(dueDate.getTime()) || dueDate <= new Date()) {
+      return res.redirect('/teacher/assignments/create?error=Assignment+deadline+must+be+in+the+future');
+    }
+
     const batchDoc = await Batch.findById(req.body.batch);
     const data = { 
       ...req.body, 
+      dueDate,
       teacher: req.user.teacherProfileId,
       course: batchDoc ? batchDoc.course : null,
       batch: batchDoc ? batchDoc._id : req.body.batch
@@ -265,6 +271,78 @@ exports.postGradeSubmission = async (req, res) => {
 };
 
 /**
+ * POST /teacher/assignments/:id/bulk-grade
+ * Grades multiple submitted assignment rows in one save. Blank marks are skipped
+ * so teachers can fill only the students they are ready to grade.
+ */
+exports.postBulkGradeSubmissions = async (req, res) => {
+  const grades = req.body.grades || {};
+
+  try {
+    const assignment = await Assignment.findOne({
+      _id: req.params.id,
+      teacher: req.user.teacherProfileId
+    }).populate({
+      path: 'submissions.student',
+      populate: { path: 'user', select: '_id status' }
+    });
+
+    if (!assignment) {
+      return res.redirect('/teacher/assignments?error=1');
+    }
+
+    let updatedCount = 0;
+    const messages = [];
+
+    Object.entries(grades).forEach(([submissionId, payload]) => {
+      const marksRaw = payload && payload.marks;
+      if (marksRaw === undefined || marksRaw === null || String(marksRaw).trim() === '') return;
+
+      const marks = Number(marksRaw);
+      if (!Number.isFinite(marks) || marks < 0 || marks > assignment.totalMarks) return;
+
+      const submission = assignment.submissions.id(submissionId);
+      if (!submission) return;
+
+      submission.marks = marks;
+      submission.feedback = payload.feedback || '';
+      submission.status = payload.status || 'graded';
+      updatedCount++;
+
+      if (submission.student?.user && submission.student.user.status === 'active') {
+        const feedbackText = submission.feedback && submission.feedback.trim()
+          ? `\nFeedback: ${submission.feedback.trim()}`
+          : '\nFeedback: No written feedback added.';
+        messages.push({
+          sender: req.user._id,
+          recipient: submission.student.user._id,
+          content:
+            `Assignment graded: "${assignment.title}"\n` +
+            `Score: ${marks} / ${assignment.totalMarks}\n` +
+            `Status: ${submission.status}\n` +
+            `${feedbackText}\n` +
+            'Open Student Portal > Assignments to review the result.'
+        });
+      }
+    });
+
+    if (updatedCount === 0) {
+      return res.redirect(`/teacher/assignments/${req.params.id}?bulk_empty=1`);
+    }
+
+    await assignment.save();
+    if (messages.length > 0) {
+      await Message.insertMany(messages);
+    }
+
+    res.redirect(`/teacher/assignments/${req.params.id}?bulk_graded=${updatedCount}`);
+  } catch (err) {
+    console.error('âŒ Bulk Grade Submissions Error:', { assignmentId: req.params.id, error: err.message });
+    res.redirect(`/teacher/assignments/${req.params.id}?error=1`);
+  }
+};
+
+/**
  * POST /teacher/assignments/:id/extend
  * Extends the due date of a specific assignment.
  */
@@ -272,11 +350,16 @@ exports.postExtendDueDate = async (req, res) => {
   const { dueDate } = req.body;
   console.log('📅 Extend Assignment Deadline request:', { teacherId: req.user._id, assignmentId: req.params.id, dueDate });
   try {
+    const nextDueDate = new Date(dueDate);
+    if (!dueDate || Number.isNaN(nextDueDate.getTime()) || nextDueDate <= new Date()) {
+      return res.redirect(`/teacher/assignments/${req.params.id}?error=New+deadline+must+be+in+the+future`);
+    }
+
     const assignment = await Assignment.findOne({ _id: req.params.id, teacher: req.user.teacherProfileId });
     if (!assignment) {
       return res.redirect('/teacher/assignments');
     }
-    assignment.dueDate = new Date(dueDate);
+    assignment.dueDate = nextDueDate;
     await assignment.save();
     await notifyBatchStudents({
       teacherId: req.user._id,

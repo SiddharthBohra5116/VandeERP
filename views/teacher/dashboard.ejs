@@ -229,9 +229,18 @@
       <% } else { %>
         <div class="teacher-update-grid">
           <% updateList.slice(0, 4).forEach(up => { %>
+            <%
+              const updateTopics = (up.coveredTopics || []).map(t => t.title).filter(Boolean);
+              if (updateTopics.length === 0 && up.topics && up.topics.length) {
+                updateTopics.push(...up.topics);
+              }
+              if (updateTopics.length === 0 && up.content) {
+                updateTopics.push(...String(up.content).split(',').map(t => t.trim()).filter(Boolean));
+              }
+            %>
             <a href="/teacher/updates" class="student-update-item">
               <strong><%= (up.course && up.course.name) || up.subject || 'Class update' %></strong>
-              <span><%= up.homework ? up.homework : (up.topics && up.topics.length ? up.topics.join(', ') : 'No topic details') %></span>
+              <span><%= up.homework ? up.homework : (updateTopics.length ? updateTopics.join(', ') : 'No topic details') %></span>
               <small><%= up.batch && up.batch.name ? up.batch.name + ' · ' : '' %><%= new Date(up.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) %></small>
             </a>
           <% }) %>
