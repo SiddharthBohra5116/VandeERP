@@ -12,6 +12,7 @@ const DailyUpdate = require('../../models/DailyUpdate');
 const Holiday = require('../../models/Holiday');
 const Curriculum = require('../../models/Curriculum');
 const Batch = require('../../models/Batch');
+const Teacher = require('../../models/Teacher');
 const { todayIST } = require('../../utils/dateHelper');
 const { escapeRegex } = require('../../utils/sanitize');
 const { calculateStudentsAttendance } = require('../../utils/attendanceHelper');
@@ -944,6 +945,20 @@ exports.getReports = async (req, res) => {
     else if (tab === 'staff') {
       const teachers = await User.find({ role: 'teacher', isActive: true });
       for (const t of teachers) {
+        const teacherDoc = await Teacher.findOne({ user: t._id });
+        if (!teacherDoc) {
+          // If a teacher User exists but has no Teacher profile, push a fallback default record
+          renderData.teacherLoad.push({
+            teacher: t,
+            classesConducted: 0,
+            assignmentsCreated: 0,
+            submissionsGraded: 0,
+            attendanceSessionsMarked: 0,
+            curriculumCompletion: 0
+          });
+          continue;
+        }
+
         const [
           completedClasses,
           assignmentsCreated,
@@ -951,14 +966,14 @@ exports.getReports = async (req, res) => {
           attendanceSessions,
           curriculums
         ] = await Promise.all([
-          Schedule.countDocuments({ teacher: t._id, status: 'completed', date: { $gte: startDate, $lte: endDate } }),
-          Assignment.countDocuments({ teacher: t._id, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }),
-          Assignment.find({ teacher: t._id }),
+          Schedule.countDocuments({ teacher: teacherDoc._id, status: 'completed', date: { $gte: startDate, $lte: endDate } }),
+          Assignment.countDocuments({ teacher: teacherDoc._id, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }),
+          Assignment.find({ teacher: teacherDoc._id }),
           Attendance.aggregate([
-            { $match: { teacher: t._id, date: { $gte: startDate, $lte: endDate } } },
+            { $match: { teacher: teacherDoc._id, date: { $gte: startDate, $lte: endDate } } },
             { $group: { _id: { date: '$date', batch: '$batch' } } }
           ]),
-          Curriculum.find({ teacher: t._id }).populate('course')
+          Curriculum.find({ teacher: teacherDoc._id }).populate('course')
         ]);
 
         let gradedCount = 0;
