@@ -52,21 +52,7 @@ exports.getDailyUpdates = async (req, res) => {
  * including test results and teacher remarks.
  */
 exports.getProgress = async (req, res) => {
-  try {
-    const studentProfile = await Student.findOne({ user: req.user._id });
-    if (!studentProfile) {
-      return res.redirect('/student/dashboard?error=Student+profile+not+found');
-    }
-
-    const progressRecords = await Progress.find({ student: studentProfile._id })
-      .populate('course', 'name')
-      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
-
-    res.render('student/progress', { title: 'My Progress', user: req.user, progressRecords });
-  } catch (err) {
-    console.error('❌ Student Progress Fetch Error:', err);
-    res.status(500).render('500', { title: 'Error', user: req.user, layout: 'main' });
-  }
+  res.redirect('/student/analytics');
 };
 
 // ─── CURRICULUM ───────────────────────────────────────────────────────────────

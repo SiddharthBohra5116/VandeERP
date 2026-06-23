@@ -23,6 +23,7 @@ exports.getAnalytics = async (req, res) => {
         attendanceTrend: [],
         assignmentScores: [],
         avgTestScores: [],
+        progressRecords: [],
         feeStatus: {
           totalBilled: 0,
           paidAmount: 0,
@@ -101,13 +102,13 @@ exports.getAnalytics = async (req, res) => {
     });
 
     // 3. Test / Progress Scores
-    const progressList = await Progress.find({
+    const progressRecords = await Progress.find({
       student: studentId
     })
       .populate('course', 'name code')
-      .populate('teacher', 'name');
+      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
 
-    const avgTestScores = progressList.map(progress => ({
+    const avgTestScores = progressRecords.map(progress => ({
       subject: progress.course?.name || studentProfile.course?.name || 'Course',
       course: progress.course?.name || studentProfile.course?.name || 'Course',
       module: 'General',
@@ -169,6 +170,7 @@ exports.getAnalytics = async (req, res) => {
       attendanceTrend,
       assignmentScores,
       avgTestScores,
+      progressRecords,
       feeStatus: {
         totalBilled,
         paidAmount,
