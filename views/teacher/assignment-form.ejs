@@ -59,6 +59,17 @@
     box-shadow: 0 0 12px rgba(212, 175, 55, 0.25) !important;
     outline: none !important;
   }
+  /* Style native calendar picker indicator gold */
+  .form-control::-webkit-calendar-picker-indicator {
+    filter: invert(0.85) sepia(1) saturate(5) hue-rotate(6deg) brightness(0.9) !important;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s ease;
+    padding: 0.2rem;
+  }
+  .form-control::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
   textarea.form-control {
     min-height: 120px;
     resize: vertical;
@@ -285,6 +296,13 @@
 
     refreshMin();
     dueDate?.addEventListener('focus', refreshMin);
+    dueDate?.addEventListener('click', () => {
+      try {
+        dueDate.showPicker();
+      } catch (e) {
+        // Fallback
+      }
+    });
     form?.addEventListener('submit', (event) => {
       refreshMin();
       if (!dueDate.value || new Date(dueDate.value) <= new Date()) {
