@@ -13,6 +13,7 @@ const Holiday = require('../../models/Holiday');
 const Curriculum = require('../../models/Curriculum');
 const Batch = require('../../models/Batch');
 const Teacher = require('../../models/Teacher');
+const Course = require('../../models/Course');
 const { todayIST } = require('../../utils/dateHelper');
 const { escapeRegex } = require('../../utils/sanitize');
 const { calculateStudentsAttendance } = require('../../utils/attendanceHelper');
@@ -72,9 +73,14 @@ exports.getReports = async (req, res) => {
     const periodLabel = 'previous period';
 
     // 1. Get Distinct Filter Lists
-    const [batches, courses] = await Promise.all([
+    const [distinctBatchIds, distinctCourseIds] = await Promise.all([
       Student.distinct('batch', { batch: { $ne: null } }),
       Student.distinct('course', { course: { $ne: null } })
+    ]);
+
+    const [batches, courses] = await Promise.all([
+      Batch.find({ _id: { $in: distinctBatchIds } }).select('name').lean(),
+      Course.find({ _id: { $in: distinctCourseIds } }).select('name').lean()
     ]);
 
     // Build DB query filters
@@ -781,7 +787,7 @@ exports.getReports = async (req, res) => {
 
     // ─── TAB: ACADEMIC ──────────────────────────────────────────────
     else if (tab === 'academic') {
-      const activeBatches = batch === 'all' ? batches : [batch];
+      const activeBatches = batch === 'all' ? batches.map(b => b._id.toString()) : [batch];
 
       for (const b of activeBatches) {
         const batchDoc = await Batch.findById(b);
@@ -1067,7 +1073,7 @@ exports.getReports = async (req, res) => {
           User.find({ role: 'teacher', isActive: true })
         ]);
 
-        const activeBatches = batch === 'all' ? batches : [batch];
+        const activeBatches = batch === 'all' ? batches.map(b => b._id.toString()) : [batch];
         const batchHealthScores = [];
 
         for (const b of activeBatches) {

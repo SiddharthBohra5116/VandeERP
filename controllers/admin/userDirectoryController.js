@@ -5,10 +5,13 @@ const Counsellor = require('../../models/Counsellor');
 const Course = require('../../models/Course');
 const Batch = require('../../models/Batch');
 const Fee = require('../../models/Fee');
+const Attendance = require('../../models/Attendance');
 
 const { escapeRegex } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
 const { USER_STATUSES } = require('../../config/constants');
+const { todayIST } = require('../../utils/dateHelper');
+const { calculateStudentsAttendance } = require('../../utils/attendanceHelper');
 
 function getRoleRedirect(role, queryParams = '') {
   const map = {
@@ -47,28 +50,126 @@ exports.getUsers = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 10), 100);
     const skip = (page - 1) * limit;
 
-    const filter = {};
-
+    const userFilter = {};
     if (role) {
-      filter.role = role;
+      userFilter.role = role;
     }
 
     if (search) {
-      filter.name = {
-        $regex: escapeRegex(search),
-        $options: 'i'
-      };
+      const escaped = escapeRegex(search);
+
+      // Search matching courses and batches for students/teachers
+      const [matchingCourses, matchingBatches] = await Promise.all([
+        Course.find({ name: { $regex: escaped, $options: 'i' } }).select('_id'),
+        Batch.find({ name: { $regex: escaped, $options: 'i' } }).select('_id')
+      ]);
+
+      const courseIds = matchingCourses.map(c => c._id);
+      const batchIds = matchingBatches.map(b => b._id);
+
+      // Find students matching course, batch or rollNumber
+      const matchingStudents = await Student.find({
+        $or: [
+          { rollNumber: { $regex: escaped, $options: 'i' } },
+          { course: { $in: courseIds } },
+          { batch: { $in: batchIds } }
+        ]
+      }).select('user');
+
+      // Find teachers matching qualification or rollNumber
+      const matchingTeachers = await Teacher.find({
+        $or: [
+          { rollNumber: { $regex: escaped, $options: 'i' } },
+          { qualification: { $regex: escaped, $options: 'i' } }
+        ]
+      }).select('user');
+
+      const matchedUserIdsFromProfiles = [
+        ...matchingStudents.map(s => s.user),
+        ...matchingTeachers.map(t => t.user)
+      ].filter(Boolean);
+
+      userFilter.$or = [
+        { name: { $regex: escaped, $options: 'i' } },
+        { phone: { $regex: escaped, $options: 'i' } },
+        { email: { $regex: escaped, $options: 'i' } },
+        { _id: { $in: matchedUserIdsFromProfiles } }
+      ];
     }
 
     const [users, totalUsers] = await Promise.all([
-      User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
-      User.countDocuments(filter)
+      User.find(userFilter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      User.countDocuments(userFilter)
     ]);
+
+    const userIds = users.map(user => user._id);
+
+    // Fetch student profiles for these users
+    const studentProfiles = await Student.find({ user: { $in: userIds } })
+      .populate('course', 'name code')
+      .populate('batch', 'name');
+
+    // Fetch teacher profiles for these users
+    const teacherProfiles = await Teacher.find({ user: { $in: userIds } })
+      .populate('courses', 'name code');
+
+    const studentProfileMap = new Map(studentProfiles.map(p => [String(p.user), p]));
+    const teacherProfileMap = new Map(teacherProfiles.map(p => [String(p.user), p]));
+
+    // Fetch student attendance stats if there are students
+    let attendanceMap = new Map();
+    const studentsToCalculate = studentProfiles.filter(p => userIds.map(String).includes(String(p.user)));
+    if (studentsToCalculate.length > 0) {
+      const studentIds = studentsToCalculate.map(s => s._id);
+      const [attendanceRecords, todayRecords] = await Promise.all([
+        Attendance.find({ student: { $in: studentIds } }),
+        Attendance.find({ date: todayIST(), student: { $in: studentIds } })
+      ]);
+
+      const studentsForAttendance = studentsToCalculate.map(student => {
+        const plain = student.toObject();
+        const correspondingUser = users.find(u => String(u._id) === String(student.user));
+        plain.name = correspondingUser?.name || '';
+        plain.status = correspondingUser?.status || '';
+        return plain;
+      });
+
+      await calculateStudentsAttendance(studentsForAttendance, attendanceRecords, todayRecords);
+      attendanceMap = new Map(
+        studentsForAttendance.map(student => [
+          String(student._id),
+          { attendancePct: student.attendancePct, isMarkedToday: student.isMarkedToday }
+        ])
+      );
+    }
+
+    const mergedUsers = users.map(user => {
+      const plainUser = user.toObject();
+      const sProfile = studentProfileMap.get(String(user._id));
+      const tProfile = teacherProfileMap.get(String(user._id));
+      
+      const stats = sProfile ? (attendanceMap.get(String(sProfile._id)) || {}) : {};
+
+      return {
+        ...plainUser,
+        studentProfile: sProfile ? sProfile.toObject() : null,
+        teacherProfile: tProfile ? tProfile.toObject() : null,
+        rollNumber: sProfile?.rollNumber || tProfile?.rollNumber || plainUser.rollNumber || '',
+        attendancePct: typeof stats.attendancePct !== 'undefined' ? stats.attendancePct : 100,
+        isMarkedToday: typeof stats.isMarkedToday !== 'undefined' ? stats.isMarkedToday : true,
+        idProof: sProfile?.documents?.idProof || null,
+        fatherName: sProfile?.family?.father?.name || '',
+        guardianPhone: sProfile?.family?.guardian?.phone || '',
+        idVerified: sProfile?.idVerified || false,
+        qualification: tProfile?.qualification || '',
+        experienceYears: tProfile?.experienceYears || 0
+      };
+    });
 
     res.render('admin/users', {
       title: 'Manage Users',
       user: req.user,
-      users,
+      users: mergedUsers,
       pagination: {
         page,
         limit,
@@ -77,10 +178,8 @@ exports.getUsers = async (req, res) => {
       },
       filter: req.query
     });
-
   } catch (err) {
-    logger.error('Get Users Error', { err: err.message });
-
+    logger.error('Get Users Error', { err: err.message, stack: err.stack });
     res.status(500).render('500', {
       title: 'Error',
       user: req.user,

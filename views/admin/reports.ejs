@@ -217,7 +217,7 @@
     <select name="batch" class="form-control" onchange="this.form.submit()">
       <option value="all" <%= batch === 'all' ? 'selected' : '' %>>All Batches</option>
       <% batches.forEach(b => { %>
-        <option value="<%= b %>" <%= batch === b ? 'selected' : '' %>><%= b %></option>
+        <option value="<%= b._id.toString() %>" <%= String(batch) === String(b._id) ? 'selected' : '' %>><%= b.name %></option>
       <% }) %>
     </select>
   </div>
@@ -227,7 +227,7 @@
     <select name="course" class="form-control" onchange="this.form.submit()">
       <option value="all" <%= course === 'all' ? 'selected' : '' %>>All Courses</option>
       <% courses.forEach(c => { %>
-        <option value="<%= c %>" <%= course === c ? 'selected' : '' %>><%= c %></option>
+        <option value="<%= c._id.toString() %>" <%= String(course) === String(c._id) ? 'selected' : '' %>><%= c.name %></option>
       <% }) %>
     </select>
   </div>
