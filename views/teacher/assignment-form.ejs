@@ -8,6 +8,158 @@
   const minDueDate = now.toISOString().slice(0, 16);
 %>
 
+<style>
+  .form-shell {
+    max-width: 800px;
+    margin: 1.5rem auto;
+    padding: 2.5rem;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+    border-radius: var(--radius-lg);
+  }
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.75rem;
+    margin-bottom: 1.5rem;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1.5rem;
+    position: relative;
+  }
+  .form-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+    display: block;
+    transition: color 0.2s ease;
+  }
+  .form-control {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 8px !important;
+    padding: 0.85rem 1rem !important;
+    color: var(--text) !important;
+    font-family: inherit !important;
+    font-size: 0.9rem !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .form-control:focus {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.25) !important;
+    outline: none !important;
+  }
+  textarea.form-control {
+    min-height: 120px;
+    resize: vertical;
+  }
+  .form-hint {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 0.4rem;
+    opacity: 0.75;
+  }
+  /* Modern customized file upload UI */
+  .custom-file-upload {
+    position: relative;
+    width: 100%;
+  }
+  .file-upload-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    transition: all 0.25s ease;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .file-upload-label:hover {
+    border-color: var(--gold);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+  }
+  .file-upload-label svg {
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+  }
+  .file-upload-label:hover svg {
+    transform: translateY(-2px);
+  }
+  /* Form actions button styling */
+  .form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+  .btn-primary-gradient {
+    background: linear-gradient(135deg, var(--gold) 0%, #b8860b 100%) !important;
+    border: none !important;
+    font-weight: 700 !important;
+    color: #000 !important;
+    padding: 0.85rem 2rem !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+  }
+  .btn-primary-gradient:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4) !important;
+  }
+  .btn-ghost-vda {
+    color: var(--text-muted) !important;
+    background: transparent !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding: 0.85rem 2rem !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .btn-ghost-vda:hover {
+    color: var(--text) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+  }
+  .divider-vda {
+    height: 1px;
+    background: linear-gradient(to right, rgba(212, 175, 55, 0), rgba(212, 175, 55, 0.2), rgba(212, 175, 55, 0));
+    margin: 2rem 0;
+  }
+</style>
+
 <div class="card form-shell">
   <form action="/teacher/assignments/create" method="POST" enctype="multipart/form-data">
     <div class="form-group">
@@ -50,16 +202,22 @@
 
       <div class="form-group">
         <label class="form-label" for="file">Attachment File</label>
-        <input type="file" id="file" name="file" class="form-control">
+        <div class="custom-file-upload">
+          <label for="file" class="file-upload-label" id="drop-zone-label">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; color: var(--gold);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span id="file-label-text">Choose File or Drag Here</span>
+          </label>
+          <input type="file" id="file" name="file" class="file-input" style="display: none;">
+        </div>
         <div class="form-hint">Upload project files or reference PDFs.</div>
       </div>
     </div>
 
-    <div class="divider"></div>
+    <div class="divider-vda"></div>
 
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Publish Assignment</button>
-      <a href="/teacher/assignments" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary-gradient">Publish Assignment</button>
+      <a href="/teacher/assignments" class="btn btn-ghost-vda">Cancel</a>
     </div>
   </form>
 </div>
@@ -68,6 +226,52 @@
   document.addEventListener('DOMContentLoaded', () => {
     const dueDate = document.getElementById('dueDate');
     const form = dueDate ? dueDate.closest('form') : null;
+    const fileInput = document.getElementById('file');
+    const labelText = document.getElementById('file-label-text');
+    const dropLabel = document.getElementById('drop-zone-label');
+
+    // Update custom file upload label on selection
+    fileInput?.addEventListener('change', (e) => {
+      const fileName = e.target.files[0]?.name;
+      if (fileName) {
+        labelText.textContent = fileName;
+        labelText.style.color = 'var(--gold)';
+      } else {
+        labelText.textContent = 'Choose File or Drag Here';
+        labelText.style.color = '';
+      }
+    });
+
+    // Native Drag and Drop Implementation
+    if (dropLabel && fileInput) {
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropLabel.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropLabel.style.borderColor = 'var(--gold)';
+          dropLabel.style.background = 'rgba(255, 255, 255, 0.08)';
+        }, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropLabel.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropLabel.style.borderColor = '';
+          dropLabel.style.background = '';
+        }, false);
+      });
+
+      dropLabel.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files.length > 0) {
+          fileInput.files = files;
+          fileInput.dispatchEvent(new Event('change'));
+        }
+      }, false);
+    }
+
     const toLocalDateTime = (date) => {
       const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
       return local.toISOString().slice(0, 16);
