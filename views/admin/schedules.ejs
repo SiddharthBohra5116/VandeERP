@@ -491,7 +491,13 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 10px;">
       <div style="display: flex; align-items: center; gap: 0.75rem;">
         <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-sub);">Target Day:</span>
-        <input type="date" id="dailyTimelineDatePicker" class="form-control" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; background: var(--bg-hover);" value="<%= dayParam %>" onchange="changeDailyPlannerDate(this.value)">
+        <div style="display: flex; align-items: center; gap: 0.35rem; background: var(--bg-hover); padding: 0.25rem 0.5rem; border-radius: 8px; border: 1px solid var(--border);">
+          <button type="button" class="btn btn-ghost btn-xs" onclick="shiftDailyPlannerDate(-7)" title="Previous Week" style="padding: 0.25rem 0.45rem; font-size: 0.75rem; color: var(--text-sub); border: none; background: none; cursor: pointer;">&lsaquo;&lsaquo; Prev Week</button>
+          <button type="button" class="btn btn-ghost btn-xs" onclick="shiftDailyPlannerDate(-1)" title="Previous Day" style="padding: 0.25rem 0.45rem; font-size: 0.75rem; color: var(--text-sub); border: none; background: none; cursor: pointer;">&lsaquo; Prev Day</button>
+          <input type="date" id="dailyTimelineDatePicker" class="form-control" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.8rem; background: transparent; border: none; color: var(--text); outline: none;" value="<%= dayParam %>" onchange="changeDailyPlannerDate(this.value)">
+          <button type="button" class="btn btn-ghost btn-xs" onclick="shiftDailyPlannerDate(1)" title="Next Day" style="padding: 0.25rem 0.45rem; font-size: 0.75rem; color: var(--text-sub); border: none; background: none; cursor: pointer;">Next Day &rsaquo;</button>
+          <button type="button" class="btn btn-ghost btn-xs" onclick="shiftDailyPlannerDate(7)" title="Next Week" style="padding: 0.25rem 0.45rem; font-size: 0.75rem; color: var(--text-sub); border: none; background: none; cursor: pointer;">Next Week &rsaquo;&rsaquo;</button>
+        </div>
       </div>
       <div style="font-size: 0.8rem; color: var(--text-muted);">Daily classroom scheduling allocations</div>
     </div>
@@ -820,7 +826,13 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 10px;">
       <div style="display: flex; align-items: center; gap: 0.75rem;">
         <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-sub);">Select Day:</span>
-        <input type="date" id="classroomGridDatePicker" class="form-control" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; background: var(--bg-hover);" value="<%= dayParam %>" onchange="changeClassroomGridDate(this.value)">
+        <div style="display: flex; align-items: center; gap: 0.35rem; background: var(--bg-hover); padding: 0.25rem 0.5rem; border-radius: 8px; border: 1px solid var(--border);">
+          <button type="button" class="btn btn-ghost btn-xs" onclick="shiftClassroomGridDate(-7)" title="Previous Week" style="padding: 0.25rem 0.45rem; font-size: 0.75rem; color: var(--text-sub); border: none; background: none; cursor: pointer;">&lsaquo;&lsaquo; Prev Week</button>
+          <button type="button" class="btn btn-ghost btn-xs" onclick="shiftClassroomGridDate(-1)" title="Previous Day" style="padding: 0.25rem 0.45rem; font-size: 0.75rem; color: var(--text-sub); border: none; background: none; cursor: pointer;">&lsaquo; Prev Day</button>
+          <input type="date" id="classroomGridDatePicker" class="form-control" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.8rem; background: transparent; border: none; color: var(--text); outline: none;" value="<%= dayParam %>" onchange="changeClassroomGridDate(this.value)">
+          <button type="button" class="btn btn-ghost btn-xs" onclick="shiftClassroomGridDate(1)" title="Next Day" style="padding: 0.25rem 0.45rem; font-size: 0.75rem; color: var(--text-sub); border: none; background: none; cursor: pointer;">Next Day &rsaquo;</button>
+          <button type="button" class="btn btn-ghost btn-xs" onclick="shiftClassroomGridDate(7)" title="Next Week" style="padding: 0.25rem 0.45rem; font-size: 0.75rem; color: var(--text-sub); border: none; background: none; cursor: pointer;">Next Week &rsaquo;&rsaquo;</button>
+        </div>
       </div>
       <div style="font-size: 0.8rem; color: var(--text-muted);">Classroom-wise allocation grid for the day</div>
     </div>
@@ -1306,10 +1318,32 @@
     else window.location.href = url;
   }
 
+  function shiftDailyPlannerDate(days) {
+    const picker = document.getElementById('dailyTimelineDatePicker');
+    if (!picker || !picker.value) return;
+    const currentDate = new Date(picker.value);
+    currentDate.setDate(currentDate.getDate() + days);
+    const y = currentDate.getFullYear();
+    const m = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const d = String(currentDate.getDate()).padStart(2, '0');
+    changeDailyPlannerDate(`${y}-${m}-${d}`);
+  }
+
   function changeClassroomGridDate(val) {
     const url = `?day=${val}&month=<%= monthParam %>&view=classroom`;
     if (window.AppSoftNav) window.AppSoftNav.navigateTo(url);
     else window.location.href = url;
+  }
+
+  function shiftClassroomGridDate(days) {
+    const picker = document.getElementById('classroomGridDatePicker');
+    if (!picker || !picker.value) return;
+    const currentDate = new Date(picker.value);
+    currentDate.setDate(currentDate.getDate() + days);
+    const y = currentDate.getFullYear();
+    const m = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const d = String(currentDate.getDate()).padStart(2, '0');
+    changeClassroomGridDate(`${y}-${m}-${d}`);
   }
 
   function openScheduleDayModal(templateId, dateLabel) {

@@ -232,8 +232,9 @@
     </select>
   </div>
 
-  <div style="margin-left: auto;">
-    <a href="/admin/reports?tab=<%= tab %>&export=csv&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="btn btn-sm btn-ghost" style="color: var(--gold); border: 1px solid var(--gold-border); height: 38px; display: inline-flex; align-items: center; border-radius: 8px;">📥 Export CSV</a>
+  <div style="margin-left: auto; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+    <a href="/admin/reports?tab=<%= tab %>&export=csv&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="btn btn-sm btn-ghost" style="color: var(--gold); border: 1px solid var(--gold-border); height: 38px; display: inline-flex; align-items: center; border-radius: 8px;">📥 Export <%= tab.charAt(0).toUpperCase() + tab.slice(1) %> CSV</a>
+    <a href="/admin/reports?tab=all&export=csv&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="btn btn-sm btn-primary" style="height: 38px; display: inline-flex; align-items: center; border-radius: 8px; font-weight: 600;">📥 Download Full Report</a>
   </div>
 </form>
 

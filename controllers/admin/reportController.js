@@ -1004,6 +1004,323 @@ exports.getReports = async (req, res) => {
 
     // ─── RUN EXPORT ACTION ──────────────────────────────────────────
     if (exportType === 'csv') {
+      if (tab === 'all') {
+        const [expensesList, customTargets, allAssignments, teachersList] = await Promise.all([
+          Expense.find({ month: { $gte: startDate.slice(0, 7), $lte: endDate.slice(0, 7) } }).sort({ date: -1 }),
+          RevenueTarget.find({ month: { $gte: startDate.slice(0, 7), $lte: endDate.slice(0, 7) } }),
+          Assignment.find({}),
+          User.find({ role: 'teacher', isActive: true })
+        ]);
+
+        const activeBatches = batch === 'all' ? batches : [batch];
+        const batchHealthScores = [];
+
+        for (const b of activeBatches) {
+          const batchDoc = await Batch.findById(b);
+          const batchLabel = batchDoc ? batchDoc.name : b;
+
+          const students = await Student.find({ batch: b }).populate('user', 'status');
+          if (students.length === 0) continue;
+
+          const localStudentIds = students.map(s => s._id);
+
+          const [att, assign, progress, localFees] = await Promise.all([
+            Attendance.find({ student: { $in: localStudentIds }, date: { $gte: startDate, $lte: endDate } }),
+            Assignment.find({ batch: b, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }),
+            Progress.find({ student: { $in: localStudentIds }, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }),
+            Fee.find({ student: { $in: localStudentIds } })
+          ]);
+
+          let avgAttendance = 0;
+          if (att.length > 0) {
+            const presentCount = att.filter(a => a.status === 'present' || a.status === 'late').length;
+            avgAttendance = Math.round((presentCount / att.length) * 100);
+          }
+
+          let submissionRate = 0;
+          if (assign.length > 0) {
+            let totalSubmissions = 0;
+            let totalPossible = assign.length * students.length;
+            assign.forEach(a => {
+              totalSubmissions += (a.submissions || []).filter(sub => localStudentIds.map(String).includes(String(sub.student))).length;
+            });
+            submissionRate = totalPossible > 0 ? Math.round((totalSubmissions / totalPossible) * 100) : 0;
+          }
+
+          let collectionRate = 0;
+          if (localFees.length > 0) {
+            const totalExpected = localFees.reduce((sum, f) => sum + (f.totalAmount - (f.discount || 0)), 0);
+            const totalPaid = localFees.reduce((sum, f) => sum + f.paidAmount, 0);
+            collectionRate = totalExpected > 0 ? Math.round((totalPaid / totalExpected) * 100) : 0;
+          }
+
+          const healthScore = Math.round((avgAttendance + submissionRate + collectionRate) / 3);
+
+          batchHealthScores.push({
+            batchName: batchLabel,
+            studentCount: students.length,
+            avgAttendance,
+            submissionRate,
+            collectionRate,
+            healthScore
+          });
+        }
+
+        const atRiskStudentQuery = {};
+        if (batch !== 'all') atRiskStudentQuery.batch = batch;
+        if (course !== 'all') atRiskStudentQuery.course = course;
+
+        const matchedStudents = await Student.find(atRiskStudentQuery)
+          .populate({
+            path: 'user',
+            match: { status: 'active' },
+            select: 'name status'
+          })
+          .populate('batch', 'name');
+
+        const activeStudents = matchedStudents.filter(s => s.user);
+        const activeStudentIds = activeStudents.map(s => s._id);
+        const activeBatchIds = [...new Set(activeStudents.map(s => s.batch?._id || s.batch).filter(Boolean))];
+
+        const [feesList, progressList, allAssignmentsForBatch] = await Promise.all([
+          Fee.find({ student: { $in: activeStudentIds } }),
+          Progress.find({ student: { $in: activeStudentIds } }),
+          Assignment.find({ batch: { $in: activeBatchIds } })
+        ]);
+
+        const attendanceAggr = await Attendance.aggregate([
+          { $match: { student: { $in: activeStudentIds } } },
+          { $group: {
+              _id: '$student',
+              total: { $sum: 1 },
+              present: { $sum: { $cond: [{ $in: ['$status', ['present', 'late']] }, 1, 0] } }
+          }}
+        ]);
+
+        const attendanceMap = {};
+        attendanceAggr.forEach(a => {
+          attendanceMap[a._id.toString()] = {
+            total: a.total,
+            present: a.present,
+            pct: a.total > 0 ? Math.round((a.present / a.total) * 100) : 0
+          };
+        });
+
+        const atRisk = [];
+        const today = new Date();
+
+        for (const s of activeStudents) {
+          const fee = feesList.find(f => String(f.student) === String(s._id));
+          const progress = progressList.find(p => String(p.student) === String(s._id));
+
+          const att = attendanceMap[s._id.toString()] || { total: 0, present: 0, pct: 0 };
+          s.attendancePct = att.pct;
+
+          let overdueAmount = 0;
+          let isFeeOverdue = false;
+          if (fee) {
+            if (fee.installments && fee.installments.length > 0) {
+              fee.installments.forEach(inst => {
+                if (inst.dueDate && new Date(inst.dueDate) < today) {
+                  const unpaidInst = Math.max(0, inst.amount - (inst.paidAmount || 0));
+                  if (unpaidInst > 0) {
+                    overdueAmount += unpaidInst;
+                    isFeeOverdue = true;
+                  }
+                }
+              });
+            } else {
+              const totalDue = Math.max(0, fee.totalAmount - (fee.discount || 0) - fee.paidAmount);
+              if (totalDue > 0 && fee.dueDate && new Date(fee.dueDate) < today) {
+                overdueAmount = totalDue;
+                isFeeOverdue = true;
+              }
+            }
+          }
+
+          const studentAssignments = allAssignmentsForBatch.filter(a => String(a.batch?._id || a.batch) === String(s.batch?._id || s.batch));
+          const pendingAssignmentsCount = studentAssignments.reduce((count, a) => {
+            const sub = a.submissions.find(sub => String(sub.student) === String(s._id));
+            const isPendingOrUngraded = !sub || sub.status !== 'graded';
+            return count + (isPendingOrUngraded ? 1 : 0);
+          }, 0);
+
+          let riskReasons = [];
+          if (att.total > 0 && s.attendancePct < 75) {
+            riskReasons.push(`Low Attendance (${s.attendancePct}%)`);
+          }
+          if (isFeeOverdue && overdueAmount > 0) {
+            riskReasons.push(`Overdue Fees (₹${overdueAmount})`);
+          }
+          if (pendingAssignmentsCount >= 3) {
+            riskReasons.push(`${pendingAssignmentsCount} unsubmitted/pending assignments`);
+          }
+
+          if (riskReasons.length > 0) {
+            atRisk.push({
+              student: s,
+              attendance: s.attendancePct,
+              overdueFees: overdueAmount,
+              pendingAssignments: pendingAssignmentsCount,
+              reasons: riskReasons.join(', ')
+            });
+          }
+        }
+
+        const teacherLoad = [];
+        for (const t of teachersList) {
+          const teacherDoc = await Teacher.findOne({ user: t._id });
+          if (!teacherDoc) {
+            teacherLoad.push({
+              teacher: t,
+              classesConducted: 0,
+              assignmentsCreated: 0,
+              submissionsGraded: 0,
+              attendanceSessionsMarked: 0,
+              curriculumCompletion: 0
+            });
+            continue;
+          }
+
+          const [
+            completedClasses,
+            assignmentsCreated,
+            assignmentsList,
+            attendanceSessions,
+            curriculums
+          ] = await Promise.all([
+            Schedule.countDocuments({ teacher: teacherDoc._id, status: 'completed', date: { $gte: startDate, $lte: endDate } }),
+            Assignment.countDocuments({ teacher: teacherDoc._id, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }),
+            Assignment.find({ teacher: teacherDoc._id }),
+            Attendance.aggregate([
+              { $match: { teacher: teacherDoc._id, date: { $gte: startDate, $lte: endDate } } },
+              { $group: { _id: { date: '$date', batch: '$batch' } } }
+            ]),
+            Curriculum.find({ teacher: teacherDoc._id }).populate('course')
+          ]);
+
+          let gradedCount = 0;
+          assignmentsList.forEach(a => {
+            a.submissions.forEach(sub => {
+              if (sub.status === 'graded') {
+                gradedCount++;
+              }
+            });
+          });
+
+          let totalPct = 0;
+          curriculums.forEach(c => {
+            totalPct += c.completionPct || 0;
+          });
+          const curriculumCompletion = curriculums.length > 0 ? Math.round(totalPct / curriculums.length) : 0;
+
+          teacherLoad.push({
+            teacher: t,
+            classesConducted: completedClasses,
+            assignmentsCreated,
+            submissionsGraded: gradedCount,
+            attendanceSessionsMarked: attendanceSessions.length,
+            curriculumCompletion
+          });
+        }
+
+        let fileContent = "=== EXECUTIVE OVERVIEW METRICS ===\n";
+        fileContent += "Metric,Value,Trend/Status\n";
+        fileContent += `Active Students,${overviewStats.activeStudents.value},${overviewStats.activeStudents.trend}\n`;
+        fileContent += `Collection,"${overviewStats.collection.value.replace(/"/g, '""')}",${overviewStats.collection.trend}\n`;
+        fileContent += `Outstanding,"${overviewStats.outstanding.value.replace(/"/g, '""')}",${overviewStats.outstanding.trend}\n`;
+        fileContent += `Avg Attendance,${overviewStats.avgAttendance.value},${overviewStats.avgAttendance.trend}\n`;
+        fileContent += `Open Leads,${overviewStats.openLeads.value},${overviewStats.openLeads.trend}\n`;
+        fileContent += `Conv. Rate,${overviewStats.convRate.value},${overviewStats.convRate.trend}\n\n`;
+
+        fileContent += "=== FINANCIAL PERFORMANCE ===\n";
+        fileContent += "Month,Billed (Target),Collected (Actual),Expenses,Net Profit\n";
+
+        const customTargetsMap = {};
+        customTargets.forEach(t => {
+          customTargetsMap[t.month] = t.amount;
+        });
+
+        const monthlyExpenses = {};
+        expensesList.forEach(exp => {
+          if (!monthlyExpenses[exp.month]) {
+            monthlyExpenses[exp.month] = { total: 0 };
+          }
+          monthlyExpenses[exp.month].total += exp.amount;
+        });
+
+        const monthlyStats = {};
+        fees.forEach(f => {
+          if (f.installments && f.installments.length > 0) {
+            f.installments.forEach(inst => {
+              const targetMonth = inst.dueDate ? inst.dueDate.toISOString().slice(0, 7) : f.createdAt.toISOString().slice(0, 7);
+              if (!monthlyStats[targetMonth]) {
+                monthlyStats[targetMonth] = { month: targetMonth, target: 0, actual: 0, expense: 0, netProfit: 0 };
+              }
+              monthlyStats[targetMonth].target += inst.amount;
+            });
+          } else {
+            const targetMonth = f.createdAt ? f.createdAt.toISOString().slice(0, 7) : now.toISOString().slice(0, 7);
+            const targetNet = f.totalAmount - (f.discount || 0);
+            if (!monthlyStats[targetMonth]) {
+              monthlyStats[targetMonth] = { month: targetMonth, target: 0, actual: 0, expense: 0, netProfit: 0 };
+            }
+            monthlyStats[targetMonth].target += targetNet;
+          }
+
+          f.payments.forEach(p => {
+            const payMonth = p.paidAt ? p.paidAt.toISOString().slice(0, 7) : now.toISOString().slice(0, 7);
+            if (!monthlyStats[payMonth]) {
+              monthlyStats[payMonth] = { month: payMonth, target: 0, actual: 0, expense: 0, netProfit: 0 };
+            }
+            monthlyStats[payMonth].actual += p.amount;
+          });
+        });
+
+        const allMonths = new Set([...Object.keys(monthlyStats), ...Object.keys(monthlyExpenses), ...Object.keys(customTargetsMap)]);
+        allMonths.forEach(m => {
+          if (!monthlyStats[m]) {
+            monthlyStats[m] = { month: m, target: 0, actual: 0, expense: 0, netProfit: 0 };
+          }
+          if (customTargetsMap[m] !== undefined) {
+            monthlyStats[m].target = customTargetsMap[m];
+          }
+          const expData = monthlyExpenses[m] || { total: 0 };
+          monthlyStats[m].expense = expData.total;
+          monthlyStats[m].netProfit = monthlyStats[m].actual - monthlyStats[m].expense;
+        });
+
+        const sortedRevenue = Object.values(monthlyStats).sort((a, b) => a.month.localeCompare(b.month));
+        sortedRevenue.forEach(r => {
+          fileContent += `${r.month},${r.target},${r.actual},${r.expense},${r.netProfit}\n`;
+        });
+        fileContent += "\n";
+
+        fileContent += "=== BATCH HEALTH SCORES ===\n";
+        fileContent += "Batch Name,Students Count,Avg Attendance %,Homework Submission %,Collection Rate %,Overall Health Score\n";
+        batchHealthScores.forEach(bh => {
+          fileContent += `"${bh.batchName.replace(/"/g, '""')}",${bh.studentCount},${bh.avgAttendance}%,${bh.submissionRate}%,${bh.collectionRate}%,${bh.healthScore}%\n`;
+        });
+        fileContent += "\n";
+
+        fileContent += "=== AT-RISK STUDENTS ALERTS ===\n";
+        fileContent += "Student Name,Batch,Attendance %,Overdue Fees,Pending Assignments,Flag Reasons\n";
+        atRisk.forEach(ar => {
+          fileContent += `"${ar.student.name.replace(/"/g, '""')}","${(ar.student.batch?.name || 'No Batch').replace(/"/g, '""')}",${ar.attendance}%,${ar.overdueFees},${ar.pendingAssignments},"${ar.reasons.replace(/"/g, '""')}"\n`;
+        });
+        fileContent += "\n";
+
+        fileContent += "=== TEACHER WORKLOAD & PRODUCTIVITY ===\n";
+        fileContent += "Teacher Name,Classes Taught,Assignments Created,Submissions Graded,Attendance Sessions Marked,Curriculum Completion %\n";
+        teacherLoad.forEach(tl => {
+          fileContent += `"${tl.teacher.name.replace(/"/g, '""')}",${tl.classesConducted},${tl.assignmentsCreated},${tl.submissionsGraded},${tl.attendanceSessionsMarked},${tl.curriculumCompletion}%\n`;
+        });
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=academy_full_report_${new Date().toISOString().slice(0, 10)}.csv`);
+        return res.status(200).send(fileContent);
+      }
+
       const csvStr = convertToCSV(reportData);
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', `attachment; filename=report_${tab}_${new Date().toISOString().slice(0, 10)}.csv`);
