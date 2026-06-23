@@ -11,6 +11,7 @@ const Schedule = require('../../models/Schedule');
 const DailyUpdate = require('../../models/DailyUpdate');
 const Holiday = require('../../models/Holiday');
 const Curriculum = require('../../models/Curriculum');
+const Batch = require('../../models/Batch');
 const { todayIST } = require('../../utils/dateHelper');
 const { escapeRegex } = require('../../utils/sanitize');
 const { calculateStudentsAttendance } = require('../../utils/attendanceHelper');
@@ -80,12 +81,6 @@ exports.getReports = async (req, res) => {
     if (batch !== 'all') studentQuery.batch = batch;
     if (course !== 'all') studentQuery.course = course;
 
-    // Filter students enrolled or created within the range
-    studentQuery.$or = [
-      { enrollmentDate: { $gte: startOfPeriod, $lte: endOfPeriod } },
-      { createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }
-    ];
-
     // Fetch filtered students
     const dbStudents = await Student.find(studentQuery)
       .populate('user', 'name status')
@@ -95,7 +90,12 @@ exports.getReports = async (req, res) => {
 
     // Active students count
     const activeCount = dbStudents.filter(s => s.user && s.user.status === 'active').length;
-    const newThisMonth = dbStudents.length;
+    const newThisMonth = dbStudents.filter(s => {
+      const enrollDate = s.enrollmentDate ? new Date(s.enrollmentDate) : null;
+      const createDate = s.createdAt ? new Date(s.createdAt) : null;
+      return (enrollDate && enrollDate >= startOfPeriod && enrollDate <= endOfPeriod) ||
+             (createDate && createDate >= startOfPeriod && createDate <= endOfPeriod);
+    }).length;
 
     // Collections & Outstandings calculations
     const fees = await Fee.find({ student: { $in: studentIds } });
@@ -339,10 +339,15 @@ exports.getReports = async (req, res) => {
     const weeklyHomeworkSubmitted = [];
     const weeklyHomeworkGraded = [];
 
-    // Fetch all assignments for batches in the student pool
-    const weeklyAssignments = await Assignment.find({
-      batch: { $in: [...new Set(dbStudents.map(s => s.batch?._id).filter(Boolean))] }
-    });
+    // Fetch assignments matching the selected batch/course filters
+    const assignmentFilter = {};
+    if (batch !== 'all') {
+      assignmentFilter.batch = batch;
+    } else if (course !== 'all') {
+      const courseBatches = await Batch.find({ course });
+      assignmentFilter.batch = { $in: courseBatches.map(b => b._id) };
+    }
+    const weeklyAssignments = await Assignment.find(assignmentFilter);
 
     for (let i = 3; i >= 0; i--) {
       const startOfWeek = new Date(now.getTime() - (i + 1) * 7 * 24 * 60 * 60 * 1000);
@@ -767,6 +772,9 @@ exports.getReports = async (req, res) => {
       const activeBatches = batch === 'all' ? batches : [batch];
 
       for (const b of activeBatches) {
+        const batchDoc = await Batch.findById(b);
+        const batchLabel = batchDoc ? batchDoc.name : b;
+
         const students = await Student.find({ batch: b }).populate('user', 'status');
         if (students.length === 0) continue;
 
@@ -775,7 +783,7 @@ exports.getReports = async (req, res) => {
           Attendance.find({ student: { $in: studentIds }, date: { $gte: startDate, $lte: endDate } }),
           Assignment.find({ batch: b, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }),
           Progress.find({ student: { $in: studentIds }, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }),
-          Fee.find({ student: { $in: studentIds }, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } })
+          Fee.find({ student: { $in: studentIds } })
         ]);
 
         let avgAttendance = 0;
@@ -808,7 +816,7 @@ exports.getReports = async (req, res) => {
         const healthScore = Math.round((avgAttendance + submissionRate + collectionRate) / 3);
 
         renderData.batchHealthScores.push({
-          batchName: b,
+          batchName: batchLabel,
           studentCount: students.length,
           avgAttendance,
           submissionRate,
@@ -817,14 +825,28 @@ exports.getReports = async (req, res) => {
         });
       }
 
-      // Populate At-Risk Students Alerts via aggregate queries (Issue 3.8)
-      const students = await Student.find(studentQuery).populate('user', 'name'); const studentIds = students.map(s => s._id);
+      // Populate At-Risk Students Alerts via queries matching active students in the selected batch/course
+      const atRiskStudentQuery = {};
+      if (batch !== 'all') atRiskStudentQuery.batch = batch;
+      if (course !== 'all') atRiskStudentQuery.course = course;
 
-      // Fetch fees and progress in parallel
+      const matchedStudents = await Student.find(atRiskStudentQuery)
+        .populate({
+          path: 'user',
+          match: { status: 'active' },
+          select: 'name status'
+        })
+        .populate('batch', 'name');
+
+      const activeStudents = matchedStudents.filter(s => s.user);
+      const studentIds = activeStudents.map(s => s._id);
+      const activeBatchIds = [...new Set(activeStudents.map(s => s.batch?._id || s.batch).filter(Boolean))];
+
+      // Fetch fees, progress, and all batch assignments in parallel
       const [feesList, progressList, allAssignments] = await Promise.all([
         Fee.find({ student: { $in: studentIds } }),
         Progress.find({ student: { $in: studentIds } }),
-        Assignment.find({ 'submissions.student': { $in: studentIds } })
+        Assignment.find({ batch: { $in: activeBatchIds } })
       ]);
 
       // Optimize Attendance calculation via aggregate join
@@ -853,38 +875,63 @@ exports.getReports = async (req, res) => {
       });
 
       const atRisk = [];
-      for (const s of students) {
+      const today = new Date();
+
+      for (const s of activeStudents) {
         const fee = feesList.find(f => String(f.student) === String(s._id));
         const progress = progressList.find(p => String(p.student) === String(s._id));
 
         const att = attendanceMap[s._id.toString()] || { total: 0, present: 0, pct: 0 };
         s.attendancePct = att.pct;
 
-        const dueAmount = fee ? Math.max(0, fee.totalAmount - (fee.discount || 0) - fee.paidAmount) : 0;
-        const isFeeOverdue = fee && dueAmount > 0 && fee.dueDate && new Date(fee.dueDate) < now;
+        // Calculate accurate overdue fees checking installments
+        let overdueAmount = 0;
+        let isFeeOverdue = false;
+        if (fee) {
+          if (fee.installments && fee.installments.length > 0) {
+            fee.installments.forEach(inst => {
+              if (inst.dueDate && new Date(inst.dueDate) < today) {
+                const unpaidInst = Math.max(0, inst.amount - (inst.paidAmount || 0));
+                if (unpaidInst > 0) {
+                  overdueAmount += unpaidInst;
+                  isFeeOverdue = true;
+                }
+              }
+            });
+          } else {
+            const totalDue = Math.max(0, fee.totalAmount - (fee.discount || 0) - fee.paidAmount);
+            if (totalDue > 0 && fee.dueDate && new Date(fee.dueDate) < today) {
+              overdueAmount = totalDue;
+              isFeeOverdue = true;
+            }
+          }
+        }
 
-        const ungradedSubmissionsCount = allAssignments.reduce((count, a) => {
-          const sub = a.submissions.find(sub => String(sub.student) === String(s._id) && sub.status !== 'graded');
-          return count + (sub ? 1 : 0);
+        // Calculate accurate pending/unsubmitted assignments
+        const studentAssignments = allAssignments.filter(a => String(a.batch?._id || a.batch) === String(s.batch?._id || s.batch));
+        const pendingAssignmentsCount = studentAssignments.reduce((count, a) => {
+          const sub = a.submissions.find(sub => String(sub.student) === String(s._id));
+          const isPendingOrUngraded = !sub || sub.status !== 'graded';
+          return count + (isPendingOrUngraded ? 1 : 0);
         }, 0);
 
         let riskReasons = [];
-        if (s.attendancePct < 75) {
+        if (att.total > 0 && s.attendancePct < 75) {
           riskReasons.push(`Low Attendance (${s.attendancePct}%)`);
         }
-        if (isFeeOverdue) {
-          riskReasons.push(`Overdue Fees (₹${dueAmount})`);
+        if (isFeeOverdue && overdueAmount > 0) {
+          riskReasons.push(`Overdue Fees (₹${overdueAmount.toLocaleString('en-IN')})`);
         }
-        if (ungradedSubmissionsCount >= 3) {
-          riskReasons.push(`${ungradedSubmissionsCount} unsubmitted/pending assignments`);
+        if (pendingAssignmentsCount >= 3) {
+          riskReasons.push(`${pendingAssignmentsCount} unsubmitted/pending assignments`);
         }
 
         if (riskReasons.length > 0) {
           atRisk.push({
             student: s,
             attendance: s.attendancePct,
-            overdueFees: dueAmount,
-            pendingAssignments: ungradedSubmissionsCount,
+            overdueFees: overdueAmount,
+            pendingAssignments: pendingAssignmentsCount,
             reasons: riskReasons.join(', ')
           });
         }

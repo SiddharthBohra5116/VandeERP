@@ -1219,7 +1219,7 @@ window.runReportsReady(() => {
               <% atRiskStudents.forEach(ar => { %>
                 <tr style="background: rgba(220, 53, 69, 0.05); border-left: 3px solid var(--red);">
                   <td class="td-name"><strong><%= ar.student.name %></strong></td>
-                  <td><%= ar.student.batch %></td>
+                  <td><%= ar.student.batch && ar.student.batch.name ? ar.student.batch.name : 'No Batch' %></td>
                   <td class="mono text-right <%= ar.attendance < 75 ? 'text-red fw-700' : '' %>"><%= ar.attendance %>%</td>
                   <td class="mono text-right <%= ar.overdueFees > 0 ? 'text-red fw-700' : '' %>">₹<%= ar.overdueFees.toLocaleString('en-IN') %></td>
                   <td class="mono text-right <%= ar.pendingAssignments >= 3 ? 'text-red fw-700' : '' %>"><%= ar.pendingAssignments %></td>
