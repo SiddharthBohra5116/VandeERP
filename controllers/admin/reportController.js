@@ -675,6 +675,17 @@ exports.getReports = async (req, res) => {
         count: convertedLeads.length
       };
 
+      // Lead Pipeline Aging
+      const openLeads = await Lead.find({ status: { $nin: ['admission_completed', 'lost'] } });
+      const aging = { fresh: 0, warm: 0, stale: 0 };
+      openLeads.forEach(l => {
+        const ageDays = Math.floor((now - new Date(l.createdAt)) / (1000 * 60 * 60 * 24));
+        if (ageDays <= 7) aging.fresh++;
+        else if (ageDays <= 15) aging.warm++;
+        else aging.stale++;
+      });
+      renderData.leadAging = aging;
+
       if (exportType === 'csv') {
         reportData = renderData.counsellorPerformance.map(cp => ({
           Counsellor: cp.counsellor.name,
@@ -998,6 +1009,50 @@ exports.getReports = async (req, res) => {
           submissionsGraded: gradedCount, // Submissions Graded
           attendanceSessionsMarked: attendanceSessions.length, // Attendance Sessions
           curriculumCompletion // Curriculum Completion %
+        });
+      }
+
+      // Also fetch counsellor performance metrics for toggle inside the staff tab
+      const stats = await Lead.aggregate([
+        {
+          $group: {
+            _id: '$assignedTo',
+            total: { $sum: 1 },
+            converted: { $sum: { $cond: [{ $eq: ['$status', 'admission_completed'] }, 1, 0] } },
+            contacted: { $sum: { $cond: [{ $eq: ['$status', 'contacted'] }, 1, 0] } },
+            interested: { $sum: { $cond: [{ $eq: ['$status', 'joining_interested'] }, 1, 0] } },
+            lost: { $sum: { $cond: [{ $eq: ['$status', 'lost'] }, 1, 0] } }
+          }
+        }
+      ]);
+
+      const counsellors = await User.find({ role: 'counsellor' });
+      for (const c of counsellors) {
+        const leadStat = stats.find(s => String(s._id) === String(c._id)) || { total: 0, converted: 0, contacted: 0, interested: 0, lost: 0 };
+        const leads = await Lead.find({ assignedTo: c._id });
+        const followUps = leads.reduce((sum, l) => sum + (l.followUpHistory ? l.followUpHistory.length : 0), 0);
+
+        const convertedLeads = leads.filter(l => l.status === 'admission_completed' && l.createdAt);
+        let avgDays = 0;
+        if (convertedLeads.length > 0) {
+          const totalDays = convertedLeads.reduce((sum, l) => {
+            const convDate = l.convertedAt || l.updatedAt;
+            const diffMs = new Date(convDate) - new Date(l.createdAt);
+            return sum + Math.max(0, diffMs / (1000 * 60 * 60 * 24));
+          }, 0);
+          avgDays = Math.round(totalDays / convertedLeads.length);
+        }
+
+        renderData.counsellorPerformance.push({
+          counsellor: c,
+          total: leadStat.total,
+          converted: leadStat.converted,
+          contacted: leadStat.contacted,
+          interested: leadStat.interested,
+          lost: leadStat.lost,
+          followUps,
+          conversionRate: leadStat.total > 0 ? Math.round((leadStat.converted / leadStat.total) * 100) : 0,
+          avgDays
         });
       }
     }

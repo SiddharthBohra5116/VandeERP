@@ -240,12 +240,12 @@
 
 <!-- Navigation Tab List -->
 <div class="analytics-tab-container">
-  <a href="/admin/reports?tab=overview&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'overview' ? 'active' : '' %>">📊 Overview</a>
+  <a href="/admin/reports?tab=overview&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'overview' ? 'active' : '' %>">✨ Overview</a>
   <a href="/admin/reports?tab=financial&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'financial' ? 'active' : '' %>">💰 Financial</a>
-  <a href="/admin/reports?tab=enrollment&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'enrollment' ? 'active' : '' %>">📈 Enrollment</a>
-  <a href="/admin/reports?tab=attendance&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'attendance' ? 'active' : '' %>">👥 Attendance</a>
+  <a href="/admin/reports?tab=enrollment&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'enrollment' ? 'active' : '' %>">🚀 Leads & Funnels</a>
+  <a href="/admin/reports?tab=attendance&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'attendance' ? 'active' : '' %>">📅 Attendance</a>
   <a href="/admin/reports?tab=academic&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'academic' ? 'active' : '' %>">🎓 Academic</a>
-  <a href="/admin/reports?tab=staff&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'staff' ? 'active' : '' %>">👩‍🏫 Staff</a>
+  <a href="/admin/reports?tab=staff&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'staff' ? 'active' : '' %>">🤝 Staff Performance</a>
 </div>
 
 <!-- ==================== TAB: OVERVIEW ==================== -->
@@ -650,26 +650,92 @@
   </div>
 <% } %>
 
-<!-- ==================== TAB: ENROLLMENT ==================== -->
+<!-- ==================== TAB: ENROLLMENT (LEADS & FUNNELS) ==================== -->
 <% if (tab === 'enrollment') { %>
+  <!-- Lead Funnel & Sources Grid -->
   <div class="grid-2" style="margin-bottom: 1.5rem;">
-    <!-- Counsellor Conversion Volumes -->
+    <!-- Lead Funnel -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">Counsellor Conversion Ratios</div>
+        <div class="card-title">Lead Conversion Funnel</div>
+        <p class="td-muted text-xs">Progression rate of leads through pipeline stages</p>
       </div>
-      <div style="padding: 1.25rem; min-height: 250px;">
-        <canvas id="counsellorConversionsChart" style="max-height: 230px; width: 100%;"></canvas>
+      <%
+        const funnel = charts.leadFunnel;
+        const leadsCount = funnel.Leads;
+        const contactedCount = funnel.Contacted;
+        const interestedCount = funnel.Interested;
+        const enrolledCount = funnel.Enrolled;
+
+        const contactedPct = leadsCount > 0 ? Math.round((contactedCount / leadsCount) * 100) : 0;
+        const interestedPct = leadsCount > 0 ? Math.round((interestedCount / leadsCount) * 100) : 0;
+        const enrolledPct = leadsCount > 0 ? Math.round((enrolledCount / leadsCount) * 100) : 0;
+      %>
+      <div class="funnel-wrapper" style="padding: 1.25rem;">
+        <div class="funnel-stage">
+          <div class="funnel-fill" style="width: 100%; background: rgba(59, 130, 246, 0.2);"></div>
+          <div class="funnel-content">
+            <span>Leads</span>
+            <span><%= leadsCount %> (100%)</span>
+          </div>
+        </div>
+        <div class="funnel-stage">
+          <div class="funnel-fill" <%= `style="width: ${contactedPct}%; background: rgba(234, 179, 8, 0.2);"` %>></div>
+          <div class="funnel-content">
+            <span>Contacted</span>
+            <span><%= contactedCount %> (<%= contactedPct %>%)</span>
+          </div>
+        </div>
+        <div class="funnel-stage">
+          <div class="funnel-fill" <%= `style="width: ${interestedPct}%; background: rgba(249, 115, 22, 0.2);"` %>></div>
+          <div class="funnel-content">
+            <span>Interested</span>
+            <span><%= interestedCount %> (<%= interestedPct %>%)</span>
+          </div>
+        </div>
+        <div class="funnel-stage">
+          <div class="funnel-fill" <%= `style="width: ${enrolledPct}%; background: rgba(16, 185, 129, 0.2);"` %>></div>
+          <div class="funnel-content">
+            <span>Enrolled</span>
+            <span><%= enrolledCount %> (<%= enrolledPct %>%)</span>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Counsellor Speed -->
+    <!-- Lead Acquisition Channels -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">Average Lead Conversion Time (Speed in Days)</div>
+        <div class="card-title">Lead Acquisition Channels</div>
+        <p class="td-muted text-xs">Distribution of leads across traffic sources</p>
       </div>
-      <div style="padding: 1.25rem; min-height: 250px;">
-        <canvas id="counsellorSpeedChart" style="max-height: 230px; width: 100%;"></canvas>
+      <div style="padding: 1.25rem; min-height: 250px; display: flex; justify-content: center; align-items: center;">
+        <canvas id="leadsChannelsPieChart" style="max-height: 220px; max-width: 220px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lead Aging Pipeline Statistics -->
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+      <div class="card-title">Lead Pipeline Aging (Open Inquiries)</div>
+      <p class="td-muted text-sm">Distribution of open, unconverted leads by days since creation.</p>
+    </div>
+    <div class="stats-grid" style="padding: 1.25rem; margin-bottom: 0;">
+      <div class="stat-card" style="border-top-color: var(--green);">
+        <div class="stat-label">Active / Fresh (0-7 days)</div>
+        <div class="stat-value"><%= leadAging.fresh %> leads</div>
+        <div class="stat-sub">Recent inquiries under active follow-up</div>
+      </div>
+      <div class="stat-card" style="border-top-color: var(--gold);">
+        <div class="stat-label">Warm (8-15 days)</div>
+        <div class="stat-value"><%= leadAging.warm %> leads</div>
+        <div class="stat-sub">Needs immediate attention / re-engagement</div>
+      </div>
+      <div class="stat-card" style="border-top-color: var(--red);">
+        <div class="stat-label">Stale / Aging (15+ days)</div>
+        <div class="stat-value"><%= leadAging.stale %> leads</div>
+        <div class="stat-sub">High risk of lead drop-off / conversion loss</div>
       </div>
     </div>
   </div>
@@ -702,51 +768,6 @@
         <div class="stat-sub">Total time to convert (<%= funnelVelocity.count %> converted)</div>
       </div>
     </div>
-  </div>
-
-  <!-- Counsellor Roster Table -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">Counsellor Performance Analytics</div>
-      <p class="td-muted text-sm">Overview of team conversions, follow-ups logged, and conversion speed.</p>
-    </div>
-    <% if (counsellorPerformance.length === 0) { %>
-      <div class="empty-state" style="padding: 3rem 1rem;">
-        <p>No active counsellors found.</p>
-      </div>
-    <% } else { %>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Counsellor</th>
-              <th class="text-right">Leads Assigned</th>
-              <th class="text-right">Follow-ups Logged</th>
-              <th class="text-right">Converted</th>
-              <th class="text-right">Lost</th>
-              <th class="text-right">Conversion Rate</th>
-              <th class="text-right">Avg Conversion Days</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% counsellorPerformance.forEach(c => { %>
-              <tr>
-                <td class="td-name">
-                  <%= c.counsellor.name %>
-                  <div class="td-muted text-xs"><%= c.counsellor.rollNumber %></div>
-                </td>
-                <td class="mono text-right"><%= c.total %></td>
-                <td class="mono text-right text-gold"><%= c.followUps %></td>
-                <td class="mono text-right text-green fw-600"><%= c.converted %></td>
-                <td class="mono text-right text-red"><%= c.lost %></td>
-                <td class="mono text-right fw-700 text-gold"><%= c.conversionRate %>%</td>
-                <td class="mono text-right"><%= c.avgDays %> days</td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
-      </div>
-    <% } %>
   </div>
 <% } %>
 
@@ -1242,54 +1263,179 @@ window.runReportsReady(() => {
 
 <!-- ==================== TAB: STAFF ==================== -->
 <% if (tab === 'staff') { %>
-  <div class="card" style="margin-bottom: 1.5rem;">
-    <div class="card-header">
-      <div class="card-title">Teacher Workload Visual Insights</div>
-      <p class="td-muted text-sm">Workload compared across classes, assignments, grading, attendance, and curriculum completion.</p>
+  <!-- Section Toggle Pills -->
+  <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: var(--card-bg); padding: 0.4rem; border-radius: 8px; border: 1px solid var(--border); width: fit-content;">
+    <button type="button" class="btn btn-sm btn-primary staff-view-btn" id="btn-staff-teachers" onclick="switchStaffView('teachers')" style="font-weight: 600; padding: 0.4rem 1rem; border-radius: 6px;">👩‍🏫 Teachers Workload</button>
+    <button type="button" class="btn btn-sm btn-ghost staff-view-btn" id="btn-staff-counsellors" onclick="switchStaffView('counsellors')" style="font-weight: 600; padding: 0.4rem 1rem; border-radius: 6px; color: var(--text-muted);">💼 Counsellors Performance</button>
+  </div>
+
+  <!-- TEACHERS SECTION -->
+  <div id="staff-teachers-section">
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <div class="card-header">
+        <div class="card-title">Teacher Workload Visual Insights</div>
+        <p class="td-muted text-sm">Workload compared across classes, assignments, grading, attendance, and curriculum completion.</p>
+      </div>
+      <div style="padding: 1rem; height: 340px; position: relative;">
+        <canvas id="teacherLoadChart"></canvas>
+      </div>
     </div>
-    <div style="padding: 1rem; height: 340px; position: relative;">
-      <canvas id="teacherLoadChart"></canvas>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Teacher Load & Productivity Metrics</div>
+        <p class="td-muted text-sm">Detailed 5-dimension workload data per teacher.</p>
+      </div>
+      <% if (teacherLoad.length === 0) { %>
+        <div class="empty-state">
+          <p>No active teachers found.</p>
+        </div>
+      <% } else { %>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Teacher Name</th>
+                <th class="text-right">Classes Taught</th>
+                <th class="text-right">Assignments Created</th>
+                <th class="text-right">Submissions Graded</th>
+                <th class="text-right">Attendance Sessions Marked</th>
+                <th class="text-right">Curriculum Completion</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% teacherLoad.forEach(tl => { %>
+                <tr>
+                  <td class="td-name"><strong><%= tl.teacher.name %></strong></td>
+                  <td class="mono text-right"><%= tl.classesConducted %></td>
+                  <td class="mono text-right"><%= tl.assignmentsCreated %></td>
+                  <td class="mono text-right"><%= tl.submissionsGraded %></td>
+                  <td class="mono text-right"><%= tl.attendanceSessionsMarked %></td>
+                  <td class="mono text-right text-gold"><%= tl.curriculumCompletion %>%</td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">Teacher Load & Productivity Metrics</div>
-      <p class="td-muted text-sm">Detailed 5-dimension workload data per teacher.</p>
+  <!-- COUNSELLORS SECTION (HIDDEN BY DEFAULT) -->
+  <div id="staff-counsellors-section" style="display: none;">
+    <div class="grid-2" style="margin-bottom: 1.5rem;">
+      <!-- Counsellor Conversion Volumes -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Counsellor Conversion Ratios</div>
+          <p class="td-muted text-xs">Comparison of conversion rate % and speed in days</p>
+        </div>
+        <div style="padding: 1.25rem; min-height: 250px;">
+          <canvas id="counsellorConversionsChart" style="max-height: 230px; width: 100%;"></canvas>
+        </div>
+      </div>
+
+      <!-- Funnel Velocity Summary -->
+      <div class="card" style="display: flex; flex-direction: column;">
+        <div class="card-header">
+          <div class="card-title">Funnel Velocity Summary</div>
+          <p class="td-muted text-xs">Stage-wise transition speeds</p>
+        </div>
+        <div style="padding: 1.25rem; flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border); padding-bottom: 6px; font-size: 0.82rem;">
+            <span style="color: var(--text-muted);">New ➔ Contacted</span>
+            <strong class="mono text-gold"><%= funnelVelocity.newToContacted %> days</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border); padding-bottom: 6px; font-size: 0.82rem;">
+            <span style="color: var(--text-muted);">Contacted ➔ Interested</span>
+            <strong class="mono text-orange"><%= funnelVelocity.contactedToInterested %> days</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border); padding-bottom: 6px; font-size: 0.82rem;">
+            <span style="color: var(--text-muted);">Interested ➔ Converted</span>
+            <strong class="mono text-blue"><%= funnelVelocity.interestedToConverted %> days</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding-top: 4px; font-size: 0.85rem; font-weight: 700;">
+            <span>Overall Cycle Time</span>
+            <span class="mono text-green"><%= funnelVelocity.overall %> days</span>
+          </div>
+        </div>
+      </div>
     </div>
-    <% if (teacherLoad.length === 0) { %>
-      <div class="empty-state">
-        <p>No active teachers found.</p>
+
+    <!-- Counsellor Roster Table -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Counsellor Performance Analytics</div>
+        <p class="td-muted text-sm">Overview of team conversions, follow-ups logged, and conversion speed.</p>
       </div>
-    <% } else { %>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Teacher Name</th>
-              <th class="text-right">Classes Taught</th>
-              <th class="text-right">Assignments Created</th>
-              <th class="text-right">Submissions Graded</th>
-              <th class="text-right">Attendance Sessions Marked</th>
-              <th class="text-right">Curriculum Completion</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% teacherLoad.forEach(tl => { %>
+      <% if (counsellorPerformance.length === 0) { %>
+        <div class="empty-state" style="padding: 3rem 1rem;">
+          <p>No active counsellors found.</p>
+        </div>
+      <% } else { %>
+        <div class="table-wrap">
+          <table>
+            <thead>
               <tr>
-                <td class="td-name"><strong><%= tl.teacher.name %></strong></td>
-                <td class="mono text-right"><%= tl.classesConducted %></td>
-                <td class="mono text-right"><%= tl.assignmentsCreated %></td>
-                <td class="mono text-right"><%= tl.submissionsGraded %></td>
-                <td class="mono text-right"><%= tl.attendanceSessionsMarked %></td>
-                <td class="mono text-right text-gold"><%= tl.curriculumCompletion %>%</td>
+                <th>Counsellor</th>
+                <th class="text-right">Leads Assigned</th>
+                <th class="text-right">Follow-ups Logged</th>
+                <th class="text-right">Converted</th>
+                <th class="text-right">Lost</th>
+                <th class="text-right">Conversion Rate</th>
+                <th class="text-right">Avg Conversion Days</th>
               </tr>
-            <% }) %>
-          </tbody>
-        </table>
-      </div>
-    <% } %>
+            </thead>
+            <tbody>
+              <% counsellorPerformance.forEach(c => { %>
+                <tr>
+                  <td class="td-name">
+                    <strong><%= c.counsellor.name %></strong>
+                    <div class="td-muted text-xs"><%= c.counsellor.rollNumber %></div>
+                  </td>
+                  <td class="mono text-right"><%= c.total %></td>
+                  <td class="mono text-right text-gold"><%= c.followUps %></td>
+                  <td class="mono text-right text-green fw-600"><%= c.converted %></td>
+                  <td class="mono text-right text-red"><%= c.lost %></td>
+                  <td class="mono text-right fw-700 text-gold"><%= c.conversionRate %>%</td>
+                  <td class="mono text-right"><%= c.avgDays %> days</td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
   </div>
+
+  <script>
+    function switchStaffView(view) {
+      const btnTeachers = document.getElementById('btn-staff-teachers');
+      const btnCounsellors = document.getElementById('btn-staff-counsellors');
+      const secTeachers = document.getElementById('staff-teachers-section');
+      const secCounsellors = document.getElementById('staff-counsellors-section');
+      
+      if (!btnTeachers || !btnCounsellors || !secTeachers || !secCounsellors) return;
+
+      if (view === 'teachers') {
+        btnTeachers.className = 'btn btn-sm btn-primary staff-view-btn';
+        btnTeachers.style.color = 'var(--text)';
+        btnCounsellors.className = 'btn btn-sm btn-ghost staff-view-btn';
+        btnCounsellors.style.color = 'var(--text-muted)';
+        
+        secTeachers.style.display = 'block';
+        secCounsellors.style.display = 'none';
+      } else {
+        btnTeachers.className = 'btn btn-sm btn-ghost staff-view-btn';
+        btnTeachers.style.color = 'var(--text-muted)';
+        btnCounsellors.className = 'btn btn-sm btn-primary staff-view-btn';
+        btnCounsellors.style.color = 'var(--text)';
+        
+        secTeachers.style.display = 'none';
+        secCounsellors.style.display = 'block';
+      }
+    }
+  </script>
 <% } %>
 
 <textarea id="reports-charts-data" style="display: none;"><%- JSON.stringify({
@@ -1710,67 +1856,38 @@ window.runReportsReady(() => {
 window.runReportsReady(() => {
   const reportsData = window.reportsData;
   const textColor = window.chartTextColor;
-  const gridColor = window.chartGridColor;
 
-  const cPerf = reportsData.counsellorPerformance || [];
-  const cNames = cPerf.map(c => c.counsellor.name);
-  const cAssigned = cPerf.map(c => c.total);
-  const cConverted = cPerf.map(c => c.converted);
-  const cSpeeds = cPerf.map(c => c.avgDays);
+  const chanLabels = reportsData.charts?.leadSources?.labels || [];
+  const chanValues = reportsData.charts?.leadSources?.values || [];
 
-  // Counsellor comparison (conversion rate & avg days to convert)
-  const cRates = cPerf.map(c => c.conversionRate);
-  new Chart(document.getElementById('counsellorConversionsChart').getContext('2d'), {
-    type: 'bar',
+  new Chart(document.getElementById('leadsChannelsPieChart').getContext('2d'), {
+    type: 'pie',
     data: {
-      labels: cNames,
-      datasets: [
-        {
-          label: 'Conversion Rate %',
-          data: cRates,
-          backgroundColor: 'rgba(16, 185, 129, 0.8)', // Green
-          borderRadius: 4,
-          yAxisID: 'y'
-        },
-        {
-          label: 'Avg Conversion (Days)',
-          data: cSpeeds,
-          backgroundColor: 'rgba(234, 179, 8, 0.8)', // Yellow
-          borderRadius: 4,
-          yAxisID: 'y1'
-        }
-      ]
+      labels: chanLabels,
+      datasets: [{
+        data: chanValues,
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.8)',  // Blue
+          'rgba(16, 185, 129, 0.8)',  // Green
+          'rgba(234, 179, 8, 0.8)',   // Yellow
+          'rgba(249, 115, 22, 0.8)',  // Orange
+          'rgba(139, 92, 246, 0.8)',  // Purple
+          'rgba(236, 72, 153, 0.8)'   // Pink
+        ],
+        borderWidth: 1
+      }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom', labels: { color: textColor } } },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: textColor } },
-        y: { 
-          type: 'linear',
-          position: 'left',
-          grid: { color: gridColor }, 
-          ticks: { color: textColor, callback: function(value) { return value + '%'; } },
-          title: { display: true, text: 'Conversion Rate', color: textColor }
-        },
-        y1: {
-          type: 'linear',
+      plugins: {
+        legend: {
           position: 'right',
-          grid: { drawOnChartArea: false },
-          ticks: { color: textColor, precision: 0 },
-          title: { display: true, text: 'Avg Days to Convert', color: textColor }
+          labels: { color: textColor, boxWidth: 12, font: { size: 10 } }
         }
       }
     }
   });
-
-  // Hide or reuse counsellorSpeedChart container if it exists
-  const speedChartEl = document.getElementById('counsellorSpeedChart');
-  if (speedChartEl) {
-    const parentCard = speedChartEl.closest('.card');
-    if (parentCard) parentCard.style.display = 'none';
-  }
 });
 </script>
 <% } %>
@@ -1864,45 +1981,101 @@ window.runReportsReady(() => {
 </script>
 <% } %>
 
-<% if (tab === 'staff' && typeof teacherLoad !== 'undefined' && teacherLoad.length > 0) { %>
+<% if (tab === 'staff') { %>
 <script>
 window.runReportsReady(() => {
   const reportsData = window.reportsData;
   const gridColor = window.chartGridColor;
   const textColor = window.chartTextColor;
 
+  // 1. Teachers Workload Chart
   const tLoad = reportsData.teacherLoad || [];
-  const tNames = tLoad.map(tl => tl.teacher.name);
-
-  new Chart(document.getElementById('teacherLoadChart').getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels: ['Classes Taught', 'Assignments Created', 'Submissions Graded', 'Attendance Sessions Marked', 'Curriculum Completion %'],
-      datasets: tLoad.map((tl, index) => {
-        const colors = [
-          'rgba(59, 130, 246, 0.85)', // Blue
-          'rgba(16, 185, 129, 0.85)', // Green
-          'rgba(234, 179, 8, 0.85)',  // Yellow
-          'rgba(249, 115, 22, 0.85)'   // Orange
-        ];
-        return {
-          label: tl.teacher.name,
-          data: [tl.classesConducted, tl.assignmentsCreated, tl.submissionsGraded, tl.attendanceSessionsMarked, tl.curriculumCompletion],
-          backgroundColor: colors[index % colors.length],
-          borderRadius: 4
-        };
-      })
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom', labels: { color: textColor } } },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: textColor } },
-        y: { grid: { color: gridColor }, ticks: { color: textColor, precision: 0 } }
+  const teacherChartEl = document.getElementById('teacherLoadChart');
+  if (teacherChartEl && tLoad.length > 0) {
+    new Chart(teacherChartEl.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: ['Classes Taught', 'Assignments Created', 'Submissions Graded', 'Attendance Sessions Marked', 'Curriculum Completion %'],
+        datasets: tLoad.map((tl, index) => {
+          const colors = [
+            'rgba(59, 130, 246, 0.85)', // Blue
+            'rgba(16, 185, 129, 0.85)', // Green
+            'rgba(234, 179, 8, 0.85)',  // Yellow
+            'rgba(249, 115, 22, 0.85)'   // Orange
+          ];
+          return {
+            label: tl.teacher.name,
+            data: [tl.classesConducted, tl.assignmentsCreated, tl.submissionsGraded, tl.attendanceSessionsMarked, tl.curriculumCompletion],
+            backgroundColor: colors[index % colors.length],
+            borderRadius: 4
+          };
+        })
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: textColor } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: textColor } },
+          y: { grid: { color: gridColor }, ticks: { color: textColor, precision: 0 } }
+        }
       }
-    }
-  });
+    });
+  }
+
+  // 2. Counsellor Conversions Chart
+  const cPerf = reportsData.counsellorPerformance || [];
+  const counsellorChartEl = document.getElementById('counsellorConversionsChart');
+  if (counsellorChartEl && cPerf.length > 0) {
+    const cNames = cPerf.map(c => c.counsellor.name);
+    const cSpeeds = cPerf.map(c => c.avgDays);
+    const cRates = cPerf.map(c => c.conversionRate);
+
+    new Chart(counsellorChartEl.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: cNames,
+        datasets: [
+          {
+            label: 'Conversion Rate %',
+            data: cRates,
+            backgroundColor: 'rgba(16, 185, 129, 0.8)', // Green
+            borderRadius: 4,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Avg Conversion (Days)',
+            data: cSpeeds,
+            backgroundColor: 'rgba(234, 179, 8, 0.8)', // Yellow
+            borderRadius: 4,
+            yAxisID: 'y1'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: textColor } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: textColor } },
+          y: { 
+            type: 'linear',
+            position: 'left',
+            grid: { color: gridColor }, 
+            ticks: { color: textColor, callback: function(value) { return value + '%'; } },
+            title: { display: true, text: 'Conversion Rate', color: textColor }
+          },
+          y1: {
+            type: 'linear',
+            position: 'right',
+            grid: { drawOnChartArea: false },
+            ticks: { color: textColor, precision: 0 },
+            title: { display: true, text: 'Avg Days to Convert', color: textColor }
+          }
+        }
+      }
+    });
+  }
 });
 </script>
 <% } %>
