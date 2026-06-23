@@ -8,6 +8,7 @@ const Fee = require('../../models/Fee');
 
 const { escapeRegex } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
+const { USER_STATUSES } = require('../../config/constants');
 
 function getRoleRedirect(role, queryParams = '') {
   const map = {
@@ -19,6 +20,22 @@ function getRoleRedirect(role, queryParams = '') {
 
   const base = map[role] || '/admin/dashboard';
   return queryParams ? `${base}${queryParams}` : base;
+}
+
+async function getUserFormOptions() {
+  const [courses, batches, teachers, counsellors] = await Promise.all([
+    Course.find({ isActive: true }).sort({ name: 1 }),
+    Batch.find({ isActive: true }).populate('course', 'name code').sort({ name: 1 }),
+    Teacher.find().populate('user', 'name status').sort({ createdAt: -1 }),
+    Counsellor.find().populate('user', 'name status').sort({ createdAt: -1 })
+  ]);
+
+  return {
+    courses,
+    batches,
+    teachers: teachers.filter(profile => profile.user && profile.user.status === 'active'),
+    counsellors: counsellors.filter(profile => profile.user && profile.user.status === 'active')
+  };
 }
 
 
@@ -76,18 +93,14 @@ exports.getUsers = async (req, res) => {
 // GET /admin/users/create
 exports.getCreateUser = async (req, res) => {
   try {
-    const [courses, batches] = await Promise.all([
-      Course.find({ isActive: true }).sort({ name: 1 }),
-      Batch.find({ isActive: true }).populate('course', 'name code').sort({ name: 1 })
-    ]);
+    const formOptions = await getUserFormOptions();
 
     res.render('admin/user-form', {
       title: 'Add User',
       user: req.user,
       target: null,
       defaultRole: req.query.role || '',
-      courses,
-      batches
+      ...formOptions
     });
 
   } catch (err) {
@@ -167,6 +180,8 @@ exports.postCreateUser = async (req, res) => {
         course: data.course || null,
         batch: data.batch || null,
         enrollmentDate: data.enrollmentDate || Date.now(),
+        highestQualification: data.highestQualification || '',
+        referralSource: data.referralSource || '',
 
         fees_total: Number(data.fees_total) || 0,
         fees_paid: Number(data.fees_paid) || 0,
@@ -229,6 +244,8 @@ exports.postCreateUser = async (req, res) => {
         user: newUser._id,
         qualification: data.qualification || '',
         experienceYears: Number(data.experienceYears) || 0,
+        salary: Number(data.salary) || 0,
+        joiningDate: data.joiningDate || Date.now(),
         courses: data.course ? [data.course] : []
       });
     }
@@ -279,9 +296,8 @@ exports.getEditUser = async (req, res) => {
       return res.redirect('/admin/dashboard');
     }
 
-    const [courses, batches, studentProfile, teacherProfile, counsellorProfile] = await Promise.all([
-      Course.find({ isActive: true }).sort({ name: 1 }),
-      Batch.find({ isActive: true }).populate('course', 'name code').sort({ name: 1 }),
+    const [formOptions, studentProfile, teacherProfile, counsellorProfile] = await Promise.all([
+      getUserFormOptions(),
       Student.findOne({ user: target._id }),
       Teacher.findOne({ user: target._id }),
       Counsellor.findOne({ user: target._id })
@@ -292,8 +308,7 @@ exports.getEditUser = async (req, res) => {
       user: req.user,
       target,
       defaultRole: target.role,
-      courses,
-      batches,
+      ...formOptions,
       studentProfile,
       teacherProfile,
       counsellorProfile
@@ -368,6 +383,10 @@ exports.postEditUser = async (req, res) => {
     targetUser.address = data.address || '';
     targetUser.city = data.city || '';
     targetUser.dob = data.dob || null;
+    targetUser.socialHandle = {
+      ...targetUser.socialHandle?.toObject?.(),
+      instagram: data.socialHandle || ''
+    };
 
     if (req.file) {
       targetUser.profilePic = `/files/${req.file.filename}`;
@@ -376,38 +395,38 @@ exports.postEditUser = async (req, res) => {
     await targetUser.save();
 
     if (targetUser.role === 'student') {
+      const studentUpdate = {
+        counsellor: data.counsellor || null,
+        teacher: data.teacher || null,
+        course: data.course || null,
+        batch: data.batch || null,
+        family: {
+          father: {
+            name: data.fatherName || '',
+            phone: data.fatherPhone || ''
+          },
+          mother: {
+            name: data.motherName || '',
+            phone: data.motherPhone || ''
+          },
+          guardian: {
+            name: data.guardianName || '',
+            relation: data.guardianRelation || '',
+            phone: data.guardianPhone || ''
+          }
+        },
+        highestQualification: data.highestQualification || '',
+        referralSource: data.referralSource || ''
+      };
+
+      if (data.enrollmentDate) studentUpdate.enrollmentDate = data.enrollmentDate;
+      if (data.fees_total !== undefined && data.fees_total !== '') studentUpdate.fees_total = Number(data.fees_total);
+      if (data.fees_paid !== undefined && data.fees_paid !== '') studentUpdate.fees_paid = Number(data.fees_paid);
+      if (req.file) studentUpdate['documents.profilePic'] = `/files/${req.file.filename}`;
+
       await Student.findOneAndUpdate(
         { user: targetUser._id },
-        {
-          counsellor: data.counsellor || null,
-          teacher: data.teacher || null,
-          course: data.course || null,
-          batch: data.batch || null,
-          enrollmentDate: data.enrollmentDate || Date.now(),
-
-          fees_total: Number(data.fees_total) || 0,
-          fees_paid: Number(data.fees_paid) || 0,
-
-          family: {
-            father: {
-              name: data.fatherName || '',
-              phone: data.fatherPhone || ''
-            },
-            mother: {
-              name: data.motherName || '',
-              phone: data.motherPhone || ''
-            },
-            guardian: {
-              name: data.guardianName || '',
-              relation: data.guardianRelation || '',
-              phone: data.guardianPhone || ''
-            }
-          },
-
-          ...(req.file ? {
-            'documents.profilePic': `/files/${req.file.filename}`
-          } : {})
-        },
+        studentUpdate,
         {
           new: true,
           upsert: true
@@ -421,6 +440,8 @@ exports.postEditUser = async (req, res) => {
         {
           qualification: data.qualification || '',
           experienceYears: Number(data.experienceYears) || 0,
+          salary: Number(data.salary) || 0,
+          ...(data.joiningDate ? { joiningDate: data.joiningDate } : {}),
           courses: data.course ? [data.course] : []
         },
         {
@@ -487,5 +508,35 @@ exports.toggleUserStatus = async (req, res) => {
   } catch (err) {
     logger.error('toggleUserStatus Error', { err: err.message });
     res.redirect('/admin/dashboard?error=1');
+  }
+};
+
+// POST /admin/users/:id/status
+exports.setUserStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    const nextStatus = String(req.body.status || '').trim().toLowerCase();
+
+    if (!user) {
+      return res.status(404).redirect('/admin/users?error=User%20not%20found');
+    }
+
+    if (!USER_STATUSES.includes(nextStatus)) {
+      return res.redirect(getRoleRedirect(user.role, '?error=Invalid%20account%20status'));
+    }
+
+    user.status = nextStatus;
+    await user.save();
+
+    logger.info('Admin updated user status', {
+      userId: user._id,
+      role: user.role,
+      status: nextStatus
+    });
+
+    return res.redirect(getRoleRedirect(user.role, '?updated=1'));
+  } catch (err) {
+    logger.error('setUserStatus Error', { err: err.message, userId: req.params.id });
+    return res.redirect('/admin/users?error=Unable%20to%20update%20status');
   }
 };

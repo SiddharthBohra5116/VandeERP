@@ -276,6 +276,11 @@ exports.postAddPayment = async (req, res) => {
         sender: req.user._id,
         recipient: student.user._id,
         content: `Payment received: Rs. ${amt.toLocaleString('en-IN')} has been added to your fee ledger.`
+      }).catch(notificationErr => {
+        logger.warn('Payment saved but student notification failed', {
+          studentId: req.params.studentId,
+          error: notificationErr.message
+        });
       });
     }
 
@@ -366,6 +371,11 @@ exports.postUpdateFee = async (req, res) => {
         sender: req.user._id,
         recipient: student.user._id,
         content: 'Your fee ledger has been updated. Please review your latest installments and due dates.'
+      }).catch(notificationErr => {
+        logger.warn('Fee ledger saved but student notification failed', {
+          studentId: req.params.studentId,
+          error: notificationErr.message
+        });
       });
     }
 

@@ -75,10 +75,17 @@ exports.getProgress = async (req, res) => {
     ])).map(id => new mongoose.Types.ObjectId(id));
 
     const teacherProfile = await Teacher.findById(req.user.teacherProfileId);
-    
-    const [batches, courses, teacherSchedules] = await Promise.all([
-      Batch.find({ _id: { $in: allAssignedBatchIds }, isActive: true }).select('name course'),
-      Course.find({ _id: { $in: teacherProfile ? teacherProfile.courses : [] } }).select('name'),
+    const batches = await Batch.find({ _id: { $in: allAssignedBatchIds }, isActive: true }).select('name course');
+
+    const assignedCoursesFromBatches = batches.map(b => b.course ? b.course.toString() : null).filter(Boolean);
+    const profileCourseIds = teacherProfile && teacherProfile.courses 
+      ? teacherProfile.courses.map(id => id.toString()) 
+      : [];
+
+    const allCourseIds = Array.from(new Set([...profileCourseIds, ...assignedCoursesFromBatches]));
+
+    const [courses, teacherSchedules] = await Promise.all([
+      Course.find({ _id: { $in: allCourseIds } }).select('name'),
       Schedule.find({ teacher: req.user.teacherProfileId })
         .populate('batch', 'name')
         .populate('course', 'name')

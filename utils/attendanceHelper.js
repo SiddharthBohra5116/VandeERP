@@ -99,7 +99,7 @@ async function calculateStudentsAttendance(students, allAttendanceRecords, today
   students.forEach(u => {
     const id = getStudentKey(u);
     const stats = studentMap[id] || { total: 0, present: 0, absent: 0, late: 0, lastAbsenceDate: null };
-    u.attendancePct = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 100;
+    u.attendancePct = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
     u.isMarkedToday = markedTodaySet.has(id);
     const todayRecord = (todayRecords || []).find(r => {
       const recordStudentId = r.student && r.student._id ? r.student._id.toString() : (r.student ? r.student.toString() : '');

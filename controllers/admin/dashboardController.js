@@ -6,7 +6,6 @@ const Schedule = require('../../models/Schedule');
 const Attendance = require('../../models/Attendance');
 const Assignment = require('../../models/Assignment');
 const LeaveRequest = require('../../models/LeaveRequest');
-const Message = require('../../models/Message');
 
 const { todayIST } = require('../../utils/dateHelper');
 const { calculateStudentsAttendance } = require('../../utils/attendanceHelper');
@@ -122,14 +121,6 @@ exports.getDashboard = async (req, res) => {
       });
     });
 
-    // Messages
-    const messages = await Message.find({
-      recipient: req.user._id
-    })
-      .populate('sender', 'name role')
-      .sort({ createdAt: -1 })
-      .limit(10);
-
     // Recent students
     const recentStudents = await Student.find()
       .populate('user', 'name email phone status profilePic')
@@ -174,8 +165,7 @@ exports.getDashboard = async (req, res) => {
       },
       recentStudents,
       hotLeads,
-      resetRequests,
-      messages
+      resetRequests
     });
 
   } catch (err) {

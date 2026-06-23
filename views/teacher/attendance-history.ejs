@@ -13,6 +13,12 @@
   let lateCount = records.filter(r => r.status === 'late').length;
   let presentRate = totalLogs ? Math.round((presentCount / totalLogs) * 100) : 0;
   let sessionCount = sessions.length;
+  const activeRangeLabel = filter.month
+    ? new Date(`${filter.month}-01`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+    : ({ last_7: 'Last 7 days', this_month: 'This month', last_30: 'Last 30 days', all: 'All time' }[filter.range] || 'This month');
+  const cleanSessionCount = sessions.filter(s => s.absentCount === 0 && s.lateCount === 0).length;
+  const followUpSessionCount = sessions.filter(s => s.absentCount > 0 || s.lateCount > 0).length;
+  const highestAbsenceSession = sessions.reduce((max, s) => !max || s.absentCount > max.absentCount ? s : max, null);
 %>
 
 <style>
@@ -387,6 +393,86 @@
     font-family: var(--mono);
   }
 
+  .attendance-insight-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .attendance-insight {
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: rgba(255,255,255,0.025);
+    padding: 0.85rem 0.95rem;
+  }
+
+  .attendance-insight span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+
+  .attendance-insight strong {
+    display: block;
+    color: var(--text);
+    font-size: 1.35rem;
+    font-family: var(--font-display);
+    line-height: 1.1;
+  }
+
+  .attendance-insight small {
+    display: block;
+    color: var(--text-sub);
+    font-size: 0.76rem;
+    margin-top: 0.32rem;
+    overflow-wrap: anywhere;
+  }
+
+  .history-filter-strip {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.65fr) minmax(0, 1.35fr);
+    gap: 0.8rem;
+    align-items: stretch;
+  }
+
+  .active-view-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background:
+      linear-gradient(180deg, rgba(255,204,0,0.08), rgba(255,255,255,0.018)),
+      var(--bg-card);
+    padding: 0.85rem;
+  }
+
+  .active-view-card span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.45rem;
+  }
+
+  .active-view-card strong {
+    color: var(--gold);
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+  }
+
+  .active-view-card p {
+    margin: 0.45rem 0 0;
+    color: var(--text-sub);
+    font-size: 0.76rem;
+    line-height: 1.4;
+  }
+
   .attendance-history-overview .stats-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.8rem;
@@ -461,6 +547,30 @@
     font-size: 0.78rem;
   }
 
+  .sessions-tools {
+    flex: 0 1 340px;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  .sessions-search {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+    color: var(--text);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.82rem;
+  }
+
+  .sessions-search:focus {
+    outline: none;
+    border-color: var(--gold-border);
+    box-shadow: 0 0 0 3px var(--gold-dim);
+  }
+
   .session-card-list {
     display: grid;
   }
@@ -482,6 +592,18 @@
 
   .session-card:hover {
     background: rgba(255,204,0,0.035);
+  }
+
+  .session-card.is-attention {
+    background:
+      linear-gradient(90deg, rgba(239,68,68,0.065), transparent 44%),
+      transparent;
+  }
+
+  .session-card.is-clean {
+    background:
+      linear-gradient(90deg, rgba(34,197,94,0.055), transparent 42%),
+      transparent;
   }
 
   .session-date-block strong {
@@ -532,11 +654,40 @@
 
   .session-action {
     justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .session-attention-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0.25rem 0.55rem;
+    border: 1px solid rgba(239,68,68,0.24);
+    border-radius: 999px;
+    background: rgba(239,68,68,0.08);
+    color: var(--red);
+    font-size: 0.68rem;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .sessions-no-match {
+    display: none;
+    padding: 2.5rem 1rem;
+    text-align: center;
+    color: var(--text-sub);
+    border-top: 1px solid var(--border);
   }
 
   @media (max-width: 1100px) {
     .attendance-history-overview .stats-grid,
-    .attendance-history-overview .premium-filter-bar {
+    .attendance-history-overview .premium-filter-bar,
+    .attendance-insight-grid,
+    .history-filter-strip {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
@@ -549,6 +700,7 @@
     .session-action .btn {
       width: 100%;
       justify-self: stretch;
+      justify-content: stretch;
     }
   }
 
@@ -558,8 +710,19 @@
     }
 
     .attendance-history-overview .stats-grid,
-    .attendance-history-overview .premium-filter-bar {
+    .attendance-history-overview .premium-filter-bar,
+    .attendance-insight-grid,
+    .history-filter-strip {
       grid-template-columns: 1fr;
+    }
+
+    .sessions-board-header {
+      flex-direction: column;
+    }
+
+    .sessions-tools {
+      width: 100%;
+      flex-basis: auto;
     }
   }
 </style>
@@ -572,6 +735,24 @@
         <p>Track class sessions, absence patterns, late checks, and session rosters from one place.</p>
       </div>
       <div class="history-health-chip">Current view rate <strong><%= presentRate %>%</strong></div>
+    </div>
+
+    <div class="attendance-insight-grid">
+      <div class="attendance-insight">
+        <span>Needs follow-up</span>
+        <strong><%= followUpSessionCount %></strong>
+        <small>Sessions with absent or late students</small>
+      </div>
+      <div class="attendance-insight">
+        <span>Clean sessions</span>
+        <strong><%= cleanSessionCount %></strong>
+        <small>No absent or late marks</small>
+      </div>
+      <div class="attendance-insight">
+        <span>Highest absence</span>
+        <strong><%= highestAbsenceSession ? highestAbsenceSession.absentCount : 0 %></strong>
+        <small><%= highestAbsenceSession ? `${highestAbsenceSession.date} · ${highestAbsenceSession.batchName}` : 'No sessions in this view' %></small>
+      </div>
     </div>
 
     <div class="stats-grid">
@@ -597,46 +778,56 @@
       </div>
     </div>
 
-    <div class="range-chip-row">
-      <a href="/teacher/attendance/history?range=last_7<%= filter.course ? '&course=' + filter.course : '' %><%= filter.batch ? '&batch=' + filter.batch : '' %>" class="btn btn-sm <%= filter.range === 'last_7' ? 'btn-primary' : 'btn-ghost' %>">Last 7 days</a>
-      <a href="/teacher/attendance/history?range=this_month<%= filter.course ? '&course=' + filter.course : '' %><%= filter.batch ? '&batch=' + filter.batch : '' %>" class="btn btn-sm <%= filter.range === 'this_month' ? 'btn-primary' : 'btn-ghost' %>">This month</a>
-      <a href="/teacher/attendance/history?range=last_30<%= filter.course ? '&course=' + filter.course : '' %><%= filter.batch ? '&batch=' + filter.batch : '' %>" class="btn btn-sm <%= filter.range === 'last_30' ? 'btn-primary' : 'btn-ghost' %>">Last 30 days</a>
-      <a href="/teacher/attendance/history?range=all<%= filter.course ? '&course=' + filter.course : '' %><%= filter.batch ? '&batch=' + filter.batch : '' %>" class="btn btn-sm <%= filter.range === 'all' ? 'btn-primary' : 'btn-ghost' %>">All time</a>
-    </div>
-
-    <form method="GET" action="/teacher/attendance/history" class="filter-bar filter-form-container" style="margin:0;">
-      <div class="premium-filter-bar">
-        <input type="hidden" name="range" value="<%= filter.range || 'this_month' %>">
-        <div class="premium-filter-group">
-          <label for="historyCourseSelect" class="premium-filter-label">Course</label>
-          <select name="course" id="historyCourseSelect" class="premium-select">
-            <option value="">All Courses</option>
-            <% courses.forEach(c => { %>
-              <option value="<%= c._id %>" <%= String(filter.course) === String(c._id) ? 'selected' : '' %>><%= c.name %></option>
-            <% }) %>
-          </select>
-        </div>
-
-        <div class="premium-filter-group">
-          <label for="historyBatchSelect" class="premium-filter-label">Batch</label>
-          <select name="batch" id="historyBatchSelect" class="premium-select">
-            <option value="">All Batches</option>
-            <% batches.forEach(b => { %>
-              <option value="<%= b._id %>" <%= String(filter.batch) === String(b._id) ? 'selected' : '' %>><%= b.name %></option>
-            <% }) %>
-          </select>
-        </div>
-
-        <div class="premium-filter-group">
-          <label for="historyMonthInput" class="premium-filter-label">Month</label>
-          <input type="month" name="month" id="historyMonthInput" class="premium-input" value="<%= filter.month || '' %>">
-        </div>
-
-        <div style="display:flex; gap:0.5rem; align-items:flex-end; justify-content: flex-end;">
-          <a href="/teacher/attendance/history" class="btn btn-ghost btn-sm" style="padding: 0.65rem 1.25rem; border-color: var(--border);">Reset</a>
-        </div>
+    <div class="history-filter-strip">
+      <div class="active-view-card">
+        <span>Current view</span>
+        <strong><%= activeRangeLabel %></strong>
+        <p><%= sessionCount %> sessions and <%= totalLogs %> attendance entries are included.</p>
       </div>
-    </form>
+
+      <div>
+        <div class="range-chip-row">
+          <a href="/teacher/attendance/history?range=last_7<%= filter.course ? '&course=' + filter.course : '' %><%= filter.batch ? '&batch=' + filter.batch : '' %>" class="btn btn-sm <%= filter.range === 'last_7' ? 'btn-primary' : 'btn-ghost' %>">Last 7 days</a>
+          <a href="/teacher/attendance/history?range=this_month<%= filter.course ? '&course=' + filter.course : '' %><%= filter.batch ? '&batch=' + filter.batch : '' %>" class="btn btn-sm <%= filter.range === 'this_month' ? 'btn-primary' : 'btn-ghost' %>">This month</a>
+          <a href="/teacher/attendance/history?range=last_30<%= filter.course ? '&course=' + filter.course : '' %><%= filter.batch ? '&batch=' + filter.batch : '' %>" class="btn btn-sm <%= filter.range === 'last_30' ? 'btn-primary' : 'btn-ghost' %>">Last 30 days</a>
+          <a href="/teacher/attendance/history?range=all<%= filter.course ? '&course=' + filter.course : '' %><%= filter.batch ? '&batch=' + filter.batch : '' %>" class="btn btn-sm <%= filter.range === 'all' ? 'btn-primary' : 'btn-ghost' %>">All time</a>
+        </div>
+
+        <form method="GET" action="/teacher/attendance/history" class="filter-bar filter-form-container" style="margin:0;">
+          <div class="premium-filter-bar">
+            <input type="hidden" name="range" value="<%= filter.range || 'this_month' %>">
+            <div class="premium-filter-group">
+              <label for="historyCourseSelect" class="premium-filter-label">Course</label>
+              <select name="course" id="historyCourseSelect" class="premium-select">
+                <option value="">All Courses</option>
+                <% courses.forEach(c => { %>
+                  <option value="<%= c._id %>" <%= String(filter.course) === String(c._id) ? 'selected' : '' %>><%= c.name %></option>
+                <% }) %>
+              </select>
+            </div>
+
+            <div class="premium-filter-group">
+              <label for="historyBatchSelect" class="premium-filter-label">Batch</label>
+              <select name="batch" id="historyBatchSelect" class="premium-select">
+                <option value="">All Batches</option>
+                <% batches.forEach(b => { %>
+                  <option value="<%= b._id %>" <%= String(filter.batch) === String(b._id) ? 'selected' : '' %>><%= b.name %></option>
+                <% }) %>
+              </select>
+            </div>
+
+            <div class="premium-filter-group">
+              <label for="historyMonthInput" class="premium-filter-label">Month</label>
+              <input type="month" name="month" id="historyMonthInput" class="premium-input" value="<%= filter.month || '' %>">
+            </div>
+
+            <div style="display:flex; gap:0.5rem; align-items:flex-end; justify-content: flex-end;">
+              <a href="/teacher/attendance/history" class="btn btn-ghost btn-sm" style="padding: 0.65rem 1.25rem; border-color: var(--border);">Reset</a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
   </section>
 
 <div class="sessions-board" id="results-container">
@@ -645,7 +836,10 @@
       <h3>Class Session Log</h3>
       <p>Open any session to inspect the full roster and notes.</p>
     </div>
-    <span class="badge badge-grey"><%= sessionCount %> sessions</span>
+    <div class="sessions-tools">
+      <input type="search" id="sessionSearchInput" class="sessions-search" placeholder="Search date, course, batch...">
+      <span class="badge badge-grey"><%= sessionCount %> sessions</span>
+    </div>
   </div>
   <% if (sessions.length === 0) { %>
     <div class="empty-state" style="padding: 4rem 2rem;">
@@ -659,7 +853,7 @@
     <div class="session-card-list">
       <% sessions.forEach((s) => { %>
         <% const sessionRate = s.totalCount ? Math.round(((s.presentCount + s.lateCount) / s.totalCount) * 100) : 0; %>
-        <div class="session-card session-row" data-students="<%= JSON.stringify(s.roster) %>" data-date="<%= s.date %>" data-batch="<%= s.batchName %>" data-course="<%= s.courseName %>">
+        <div class="session-card session-row <%= s.absentCount > 0 || s.lateCount > 0 ? 'is-attention' : 'is-clean' %>" data-session-card data-search="<%= `${s.date} ${s.courseName} ${s.batchName}`.toLowerCase() %>" data-students="<%= JSON.stringify(s.roster) %>" data-date="<%= s.date %>" data-batch="<%= s.batchName %>" data-course="<%= s.courseName %>">
           <div class="session-date-block">
             <strong><%= s.date %></strong>
             <span><%= s.totalCount %> students</span>
@@ -680,11 +874,15 @@
             <span class="session-rate-label"><%= sessionRate %>% present including late</span>
           </div>
           <div class="session-action">
+            <% if (s.absentCount > 0 || s.lateCount > 0) { %>
+              <span class="session-attention-chip">Follow up</span>
+            <% } %>
             <button type="button" class="btn btn-ghost btn-sm" data-session-details>Details</button>
           </div>
         </div>
       <% }) %>
     </div>
+    <div id="sessionsNoMatch" class="sessions-no-match">No sessions match this search.</div>
   <% } %>
 </div>
 </div>

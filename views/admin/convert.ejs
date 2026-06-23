@@ -37,7 +37,7 @@
     </div>
   </div>
 
-  <form action="/admin/leads/<%= lead._id %>/convert" method="POST" class="convert-card">
+  <form action="/admin/leads/<%= lead._id %>/convert" method="POST" class="convert-card" data-no-soft-nav="true" data-native-submit="true" onsubmit="return lockConversionSubmit(this)">
     <section class="convert-section">
       <div class="convert-section-head">
         <div>
@@ -243,6 +243,18 @@
 
   const formatINR = (value) => `Rs. ${Math.max(0, Math.round(Number(value) || 0)).toLocaleString('en-IN')}`;
 
+  function lockConversionSubmit(form) {
+    if (form.dataset.submitting === 'true') return false;
+    form.dataset.submitting = 'true';
+    const button = form.querySelector('[type="submit"]');
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Enrolling...';
+    }
+    setTimeout(() => HTMLFormElement.prototype.submit.call(form), 0);
+    return false;
+  }
+
   function selectedCourse() {
     const value = document.getElementById('course_select').value;
     return courseOptions.find(course => course.id === value || course.name === value) || null;
@@ -302,7 +314,7 @@
     const batch = selectedBatch();
     const teacherSelect = document.getElementById('teacher_select');
     const course = selectedCourse();
-    const allowedTeacherIds = batch && batch.teacherProfileIds && batch.teacherProfileIds.length
+    const preferredTeacherIds = batch && batch.teacherProfileIds && batch.teacherProfileIds.length
       ? batch.teacherProfileIds
       : (course ? teacherOptions.filter(teacher => teacher.courseIds.includes(course.id)).map(teacher => teacher.id) : []);
 
@@ -310,12 +322,12 @@
 
     const placeholder = document.createElement('option');
     placeholder.value = '';
-    placeholder.textContent = allowedTeacherIds.length ? 'Select Teacher' : 'No teacher linked to this batch';
+    placeholder.textContent = teacherOptions.length ? 'Select Teacher' : 'No active teachers available';
     teacherSelect.appendChild(placeholder);
 
-    const visibleTeachers = allowedTeacherIds.length
-      ? teacherOptions.filter(teacher => allowedTeacherIds.includes(teacher.id))
-      : [];
+    const visibleTeachers = preferredTeacherIds.length
+      ? teacherOptions.filter(teacher => preferredTeacherIds.includes(teacher.id))
+      : teacherOptions;
 
     visibleTeachers.forEach(teacher => {
       const option = document.createElement('option');

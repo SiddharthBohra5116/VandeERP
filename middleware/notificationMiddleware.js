@@ -126,12 +126,30 @@ async function calculateNotifications(user) {
       const readyLeads = await Lead.find({ status: 'joining_interested' }).limit(5);
       readyLeads.forEach(l => {
         alerts.push({
-          id: l._id.toString(),
+          id: `ready-${l._id}`,
           type: 'ready_to_convert',
           title: 'Lead Handoff Alert',
           message: `Lead "${l.name}" is ready to convert.`,
           link: `/admin/leads/${l._id}/convert`,
           date: l.updatedAt
+        });
+      });
+
+      const automatedLeads = await Lead.find({ leadType: 'automation' })
+        .populate({
+          path: 'assignedTo',
+          populate: { path: 'user', select: 'name' }
+        })
+        .sort({ createdAt: -1 })
+        .limit(8);
+      automatedLeads.forEach(l => {
+        alerts.push({
+          id: `ad-lead-${l._id}`,
+          type: 'lead_created',
+          title: 'New Ad Lead',
+          message: `${l.name} from ${l.source}. Assigned to ${l.assignedTo?.user?.name || 'Unassigned'}.`,
+          link: `/admin/leads/${l._id}`,
+          date: l.createdAt
         });
       });
 
@@ -287,6 +305,43 @@ async function calculateNotifications(user) {
     } else if (user.role === 'counsellor') {
       const counsellorProfileId = getRoleProfileId(user, 'counsellor');
       if (!counsellorProfileId) return alerts;
+
+      const newlyAssignedLeads = await Lead.find({
+        assignedTo: counsellorProfileId,
+        status: { $nin: ['admission_completed', 'lost'] }
+      })
+        .sort({ createdAt: -1 })
+        .limit(8);
+
+      newlyAssignedLeads.forEach(l => {
+        alerts.push({
+          id: `assigned-lead-${l._id}`,
+          type: 'lead_assigned',
+          title: 'Lead Assigned',
+          message: `${l.name} from ${l.source}. Follow-up: ${l.nextFollowUpAt ? new Date(l.nextFollowUpAt).toLocaleString('en-IN') : 'not scheduled'}.`,
+          link: `/counsellor/leads/${l._id}`,
+          date: l.createdAt
+        });
+      });
+
+      const followUpsDue = await Lead.find({
+        assignedTo: counsellorProfileId,
+        status: { $nin: ['admission_completed', 'lost'] },
+        nextFollowUpAt: { $lte: todayEnd }
+      })
+        .sort({ nextFollowUpAt: 1 })
+        .limit(8);
+
+      followUpsDue.forEach(l => {
+        alerts.push({
+          id: `lead-followup-${l._id}`,
+          type: 'lead_followup_due',
+          title: 'Lead Follow-up Due',
+          message: `${l.name} needs follow-up today.`,
+          link: `/counsellor/leads/${l._id}`,
+          date: l.nextFollowUpAt || l.updatedAt
+        });
+      });
 
       // Stale leads (Follow-Up Gap > 5 days)
       const fiveDaysAgo = new Date();

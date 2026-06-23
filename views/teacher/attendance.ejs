@@ -46,7 +46,7 @@
         <select name="batch" id="batchSelect" class="form-control" style="padding:0.45rem 0.75rem;" required>
           <option value="" <%= !filter.batch ? 'selected' : '' %>>Select Batch</option>
           <% batches.forEach(b => { %>
-            <option value="<%= b._id %>" <%= String(filter.batch) === String(b._id) ? 'selected' : '' %>><%= b.name %></option>
+            <option value="<%= b._id %>" data-course="<%= b.course ? b.course.toString() : '' %>" <%= String(filter.batch) === String(b._id) ? 'selected' : '' %>><%= b.name %></option>
           <% }) %>
         </select>
       <% } %>
@@ -238,6 +238,7 @@
 <script>
 // JSON array of schedules for dynamic cascading dropdowns
 const teacherSchedules = <%- JSON.stringify(teacherSchedules || []) %>;
+const teacherBatches = <%- JSON.stringify(batches || []) %>;
 
 const setupDependentDropdowns = () => {
   const courseSelect = document.getElementById('courseSelect');
@@ -250,10 +251,14 @@ const setupDependentDropdowns = () => {
 
   // Cache the complete set of original batch options
   if (batchIsSelect && !batchSelect.dataset.originalOptions) {
-    const opts = Array.from(batchSelect.options).map(opt => ({
-      value: opt.value,
-      text: opt.textContent
-    }));
+    const opts = Array.from(batchSelect.options).map(opt => {
+      const optionEl = batchSelect.querySelector(`option[value="${opt.value}"]`);
+      return {
+        value: opt.value,
+        text: opt.textContent,
+        course: optionEl ? optionEl.getAttribute('data-course') : ''
+      };
+    });
     batchSelect.dataset.originalOptions = JSON.stringify(opts);
   }
 
@@ -268,25 +273,26 @@ const setupDependentDropdowns = () => {
       allBatchOptions.forEach(opt => {
         if (opt.value) {
           const newOpt = new Option(opt.text, opt.value);
+          newOpt.setAttribute('data-course', opt.course || '');
           batchSelect.add(newOpt);
         }
       });
       return;
     }
 
-    // Get batch IDs scheduled under selected course
-    const validBatchIds = teacherSchedules
-      .filter(s => s.course && s.course._id === selectedCourse)
-      .map(s => s.batch ? s.batch._id : null)
-      .filter(Boolean);
+    // Get batch IDs matching this course from teacherBatches
+    const validBatchIds = teacherBatches
+      .filter(b => b.course && (b.course === selectedCourse || b.course._id === selectedCourse))
+      .map(b => b._id.toString());
 
     // Filter the batch select list options
     const currentSelectedBatch = batchSelect.value;
     batchSelect.innerHTML = '<option value="">Select Batch</option>';
     
     allBatchOptions.forEach(opt => {
-      if (opt.value && validBatchIds.includes(opt.value)) {
+      if (opt.value && (validBatchIds.includes(opt.value) || opt.course === selectedCourse)) {
         const newOpt = new Option(opt.text, opt.value);
+        newOpt.setAttribute('data-course', opt.course || '');
         if (opt.value === currentSelectedBatch) {
           newOpt.selected = true;
         }
@@ -300,15 +306,13 @@ const setupDependentDropdowns = () => {
     const selectedBatch = batchSelect.value;
     if (!selectedBatch) return;
 
-    // Find course schedules matching this batch
-    const match = teacherSchedules.find(s => s.batch && s.batch._id === selectedBatch);
-    if (match && match.course) {
-      const targetCourseId = match.course._id;
-      if (courseSelect.value !== targetCourseId) {
-        courseSelect.value = targetCourseId;
-        // Trigger manual change event on course select to filter batches properly
-        courseSelect.dispatchEvent(new Event('change'));
-      }
+    // Find course of selected batch option
+    const selectedOption = batchSelect.options[batchSelect.selectedIndex];
+    const targetCourseId = selectedOption ? selectedOption.getAttribute('data-course') : null;
+    
+    if (targetCourseId && courseSelect.value !== targetCourseId) {
+      courseSelect.value = targetCourseId;
+      courseSelect.dispatchEvent(new Event('change'));
     }
   });
 

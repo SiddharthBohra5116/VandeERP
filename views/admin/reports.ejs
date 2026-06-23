@@ -5,6 +5,16 @@
   page = 'reports';
 %>
 
+<script>
+  window.runReportsReady = callback => {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', callback, { once: true });
+    } else {
+      callback();
+    }
+  };
+</script>
+
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -580,7 +590,7 @@
                 <td class="mono text-right text-red fw-600">₹<%= exp.amount.toLocaleString('en-IN') %></td>
                 <td class="mono text-xs text-right"><%= new Date(exp.date).toLocaleDateString('en-IN') %></td>
                 <td class="text-right">
-                  <form action="/admin/reports/financial/expense/<%= exp._id %>/delete" method="POST" style="margin: 0; display: inline;" onsubmit="return confirm('Are you sure you want to delete this expense record?');">
+                  <form action="/admin/reports/financial/expense/<%= exp._id %>/delete" method="POST" style="margin: 0; display: inline;" data-confirm="Delete this expense record? Financial totals will be recalculated." data-confirm-title="Delete expense" data-confirm-label="Delete expense">
                     <button type="submit" class="btn btn-ghost btn-xs" style="color: var(--red); padding: 2px 6px;">Delete</button>
                   </form>
                 </td>
@@ -1037,7 +1047,7 @@
   <textarea id="monthly-attendance-data" style="display: none;"><%- JSON.stringify(monthlyAttendanceRecords || []) %></textarea>
   
   <script>
-  document.addEventListener('DOMContentLoaded', () => {
+window.runReportsReady(() => {
     const dayCards = document.querySelectorAll('.calendar-day-card:not(.empty)');
     const detailSection = document.getElementById('daily-attendance-detail');
     const detailDateHeader = document.getElementById('detail-date-header');
@@ -1292,7 +1302,7 @@
 
 <!-- ==================== CHART LOGIC SCRIPTS ==================== -->
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+window.runReportsReady(() => {
   // Parse reports data store
   let reportsData = { charts: {}, revenueData: [], counsellorPerformance: [], attendanceSummary: [], teacherLoad: [] };
   try {
@@ -1322,7 +1332,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <% if (tab === 'overview') { %>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+window.runReportsReady(() => {
   const reportsData = window.reportsData;
   const textColor = window.chartTextColor;
   const gridColor = window.chartGridColor;
@@ -1493,7 +1503,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <% if (tab === 'financial') { %>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+window.runReportsReady(() => {
   const reportsData = window.reportsData;
   const textColor = window.chartTextColor;
   const gridColor = window.chartGridColor;
@@ -1697,7 +1707,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <% if (tab === 'enrollment') { %>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+window.runReportsReady(() => {
   const reportsData = window.reportsData;
   const textColor = window.chartTextColor;
   const gridColor = window.chartGridColor;
@@ -1767,7 +1777,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <% if (tab === 'attendance' && batch !== 'all' && attendanceSummary && attendanceSummary.length > 0) { %>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+window.runReportsReady(() => {
   const reportsData = window.reportsData;
   const gridColor = window.chartGridColor;
 
@@ -1807,7 +1817,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <% if (tab === 'academic') { %>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+window.runReportsReady(() => {
   const reportsData = window.reportsData;
   const gridColor = window.chartGridColor;
 
@@ -1856,7 +1866,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <% if (tab === 'staff' && typeof teacherLoad !== 'undefined' && teacherLoad.length > 0) { %>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+window.runReportsReady(() => {
   const reportsData = window.reportsData;
   const gridColor = window.chartGridColor;
   const textColor = window.chartTextColor;

@@ -102,6 +102,10 @@ app.use(inputMutationGuard);
 const mongoSanitize = require('express-mongo-sanitize');
 app.use(mongoSanitize());
 
+// Public ad/CRM lead intake. This is protected by LEAD_WEBHOOK_SECRET and must
+// be mounted before CSRF so external form/webhook providers can post JSON.
+app.use('/webhooks', require('./routes/webhooks'));
+
 app.use((req, res, next) => {
   res.locals.csrfToken = ''; // safe default initialization
   next();

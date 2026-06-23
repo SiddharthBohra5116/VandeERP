@@ -7,9 +7,14 @@
 %>
 
 <div class="card" style="max-width: 600px; margin: 0 auto;">
-  <% if (typeof error !== 'undefined' && error) { %>
+  <% 
+    const hasError = typeof error !== 'undefined' && error && 
+      (Array.isArray(error) ? error.length > 0 : String(error).trim()) && 
+      String(error).trim() !== '1' && String(error).trim() !== 'true';
+  %>
+  <% if (hasError) { %>
     <div class="alert alert-danger" style="margin-bottom: 1.25rem; color: var(--red); background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.2); font-size: 0.85rem; padding: 0.75rem 1rem;">
-      ⚠️ <%= error %>
+      ⚠️ <%= Array.isArray(error) ? error.join(', ') : error %>
     </div>
   <% } %>
 
@@ -97,7 +102,7 @@
   batchForm.addEventListener('submit', function(e) {
     if (batchStartDate.value && batchEndDate.value && batchStartDate.value > batchEndDate.value) {
       e.preventDefault();
-      alert('Batch start date must be before end date.');
+      showToast('Batch start date must be before end date.', 'warning');
       batchEndDate.focus();
     }
   });

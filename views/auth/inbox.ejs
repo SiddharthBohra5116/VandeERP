@@ -2,6 +2,16 @@
   layout = 'main';
   title = 'Inbox & Chat';
   page = 'inbox';
+
+  const escapeMessageHtml = value => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+  const renderMessageContent = value => escapeMessageHtml(value)
+    .replace(/(\/(?:admin|counsellor)\/leads\/[a-fA-F0-9]{24}(?:\/convert)?)/g, '<a href="$1" class="message-lead-link">Open lead file</a>')
+    .replace(/\n/g, '<br>');
 %>
 
 <div class="inbox-container <%= selectedContact ? 'has-selection' : '' %>" id="inboxContainer">
@@ -265,7 +275,7 @@
                   <% } %>
 
                   <!-- Message Content -->
-                  <div class="message-content" id="msg-content-<%= msg._id %>"><%= msg.content %></div>
+                  <div class="message-content" id="msg-content-<%= msg._id %>"><%- renderMessageContent(msg.content) %></div>
 
                   <!-- Render Attachments -->
                   <% if (msg.attachments && msg.attachments.length > 0) { %>
@@ -376,7 +386,7 @@
 
       <!-- Message Form & Input Box Area -->
       <div style="border-top: 1px solid var(--border); background: var(--bg-card); padding: 0.85rem 1.5rem;">
-        <form action="/auth/inbox/send" method="POST" enctype="multipart/form-data" class="chat-input-bar" style="border: none; padding: 0; display: flex; gap: 12px; align-items: center;">
+        <form action="/auth/inbox/send" method="POST" enctype="multipart/form-data" class="chat-input-bar" data-no-soft-nav="true" style="border: none; padding: 0; display: flex; gap: 12px; align-items: center;">
           <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
           <input type="hidden" name="recipientId" value="<%= selectedContact._id %>">
           <input type="hidden" name="replyTo" id="replyToInput" value="">
@@ -767,6 +777,24 @@
   word-break: break-word;
 }
 
+.message-lead-link {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 6px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--gold-border);
+  background: var(--gold-dim);
+  color: var(--gold);
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.message-lead-link:hover {
+  background: rgba(212, 175, 55, 0.16);
+}
+
 .message-time {
   font-size: 0.68rem;
   margin-top: 0.45rem;
@@ -1029,13 +1057,7 @@ window.closeEditModal = () => {
   }
 };
 
-document.addEventListener('click', (e) => {
-  const editBtn = e.target.closest('.edit-btn-trigger');
-  if (editBtn) {
-    const msgId = editBtn.getAttribute('data-message-id');
-    window.openEditModal(msgId);
-  }
-});
+// Edit click listener moved to global wrapper at bottom of file to prevent duplicates
 
 // Expose secure document preview functions
 window.openDocPreviewModal = (url, fileName) => {
@@ -1264,14 +1286,14 @@ window.viewContactProfile = async (contactId) => {
       if (resData.success && resData.data) {
         window.openContactDetailModal(resData.data);
       } else {
-        alert(resData.error || 'Failed to load contact profile.');
+        showToast(resData.error || 'Failed to load contact profile.', 'error');
       }
     } else {
-      alert('Failed to load contact profile.');
+      showToast('Failed to load contact profile.', 'error');
     }
   } catch (err) {
     console.error('Error fetching contact profile:', err);
-    alert('An error occurred while loading the contact profile.');
+    showToast('An error occurred while loading the contact profile.', 'error');
   } finally {
     if (typeof NProgress !== 'undefined') {
       NProgress.done();
@@ -1399,42 +1421,7 @@ window.initInboxPage = () => {
   const replyPreviewText = document.getElementById('replyPreviewText');
   const cancelReplyBtn = document.getElementById('cancelReplyBtn');
 
-  document.addEventListener('click', (e) => {
-    const replyBtn = e.target.closest('.reply-btn-trigger');
-    if (replyBtn) {
-      const msgId = replyBtn.getAttribute('data-message-id');
-      const senderName = replyBtn.getAttribute('data-sender-name');
-      const snippet = replyBtn.getAttribute('data-snippet');
-
-      if (replyToInput && replyPreviewContainer && replyPreviewUser && replyPreviewText) {
-        replyToInput.value = msgId;
-        replyPreviewUser.textContent = senderName;
-        replyPreviewText.textContent = snippet;
-        replyPreviewContainer.style.display = 'flex';
-        if (chatInput) chatInput.focus();
-      }
-    }
-
-    const quotePreview = e.target.closest('.reply-quote-preview');
-    if (quotePreview) {
-      const parentId = quotePreview.getAttribute('data-parent-id');
-      if (parentId) {
-        const parentRow = document.querySelector(`.message-row[data-message-id="${parentId}"]`);
-        if (parentRow) {
-          parentRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          const bubble = parentRow.querySelector('.message-bubble');
-          if (bubble) {
-            bubble.classList.remove('pulse-highlight');
-            void bubble.offsetWidth;
-            bubble.classList.add('pulse-highlight');
-            setTimeout(() => {
-              bubble.classList.remove('pulse-highlight');
-            }, 1500);
-          }
-        }
-      }
-    }
-  });
+  // Reply click listener moved to global wrapper at bottom of file to prevent duplicates
 
   if (cancelReplyBtn) {
     cancelReplyBtn.addEventListener('click', () => {
@@ -1451,52 +1438,7 @@ window.initInboxPage = () => {
     return csrfInput ? csrfInput.value : '';
   };
 
-  document.addEventListener('click', async (e) => {
-    const emojiBtn = e.target.closest('.emoji-btn');
-    const badgeBtn = e.target.closest('.reaction-badge');
-
-    let messageId = null;
-    let emoji = null;
-
-    if (emojiBtn) {
-      const msgRow = emojiBtn.closest('.message-row');
-      if (msgRow) {
-        messageId = msgRow.getAttribute('data-message-id');
-        emoji = emojiBtn.getAttribute('data-emoji');
-      }
-    } else if (badgeBtn) {
-      const msgRow = badgeBtn.closest('.message-row');
-      if (msgRow) {
-        messageId = msgRow.getAttribute('data-message-id');
-        emoji = badgeBtn.getAttribute('data-emoji');
-      }
-    }
-
-    if (messageId && emoji) {
-      try {
-        const response = await fetch('/auth/inbox/react', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            messageId,
-            emoji,
-            _csrf: getCsrfToken()
-          })
-        });
-
-        if (response.ok) {
-          window.location.reload();
-        } else {
-          const resData = await response.json();
-          alert(resData.error || 'Failed to add reaction');
-        }
-      } catch (err) {
-        console.error('Error adding reaction:', err);
-      }
-    }
-  });
+  // Reaction click listener moved to global wrapper at bottom of file to prevent duplicates
 
   // 7. File Upload Handler
   const fileInput = document.getElementById('chatAttachmentInput');
@@ -1511,7 +1453,7 @@ window.initInboxPage = () => {
       const oversizedFiles = Array.from(fileInput.files).filter(f => f.size > maxSizeBytes);
 
       if (oversizedFiles.length > 0) {
-        alert(`File size exceeds limit. Maximum allowed size is 25MB.`);
+        showToast('File size exceeds limit. Maximum allowed size is 25MB.', 'warning');
         fileInput.value = '';
         if (filePreviewContainer) filePreviewContainer.style.display = 'none';
         return;
@@ -1595,6 +1537,12 @@ window.initInboxPage = () => {
       .replace(/'/g, '&#39;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
+  };
+
+  const renderMessageHtml = (str) => {
+    return escapeHtmlAttr(str || '')
+      .replace(/(\/(?:admin|counsellor)\/leads\/[a-fA-F0-9]{24}(?:\/convert)?)/g, '<a href="$1" class="message-lead-link">Open lead file</a>')
+      .replace(/\n/g, '<br>');
   };
 
   const renderChatHistory = (messages) => {
@@ -1734,7 +1682,7 @@ window.initInboxPage = () => {
             <div class="message-row ${isMe ? 'me' : 'them'}" data-message-id="${msg._id}" style="display:flex; flex-direction:column; align-items: ${isMe ? 'flex-end' : 'flex-start'};">
               <div class="message-bubble" style="box-shadow: 0 2px 8px rgba(0,0,0,0.12); margin-top: 2px; position: relative;">
                 ${replyQuoteHtml}
-                <div class="message-content" id="msg-content-${msg._id}">${msg.content}</div>
+                <div class="message-content" id="msg-content-${msg._id}">${renderMessageHtml(msg.content)}</div>
                 ${attachmentsHtml}
                 <div class="message-hover-actions">
                   <div class="reaction-emoji-selector">
@@ -1859,7 +1807,7 @@ window.initInboxPage = () => {
             pollMessages();
           } else {
             const errData = await response.json().catch(() => ({ error: 'Failed to update message.' }));
-            alert(errData.error || 'Failed to update message.');
+            showToast(errData.error || 'Failed to update message.', 'error');
           }
         } catch (err) {
           console.error('AJAX edit error:', err);
@@ -1907,10 +1855,129 @@ window.initInboxPage = () => {
   clearActiveChatUnreadBadge();
 };
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', window.initInboxPage);
+// Expose csrf helper globally for reaction AJAX handler
+window.getInboxCsrfToken = () => {
+  const csrfInput = document.querySelector('input[name="_csrf"]');
+  return csrfInput ? csrfInput.value : '';
+};
+
+if (!window.inboxListenersAttached) {
+  window.inboxListenersAttached = true;
+
+  // 1. Edit Message Trigger Click Listener
+  document.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('.edit-btn-trigger');
+    if (editBtn) {
+      const msgId = editBtn.getAttribute('data-message-id');
+      window.openEditModal(msgId);
+    }
+  });
+
+  // 2. Reply Handler Click Listener
+  document.addEventListener('click', (e) => {
+    const replyBtn = e.target.closest('.reply-btn-trigger');
+    if (replyBtn) {
+      const msgId = replyBtn.getAttribute('data-message-id');
+      const senderName = replyBtn.getAttribute('data-sender-name');
+      const snippet = replyBtn.getAttribute('data-snippet');
+
+      const replyToInput = document.getElementById('replyToInput');
+      const replyPreviewContainer = document.getElementById('replyPreviewContainer');
+      const replyPreviewUser = document.getElementById('replyPreviewUser');
+      const replyPreviewText = document.getElementById('replyPreviewText');
+      const chatInput = document.getElementById('chatMessageInput');
+
+      if (replyToInput && replyPreviewContainer && replyPreviewUser && replyPreviewText) {
+        replyToInput.value = msgId;
+        replyPreviewUser.textContent = senderName;
+        replyPreviewText.textContent = snippet;
+        replyPreviewContainer.style.display = 'flex';
+        if (chatInput) chatInput.focus();
+      }
+    }
+
+    const quotePreview = e.target.closest('.reply-quote-preview');
+    if (quotePreview) {
+      const parentId = quotePreview.getAttribute('data-parent-id');
+      if (parentId) {
+        const parentRow = document.querySelector(`.message-row[data-message-id="${parentId}"]`);
+        if (parentRow) {
+          parentRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const bubble = parentRow.querySelector('.message-bubble');
+          if (bubble) {
+            bubble.classList.remove('pulse-highlight');
+            void bubble.offsetWidth;
+            bubble.classList.add('pulse-highlight');
+            setTimeout(() => {
+              bubble.classList.remove('pulse-highlight');
+            }, 1500);
+          }
+        }
+      }
+    }
+  });
+
+  // 3. Reaction AJAX Handler Click Listener
+  document.addEventListener('click', async (e) => {
+    const emojiBtn = e.target.closest('.emoji-btn');
+    const badgeBtn = e.target.closest('.reaction-badge');
+
+    let messageId = null;
+    let emoji = null;
+
+    if (emojiBtn) {
+      const msgRow = emojiBtn.closest('.message-row');
+      if (msgRow) {
+        messageId = msgRow.getAttribute('data-message-id');
+        emoji = emojiBtn.getAttribute('data-emoji');
+      }
+    } else if (badgeBtn) {
+      const msgRow = badgeBtn.closest('.message-row');
+      if (msgRow) {
+        messageId = msgRow.getAttribute('data-message-id');
+        emoji = badgeBtn.getAttribute('data-emoji');
+      }
+    }
+
+    if (messageId && emoji) {
+      try {
+        const response = await fetch('/auth/inbox/react', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messageId,
+            emoji,
+            _csrf: window.getInboxCsrfToken()
+          })
+        });
+
+        if (response.ok) {
+          window.location.reload();
+        } else {
+          const resData = await response.json();
+          showToast(resData.error || 'Failed to add reaction', 'error');
+        }
+      } catch (err) {
+        console.error('Error adding reaction:', err);
+      }
+    }
+  });
+
+  // 4. Page Load Events
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof window.initInboxPage === 'function') window.initInboxPage();
+    });
+  } else {
+    window.initInboxPage();
+  }
+  document.addEventListener('softnav:load', () => {
+    if (typeof window.initInboxPage === 'function') window.initInboxPage();
+  });
 } else {
+  // If listeners are already attached, we just need to re-run window.initInboxPage() for the new DOM elements
   window.initInboxPage();
 }
-document.addEventListener('softnav:load', window.initInboxPage);
 </script>

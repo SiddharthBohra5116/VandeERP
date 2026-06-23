@@ -262,7 +262,7 @@
 
       if (filled.length === 0) {
         e.preventDefault();
-        alert('Enter marks for at least one submitted student before saving bulk grades.');
+        showToast('Enter marks for at least one submitted student before saving bulk grades.', 'warning');
         return;
       }
 
@@ -273,7 +273,7 @@
 
       if (invalid) {
         e.preventDefault();
-        alert('Marks must be between 0 and ' + maxMarks + '.');
+        showToast('Marks must be between 0 and ' + maxMarks + '.', 'warning');
         invalid.focus();
       }
     });
@@ -292,7 +292,7 @@
     refreshExtendMin();
     if (!extendDueDateInput.value || new Date(extendDueDateInput.value) <= new Date()) {
       e.preventDefault();
-      alert('Choose a future deadline before saving.');
+      showToast('Choose a future deadline before saving.', 'warning');
       extendDueDateInput.focus();
     }
   });
@@ -343,6 +343,28 @@
         setTimeout(() => {
           targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 150);
+      }
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const gradeSubId = urlParams.get('gradeSubmission');
+    if (gradeSubId) {
+      const targetRow = document.getElementById(`submission-${gradeSubId}`);
+      if (targetRow) {
+        // Apply blink effect
+        targetRow.classList.add('blink-highlight');
+        // Smooth scroll to target row
+        setTimeout(() => {
+          targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 150);
+        
+        // Auto-trigger grading modal
+        const btn = targetRow.querySelector('button[onclick^="triggerGradingModal"]');
+        if (btn) {
+          setTimeout(() => {
+            btn.click();
+          }, 300);
+        }
       }
     }
   });

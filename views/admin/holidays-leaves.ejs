@@ -66,7 +66,7 @@
                   <td><strong><%= h.name %></strong></td>
                   <td class="mono text-sm"><%= h.date %></td>
                   <td class="text-right">
-                     <form action="/admin/holidays/<%= h._id %>/delete" method="POST" style="display:inline; margin:0;" onsubmit="return confirm('Delete this holiday?');">
+                     <form action="/admin/holidays/<%= h._id %>/delete" method="POST" style="display:inline; margin:0;" data-confirm="Delete this holiday from the academy calendar?" data-confirm-title="Delete holiday" data-confirm-label="Delete holiday">
                       <button type="submit" class="btn btn-ghost btn-xs" style="color:var(--red);">Delete</button>
                     </form>
                   </td>

@@ -16,6 +16,100 @@
     admission_completed: 'badge-green',
     lost: 'badge-red'
   }[lead.status] || 'badge-grey';
+  const statusLabels = {
+    new: 'New',
+    contacted: 'Contacted',
+    mentorship_scheduled: 'Mentorship scheduled',
+    mentorship_attended: 'Mentorship attended',
+    follow_up: 'Follow up',
+    joining_interested: 'Ready for admission',
+    admission_completed: 'Admitted',
+    lost: 'Lost'
+  };
+  const activityRecords = typeof leadActivities !== 'undefined' && Array.isArray(leadActivities) ? leadActivities : [];
+  const timelineFeed = [{
+    title: 'Lead created',
+    status: 'new',
+    actorName: 'System',
+    actorRole: '',
+    channel: lead.source || '',
+    note: lead.notes || `Lead came from ${lead.source || 'manual entry'}.`,
+    date: lead.createdAt
+  }];
+  activityRecords.forEach(item => {
+    timelineFeed.push({
+      title: item.title || 'Lead activity',
+      status: item.newStatus || item.oldStatus || '',
+      actorName: item.doneBy ? item.doneBy.name : 'System',
+      actorRole: item.doneBy ? item.doneBy.role : '',
+      channel: item.type === 'call' ? 'Call' : item.type === 'whatsapp' ? 'WhatsApp' : item.type,
+      callOutcome: item.call?.outcome && item.call.outcome !== 'not-applicable' ? item.call.outcome : '',
+      callDuration: item.call?.duration || '',
+      nextFollowUpDate: item.followUp?.scheduledFor || '',
+      note: item.note || item.whatsapp?.message || '',
+      date: item.createdAt
+    });
+  });
+  const activityMatchKeys = new Set(activityRecords.map(item => {
+    const when = item.followUp?.completedAt || item.createdAt;
+    const minuteBucket = when ? Math.floor(new Date(when).getTime() / 60000) : '';
+    const actor = item.doneBy ? item.doneBy.name : 'System';
+    const status = item.newStatus || item.oldStatus || '';
+    const itemNote = String(item.note || item.whatsapp?.message || '').trim().toLowerCase();
+    return `${minuteBucket}|${actor}|${status}|${itemNote}`;
+  }));
+  lead.followUpHistory.forEach((fu) => {
+    const fuMinuteBucket = fu.doneAt ? Math.floor(new Date(fu.doneAt).getTime() / 60000) : '';
+    const fuActor = fu.doneBy ? fu.doneBy.name : 'System';
+    const fuNote = String(fu.note || '').trim().toLowerCase();
+    const fuKey = `${fuMinuteBucket}|${fuActor}|${fu.status || ''}|${fuNote}`;
+    if (activityMatchKeys.has(fuKey)) return;
+    timelineFeed.push({
+      title: fu.channel ? `${fu.channel} logged` : (fu.doneBy && fu.doneBy.role === 'admin' ? 'Admin instruction' : 'Follow-up logged'),
+      status: fu.status || '',
+      actorName: fu.doneBy ? fu.doneBy.name : 'System',
+      actorRole: fu.doneBy ? fu.doneBy.role : '',
+      channel: fu.channel || '',
+      callOutcome: fu.callOutcome || '',
+      callDuration: fu.callDuration || '',
+      nextFollowUpDate: fu.nextFollowUpAt || '',
+      note: fu.note || '',
+      date: fu.doneAt
+    });
+  });
+  const scheduledFollowUpDate = lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt) : null;
+  const closedLead = ['admission_completed', 'lost'].includes(lead.status);
+  const hasCompletedScheduledFollowUp = scheduledFollowUpDate && activityRecords.some(item => {
+    const completedAt = item.followUp?.completedAt ? new Date(item.followUp.completedAt) : null;
+    return completedAt && completedAt >= scheduledFollowUpDate;
+  });
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  if (scheduledFollowUpDate && scheduledFollowUpDate < todayStart && !closedLead && !hasCompletedScheduledFollowUp) {
+    timelineFeed.push({
+      title: 'Follow-up missed',
+      status: 'follow_up',
+      actorName: lead.assignedTo?.user?.name || user.name || 'Counsellor',
+      actorRole: 'counsellor',
+      channel: 'scheduled',
+      callOutcome: 'missed',
+      callDuration: '',
+      nextFollowUpDate: scheduledFollowUpDate,
+      note: 'Scheduled follow-up date passed without a completed follow-up log.',
+      date: scheduledFollowUpDate
+    });
+  }
+  const seenTimeline = new Set();
+  const cleanTimelineFeed = timelineFeed
+    .filter(item => item.date)
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .filter(item => {
+      const minuteBucket = Math.floor(new Date(item.date).getTime() / 60000);
+      const identity = `${minuteBucket}|${item.actorName}|${item.status}|${item.channel}|${String(item.note || '').trim().toLowerCase().slice(0, 90)}`;
+      if (seenTimeline.has(identity)) return false;
+      seenTimeline.add(identity);
+      return true;
+    });
 %>
 
 <style>
@@ -188,6 +282,22 @@
     font-weight: 600;
   }
 
+  .lead-story { position:relative; display:grid; gap:.9rem; padding-left:1.55rem; }
+  .lead-story::before { content:''; position:absolute; left:.52rem; top:.35rem; bottom:.35rem; width:2px; background:var(--border); }
+  .lead-story-item { position:relative; display:grid; grid-template-columns:minmax(120px,150px) minmax(0,1fr); gap:1rem; padding:.9rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); }
+  .lead-story-item::before { content:''; position:absolute; left:-1.48rem; top:1.05rem; width:13px; height:13px; border-radius:50%; background:var(--gold); border:3px solid var(--bg-card); box-shadow:0 0 0 2px var(--gold-border); }
+  .lead-story-time { color:var(--text); font-weight:900; font-size:.82rem; line-height:1.35; border:0; background:transparent; padding:0; text-align:left; cursor:pointer; font-family:inherit; }
+  .lead-story-time:hover { color:var(--gold); }
+  .lead-story-time span { display:block; color:var(--text-muted); font-size:.72rem; font-weight:750; margin-top:.15rem; }
+  .lead-story-top { display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; margin-bottom:.35rem; }
+  .lead-story-action { font-size:.94rem; font-weight:900; }
+  .lead-story-actor { color:var(--text-sub); font-size:.78rem; font-weight:750; margin-bottom:.45rem; }
+  .lead-story-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.6rem; margin:.65rem 0; }
+  .lead-story-fact { padding:.55rem .65rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-card); min-width:0; }
+  .lead-story-fact b { display:block; color:var(--text-muted); font-size:.62rem; font-weight:900; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.18rem; }
+  .lead-story-fact span { display:block; color:var(--text); font-size:.78rem; font-weight:800; overflow-wrap:anywhere; }
+  .lead-story-note { color:var(--text-sub); font-size:.88rem; line-height:1.55; overflow-wrap:anywhere; }
+
   /* Card and input custom responsiveness */
   .form-control {
     min-height: 40px;
@@ -238,6 +348,25 @@
   <a href="/counsellor/leads" class="btn btn-ghost btn-sm" style="min-height:36px; display:inline-flex; align-items:center;">&larr; Back to Leads</a>
   <a href="/counsellor/leads/<%= lead._id %>/edit" class="btn btn-ghost btn-sm" style="min-height:36px; display:inline-flex; align-items:center;">Edit File</a>
 </div>
+
+<script>
+  function toggleCounsellorHistory(detailId) {
+    const detail = document.getElementById(detailId);
+    if (!detail) return;
+    detail.style.display = detail.style.display === 'none' || !detail.style.display ? 'grid' : 'none';
+  }
+
+  function lockFollowupSubmit(form) {
+    if (form.dataset.submitting === 'true') return false;
+    form.dataset.submitting = 'true';
+    const button = form.querySelector('[type="submit"]');
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Saving...';
+    }
+    return true;
+  }
+</script>
 
 <div class="detail-layout">
 
@@ -333,11 +462,66 @@
       <% } %>
     </div>
 
-    <!-- Activity Timeline Card -->
     <div class="card">
       <div class="card-header" style="border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:16px;">
         <div>
-          <div class="card-title">Activity Timeline</div>
+          <div class="card-title">Counsellor Work History</div>
+          <div class="card-sub">Recent activity first &middot; <%= cleanTimelineFeed.length %> entries</div>
+        </div>
+      </div>
+
+      <% if (cleanTimelineFeed.length === 0) { %>
+        <div class="empty-state" style="padding:2rem 1rem;">
+          <p>No work history recorded yet.</p>
+        </div>
+      <% } else { %>
+        <div class="lead-story">
+          <% cleanTimelineFeed.slice().sort((a, b) => new Date(b.date) - new Date(a.date)).forEach((item, index) => {
+              const detailId = `counsellor-history-detail-${index}`;
+              const itemStatusClass = {
+                new: 'badge-orange',
+                contacted: 'badge-blue',
+                mentorship_scheduled: 'badge-blue',
+                mentorship_attended: 'badge-yellow',
+                follow_up: 'badge-yellow',
+                joining_interested: 'badge-gold',
+                admission_completed: 'badge-green',
+                lost: 'badge-red'
+              }[item.status] || 'badge-grey';
+          %>
+            <div class="lead-story-item">
+              <button type="button" class="lead-story-time" onclick="toggleCounsellorHistory('<%= detailId %>')">
+                <%= new Date(item.date).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'}) %>
+                <span><%= new Date(item.date).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) %></span>
+              </button>
+              <div>
+                <div class="lead-story-top">
+                  <span class="lead-story-action"><%= item.title %></span>
+                  <% if (item.status) { %>
+                    <span class="badge <%= itemStatusClass %>"><%= (statusLabels[item.status] || item.status).toString().replace(/_/g, ' ') %></span>
+                  <% } %>
+                </div>
+                <div class="lead-story-actor">
+                  <%= item.actorName || 'System' %><%= item.actorRole ? ` (${item.actorRole})` : '' %>
+                </div>
+                <div class="lead-story-note"><%= item.note || 'No note added.' %></div>
+                <div id="<%= detailId %>" class="lead-story-grid" style="display:none;">
+                  <div class="lead-story-fact"><b>Channel</b><span><%= item.channel || 'Not set' %></span></div>
+                  <div class="lead-story-fact"><b>Result</b><span><%= [item.callOutcome, item.callDuration].filter(Boolean).join(' - ') || 'Not set' %></span></div>
+                  <div class="lead-story-fact"><b>Next follow-up</b><span><%= item.nextFollowUpDate ? new Date(item.nextFollowUpDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'}) : 'Not set' %></span></div>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Activity Timeline Card -->
+    <div class="card" style="display:none;">
+      <div class="card-header" style="border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:16px;">
+        <div>
+          <div class="card-title">Lead Timeline</div>
           <div class="card-sub"><%= lead.followUpHistory.length %> entries logged</div>
         </div>
       </div>
@@ -449,7 +633,7 @@
   <div style="display:flex; flex-direction:column; gap:1.5rem;">
 
     <!-- Touchpoint Timeline Card -->
-    <div class="card" style="padding: 20px;">
+    <div class="card" style="padding: 20px; display:none;">
       <div class="card-title" style="margin-bottom: 8px;">Touchpoint Timeline</div>
       <div class="timeline-horizontal">
 
@@ -505,7 +689,7 @@
     <!-- Quick Status Update Card (Log Follow-up) -->
     <div class="card">
       <div class="card-title" style="margin-bottom: 16px;">Log Follow-up & Update Status</div>
-      <form action="/counsellor/leads/<%= lead._id %>/followup" method="POST" id="followupForm">
+      <form action="/counsellor/leads/<%= lead._id %>/followup" method="POST" id="followupForm" data-no-soft-nav="true" onsubmit="return lockFollowupSubmit(this)">
         <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
 
         <div class="form-grid-layout">
@@ -564,7 +748,7 @@
 
           <!-- Save Button Container (Mobile-Optimized Action Target) -->
           <div class="form-group" id="submitButtonContainer" style="margin-top: 4px; margin-bottom: 0;">
-            <button type="submit" class="btn-premium-action">Save Update Log</button>
+            <button type="submit" class="btn-premium-action" data-submit-label="Save Update Log">Save Update Log</button>
           </div>
         </div>
       </form>

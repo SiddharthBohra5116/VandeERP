@@ -37,6 +37,10 @@ exports.getAssignments = async (req, res) => {
     const assignments = await Assignment.find(filter)
       .populate('course', 'name code')
       .populate('batch', 'name')
+      .populate({
+        path: 'submissions.student',
+        populate: { path: 'user', select: 'name status' }
+      })
       .sort({ createdAt: -1 });
     const batchIds = [...new Set(assignments
       .map(a => a.batch?._id || a.batch)

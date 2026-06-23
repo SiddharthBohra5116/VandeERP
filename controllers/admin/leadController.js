@@ -123,6 +123,9 @@ exports.getLeadDetail = async (req, res) => {
       .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name email phone' } })
       .populate('interestedCourse', 'name code durationMonths fees')
       .populate('followUpHistory.doneBy', 'name role')
+      .populate('createdBy', 'name role')
+      .populate({ path: 'ownershipHistory.counsellor', populate: { path: 'user', select: 'name email phone' } })
+      .populate('ownershipHistory.assignedBy', 'name role')
       .populate({
         path: 'convertedStudent',
         populate: [
@@ -133,6 +136,11 @@ exports.getLeadDetail = async (req, res) => {
       });
 
     if (!lead) return res.redirect('/admin/leads');
+
+    const leadActivities = await LeadActivity.find({ lead: lead._id })
+      .populate('doneBy', 'name role')
+      .populate('counsellor', 'name role')
+      .sort({ createdAt: -1 });
 
     const Counsellor = require('../../models/Counsellor');
     const counsellorProfiles = await Counsellor.find().populate('user', 'name email phone status');
@@ -149,6 +157,7 @@ exports.getLeadDetail = async (req, res) => {
       title: lead.name,
       user: req.user,
       lead,
+      leadActivities,
       counsellors,
       error: req.query.error
     });
@@ -169,10 +178,14 @@ exports.getLeadDetail = async (req, res) => {
 
 exports.postAssignLead = async (req, res) => {
   try {
-    const lead = await Lead.findById(req.params.id);
+    const lead = await Lead.findById(req.params.id).populate({
+      path: 'assignedTo',
+      populate: { path: 'user', select: '_id name status' }
+    });
     if (!lead) return res.redirect('/admin/leads');
 
     const oldCounsellor = lead.assignedTo;
+    const oldCounsellorId = oldCounsellor?._id || oldCounsellor || null;
     const assignedTo = req.body.counsellorId || null;
 
     lead.assignedTo = assignedTo;
@@ -191,10 +204,20 @@ exports.postAssignLead = async (req, res) => {
       lead: lead._id,
       type: oldCounsellor ? 'reassigned' : 'assigned',
       title: oldCounsellor ? 'Lead Reassigned' : 'Lead Assigned',
-      note: assignedTo ? 'Lead assigned by admin.' : 'Lead unassigned by admin.',
-      counsellor: assignedTo || oldCounsellor || null,
+      note: assignedTo
+        ? `Lead assigned by admin${oldCounsellor ? ` from ${oldCounsellor.user?.name || 'previous counsellor'}` : ''}.`
+        : `Lead unassigned by admin${oldCounsellor ? ` from ${oldCounsellor.user?.name || 'previous counsellor'}` : ''}.`,
+      counsellor: assignedTo || oldCounsellorId || null,
       doneBy: req.user._id
     });
+
+    if (oldCounsellor?.user && (!assignedTo || String(oldCounsellorId) !== String(assignedTo)) && oldCounsellor.user.status === 'active') {
+      await Message.create({
+        sender: req.user._id,
+        recipient: oldCounsellor.user._id,
+        content: `Lead reassigned away: "${lead.name}".\nThis lead is no longer in your active pipeline.`
+      });
+    }
 
     if (assignedTo) {
       const counsellor = await Counsellor.findById(assignedTo).populate('user', '_id status');
@@ -202,7 +225,7 @@ exports.postAssignLead = async (req, res) => {
         await Message.create({
           sender: req.user._id,
           recipient: counsellor.user._id,
-          content: `${oldCounsellor ? 'Lead reassigned' : 'New lead assigned'}: "${lead.name}".`
+          content: `${oldCounsellor ? 'Lead reassigned to you' : 'New lead assigned'}: "${lead.name}".\nOpen lead: /counsellor/leads/${lead._id}`
         });
       }
     }
@@ -316,7 +339,10 @@ exports.postConvertLead = async (req, res) => {
 
     const Teacher = require('../../models/Teacher');
     const [batches, teacherProfiles, courses] = await Promise.all([
-      Batch.find({ isActive: true }).populate('course', 'name code').sort({ name: 1 }),
+      Batch.find({ isActive: true })
+        .populate('course', 'name code fees durationMonths')
+        .populate('teachers', 'name email status')
+        .sort({ name: 1 }),
       Teacher.find().populate('user', 'name email status'),
       Course.find({ isActive: true }).select('name code fees durationMonths').sort({ name: 1 })
     ]);
@@ -329,6 +355,30 @@ exports.postConvertLead = async (req, res) => {
         email: p.user.email
       }));
 
+    const teacherProfileByUserId = new Map(
+      teacherProfiles
+        .filter(profile => profile.user)
+        .map(profile => [profile.user._id.toString(), profile])
+    );
+
+    const batchOptions = batches.map(batch => {
+      const linkedProfiles = (batch.teachers || [])
+        .map(teacherUser => teacherUser ? teacherProfileByUserId.get(teacherUser._id.toString()) : null)
+        .filter(Boolean);
+      const firstTeacherProfile = linkedProfiles[0] || null;
+
+      return {
+        _id: batch._id.toString(),
+        name: batch.name,
+        courseId: batch.course?._id?.toString() || '',
+        courseName: batch.course?.name || '',
+        capacity: batch.capacity || 0,
+        teacherProfileId: firstTeacherProfile?._id?.toString() || '',
+        teacherProfileIds: linkedProfiles.map(profile => profile._id.toString()),
+        teacherName: firstTeacherProfile?.user?.name || ''
+      };
+    });
+
     const email = req.body.email ? req.body.email.trim().toLowerCase() : '';
     const password = req.body.password ? req.body.password.trim() : '';
 
@@ -337,8 +387,7 @@ exports.postConvertLead = async (req, res) => {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
-        batches: batches.map(batch => batch.name),
-        batchDocs: batches,
+        batches: batchOptions,
         teachers,
         courses,
         error: 'A valid student email address is required.'
@@ -350,8 +399,7 @@ exports.postConvertLead = async (req, res) => {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
-        batches: batches.map(batch => batch.name),
-        batchDocs: batches,
+        batches: batchOptions,
         teachers,
         courses,
         error: 'Password must be at least 8 characters long.'
@@ -364,8 +412,7 @@ exports.postConvertLead = async (req, res) => {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
-        batches: batches.map(batch => batch.name),
-        batchDocs: batches,
+        batches: batchOptions,
         teachers,
         courses,
         error: 'This email address is already registered.'
@@ -382,8 +429,7 @@ exports.postConvertLead = async (req, res) => {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
-        batches: batches.map(batch => batch.name),
-        batchDocs: batches,
+        batches: batchOptions,
         teachers,
         courses,
         error: 'Please select a valid course.'
@@ -410,8 +456,7 @@ exports.postConvertLead = async (req, res) => {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
-        batches: batches.map(batch => batch.name),
-        batchDocs: batches,
+        batches: batchOptions,
         teachers,
         courses,
         error: 'Batch selection or custom batch name is required.'
@@ -546,7 +591,7 @@ exports.postConvertLead = async (req, res) => {
       studentId: studentProfile._id
     });
 
-    res.redirect(`/admin/students/${studentProfile._id}`);
+    res.redirect(`/admin/students?search=${encodeURIComponent(email)}&converted=1`);
 
   } catch (err) {
     logger.error('Convert Lead Error', {
@@ -571,14 +616,19 @@ exports.postConvertLead = async (req, res) => {
 };
 
 exports.postAddLeadComment = async (req, res) => {
-  const { note } = req.body;
+  const { note, context } = req.body;
 
   try {
     const lead = await Lead.findById(req.params.id);
     if (!lead) return res.redirect('/admin/leads');
 
+    const cleanContext = String(context || '').trim();
+    const cleanNote = cleanContext
+      ? `${cleanContext}: ${note}`
+      : note;
+
     lead.followUpHistory.push({
-      note,
+      note: cleanNote,
       status: lead.status,
       channel: 'note',
       doneBy: req.user._id,
@@ -590,8 +640,8 @@ exports.postAddLeadComment = async (req, res) => {
     await LeadActivity.create({
       lead: lead._id,
       type: 'note',
-      title: 'Admin Note Added',
-      note,
+      title: cleanContext ? 'Timeline Comment Added' : 'Admin Comment Added',
+      note: cleanNote,
       counsellor: lead.assignedTo || null,
       doneBy: req.user._id
     });
@@ -602,7 +652,7 @@ exports.postAddLeadComment = async (req, res) => {
         await Message.create({
           sender: req.user._id,
           recipient: counsellor.user._id,
-          content: `Admin added a note to lead "${lead.name}": "${note.length > 50 ? note.slice(0, 47) + '...' : note}"`
+          content: `Admin added a comment to lead "${lead.name}": "${cleanNote.length > 80 ? cleanNote.slice(0, 77) + '...' : cleanNote}"\nOpen lead: /counsellor/leads/${lead._id}`
         });
       }
     }

@@ -33,7 +33,9 @@ exports.getTeachers = async (req, res) => {
 
     const teacherProfiles = await Teacher.find({
       user: { $in: userIds }
-    }).populate('user', 'name email phone status profilePic');
+    })
+      .populate('user', 'name email phone status profilePic')
+      .populate('courses', 'name code');
 
     const teacherProfileMap = new Map(
       teacherProfiles

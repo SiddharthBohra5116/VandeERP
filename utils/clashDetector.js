@@ -44,7 +44,7 @@ function parseTimeToMinutes(timeStr) {
  * @param {string} [excludeScheduleId] - Option to exclude a specific schedule (for updates)
  * @returns {Promise<{clashed: boolean, type?: string, reason?: string}>}
  */
-async function checkScheduleClash(date, startTime, endTime, classroomId, teacherId, excludeScheduleId = null) {
+async function checkScheduleClash(date, startTime, endTime, classroomId, teacherId, excludeScheduleId = null, batchId = null) {
   const newStart = parseTimeToMinutes(startTime);
   const newEnd = parseTimeToMinutes(endTime);
 
@@ -63,7 +63,8 @@ async function checkScheduleClash(date, startTime, endTime, classroomId, teacher
 
   const existingSchedules = await Schedule.find(query)
     .populate('teacher', 'name')
-    .populate('classroom', 'name');
+    .populate('classroom', 'name')
+    .populate('batch', 'name');
 
   for (const sched of existingSchedules) {
     const extStart = parseTimeToMinutes(sched.startTime);
@@ -71,6 +72,14 @@ async function checkScheduleClash(date, startTime, endTime, classroomId, teacher
 
     // Overlap condition: S1 < E2 AND S2 < E1
     if (newStart < extEnd && extStart < newEnd) {
+      if (batchId && sched.batch && sched.batch._id.toString() === batchId.toString()) {
+        return {
+          clashed: true,
+          type: 'batch',
+          reason: `Batch Clash: "${sched.batch.name}" already has a class from ${sched.startTime} to ${sched.endTime}.`
+        };
+      }
+
       // 1. Classroom Clash
       if (sched.classroom && sched.classroom._id.toString() === classroomId.toString()) {
         return {

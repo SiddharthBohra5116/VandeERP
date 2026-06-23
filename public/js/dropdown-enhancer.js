@@ -149,4 +149,7 @@
     });
     observer.observe(document.body, { childList: true, subtree: true });
   });
+
+  document.addEventListener('softnav:load', () => enhanceAll());
+  window.AppDropdownEnhancer = { enhanceAll };
 })();

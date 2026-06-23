@@ -85,7 +85,7 @@
       refreshMin();
       if (!dueDate.value || new Date(dueDate.value) <= new Date()) {
         event.preventDefault();
-        alert('Please choose a future due date and time.');
+        showToast('Please choose a future due date and time.', 'warning');
         dueDate.focus();
       }
     });

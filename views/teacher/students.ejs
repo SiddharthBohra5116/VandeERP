@@ -547,7 +547,7 @@
       .then(res => res.json())
       .then(data => {
         if (!data.ok) {
-          alert('Error loading profile: ' + (data.error || 'Unknown error'));
+          showToast('Error loading profile: ' + (data.error || 'Unknown error'), 'error');
           return;
         }
 
@@ -689,7 +689,7 @@
       })
       .catch(err => {
         console.error('Fetch student error:', err);
-        alert('Failed to fetch student profile summary details.');
+        showToast('Failed to fetch student profile summary details.', 'error');
       });
   };
 

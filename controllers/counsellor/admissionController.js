@@ -3,6 +3,7 @@ const Lead = require('../../models/Lead');
 const Fee = require('../../models/Fee');
 const Student = require('../../models/Student');
 const Message = require('../../models/Message');
+const LeadActivity = require('../../models/LeadActivity');
 const logger = require('../../utils/logger');
 
 function buildTeacherOptions(teacherProfiles) {
@@ -459,6 +460,7 @@ exports.postConvertLead = async (req, res) => {
         fees_paid: feeLedger.paidAmount
       });
 
+      const oldLeadStatus = lead.status;
       lead.status = 'admission_completed';
       lead.convertedStudent = studentProfile._id;
       lead.convertedAt = new Date();
@@ -470,6 +472,17 @@ exports.postConvertLead = async (req, res) => {
         doneAt: new Date()
       });
       await lead.save();
+
+      await LeadActivity.create({
+        lead: lead._id,
+        type: 'converted',
+        title: 'Admission completed by counsellor',
+        note: `Lead converted to student by counsellor. Student ID: ${studentProfile.rollNumber || studentProfile._id}`,
+        counsellor: req.user._id,
+        doneBy: req.user._id,
+        oldStatus: oldLeadStatus,
+        newStatus: 'admission_completed'
+      });
 
       logger.info('Lead converted to student successfully by Counsellor', { leadId: lead._id, studentId: studentProfile._id });
       res.redirect('/counsellor/admissions?converted=1');

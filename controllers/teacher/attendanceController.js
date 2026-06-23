@@ -62,7 +62,11 @@ exports.getAttendancePage = async (req, res) => {
             hour12: false
           });
 
-          if (nowStr < scheduleDoc.startTime) {
+          const { parseTimeToMinutes } = require('../../utils/clashDetector');
+          const nowMinutes = parseTimeToMinutes(nowStr);
+          const startMinutes = parseTimeToMinutes(scheduleDoc.startTime);
+
+          if (nowMinutes < startMinutes) {
             isTimeValid = false;
             scheduleError = `Attendance marking is locked until class starts at ${scheduleDoc.startTime} IST (Current time: ${nowStr} IST).`;
           }
@@ -80,11 +84,36 @@ exports.getAttendancePage = async (req, res) => {
 
     // Build lists of unique batches and courses the teacher is assigned to
     const Teacher = require('../../models/Teacher');
-    const assignedBatches = await Schedule.distinct('batch', { teacher: req.user.teacherProfileId });
-    const batches = await Batch.find({ _id: { $in: assignedBatches }, isActive: true }).select('name');
+    
+    // Get batches assigned via schedules
+    const scheduledBatches = await Schedule.distinct('batch', { teacher: req.user.teacherProfileId });
+    
+    // Get batches assigned directly in the Batch model
+    const directlyAssignedBatches = await Batch.distinct('_id', { 
+      $or: [
+        { teachers: req.user._id },
+        { teachers: req.user.teacherProfileId }
+      ]
+    });
+    
+    const allAssignedBatchIds = Array.from(new Set([
+      ...scheduledBatches.map(id => id.toString()),
+      ...directlyAssignedBatches.map(id => id.toString())
+    ])).map(id => new mongoose.Types.ObjectId(id));
+
+    const batches = await Batch.find({ _id: { $in: allAssignedBatchIds }, isActive: true }).select('name course');
+
+    // Get unique course IDs from all assigned batches
+    const assignedCoursesFromBatches = batches.map(b => b.course ? b.course.toString() : null).filter(Boolean);
 
     const teacherProfile = await Teacher.findById(req.user.teacherProfileId);
-    const courses = await Course.find({ _id: { $in: teacherProfile ? teacherProfile.courses : [] } }).select('name');
+    const profileCourseIds = teacherProfile && teacherProfile.courses 
+      ? teacherProfile.courses.map(id => id.toString()) 
+      : [];
+
+    const allCourseIds = Array.from(new Set([...profileCourseIds, ...assignedCoursesFromBatches]));
+
+    const courses = await Course.find({ _id: { $in: allCourseIds } }).select('name');
     const noCoursesConfigured = courses.length === 0;
 
     if (!batch && !course && courses.length === 1 && batches.length === 1) {
@@ -164,7 +193,8 @@ exports.postMarkAttendance = async (req, res) => {
       minute: '2-digit',
       hour12: false
     });
-    if (nowStr < validBatch.startTime) {
+    const { parseTimeToMinutes } = require('../../utils/clashDetector');
+    if (parseTimeToMinutes(nowStr) < parseTimeToMinutes(validBatch.startTime)) {
       return res.redirect(`/teacher/attendance?batch=${batch}&course=${course}&error=Attendance marking opens at ${validBatch.startTime} IST.`);
     }
 

@@ -1,7 +1,7 @@
 <% layout='main' ; title=student.name; subtitle=`Student · ${student.rollNumber || 'No Roll Number' }`; page='users' ;
   /* Warnings calculations */ const today=new Date(); const isFeeOverdue=fee && Math.max(0, fee.totalAmount - (fee.discount || 0) - fee.paidAmount) > 0 && fee.dueDate && new Date(fee.dueDate) < today; let attendancePct=0; if
     (attendance && attendance.length> 0) {
-    const presentCount = attendance.filter(a => a.status === 'present').length;
+    const presentCount = attendance.filter(a => a.status === 'present' || a.status === 'late').length;
     attendancePct = Math.round((presentCount / attendance.length) * 100);
     }
     const isAttendanceLow = attendance && attendance.length > 0 && attendancePct < 75; /* Profile completeness
@@ -13,14 +13,6 @@
       , link: '#' }); if (student.fatherName || student.motherName) score++; else missing.push({ label: 'Parents' ,
       link: `/admin/users/${student._id}/edit` }); const completenessPct=Math.round((score / maxScore) * 100); %>
 
-      <!-- Breadcrumbs -->
-      <div class="breadcrumb" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-        <a href="/admin/dashboard" style="color: var(--text-sub); transition: color 0.2s;">Admin</a> &rsaquo;
-        <a href="/admin/students" style="color: var(--text-sub); transition: color 0.2s;">Students</a> &rsaquo;
-        <span style="color: var(--gold-light); font-weight: 500;">
-          <%= student.name %>
-        </span>
-      </div>
 
       <!-- Inline Contextual Warnings -->
       <% if (isFeeOverdue) { %>
@@ -314,48 +306,39 @@
                           <% } %>
                       </div>
 
-                      <div class="profile-header">
-                        <% let avatarColor='var(--gold-dark)' ; if (student.role==='admin' ) avatarColor='#1e3a8a' ;
-                          else if (student.role==='teacher' ) avatarColor='#065f46' ; else if
-                          (student.role==='counsellor' ) avatarColor='#92400e' ; else if (student.role==='student' )
-                          avatarColor='#5b21b6' ; %>
-                          <div class="avatar-lg"
-                            <%= !student.profilePic ? `style="background-color: ${avatarColor}; color: #fff; font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 2.2rem;"` : '' %>>
+                      <section class="profile-hero" style="margin-bottom: 1.5rem;">
+                        <div class="profile-avatar-wrap">
+                          <div class="avatar-lg profile-avatar <%= student.profilePic ? '' : 'avatar-fallback-visible' %>">
                             <% if (student.profilePic) { %>
-                              <img src="<%= student.profilePic %>" alt="<%= student.name %>">
-                              <% } else { %>
-                                <%= student.initials %>
-                                  <% } %>
+                              <img src="<%= student.profilePic %>" alt="<%= student.name %>" onerror="this.hidden=true; this.parentElement.classList.add('avatar-fallback-visible');">
+                            <% } %>
+                            <span class="avatar-fallback"><%= student.initials %></span>
                           </div>
-                          <div style="flex:1;">
-                            <h2 class="profile-name" style="font-size:1.5rem; font-weight:800; color:var(--text);">
-                              <%= student.name %>
-                            </h2>
-                            <div
-                              style="display:flex; flex-wrap:wrap; gap:12px; margin-top:0.35rem; font-size:0.8rem; color:var(--text-sub);">
-                              <span>Roll: <strong style="color:var(--gold);">
-                                  <%= student.rollNumber || 'Not Generated' %>
-                                </strong></span>
-                              <span>&middot;</span>
-                              <span>Course: <strong style="color:var(--text);">
-                                  <%= student.course && student.course.name ? student.course.name : 'Unassigned' %>
-                                </strong></span>
-                              <span>&middot;</span>
-                              <span>Batch: <strong style="color:var(--text);">
-                                  <%= student.batch && student.batch.name ? student.batch.name : 'Unassigned' %>
-                                </strong></span>
-                              <span>&middot;</span>
-                              <span>Status:
-                                <% const statusVal=student.status || (student.isActive ? 'active' : 'inactive' ); const
-                                  statusBadgeClass={ active: 'badge-green' , inactive: 'badge-grey' , drop: 'badge-red'
-                                  , complete: 'badge-gold' }[statusVal]; %>
-                                  <span class="badge <%= statusBadgeClass %>">
-                                    <%= statusVal %>
-                                  </span>
-                              </span>
-                            </div>
+                          <span class="profile-role-pill">Student</span>
+                        </div>
+                        
+                        <div class="profile-hero-main">
+                          <div class="profile-eyebrow">Student Profile</div>
+                          <h1 class="profile-name"><%= student.name %></h1>
+                          <div class="profile-meta">
+                            <span>Roll: <strong style="color: var(--gold);"><%= student.rollNumber || 'Not Generated' %></strong></span>
+                            <span>&middot;</span>
+                            <span>Course: <strong style="color: var(--text);"><%= student.course && student.course.name ? student.course.name : 'Unassigned' %></strong></span>
+                            <span>&middot;</span>
+                            <span>Batch: <strong style="color: var(--text);"><%= student.batch && student.batch.name ? student.batch.name : 'Unassigned' %></strong></span>
                           </div>
-                      </div>
+                        </div>
+
+                        <div class="profile-status-card">
+                          <div class="profile-status-label">Status</div>
+                          <% const statusVal = student.status || (student.isActive ? 'active' : 'inactive');
+                             const statusBadgeClass = { active: 'badge-green', inactive: 'badge-grey', drop: 'badge-red', complete: 'badge-gold' }[statusVal] || 'badge-grey'; %>
+                          <div class="profile-status-value">
+                            <span class="badge <%= statusBadgeClass %>" style="font-size: 0.8rem; padding: 0.25rem 0.65rem;"><%= statusVal.toUpperCase() %></span>
+                          </div>
+                          <div class="profile-status-sub">Joined <%= student.createdAt ? new Date(student.createdAt).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'}) : '—' %></div>
+                        </div>
+                      </section>
 
                       <div class="two-col">
                         <!-- Left Side: Interactive Details Tabs -->
@@ -561,7 +544,7 @@
                                 === 'present').length;
                                 const lateCount = attendance.filter(a => a.status === 'late').length;
                                 const absentCount = attendance.filter(a => a.status === 'absent').length;
-                                const pct = totalClasses > 0 ? Math.round((presentCount / totalClasses) * 100) : 0;
+                                const pct = totalClasses > 0 ? Math.round(((presentCount + lateCount) / totalClasses) * 100) : 0;
                                 %>
                                 <span class="badge badge-gold">
                                   <%= pct %>% Presence Rate

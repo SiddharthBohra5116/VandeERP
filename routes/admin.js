@@ -110,6 +110,12 @@ router.post(
   userDirectoryCtrl.toggleUserStatus
 );
 
+router.post(
+  '/users/:id/status',
+  ...guard,
+  userDirectoryCtrl.setUserStatus
+);
+
 
 // ===================================
 // PASSWORD ACTIONS
@@ -166,6 +172,11 @@ router.post(
   batchCtrl.postDeleteBatch
 );
 
+router.get(
+  '/batches/:id/students',
+  ...guard,
+  batchCtrl.getBatchStudents
+);
 
 // ===================================
 // STUDENT MANAGEMENT

@@ -42,6 +42,24 @@ exports.getCreateAnnouncement = asyncHandler(async (req, res) => {
 exports.postCreateAnnouncement = asyncHandler(async (req, res) => {
   const { title, content, audienceType, course, batch, role, counsellor } = req.body;
 
+  // Guard clause: reject a re-submission of the same announcement by the same
+  // admin within a tight window, BEFORE any write happens. Covers double-click,
+  // the soft-nav native-resubmit fallback, and accidental refresh-resubmit alike.
+  const duplicateWindowMs = 15000;
+  const recentDuplicate = await Announcement.findOne({
+    createdBy: req.user._id,
+    title: title?.trim(),
+    content: content?.trim(),
+    createdAt: { $gte: new Date(Date.now() - duplicateWindowMs) }
+  }).sort({ createdAt: -1 });
+
+  if (recentDuplicate) {
+    // State is already current — return success without re-writing, per the
+    // idempotency principle, rather than erroring or silently re-inserting.
+    logger.info(`Duplicate announcement submission ignored: ${title}`, { userId: req.user._id });
+    return res.redirect('/admin/announcements?created=true');
+  }
+
   const newAnnouncement = new Announcement({
     title,
     content,

@@ -6,7 +6,10 @@
  * @returns {Function} Express middleware handler
  */
 const asyncHandler = fn => (req, res, next) => {
-  Promise.resolve(fn(req, res, next)).catch(next);
+  Promise.resolve(fn(req, res, next)).catch(err => {
+    err.writeCommitted = res.locals.writeCommitted === true;
+    next(err);
+  });
 };
 
 module.exports = asyncHandler;

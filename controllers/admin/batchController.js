@@ -49,6 +49,45 @@ exports.getBatches = async (req, res) => {
   }
 };
 
+// GET /admin/batches/:id/students
+exports.getBatchStudents = async (req, res) => {
+  try {
+    const batch = await Batch.findById(req.params.id)
+      .populate('course', 'name code')
+      .populate('teachers', 'name email phone');
+
+    if (!batch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Batch not found'
+      });
+    }
+
+    const students = await Student.find({ batch: batch._id })
+      .populate('user', 'name email phone status profilePic')
+      .populate('course', 'name code')
+      .populate({ path: 'teacher', populate: { path: 'user', select: 'name email phone' } })
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      batch,
+      students
+    });
+
+  } catch (err) {
+    logger.error('getBatchStudents Error', {
+      err: err.message,
+      stack: err.stack
+    });
+
+    res.status(500).json({
+      success: false,
+      message: 'Unable to load batch students'
+    });
+  }
+};
+
 
 // GET /admin/batches/create
 exports.getCreateBatch = async (req, res) => {
@@ -134,7 +173,7 @@ exports.postCreateBatch = async (req, res) => {
         : [teachers];
     }
 
-    await Batch.create({
+    const createdBatch = await Batch.create({
       name: name.trim(),
       course,
       capacity: Number(capacity) || 20,
@@ -143,6 +182,27 @@ exports.postCreateBatch = async (req, res) => {
       endDate: endDate ? new Date(endDate) : null,
       isActive: isActive === 'true' || isActive === 'on'
     });
+
+    if (teachersArray.length > 0) {
+      const courseDoc = await Course.findById(course);
+      const courseName = courseDoc ? courseDoc.name : 'Assigned Course';
+
+      // Update Teacher Profiles to include this course
+      await Teacher.updateMany(
+        { user: { $in: teachersArray } },
+        { $addToSet: { courses: course } }
+      );
+
+      // Generate Inbox Messages (Notifications) for each teacher from the admin
+      const notifications = teachersArray.map(teacherUserId => {
+        return Message.create({
+          sender: req.user._id,
+          recipient: teacherUserId,
+          content: `You have been assigned to batch "${name.trim()}" for course "${courseName}".`
+        });
+      });
+      await Promise.all(notifications);
+    }
 
     logger.info('Batch created successfully', {
       name,
@@ -290,6 +350,45 @@ exports.postEditBatch = async (req, res) => {
     batch.isActive = isActive === 'true' || isActive === 'on';
 
     await batch.save();
+
+    // Sync teacher courses & send notifications to teachers
+    if (teachersArray.length > 0) {
+      const courseDoc = await Course.findById(batch.course);
+      const courseName = courseDoc ? courseDoc.name : 'Assigned Course';
+
+      // Update Teacher Profiles to include this course
+      await Teacher.updateMany(
+        { user: { $in: teachersArray } },
+        { $addToSet: { courses: batch.course } }
+      );
+
+      const newlyAssignedTeachers = teachersArray.filter(id => !oldTeacherIds.includes(id.toString()));
+      const teacherNotifications = [];
+
+      newlyAssignedTeachers.forEach(teacherUserId => {
+        teacherNotifications.push(Message.create({
+          sender: req.user._id,
+          recipient: teacherUserId,
+          content: `You have been assigned to batch "${batch.name}" for course "${courseName}".`
+        }));
+      });
+
+      const courseChanged = oldCourseId !== String(batch.course || '');
+      if (courseChanged) {
+        const teachersToNotify = teachersArray.filter(id => !newlyAssignedTeachers.includes(id.toString()));
+        teachersToNotify.forEach(teacherUserId => {
+          teacherNotifications.push(Message.create({
+            sender: req.user._id,
+            recipient: teacherUserId,
+            content: `The course for batch "${batch.name}" has been updated to "${courseName}".`
+          }));
+        });
+      }
+
+      if (teacherNotifications.length > 0) {
+        await Promise.all(teacherNotifications);
+      }
+    }
 
     const newTeacherIds = teachersArray.map(id => id.toString()).sort();
     const teachersChanged = oldTeacherIds.join(',') !== newTeacherIds.join(',');

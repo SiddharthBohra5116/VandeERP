@@ -39,10 +39,15 @@
 %>
 
 <div class="card" style="max-width: 600px; margin: 0 auto;">
-  <% if (typeof error !== 'undefined' && error) { %>
+  <% 
+    const hasError = typeof error !== 'undefined' && error && 
+      (Array.isArray(error) ? error.length > 0 : String(error).trim()) && 
+      String(error).trim() !== '1' && String(error).trim() !== 'true';
+  %>
+  <% if (hasError) { %>
     <div class="alert alert-error" style="margin-bottom: 1.25rem; display: flex; align-items: center; gap: 8px;">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <span><%= error %></span>
+      <span><%= Array.isArray(error) ? error.join(', ') : error %></span>
     </div>
   <% } %>
 
@@ -51,15 +56,8 @@
     <div class="form-group">
      <label class="form-label" for="note">Class Notes / Topic</label>
       <input type="text" id="note" name="note" class="form-control" value="<%= isEdit ? target.note : '' %>" placeholder="e.g. Video Editing Basics - Premiere Pro">
-      <datalist id="subject-list">
-        <option value="Video Editing Basics"></option>
-        <option value="Digital Marketing Mastery"></option>
-        <option value="Advanced Premiere & DaVinci Resolve"></option>
-        <option value="SEO & Copywriting Fundamentals"></option>
-        <option value="Social Media Strategy & Ad Campaigns"></option>
-      </datalist>
     </div>
- 
+
     <div class="form-row">
       <div class="form-group">
         <label class="form-label" for="batch">Target Batch *</label>

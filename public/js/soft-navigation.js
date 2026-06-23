@@ -113,6 +113,12 @@
     if (current && next) current.textContent = next.textContent;
   };
 
+  const replaceCsrfToken = doc => {
+    const current = document.querySelector('meta[name="csrf-token"]');
+    const next = doc.querySelector('meta[name="csrf-token"]');
+    if (current && next) current.setAttribute('content', next.getAttribute('content') || '');
+  };
+
   const loadedScriptUrls = new Set(Array.from(document.scripts).map(script => script.src).filter(Boolean));
 
   const getInlineHandlerNames = container => {
@@ -186,6 +192,7 @@
 
     document.title = doc.title || document.title;
     replaceTopbarTitle(doc);
+    replaceCsrfToken(doc);
     currentContent.replaceChildren(...Array.from(nextContent.childNodes));
     await runContentScripts(currentContent);
 
@@ -231,6 +238,8 @@
 
     const method = (form.getAttribute('method') || 'GET').toUpperCase();
     const action = new URL(form.getAttribute('action') || window.location.href, window.location.href);
+    let responseReceived = false;
+    let responseUrl = action.href;
 
     try {
       let targetUrl = action.href;
@@ -255,15 +264,44 @@
       }
 
       const response = await fetch(targetUrl, fetchOptions);
-      if (!response.ok || !response.headers.get('content-type')?.includes('text/html')) {
-        form.submit();
+      responseReceived = true;
+      responseUrl = response.url || targetUrl;
+      const contentType = response.headers.get('content-type') || '';
+
+      if (contentType.includes('text/html')) {
+        // Render both success redirects and server-rendered validation/error pages.
+        // Never retry a POST: the first request may already have committed its write.
+        await applyDocument(await response.text(), response.url || targetUrl, true);
         return;
       }
 
-      await applyDocument(await response.text(), response.url || targetUrl, true);
+      if (method === 'GET') {
+        window.location.href = response.url || targetUrl;
+        return;
+      }
+
+      let message = 'The request could not be completed.';
+      if (contentType.includes('application/json')) {
+        const payload = await response.json().catch(() => null);
+        message = payload?.error || payload?.message || message;
+      }
+
+      if (typeof window.showToast === 'function') {
+        window.showToast(message, 'error');
+      }
     } catch (err) {
       console.error('Soft form submit failed:', err);
-      form.submit();
+      if (method === 'GET') {
+        window.location.href = targetUrl;
+      } else if (responseReceived) {
+        window.showToast?.('Your change was accepted, but this view could not refresh cleanly. Reloading the latest data.', 'success');
+        setTimeout(() => {
+          isNavigating = false;
+          navigateTo(responseUrl, { pushState: true });
+        }, 80);
+      } else if (typeof window.showToast === 'function') {
+        window.showToast('The connection was interrupted. Check the list before trying again; duplicate submissions are blocked.', 'error');
+      }
     } finally {
       isNavigating = false;
       hideProgress();
@@ -279,7 +317,8 @@
 
   document.addEventListener('submit', event => {
     const form = event.target;
-    if (shouldSkipForm(form) || form.dataset.nativeSubmit === 'true') return;
+    if (form.dataset.noSoftNav === 'true' || form.dataset.nativeSubmit === 'true') return;
+    if (shouldSkipForm(form)) return;
     event.preventDefault();
     submitFormSoftly(form);
   });

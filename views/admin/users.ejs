@@ -1,234 +1,159 @@
 <%
   layout = 'main';
-  const roleName = typeof roleActive !== 'undefined' ? roleActive.charAt(0).toUpperCase() + roleActive.slice(1) : 'User';
-  title = typeof roleActive !== 'undefined' ? `Manage ${roleName}s` : 'Manage Users';
-  subtitle = typeof roleActive !== 'undefined' ? `Create and manage credentials for academy ${roleActive}s` : 'Create and manage credentials for students, teachers, and counsellors';
+  const hasRole = typeof roleActive !== 'undefined';
+  const activeRole = hasRole ? roleActive : '';
+  const roleName = hasRole ? activeRole.charAt(0).toUpperCase() + activeRole.slice(1) : 'User';
+  title = hasRole ? `Manage ${roleName}s` : 'Manage Users';
   page = typeof page !== 'undefined' ? page : 'users';
+  const directoryUrl = hasRole ? `/admin/${activeRole}s` : '/admin/users';
+  const activeCount = users.filter(item => (item.status || 'active') === 'active').length;
+  const attentionCount = hasRole && activeRole === 'student'
+    ? users.filter(item => !item.idVerified || Number(item.attendancePct) < 75).length
+    : users.filter(item => (item.status || 'active') !== 'active').length;
 %>
 
-<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
-  <form method="GET" action="<%= typeof roleActive !== 'undefined' ? '/admin/' + roleActive + 's' : '/admin/users' %>" class="filter-bar" style="margin: 0;">
-    <input type="text" name="search" class="form-control" placeholder="Search..." value="<%= filter.search || '' %>" onchange="this.form.submit()">
-    
-    <% if (typeof roleActive === 'undefined') { %>
-      <select name="role" class="form-control" onchange="this.form.submit()">
-        <option value="">All Roles</option>
-        <option value="student" <%= filter.role === 'student' ? 'selected' : '' %>>Student</option>
-        <option value="teacher" <%= filter.role === 'teacher' ? 'selected' : '' %>>Teacher</option>
-        <option value="counsellor" <%= filter.role === 'counsellor' ? 'selected' : '' %>>Counsellor</option>
-        <option value="admin" <%= filter.role === 'admin' ? 'selected' : '' %>>Admin</option>
-      </select>
-    <% } %>
+<style>
+  .people-toolbar { display:grid; grid-template-columns:minmax(240px,1fr) minmax(190px,260px) auto auto; gap:.75rem; align-items:end; padding:1rem; }
+  .people-toolbar .form-group { margin:0; }
+  .people-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border:1px solid var(--border); border-radius:8px; margin-bottom:1rem; overflow:hidden; }
+  .people-summary-item { padding:.8rem 1rem; background:var(--bg-card); }
+  .people-summary-item + .people-summary-item { border-left:1px solid var(--border); }
+  .people-summary-label { display:block; color:var(--text-muted); font-size:.68rem; font-weight:800; text-transform:uppercase; }
+  .people-summary-value { display:block; margin-top:.2rem; font-size:1.25rem; font-weight:850; }
+  .people-directory { border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .people-directory-head, .person-directory-row { display:grid; grid-template-columns:minmax(250px,1.35fr) minmax(210px,1fr) minmax(190px,.8fr) minmax(235px,auto); gap:1rem; align-items:center; }
+  .people-directory-head { padding:.7rem 1rem; background:var(--bg-hover); color:var(--text-muted); font-size:.68rem; font-weight:850; text-transform:uppercase; }
+  .person-directory-row { position:relative; padding:1rem; background:var(--bg-card); border-top:1px solid var(--border); cursor:pointer; transition:background .16s ease; }
+  .person-directory-row:hover { background:var(--bg-hover); }
+  .person-directory-row:focus-visible { outline:2px solid var(--gold); outline-offset:-2px; }
+  .person-identity { display:grid; grid-template-columns:auto minmax(0,1fr); gap:.75rem; align-items:center; min-width:0; }
+  .person-avatar { width:44px; height:44px; border-radius:8px; flex:0 0 auto; }
+  .person-select-wrap { position:relative; width:44px; height:44px; }
+  .person-select-wrap .people-select { position:absolute; left:-5px; bottom:-5px; z-index:2; width:19px; height:19px; border-radius:4px; background:var(--bg-card); }
+  .person-name { color:var(--text); font-size:.94rem; font-weight:850; }
+  .person-contact, .person-meta { color:var(--text-sub); font-size:.76rem; line-height:1.45; overflow-wrap:anywhere; }
+  .person-id { color:var(--gold); font:800 .68rem var(--mono); margin-top:.18rem; }
+  .person-context { min-width:0; }
+  .person-context strong { display:block; margin-bottom:.2rem; font-size:.84rem; }
+  .person-context span { display:block; color:var(--text-sub); font-size:.75rem; line-height:1.45; }
+  .person-signals { display:flex; gap:.35rem; align-items:center; flex-wrap:wrap; }
+  .person-actions { display:flex; justify-content:flex-end; align-items:center; gap:.4rem; flex-wrap:wrap; }
+  .person-status-form { margin:0; }
+  .person-status-select { width:112px; min-height:34px; padding:.35rem .55rem; border:1px solid var(--border); border-radius:6px; background:var(--bg-input); color:var(--text); font-size:.72rem; font-weight:800; text-transform:capitalize; }
+  .people-bulk-bar { display:flex; justify-content:space-between; align-items:center; gap:.75rem; padding:.75rem 0; flex-wrap:wrap; }
+  .people-bulk-copy { color:var(--text-sub); font-size:.78rem; }
+  .people-select { width:18px; height:18px; accent-color:var(--gold); }
+  @media (max-width:1100px) {
+    .people-directory-head { display:none; }
+    .person-directory-row { grid-template-columns:minmax(240px,1.2fr) minmax(190px,1fr) auto; }
+    .person-signals { grid-column:2; }
+    .person-actions { grid-column:3; grid-row:1 / span 2; max-width:240px; }
+  }
+  @media (max-width:760px) {
+    .people-toolbar { grid-template-columns:1fr 1fr; }
+    .people-toolbar .people-search { grid-column:1 / -1; }
+    .people-toolbar .btn-primary { margin-left:0 !important; }
+    .people-summary { grid-template-columns:1fr; }
+    .people-summary-item + .people-summary-item { border-left:0; border-top:1px solid var(--border); }
+    .person-directory-row { grid-template-columns:1fr; gap:.8rem; padding:.9rem; }
+    .person-context, .person-signals, .person-actions { grid-column:1; grid-row:auto; }
+    .person-actions { justify-content:flex-start; max-width:none; padding-top:.7rem; border-top:1px solid var(--border); }
+    .person-status-form { flex:1; }
+    .person-status-select { width:100%; }
+  }
+</style>
 
-    <% if (typeof roleActive !== 'undefined' && roleActive === 'student') { %>
-      <select name="attendance" class="form-control" onchange="this.form.submit()">
-        <option value="">All Attendance Tiers</option>
-        <option value="low" <%= filter.attendance === 'low' ? 'selected' : '' %>>Low (< 75%)</option>
-        <option value="medium" <%= filter.attendance === 'medium' ? 'selected' : '' %>>Medium (75% - 85%)</option>
-        <option value="high" <%= filter.attendance === 'high' ? 'selected' : '' %>>High (> 85%)</option>
-        <option value="not_marked_today" <%= filter.attendance === 'not_marked_today' ? 'selected' : '' %>>Not Marked Today</option>
-      </select>
-    <% } %>
-    
-    <a href="<%= typeof roleActive !== 'undefined' ? '/admin/' + roleActive + 's' : '/admin/users' %>" class="btn btn-ghost btn-sm">Clear</a>
-    
-    <a href="/admin/users/create<%= typeof roleActive !== 'undefined' ? '?role=' + roleActive : '' %>" class="btn btn-primary btn-sm" style="margin-left: auto;">+ Add <%= roleName %></a>
-  </form>
-</div>
+<section class="people-summary" aria-label="Directory summary">
+  <div class="people-summary-item"><span class="people-summary-label">Showing</span><span class="people-summary-value"><%= users.length %></span></div>
+  <div class="people-summary-item"><span class="people-summary-label">Active accounts</span><span class="people-summary-value" style="color:var(--green);"><%= activeCount %></span></div>
+  <div class="people-summary-item"><span class="people-summary-label"><%= activeRole === 'student' ? 'Needs attention' : 'Inactive / completed' %></span><span class="people-summary-value"><%= attentionCount %></span></div>
+</section>
 
-<div id="results-container" class="card">
-  <% if (users.length === 0) { %>
-    <div class="empty-state">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-      <p>No users found matching the filter criteria.</p>
-    </div>
+<form method="GET" action="<%= directoryUrl %>" class="card people-toolbar" data-instant-filter>
+  <div class="form-group people-search">
+    <label for="peopleSearch">Search <%= hasRole ? roleName.toLowerCase() + 's' : 'people' %></label>
+    <input id="peopleSearch" type="search" name="search" class="form-control" placeholder="Name, academy ID, email or phone" value="<%= filter.search || '' %>">
+  </div>
+  <% if (!hasRole) { %>
+    <div class="form-group"><label for="peopleRole">Role</label><select id="peopleRole" name="role" class="form-control" onchange="this.form.submit()"><option value="">All roles</option><option value="student" <%= filter.role === 'student' ? 'selected' : '' %>>Students</option><option value="teacher" <%= filter.role === 'teacher' ? 'selected' : '' %>>Teachers</option><option value="counsellor" <%= filter.role === 'counsellor' ? 'selected' : '' %>>Counsellors</option><option value="admin" <%= filter.role === 'admin' ? 'selected' : '' %>>Admins</option></select></div>
+  <% } else if (activeRole === 'student') { %>
+    <div class="form-group"><label for="attendanceTier">Attendance</label><select id="attendanceTier" name="attendance" class="form-control" onchange="this.form.submit()"><option value="">All attendance</option><option value="low" <%= filter.attendance === 'low' ? 'selected' : '' %>>Below 75%</option><option value="medium" <%= filter.attendance === 'medium' ? 'selected' : '' %>>75% to 85%</option><option value="high" <%= filter.attendance === 'high' ? 'selected' : '' %>>Above 85%</option><option value="not_marked_today" <%= filter.attendance === 'not_marked_today' ? 'selected' : '' %>>Unmarked today</option></select></div>
+  <% } else { %><div></div><% } %>
+  <a href="<%= directoryUrl %>" class="btn btn-ghost btn-sm">Clear</a>
+  <a href="/admin/users/create<%= hasRole ? '?role=' + activeRole : '' %>" class="btn btn-primary btn-sm">Add <%= roleName %></a>
+</form>
+
+<div id="results-container" style="margin-top:1rem;">
+  <% if (!users.length) { %>
+    <div class="card empty-state"><p>No people match these filters.</p></div>
   <% } else { %>
-    <% if (typeof roleActive !== 'undefined' && roleActive === 'student') { %>
+    <% if (activeRole === 'student') { %>
       <form id="bulkKycForm" action="/admin/students/bulk-verify-id" method="POST"></form>
-      <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap;">
-        <button type="button" class="btn btn-ghost btn-sm" onclick="toggleAllKycChecks(this)">Select Pending KYC</button>
-        <button type="submit" form="bulkKycForm" class="btn btn-primary btn-sm">Bulk Verify Selected IDs</button>
-      </div>
+      <div class="people-bulk-bar"><span class="people-bulk-copy">Select students whose documents are ready, then verify them together.</span><div class="d-flex gap-1"><button type="button" class="btn btn-ghost btn-sm" onclick="toggleAllKycChecks(this)">Select ready KYC</button><button type="submit" form="bulkKycForm" class="btn btn-primary btn-sm">Verify selected</button></div></div>
     <% } %>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <% if (typeof roleActive !== 'undefined' && roleActive === 'student') { %>
-              <th style="width:42px;">Select</th>
-            <% } %>
-            <th>User</th>
-            <th>Role</th>
-            <th>Phone</th>
-            <th>Role Specifics</th>
-            <% if (typeof roleActive !== 'undefined' && roleActive === 'student') { %>
-              <th>Attendance</th>
-              <th>KYC Status</th>
-            <% } %>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% users.forEach(u => { %>
-            <tr>
-              <% if (typeof roleActive !== 'undefined' && roleActive === 'student') { %>
-                <td>
-                  <% if (u.studentProfile && u.idProof && !u.idVerified) { %>
-                    <input type="checkbox" form="bulkKycForm" name="studentIds" value="<%= u.studentProfile._id %>" class="kyc-check">
-                  <% } else { %>
-                    <span class="td-muted">—</span>
-                  <% } %>
-                </td>
-              <% } %>
-              <td>
-                <div class="d-flex align-center gap-2">
-                  <div class="avatar" style="width:34px; height:34px; border-radius:8px;">
-                    <% if (u.profilePic) { %>
-                      <img src="<%= u.profilePic %>" alt="<%= u.name %>">
-                    <% } else { %>
-                      <%= u.initials %>
-                    <% } %>
-                  </div>
-                  <div>
-                    <div class="td-name">
-                      <% if (u.role === 'student' && u.studentProfile) { %>
-                        <a href="/admin/students/<%= u.studentProfile._id %>" style="color:var(--gold);"><%= u.name %></a>
-                      <% } else if (u.role === 'teacher') { %>
-                        <a href="/admin/teachers/<%= u._id %>" style="color:var(--gold);"><%= u.name %></a>
-                      <% } else if (u.role === 'counsellor') { %>
-                        <a href="/admin/counsellors/<%= u._id %>" style="color:var(--gold);"><%= u.name %></a>
-                      <% } else { %>
-                        <%= u.name %>
-                      <% } %>
-                    </div>
-                    <div class="td-muted text-sm"><%= u.email %></div>
-                    <% if (u.lastLoginAt) { %>
-                      <% 
-                        const timeDiff = new Date() - new Date(u.lastLoginAt);
-                        const mins = Math.floor(timeDiff / (1000 * 60));
-                        const hrs = Math.floor(mins / 60);
-                        const days = Math.floor(hrs / 24);
-                        let timeStr = 'Just now';
-                        if (days > 0) timeStr = `${days} day${days > 1 ? 's' : ''} ago`;
-                        else if (hrs > 0) timeStr = `${hrs} hr${hrs > 1 ? 's' : ''} ago`;
-                        else if (mins > 0) timeStr = `${mins} min${mins > 1 ? 's' : ''} ago`;
-                      %>
-                      <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 2px;">Active: <%= timeStr %></div>
-                    <% } else { %>
-                      <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 2px;">Active: Never</div>
-                    <% } %>
-                  </div>
-                </div>
-              </td>
-              <td>
-                <span class="badge <%= u.role === 'admin' ? 'badge-gold' : u.role === 'teacher' ? 'badge-blue' : u.role === 'counsellor' ? 'badge-orange' : 'badge-grey' %>">
-                  <%= u.role %>
-                </span>
-              </td>
-              <td class="mono text-sm"><%= u.phone || '—' %></td>
-              <td>
-               <% if (u.role === 'student') { %>
-                  <div class="text-sm">Course: <strong><%= u.studentProfile && u.studentProfile.course ? (u.studentProfile.course.name || u.studentProfile.course) : '—' %></strong></div>
-                  <div class="td-muted text-xs">Batch: <%= u.studentProfile && u.studentProfile.batch ? (u.studentProfile.batch.name || u.studentProfile.batch) : '—' %></div>
-                <% } else if (u.role === 'teacher') { %>
-                  <div class="text-sm">Subject: <strong><%= u.teacherProfile && u.teacherProfile.subjects && u.teacherProfile.subjects.length > 0 ? u.teacherProfile.subjects[0] : '—' %></strong></div>
-                  <div class="td-muted text-xs">Qual: <%= u.qualification || '—' %></div>
-                <% } else { %>
-                  <span class="td-muted">—</span>
-                <% } %>
-              </td>
-              <% if (typeof roleActive !== 'undefined' && roleActive === 'student') { %>
-                <td>
-                  <% 
-                    const pct = typeof u.attendancePct !== 'undefined' ? u.attendancePct : 100;
-                    const pctBadge = pct < 75 ? 'badge-red' : pct >= 85 ? 'badge-green' : 'badge-gold';
-                  %>
-                  <span class="badge <%= pctBadge %>" style="font-family: var(--mono);"><%= pct %>%</span>
-                  <% if (!u.isMarkedToday) { %>
-                    <span class="badge badge-grey" style="font-size: 8px; padding: 1px 3px; display: block; margin-top: 4px; width: max-content;">Unmarked today</span>
-                  <% } %>
-                </td>
-                <td>
-                  <% 
-                    const hasKycDocs = u.idProof && u.fatherName && u.guardianPhone;
-                    const kycBadgeClass = u.idVerified ? 'badge-green' : (hasKycDocs ? 'badge-gold' : 'badge-red');
-                    const kycLabel = u.idVerified ? 'Verified' : (hasKycDocs ? 'Ready to verify' : 'Pending');
-                  %>
-                  <span class="badge <%= kycBadgeClass %>"><%= kycLabel %></span>
-                </td>
-              <% } %>
-              <td>
-                <% 
-                  const statusVal = u.status || (u.isActive ? 'active' : 'inactive');
-                  const statusBadgeClass = {
-                    active: 'badge-green',
-                    inactive: 'badge-grey',
-                    drop: 'badge-red',
-                    complete: 'badge-gold'
-                  }[statusVal];
-                %>
-                <form action="/admin/users/<%= u._id %>/toggle" method="POST" style="margin:0; padding:0;">
-                  <button type="submit" class="badge <%= statusBadgeClass %>" style="border: none; cursor: pointer; padding: 0.25rem 0.55rem; font-family: inherit;" title="Click to toggle status">
-                    <%= statusVal %>
-                  </button>
-                </form>
-              </td>
-              <td>
-                <div class="d-flex gap-1">
-                  <a href="/admin/users/<%= u._id %>/edit" class="btn btn-ghost btn-xs">Edit</a>
-                  <button
-                    type="button"
-                    class="btn btn-ghost btn-xs reset-password-btn"
-                    data-user-id="<%= u._id %>"
-                    data-user-name="<%= u.name %>"
-                    data-user-phone="<%= u.phone || '' %>">
-                    Reset Password
-                  </button>
-                </div>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
+    <div class="people-directory">
+      <div class="people-directory-head"><span>Person</span><span>Academy context</span><span>Signals</span><span style="text-align:right;">Account controls</span></div>
+      <% users.forEach(u => { %>
+        <%
+          const profileHref = u.role === 'student' && u.studentProfile ? `/admin/students/${u.studentProfile._id}` : u.role === 'teacher' ? `/admin/teachers/${u._id}` : u.role === 'counsellor' ? `/admin/counsellors/${u._id}` : `/admin/users/${u._id}/edit`;
+          const initials = u.initials || String(u.name || 'U').split(/\s+/).map(part => part[0]).join('').slice(0,2).toUpperCase();
+          const statusVal = u.status || (u.isActive ? 'active' : 'inactive');
+          const pct = Number.isFinite(Number(u.attendancePct)) ? Number(u.attendancePct) : 100;
+          const hasKycDocs = u.idProof && u.fatherName && u.guardianPhone;
+          const lastActive = u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : 'Never signed in';
+        %>
+        <article class="person-directory-row" data-row-href="<%= profileHref %>" tabindex="0" aria-label="Open <%= u.name %> profile">
+          <div class="person-identity">
+            <div class="person-select-wrap"><div class="avatar person-avatar"><% if (u.profilePic) { %><img src="<%= u.profilePic %>" alt=""><% } else { %><%= initials %><% } %></div><% if (activeRole === 'student' && u.studentProfile && u.idProof && !u.idVerified) { %><input class="people-select kyc-check" type="checkbox" form="bulkKycForm" name="studentIds" value="<%= u.studentProfile._id %>" aria-label="Select <%= u.name %> for KYC verification"><% } %></div>
+            <div><div class="person-name"><%= u.name %></div><div class="person-contact"><%= u.email %><% if (u.phone) { %> &middot; <%= u.phone %><% } %></div><div class="person-id"><%= u.rollNumber || 'Academy ID pending' %></div><div class="person-meta">Last active: <%= lastActive %></div></div>
+          </div>
+          <div class="person-context">
+            <% if (u.role === 'student') { %><strong><%= u.studentProfile?.course?.name || u.studentProfile?.course || 'Course not assigned' %></strong><span><%= u.studentProfile?.batch?.name || u.studentProfile?.batch || 'Batch not assigned' %></span>
+            <% } else if (u.role === 'teacher') { %><strong><%= u.teacherProfile?.courses?.length ? u.teacherProfile.courses.map(course => course.name || course).join(', ') : 'Course not assigned' %></strong><span><%= u.qualification || 'Qualification not added' %><% if (u.experienceYears) { %> &middot; <%= u.experienceYears %> years<% } %></span>
+            <% } else if (u.role === 'counsellor') { %><strong>Counselling team</strong><span>Academy staff profile</span>
+            <% } else { %><strong><%= u.role %></strong><span>Administration account</span><% } %>
+          </div>
+          <div class="person-signals">
+            <span class="badge <%= statusVal === 'active' ? 'badge-green' : statusVal === 'complete' ? 'badge-gold' : statusVal === 'drop' ? 'badge-red' : 'badge-grey' %>"><%= statusVal %></span>
+            <% if (u.role === 'student') { %><span class="badge <%= pct < 75 ? 'badge-red' : pct >= 85 ? 'badge-green' : 'badge-gold' %>"><%= pct %>% attendance</span><span class="badge <%= u.idVerified ? 'badge-green' : hasKycDocs ? 'badge-gold' : 'badge-grey' %>"><%= u.idVerified ? 'KYC verified' : hasKycDocs ? 'KYC ready' : 'KYC pending' %></span><% } %>
+          </div>
+          <div class="person-actions">
+            <form action="/admin/users/<%= u._id %>/status" method="POST" class="person-status-form"><label class="sr-only" for="status-<%= u._id %>">Account status for <%= u.name %></label><select id="status-<%= u._id %>" name="status" class="person-status-select" onchange="this.form.submit()"><option value="active" <%= statusVal === 'active' ? 'selected' : '' %>>Active</option><option value="inactive" <%= statusVal === 'inactive' ? 'selected' : '' %>>Inactive</option><option value="drop" <%= statusVal === 'drop' ? 'selected' : '' %>>Dropped</option><option value="complete" <%= statusVal === 'complete' ? 'selected' : '' %>>Completed</option></select></form>
+            <a href="/admin/users/<%= u._id %>/edit" class="btn btn-ghost btn-xs">Edit</a>
+            <button type="button" class="btn btn-ghost btn-xs reset-password-btn" data-user-id="<%= u._id %>" data-user-name="<%= u.name %>" data-user-phone="<%= u.phone || '' %>">Reset password</button>
+          </div>
+        </article>
+      <% }) %>
     </div>
-    <% if (typeof pagination !== 'undefined' && pagination && pagination.pages > 1) { %>
-      <% const pageUrl = (p) => {
-        const params = new URLSearchParams(filter || {});
-        params.set('page', p);
-        params.set('limit', pagination.limit);
-        return '?' + params.toString();
-      }; %>
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border);">
-        <div class="td-muted text-sm">
-          Showing page <strong><%= pagination.page %></strong> of <strong><%= pagination.pages %></strong> · <%= pagination.total %> records
-        </div>
-        <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
-          <a class="btn btn-ghost btn-sm <%= pagination.page <= 1 ? 'disabled' : '' %>" href="<%= pagination.page <= 1 ? '#' : pageUrl(pagination.page - 1) %>">Previous</a>
-          <% for (let p = Math.max(1, pagination.page - 2); p <= Math.min(pagination.pages, pagination.page + 2); p++) { %>
-            <a class="btn btn-sm <%= p === pagination.page ? 'btn-primary' : 'btn-ghost' %>" href="<%= pageUrl(p) %>"><%= p %></a>
-          <% } %>
-          <a class="btn btn-ghost btn-sm <%= pagination.page >= pagination.pages ? 'disabled' : '' %>" href="<%= pagination.page >= pagination.pages ? '#' : pageUrl(pagination.page + 1) %>">Next</a>
-        </div>
-      </div>
-    <% } %>
   <% } %>
 </div>
 
-<%- include('../partials/admin-password-reset-modal', { passwordResetRedirect: '/admin/users' }) %>
+<%- include('../partials/admin-password-reset-modal', { passwordResetRedirect: directoryUrl }) %>
 <script src="/js/instant-filter.js"></script>
 <script>
+  function initAdminPersonRows() {
+    document.querySelectorAll('[data-row-href]').forEach(row => {
+      if (row.dataset.rowReady) return;
+      const open = event => {
+        if (event.target.closest('a, button, input, select, textarea, form, label')) return;
+        if (window.AppSoftNav && typeof window.AppSoftNav.navigateTo === 'function') {
+          window.AppSoftNav.navigateTo(row.dataset.rowHref);
+        } else {
+          window.location.href = row.dataset.rowHref;
+        }
+      };
+      row.addEventListener('click', open);
+      row.addEventListener('keydown', event => { if (event.key === 'Enter') open(event); });
+      row.dataset.rowReady = '1';
+    });
+  }
   function toggleAllKycChecks(button) {
     const checks = Array.from(document.querySelectorAll('.kyc-check'));
-    if (checks.length === 0) return;
-
     const shouldCheck = checks.some(check => !check.checked);
-    checks.forEach(check => {
-      check.checked = shouldCheck;
-    });
-
-    if (button) {
-      button.textContent = shouldCheck ? 'Clear Selection' : 'Select Pending KYC';
-    }
+    checks.forEach(check => { check.checked = shouldCheck; });
+    if (button) button.textContent = shouldCheck ? 'Clear selection' : 'Select ready KYC';
   }
+  initAdminPersonRows();
+  document.addEventListener('resultsUpdated', initAdminPersonRows);
+  document.addEventListener('softnav:load', initAdminPersonRows);
 </script>

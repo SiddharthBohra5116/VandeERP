@@ -75,6 +75,10 @@ teacherSchema.virtual('profilePic').get(function() {
   return this.user && this.user.profilePic ? this.user.profilePic : '';
 });
 
+teacherSchema.virtual('initials').get(function() {
+  return this.user && this.user.initials ? this.user.initials : '';
+});
+
 teacherSchema.set('toJSON', { virtuals: true });
 teacherSchema.set('toObject', { virtuals: true });
 

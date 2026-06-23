@@ -128,7 +128,7 @@ exports.getStudents = async (req, res) => {
         ...plainUser,
         studentProfile: profile ? profile.toObject() : null,
         rollNumber: profile?.rollNumber || plainUser.rollNumber || '',
-        attendancePct: typeof stats.attendancePct !== 'undefined' ? stats.attendancePct : 100,
+        attendancePct: typeof stats.attendancePct !== 'undefined' ? stats.attendancePct : 0,
         isMarkedToday: typeof stats.isMarkedToday !== 'undefined' ? stats.isMarkedToday : true,
         idProof: profile?.documents?.idProof || null,
         fatherName: profile?.family?.father?.name || '',

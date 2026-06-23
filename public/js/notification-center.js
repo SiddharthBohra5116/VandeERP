@@ -80,6 +80,10 @@ document.addEventListener('DOMContentLoaded', () => {
       toast.setAttribute('aria-live', 'polite');
       document.body.appendChild(toast);
     }
+    const isLightTheme = document.documentElement.getAttribute('data-theme') === 'light'
+      || document.body.classList.contains('light-theme')
+      || localStorage.getItem('theme') !== 'dark';
+    toast.classList.toggle('is-light', isLightTheme);
 
     const more = notifications.length > 1 ? `<span>${notifications.length - 1} more new notification${notifications.length > 2 ? 's' : ''}</span>` : '';
     toast.innerHTML = `
@@ -92,8 +96,12 @@ document.addEventListener('DOMContentLoaded', () => {
     toast.classList.add('show');
 
     toast.querySelector('button')?.addEventListener('click', () => {
-      openDropdown();
       toast.classList.remove('show');
+      if (first.link && first.link !== '#') {
+        window.location.href = first.link;
+      } else {
+        openDropdown();
+      }
     }, { once: true });
 
     clearTimeout(liveToastTimer);

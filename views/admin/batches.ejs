@@ -73,7 +73,7 @@
               <td>
                 <div style="display: flex; gap: 6px;">
                   <a href="/admin/batches/<%= b._id %>/edit" class="btn btn-ghost btn-xs">Edit</a>
-                  <form action="/admin/batches/<%= b._id %>/delete" method="POST" style="margin: 0;" onsubmit="return confirm('Are you sure you want to delete this batch? All assigned students will revert to General Batch.');">
+                  <form action="/admin/batches/<%= b._id %>/delete" method="POST" style="margin: 0;" data-confirm="Delete this batch? Assigned students will move to the General Batch." data-confirm-title="Delete batch" data-confirm-label="Delete batch">
                     <button type="submit" class="btn btn-ghost btn-xs" style="color: var(--red);">Delete</button>
                   </form>
                 </div>

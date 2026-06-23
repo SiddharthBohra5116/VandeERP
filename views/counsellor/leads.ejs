@@ -6,110 +6,192 @@
   topbarActions = `<a href="/counsellor/leads/new" class="btn btn-primary btn-sm">+ Add Lead</a>`;
 %>
 
-<!-- Filters -->
-<div class="card" style="padding:16px 20px; margin-bottom:20px;">
-  <form method="GET" action="/counsellor/leads" class="filter-bar" style="margin:0; gap:0.75rem;">
-    <div class="form-group" style="margin:0; flex:1;">
-      <label class="form-label" style="font-size: 10px;">Search</label>
-      <input type="text" name="search" class="form-control" placeholder="Name or phone..." value="<%= filters.search || '' %>" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
-    </div>
-    <div class="form-group">
-      <label class="form-label" style="font-size: 10px;">Status</label>
-      <select name="status" class="form-control" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
-        <option value="">All Statuses</option>
-        <% ['new','contacted','mentorship_scheduled','mentorship_attended','follow_up','joining_interested','admission_completed','lost'].forEach(s => { %>
-          <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= s.charAt(0).toUpperCase() + s.slice(1) %></option>
-        <% }); %>
-      </select>
-    </div>
-    <div class="form-group" style="margin:0; min-width:160px;">
-      <label class="form-label" style="font-size: 10px;">Course</label>
-      <select name="course" class="form-control" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
-        <option value="">All Courses</option>
-        <% ['Video Editing','Digital Marketing','Both','Undecided'].forEach(c => { %>
-          <option value="<%= c %>" <%= filters.course === c ? 'selected' : '' %>><%= c %></option>
-        <% }); %>
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label" style="font-size: 10px;">Source</label>
-      <select name="source" class="form-control" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
-        <option value="">All Sources</option>
-        <% ['Walk-in','Website','Referral','Instagram','Facebook','LinkedIn','Advertisement','WhatsApp','Other'].forEach(s => { %>
-          <option value="<%= s %>" <%= filters.source === s ? 'selected' : '' %>><%= s %></option>
-        <% }); %>
-      </select>
-    </div>
-    <div style="display:flex; gap:6px; align-items:center; align-self:flex-end;">
-      <a href="/counsellor/leads" class="btn btn-ghost btn-sm">Clear</a>
-    </div>
-  </form>
-</div>
+<style>
+  /* Premium Directory Styles Inspired by Admin Students page */
+  .people-toolbar { display: grid; grid-template-columns: minmax(220px, 1.2fr) repeat(3, minmax(130px, 1fr)) auto; gap: 0.75rem; align-items: end; padding: 1rem; margin-bottom: 1.25rem; }
+  .people-toolbar .form-group { margin: 0; }
+  
+  .people-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1.25rem; overflow: hidden; }
+  .people-summary-item { padding: 0.8rem 1.2rem; background: var(--bg-card); }
+  .people-summary-item + .people-summary-item { border-left: 1px solid var(--border); }
+  .people-summary-label { display: block; color: var(--text-muted); font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+  .people-summary-value { display: block; margin-top: 0.2rem; font-size: 1.25rem; font-weight: 850; }
 
-<!-- Leads Table -->
-<div id="results-container" class="card">
+  .people-directory { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .people-directory-head, .person-directory-row { display: grid; grid-template-columns: minmax(240px, 1.35fr) minmax(180px, 1fr) minmax(210px, 1.1fr) minmax(140px, auto); gap: 1rem; align-items: center; }
+  .people-directory-head { padding: 0.7rem 1rem; background: var(--bg-hover); color: var(--text-muted); font-size: 0.68rem; font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em; }
+  .person-directory-row { position: relative; padding: 1rem; background: var(--bg-card); border-top: 1px solid var(--border); cursor: pointer; transition: background 0.16s ease; }
+  .person-directory-row:hover { background: var(--bg-hover); }
+  .person-directory-row:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+
+  .person-identity { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.75rem; align-items: center; min-width: 0; }
+  .person-avatar { width: 42px; height: 42px; border-radius: 8px; flex: 0 0 auto; background: var(--gold-dim); border: 1px solid var(--gold-border); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: var(--gold); }
+  .person-name { color: var(--text); font-size: 0.94rem; font-weight: 850; }
+  .person-contact, .person-meta { color: var(--text-sub); font-size: 0.76rem; line-height: 1.45; overflow-wrap: anywhere; }
+  .person-id { color: var(--gold); font: 800 0.68rem var(--mono); margin-top: 0.18rem; }
+
+  .person-context { min-width: 0; }
+  .person-context strong { display: block; margin-bottom: 0.2rem; font-size: 0.84rem; }
+  .person-context span { display: block; color: var(--text-sub); font-size: 0.75rem; line-height: 1.45; }
+
+  .person-signals { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
+  .person-actions { display: flex; justify-content: flex-end; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+
+  @media (max-width: 1024px) {
+    .people-directory-head { display: none; }
+    .person-directory-row { grid-template-columns: minmax(220px, 1.2fr) minmax(170px, 1fr) auto; }
+    .person-signals { grid-column: 2; }
+    .person-actions { grid-column: 3; grid-row: 1 / span 2; }
+  }
+  @media (max-width: 768px) {
+    .people-toolbar { grid-template-columns: 1fr; }
+    .people-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .people-summary-item:nth-child(n+3) { border-top: 1px solid var(--border); }
+    .people-summary-item:nth-child(2n+1) { border-left: 0; }
+    .person-directory-row { grid-template-columns: 1fr; gap: 0.8rem; padding: 0.9rem; }
+    .person-context, .person-signals, .person-actions { grid-column: 1; grid-row: auto; }
+    .person-actions { justify-content: flex-start; padding-top: 0.7rem; border-top: 1px solid var(--border); }
+  }
+</style>
+
+<!-- Directory summary cards -->
+<section class="people-summary" aria-label="Leads list summary">
+  <div class="people-summary-item">
+    <span class="people-summary-label">Total Leads</span>
+    <span class="people-summary-value"><%= typeof pagination !== 'undefined' && pagination ? pagination.total : leads.length %></span>
+  </div>
+  <div class="people-summary-item">
+    <span class="people-summary-label">Active Pipeline</span>
+    <span class="people-summary-value" style="color: var(--orange);"><%= stats.activeCount %></span>
+  </div>
+  <div class="people-summary-item">
+    <span class="people-summary-label">Follow-ups Due</span>
+    <span class="people-summary-value" style="color: <%= stats.followupDueCount > 0 ? 'var(--red)' : 'var(--text)' %>;">
+      <%= stats.followupDueCount %>
+    </span>
+  </div>
+  <div class="people-summary-item">
+    <span class="people-summary-label">Converted</span>
+    <span class="people-summary-value" style="color: var(--green);"><%= stats.convertedCount %></span>
+  </div>
+</section>
+
+<!-- Filters -->
+<form method="GET" action="/counsellor/leads" class="card people-toolbar" data-instant-filter>
+  <div class="form-group" style="flex: 1;">
+    <label class="form-label" style="font-size: 10px;">Search</label>
+    <input type="text" name="search" class="form-control" placeholder="Name or phone..." value="<%= filters.search || '' %>" style="padding: 0.45rem 0.75rem;">
+  </div>
+  <div class="form-group">
+    <label class="form-label" style="font-size: 10px;">Status</label>
+    <select name="status" class="form-control" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
+      <option value="">All Statuses</option>
+      <% ['new','contacted','mentorship_scheduled','mentorship_attended','follow_up','joining_interested','admission_completed','lost'].forEach(s => { %>
+        <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= s.replace(/_/g, ' ').charAt(0).toUpperCase() + s.replace(/_/g, ' ').slice(1) %></option>
+      <% }); %>
+    </select>
+  </div>
+  <div class="form-group" style="min-width: 150px;">
+    <label class="form-label" style="font-size: 10px;">Course</label>
+    <select name="course" class="form-control" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
+      <option value="">All Courses</option>
+      <% ['Video Editing','Digital Marketing','Both','Undecided'].forEach(c => { %>
+        <option value="<%= c %>" <%= filters.course === c ? 'selected' : '' %>><%= c %></option>
+      <% }); %>
+    </select>
+  </div>
+  <div class="form-group">
+    <label class="form-label" style="font-size: 10px;">Source</label>
+    <select name="source" class="form-control" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
+      <option value="">All Sources</option>
+      <% ['Walk-in','Website','Referral','Instagram','Facebook','LinkedIn','Advertisement','WhatsApp','Other'].forEach(s => { %>
+        <option value="<%= s %>" <%= filters.source === s ? 'selected' : '' %>><%= s %></option>
+      <% }); %>
+    </select>
+  </div>
+  <div style="display: flex; gap: 6px; align-items: center; align-self: flex-end;">
+    <a href="/counsellor/leads" class="btn btn-ghost btn-sm">Clear</a>
+  </div>
+</form>
+
+<!-- Leads Directory Grid -->
+<div id="results-container">
   <% if (leads.length === 0) { %>
-    <div class="empty-state">
+    <div class="card empty-state">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
       <p>No leads found matching your filters.</p>
     </div>
   <% } else { %>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Course</th>
-            <th>Source</th>
-            <th>Status</th>
-            <th>Follow-up</th>
-            <th>Added</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% leads.forEach((lead, i) => { %>
-            <%
-              const statusBadge = {
-                new: 'badge-orange',
-                contacted: 'badge-blue',
-                mentorship_scheduled: 'badge-blue',
-                mentorship_attended: 'badge-yellow',
-                follow_up: 'badge-yellow',
-                joining_interested: 'badge-gold',
-                admission_completed: 'badge-green',
-                lost: 'badge-red'
-              }[lead.status] || 'badge-grey';
+    <div class="people-directory">
+      <div class="people-directory-head">
+        <span>Lead & Contact</span>
+        <span>Course & Source</span>
+        <span>Signals & Status</span>
+        <span style="text-align: right;">Actions</span>
+      </div>
+      <% leads.forEach((lead, i) => { %>
+        <%
+          const statusBadge = {
+            new: 'badge-orange',
+            contacted: 'badge-blue',
+            mentorship_scheduled: 'badge-blue',
+            mentorship_attended: 'badge-yellow',
+            follow_up: 'badge-yellow',
+            joining_interested: 'badge-gold',
+            admission_completed: 'badge-green',
+            lost: 'badge-red'
+          }[lead.status] || 'badge-grey';
 
-              const isOverdue = lead.nextFollowUpAt && new Date(lead.nextFollowUpAt) < new Date() && lead.status !== 'admission_completed' && lead.status !== 'lost';
-            %>
-            <tr>
-              <td class="td-mono text-muted"><%= i + 1 %></td>
-              <td><strong><%= lead.name %></strong></td>
-              <td class="td-mono"><%= lead.phone %></td>
-              <td><span class="badge badge-orange"><%= lead.interestedCourse ? lead.interestedCourse.name : 'Undecided' %></span></td>
-              <td class="td-muted"><%= lead.source %></td>
-              <td><span class="badge <%= statusBadge %>"><%= lead.status %></span></td>
-              <td class="td-mono" <%= isOverdue ? 'style="color: var(--red); font-weight: bold;"' : '' %>>
-                <%= lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'}) : '—' %>
-                <% if (isOverdue) { %> ⚠️<% } %>
-              </td>
-              <td class="td-mono text-muted">
-                <%= new Date(lead.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %>
-              </td>
-              <td>
-                <div style="display:flex; gap:5px;">
-                  <a href="/counsellor/leads/<%= lead._id %>" class="btn btn-ghost btn-xs">View</a>
-                  <a href="/counsellor/leads/<%= lead._id %>/edit" class="btn btn-ghost btn-xs">Edit</a>
-                </div>
-              </td>
-            </tr>
-          <% }); %>
-        </tbody>
-      </table>
+          const initials = lead.name.split(/\s+/).map(n => n[0]).join('').toUpperCase().slice(0, 2);
+          const isOverdue = lead.nextFollowUpAt && new Date(lead.nextFollowUpAt) < new Date() && lead.status !== 'admission_completed' && lead.status !== 'lost';
+        %>
+        <article class="person-directory-row" data-row-href="/counsellor/leads/<%= lead._id %>" tabindex="0" aria-label="Open <%= lead.name %> details">
+          
+          <!-- Column 1: Identity & contact -->
+          <div class="person-identity">
+            <div class="person-avatar">
+              <%= initials || 'L' %>
+            </div>
+            <div>
+              <div class="person-name"><%= lead.name %></div>
+              <div class="person-contact">📞 <%= lead.phone %> <% if (lead.email) { %> &middot; <%= lead.email %><% } %></div>
+              <div class="person-meta">Added: <%= new Date(lead.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %></div>
+            </div>
+          </div>
+
+          <!-- Column 2: Course Context -->
+          <div class="person-context">
+            <strong><%= lead.interestedCourse ? lead.interestedCourse.name : 'Undecided' %></strong>
+            <span>Source: <%= lead.source %></span>
+          </div>
+
+          <!-- Column 3: Signals & Badges -->
+          <div class="person-signals">
+            <span class="badge <%= statusBadge %>" style="text-transform: uppercase;"><%= lead.status.replace(/_/g, ' ') %></span>
+            <% if (lead.status === 'admission_completed') { %>
+              <span class="badge badge-green">Enrolled</span>
+            <% } else if (lead.status === 'lost') { %>
+              <span class="badge badge-red">Lost</span>
+            <% } else if (lead.nextFollowUpAt) { %>
+              <span class="badge <%= isOverdue ? 'badge-red' : 'badge-gold' %>" <%= isOverdue ? 'style="font-weight: 700;"' : '' %>>
+                <%= isOverdue ? '⚠️ Overdue: ' : 'Follow-up: ' %><%= new Date(lead.nextFollowUpAt).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %>
+              </span>
+            <% } else { %>
+              <span class="badge badge-grey">No Follow-up Scheduled</span>
+            <% } %>
+          </div>
+
+          <!-- Column 4: Action Controls -->
+          <div class="person-actions">
+            <a href="/counsellor/leads/<%= lead._id %>" class="btn btn-ghost btn-xs">View</a>
+            <a href="/counsellor/leads/<%= lead._id %>/edit" class="btn btn-ghost btn-xs">Edit</a>
+          </div>
+
+        </article>
+      <% }); %>
     </div>
+
+    <!-- Pagination -->
     <% if (typeof pagination !== 'undefined' && pagination && pagination.pages > 1) { %>
       <% const pageUrl = (p) => {
         const params = new URLSearchParams(filters || {});
@@ -117,7 +199,7 @@
         params.set('limit', pagination.limit);
         return '?' + params.toString();
       }; %>
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border);">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border);">
         <div class="td-muted text-sm">
           Showing page <strong><%= pagination.page %></strong> of <strong><%= pagination.pages %></strong> · <%= pagination.total %> leads
         </div>
@@ -134,3 +216,30 @@
 </div>
 
 <script src="/js/instant-filter.js"></script>
+<script>
+  function initLeadRowClicks() {
+    document.querySelectorAll('[data-row-href]').forEach(row => {
+      if (row.dataset.rowReady) return;
+      const open = event => {
+        if (event.target.closest('a, button, input, select, textarea, form, label')) return;
+        if (window.AppSoftNav && typeof window.AppSoftNav.navigateTo === 'function') {
+          window.AppSoftNav.navigateTo(row.dataset.rowHref);
+        } else {
+          window.location.href = row.dataset.rowHref;
+        }
+      };
+      row.addEventListener('click', open);
+      row.dataset.rowReady = 'true';
+      row.style.cursor = 'pointer';
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initLeadRowClicks);
+  } else {
+    initLeadRowClicks();
+  }
+
+  document.addEventListener('softnav:load', initLeadRowClicks);
+  document.addEventListener('resultsUpdated', initLeadRowClicks);
+</script>

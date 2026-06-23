@@ -22,10 +22,10 @@
     <!-- Batch select second -->
     <div class="form-group" style="margin:0; min-width:140px; flex: 1;">
       <label class="form-label" for="progressBatchSelect" style="margin-bottom:0.25rem;">Batch</label>
-      <select name="batch" id="progressBatchSelect" class="form-control" style="padding:0.45rem 0.75rem;" required onchange="this.form.submit()">
+      <select name="batch" id="progressBatchSelect" class="form-control" style="padding:0.45rem 0.75rem;" required>
         <option value="" disabled <%= !filter.batch ? 'selected' : '' %>>Select Batch</option>
         <% batches.forEach(b => { %>
-          <option value="<%= b._id %>" <%= String(filter.batch) === String(b._id) ? 'selected' : '' %>><%= b.name %></option>
+          <option value="<%= b._id %>" data-course="<%= b.course ? b.course.toString() : '' %>" <%= String(filter.batch) === String(b._id) ? 'selected' : '' %>><%= b.name %></option>
         <% }) %>
       </select>
     </div>
@@ -260,7 +260,7 @@
                                 data-test-scores='<%- JSON.stringify(test.studentScores) %>'>
                           Edit Scores
                         </button>
-                        <form action="/teacher/progress/delete-test" method="POST" style="margin: 0;" onsubmit="return confirm('Are you sure you want to delete the test &quot;<%= test.testName %>&quot;? This will remove scores for all students.');">
+                        <form action="/teacher/progress/delete-test" method="POST" style="margin: 0;" data-confirm="Delete the test &quot;<%= test.testName %>&quot;? This will remove its scores for every student." data-confirm-title="Delete test" data-confirm-label="Delete test">
                           <input type="hidden" name="course" value="<%= filter.course %>">
                           <input type="hidden" name="batch" value="<%= filter.batch %>">
                           <input type="hidden" name="testName" value="<%= test.testName %>">
@@ -642,6 +642,12 @@
           courseSelect.dispatchEvent(new Event('change'));
         }
       }
+      // Submit form now that batch and course are in sync
+      const form = batchSelect.closest('form');
+      if (form) {
+        if (form.requestSubmit) form.requestSubmit();
+        else form.submit();
+      }
     });
 
     if (courseSelect.value) {
@@ -666,17 +672,17 @@
           const sVal = Number(scoreInput.value);
           const tmVal = Number(totalMarksInput.value);
           if (sVal < 0) {
-            alert('Score cannot be negative.');
+            showToast('Score cannot be negative.', 'warning');
             e.preventDefault();
             return;
           }
           if (tmVal < 1) {
-            alert('Total marks must be at least 1.');
+            showToast('Total marks must be at least 1.', 'warning');
             e.preventDefault();
             return;
           }
           if (sVal > tmVal) {
-            alert('Score cannot exceed total marks.');
+            showToast('Score cannot exceed total marks.', 'warning');
             e.preventDefault();
             return;
           }
@@ -691,7 +697,7 @@
         const bulkTotalMarksInput = document.getElementById('bulkTotalMarks');
         const bulkTotalMarksVal = Number(bulkTotalMarksInput.value);
         if (bulkTotalMarksVal < 1) {
-          alert('Total marks must be at least 1.');
+          showToast('Total marks must be at least 1.', 'warning');
           e.preventDefault();
           return;
         }
@@ -700,13 +706,13 @@
           if (input.value !== '') {
             const scoreVal = Number(input.value);
             if (scoreVal < 0) {
-              alert('Scores cannot be negative.');
+              showToast('Scores cannot be negative.', 'warning');
               e.preventDefault();
               input.focus();
               return;
             }
             if (scoreVal > bulkTotalMarksVal) {
-              alert('Score cannot exceed total marks (' + bulkTotalMarksVal + ').');
+              showToast('Score cannot exceed total marks (' + bulkTotalMarksVal + ').', 'warning');
               e.preventDefault();
               input.focus();
               return;

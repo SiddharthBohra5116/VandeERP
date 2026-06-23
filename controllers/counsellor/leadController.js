@@ -3,6 +3,23 @@ const User = require('../../models/User');
 const { escapeRegex } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
 const Message = require('../../models/Message');
+const LeadActivity = require('../../models/LeadActivity');
+const {
+  nextBusinessFollowUpDate,
+  notifyAdmins,
+  recordLeadCreation,
+  resolveCourse
+} = require('../../utils/leadAutomation');
+
+function getLeadActivityType(status, channel) {
+  if (channel === 'Call') return 'call';
+  if (channel === 'WhatsApp') return 'whatsapp';
+  if (status === 'mentorship_scheduled') return 'mentorship_scheduled';
+  if (status === 'mentorship_attended') return 'mentorship_attended';
+  if (status === 'lost') return 'lost';
+  if (status === 'joining_interested') return 'status_changed';
+  return 'follow_up_completed';
+}
 
 /**
  * GET /counsellor/leads
@@ -10,12 +27,13 @@ const Message = require('../../models/Message');
  */
 exports.getLeads = async (req, res) => {
   try {
-    const { status, search, course } = req.query;
+    const { status, search, course, source } = req.query;
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 10), 100);
     const skip = (page - 1) * limit;
     const filter = { assignedTo: req.user.counsellorProfileId };
     if (status) filter.status = status;
+    if (source) filter.source = source;
     if (search) {
       const escaped = escapeRegex(search);
       filter.$or = [
@@ -34,13 +52,27 @@ exports.getLeads = async (req, res) => {
         }
       }
     }
-    const [leads, totalLeads] = await Promise.all([
+    const baseFilter = { assignedTo: req.user.counsellorProfileId };
+    const [leads, totalLeads, activeCount, followupDueCount, convertedCount] = await Promise.all([
       Lead.find(filter)
         .populate('interestedCourse')
         .sort({ nextFollowUpAt: 1, createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      Lead.countDocuments(filter)
+      Lead.countDocuments(filter),
+      Lead.countDocuments({
+        ...baseFilter,
+        status: { $nin: ['admission_completed', 'lost'] }
+      }),
+      Lead.countDocuments({
+        ...baseFilter,
+        status: { $nin: ['admission_completed', 'lost'] },
+        nextFollowUpAt: { $lte: new Date() }
+      }),
+      Lead.countDocuments({
+        ...baseFilter,
+        status: 'admission_completed'
+      })
     ]);
     res.render('counsellor/leads', {
       title: 'My Leads',
@@ -51,6 +83,11 @@ exports.getLeads = async (req, res) => {
         limit,
         total: totalLeads,
         pages: Math.max(Math.ceil(totalLeads / limit), 1)
+      },
+      stats: {
+        activeCount,
+        followupDueCount,
+        convertedCount
       },
       filter: req.query,
       filters: req.query,
@@ -75,7 +112,6 @@ exports.getCreateLead = (req, res) => {
  */
 exports.postCreateLead = async (req, res) => {
   try {
-    const Course = require('../../models/Course');
     const { name, phone, email, course, source, status, followUpDate, notes } = req.body;
     const cleanPhone = String(phone || '').trim();
     const duplicate = await Lead.findOne({ phone: cleanPhone }).select('_id name assignedTo status');
@@ -88,23 +124,37 @@ exports.postCreateLead = async (req, res) => {
       });
     }
 
-    let interestedCourse = null;
-    if (course && course !== 'Both' && course !== 'Undecided') {
-      const courseDoc = await Course.findOne({ name: course });
-      if (courseDoc) interestedCourse = courseDoc._id;
-    }
+    const courseDoc = await resolveCourse(course);
     const leadData = {
       name,
       phone: cleanPhone,
       email,
-      interestedCourse,
+      interestedCourse: courseDoc ? courseDoc._id : null,
       source,
-      status,
-      nextFollowUpAt: followUpDate ? new Date(followUpDate) : null,
+      status: status || 'new',
+      nextFollowUpAt: followUpDate ? new Date(followUpDate) : nextBusinessFollowUpDate(),
       notes: notes || '',
-      assignedTo: req.user.counsellorProfileId
+      assignedTo: req.user.counsellorProfileId,
+      createdBy: req.user._id,
+      ownershipHistory: [{
+        counsellor: req.user.counsellorProfileId,
+        assignedBy: req.user._id,
+        note: 'Lead created directly by counsellor.'
+      }]
     };
     const lead = await Lead.create(leadData);
+    await recordLeadCreation({
+      lead,
+      actorUser: req.user,
+      assignedCounsellor: { _id: req.user.counsellorProfileId, user: req.user },
+      note: `Lead created by counsellor from ${source || 'manual entry'}.`
+    });
+    await notifyAdmins({
+      lead,
+      assignedCounsellor: { _id: req.user.counsellorProfileId, user: req.user },
+      actorUser: req.user,
+      sourceLabel: source || 'manual'
+    });
     logger.info('Lead created successfully', { leadId: lead._id, name: lead.name });
     res.redirect('/counsellor/leads?created=1');
   } catch (err) {
@@ -128,7 +178,11 @@ exports.getLeadDetail = async (req, res) => {
       logger.warn('Counsellor unauthorized lead detail request', { leadId: req.params.id });
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });
     }
-    res.render('counsellor/lead-detail', { title: lead.name, user: req.user, lead });
+    const leadActivities = await LeadActivity.find({ lead: lead._id })
+      .populate('doneBy', 'name role')
+      .populate('counsellor', 'name role')
+      .sort({ createdAt: 1 });
+    res.render('counsellor/lead-detail', { title: lead.name, user: req.user, lead, leadActivities });
   } catch (err) {
     logger.error('Counsellor Lead Detail Error', { err: err.message });
     res.status(500).render('500', { title: 'Error', user: req.user, layout: 'main' });
@@ -191,6 +245,18 @@ exports.postEditLead = async (req, res) => {
       logger.warn('Counsellor unauthorized lead edit request', { leadId: req.params.id });
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });
     }
+    await LeadActivity.create({
+      lead: updated._id,
+      type: 'note',
+      title: 'Lead details updated',
+      note: 'Counsellor updated lead contact, course, source, notes, or follow-up date.',
+      counsellor: req.user._id,
+      doneBy: req.user._id,
+      followUp: {
+        scheduledFor: followUpDate ? new Date(followUpDate) : null
+      },
+      metadata: { name, phone: cleanPhone, email, source }
+    });
     res.redirect(`/counsellor/leads/${req.params.id}?updated=1`);
   } catch (err) {
     res.redirect(`/counsellor/leads/${req.params.id}?error=1`);
@@ -221,7 +287,30 @@ exports.postAddFollowUp = async (req, res) => {
       return res.redirect(`/counsellor/leads/${req.params.id}?error=Invalid+status+action`);
     }
 
-    const followUpObj = { note, status: finalStatus, channel: channel || 'Call', doneBy: req.user._id };
+    const oldStatus = lead.status;
+    const selectedChannel = channel || 'Call';
+    const cleanNote = String(note || '').trim();
+    const duplicateWindowStart = new Date(Date.now() - 15000);
+    const recentDuplicate = lead.followUpHistory.some(item => (
+      String(item.doneBy || '') === String(req.user._id) &&
+      item.status === finalStatus &&
+      item.channel === selectedChannel &&
+      String(item.note || '').trim() === cleanNote &&
+      new Date(item.doneAt || 0) >= duplicateWindowStart
+    ));
+
+    if (recentDuplicate) {
+      logger.warn('Duplicate follow-up submission ignored', { leadId: req.params.id, status: finalStatus, channel: selectedChannel });
+      return res.redirect(`/counsellor/leads/${req.params.id}?followup=1`);
+    }
+
+    const followUpObj = {
+      note: cleanNote,
+      status: finalStatus,
+      channel: selectedChannel,
+      doneBy: req.user._id,
+      nextFollowUpAt: followUpDate ? new Date(followUpDate) : null
+    };
 
     if (followUpObj.channel === 'Call') {
       const callCount = lead.followUpHistory.filter(h => h.channel === 'Call').length;
@@ -234,6 +323,29 @@ exports.postAddFollowUp = async (req, res) => {
     lead.status = finalStatus;
     if (followUpDate) lead.nextFollowUpAt = new Date(followUpDate);
     await lead.save();
+
+    await LeadActivity.create({
+      lead: lead._id,
+      type: getLeadActivityType(finalStatus, followUpObj.channel),
+      title: followUpObj.channel === 'Call' ? 'Call logged' : followUpObj.channel === 'WhatsApp' ? 'WhatsApp follow-up logged' : `${followUpObj.channel} logged`,
+      note: cleanNote,
+      counsellor: req.user._id,
+      doneBy: req.user._id,
+      call: {
+        outcome: followUpObj.channel === 'Call' ? (callOutcome || 'answered') : 'not-applicable',
+        duration: followUpObj.channel === 'Call' ? (callDuration || '') : ''
+      },
+      whatsapp: {
+        direction: followUpObj.channel === 'WhatsApp' ? 'sent' : 'none',
+        message: followUpObj.channel === 'WhatsApp' ? cleanNote : ''
+      },
+      followUp: {
+        scheduledFor: followUpDate ? new Date(followUpDate) : null,
+        completedAt: new Date()
+      },
+      oldStatus,
+      newStatus: finalStatus
+    });
 
     logger.info('Follow-up logged successfully', { leadId: req.params.id, status: lead.status });
     res.redirect(`/counsellor/leads/${req.params.id}?followup=1`);
@@ -266,6 +378,16 @@ exports.postEditFollowUp = async (req, res) => {
     lead.followUpHistory[index].note = note;
     await lead.save();
 
+    await LeadActivity.create({
+      lead: lead._id,
+      type: 'note',
+      title: 'Follow-up note edited',
+      note,
+      counsellor: req.user._id,
+      doneBy: req.user._id,
+      metadata: { followUpIndex: index }
+    });
+
     logger.info('Follow-up updated successfully', { leadId: req.params.id, index });
     res.redirect(`/counsellor/leads/${req.params.id}?updated=1`);
   } catch (err) {
@@ -286,6 +408,17 @@ exports.postMarkLost = async (req, res) => {
       { status: 'lost' }
     );
     if (!updated) return res.status(403).render('403', { title: 'Access Denied', user: req.user });
+
+    await LeadActivity.create({
+      lead: updated._id,
+      type: 'lost',
+      title: 'Lead marked lost',
+      note: 'Counsellor marked this lead as lost.',
+      counsellor: req.user._id,
+      doneBy: req.user._id,
+      oldStatus: updated.status,
+      newStatus: 'lost'
+    });
     res.redirect('/counsellor/leads');
   } catch (err) {
     logger.error('Mark Lead Lost Error', { err: err.message });
@@ -301,24 +434,38 @@ exports.postWalkIn = async (req, res) => {
   const { name, phone, course } = req.body;
   logger.info('Walk-in entry request', { name, phone, course });
   try {
-    const Course = require('../../models/Course');
     const cleanPhone = String(phone || '').trim();
     const duplicate = await Lead.findOne({ phone: cleanPhone }).select('_id name');
     if (duplicate) {
       return res.redirect(`/counsellor/leads?error=${encodeURIComponent('A lead with this phone number already exists')}`);
     }
 
-    let interestedCourse = null;
-    if (course && course !== 'Both' && course !== 'Undecided') {
-      const courseDoc = await Course.findOne({ name: course });
-      if (courseDoc) interestedCourse = courseDoc._id;
-    }
+    const courseDoc = await resolveCourse(course);
     const lead = await Lead.create({
       name, phone: cleanPhone,
-      interestedCourse,
+      interestedCourse: courseDoc ? courseDoc._id : null,
       source: 'Walk-in',
       status: 'new',
       assignedTo: req.user.counsellorProfileId,
+      nextFollowUpAt: nextBusinessFollowUpDate(),
+      createdBy: req.user._id,
+      ownershipHistory: [{
+        counsellor: req.user.counsellorProfileId,
+        assignedBy: req.user._id,
+        note: 'Walk-in lead created by counsellor.'
+      }]
+    });
+    await recordLeadCreation({
+      lead,
+      actorUser: req.user,
+      assignedCounsellor: { _id: req.user.counsellorProfileId, user: req.user },
+      note: 'Counsellor created this lead from a walk-in enquiry.'
+    });
+    await notifyAdmins({
+      lead,
+      assignedCounsellor: { _id: req.user.counsellorProfileId, user: req.user },
+      actorUser: req.user,
+      sourceLabel: 'Walk-in'
     });
     logger.info('Walk-in lead created successfully', { leadId: lead._id });
     res.redirect('/counsellor/leads?walkin=1');
@@ -358,8 +505,19 @@ exports.postMarkReady = async (req, res) => {
       logger.warn('Unauthorized mark ready request by counsellor', { leadId: req.params.id });
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });
     }
+    const oldStatus = lead.status;
     lead.status = 'joining_interested';
     await lead.save();
+    await LeadActivity.create({
+      lead: lead._id,
+      type: 'status_changed',
+      title: 'Marked ready for admission',
+      note: 'Counsellor marked this lead as ready for admin admission conversion.',
+      counsellor: req.user._id,
+      doneBy: req.user._id,
+      oldStatus,
+      newStatus: 'joining_interested'
+    });
     logger.info('Lead marked as ready to convert', { leadId: lead._id });
 
     // Send notification to admin (Issue 2.8)

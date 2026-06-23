@@ -84,7 +84,14 @@
           data-ungraded="<%= ungraded > 0 ? 'true' : 'false' %>">
           <div class="assignment-card-head">
             <div>
-              <span class="assignment-card-kicker"><%= assign.course && assign.course.name ? assign.course.name : 'Course not set' %></span>
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.15rem;">
+                <span class="assignment-card-kicker" style="margin-bottom: 0;"><%= assign.course && assign.course.name ? assign.course.name : 'Course not set' %></span>
+                <% if (assign.createdAt) { %>
+                  <span style="font-size: 0.68rem; color: var(--text-muted); background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; font-weight: 500; text-transform: none; letter-spacing: normal;" title="Date when this assignment was posted">
+                    Posted <%= new Date(assign.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) %>
+                  </span>
+                <% } %>
+              </div>
               <h3><a href="/teacher/assignments/<%= assign._id %>"><%= assign.title %></a></h3>
               <p><%= assign.batch && assign.batch.name ? assign.batch.name : 'Batch not assigned' %></p>
             </div>
@@ -106,7 +113,7 @@
               <span>Submitted</span>
               <strong><%= handinsCount %>/<%= totalStudents %></strong>
             </div>
-            <div>
+            <div <% if (ungraded > 0) { %> onclick="openUngradedModal('<%= assign._id %>')" style="cursor: pointer;" title="Click to view ungraded submissions" <% } %> >
               <span>Ungraded</span>
               <strong class="<%= ungraded ? 'text-gold' : '' %>"><%= ungraded %></strong>
             </div>
@@ -168,7 +175,12 @@
     };
 
     buttons.forEach(button => {
-      button.addEventListener('click', () => {
+      button.addEventListener('click', (e) => {
+        if (button.dataset.assignmentFilter === 'ungraded') {
+          e.preventDefault();
+          openUngradedModal();
+          return;
+        }
         applyAssignmentFilter(button.dataset.assignmentFilter);
         document.getElementById('assignmentCardGrid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
@@ -177,4 +189,102 @@
     const initialView = new URL(window.location.href).searchParams.get('view') || 'all';
     applyAssignmentFilter(['all', 'active', 'overdue', 'ungraded'].includes(initialView) ? initialView : 'all');
   })();
+
+  window.openUngradedModal = (assignmentId) => {
+    const modal = document.getElementById('ungradedSubmissionsModal');
+    if (modal) {
+      modal.classList.add('open');
+      
+      const groups = modal.querySelectorAll('.ungraded-assignment-group');
+      let visibleCount = 0;
+      groups.forEach(group => {
+        if (!assignmentId || group.classList.contains(`assignment-group-${assignmentId}`)) {
+          group.style.display = 'block';
+          visibleCount++;
+        } else {
+          group.style.display = 'none';
+        }
+      });
+
+      const emptyEl = document.getElementById('ungradedModalEmptyState');
+      if (emptyEl) {
+        emptyEl.style.display = visibleCount === 0 ? 'block' : 'none';
+      }
+    }
+  };
+
+  window.closeUngradedModal = () => {
+    const modal = document.getElementById('ungradedSubmissionsModal');
+    if (modal) {
+      modal.classList.remove('open');
+    }
+  };
+
+  document.getElementById('ungradedSubmissionsModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeUngradedModal();
+    }
+  });
 </script>
+
+<!-- Ungraded Submissions Modal -->
+<div id="ungradedSubmissionsModal" class="modal-overlay">
+  <div class="modal" style="max-width: 600px;">
+    <div class="modal-header" style="border-bottom: 1px solid var(--border); padding-bottom: 0.85rem;">
+      <div class="modal-title" style="font-family: var(--font-display); color: var(--text);">Ungraded Submissions</div>
+      <button class="modal-close" onclick="closeUngradedModal()">&times;</button>
+    </div>
+    <div class="modal-body" style="max-height: 400px; overflow-y: auto; padding: 1.25rem 1.5rem;">
+      <% 
+        let hasAnyUngraded = false;
+        rows.forEach(row => {
+          const assign = row.assignment;
+          const ungradedSubs = assign.submissions.filter(s => ['submitted', 'late'].includes(s.status) && s.marks === null);
+          if (ungradedSubs.length > 0) {
+            hasAnyUngraded = true;
+      %>
+        <div class="ungraded-assignment-group assignment-group-<%= assign._id %>" style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+            <div>
+              <strong style="color: var(--gold); font-size: 0.95rem; font-family: var(--font-display);"><%= assign.title %></strong>
+              <div class="td-muted text-xs" style="margin-top: 2px;"><%= assign.course && assign.course.name ? assign.course.name : '' %> &middot; <%= assign.batch && assign.batch.name ? assign.batch.name : '' %></div>
+            </div>
+            <span class="badge badge-orange" style="font-size: 10px; padding: 2px 6px;"><%= ungradedSubs.length %> pending</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 0.65rem; padding-left: 0.25rem;">
+            <% ungradedSubs.forEach(sub => { %>
+              <a href="/teacher/assignments/<%= assign._id %>?gradeSubmission=<%= sub._id %>" class="ungraded-student-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; color: var(--text); transition: all 0.22s ease;">
+                <div>
+                  <span style="font-weight: 600; font-size: 0.88rem; color: var(--text);"><%= sub.student && sub.student.user ? sub.student.user.name : 'Student' %></span>
+                  <div class="td-muted" style="font-size: 0.75rem; margin-top: 3px;">
+                    Submitted: <%= sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—' %>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                  <span class="badge <%= sub.status === 'late' ? 'badge-orange' : 'badge-blue' %>" style="font-size: 9px; padding: 1px 5px;"><%= sub.status %></span>
+                  <span style="color: var(--gold); font-size: 1.15rem; line-height: 1;">&rarr;</span>
+                </div>
+              </a>
+            <% }) %>
+          </div>
+        </div>
+      <% 
+          }
+        });
+      %>
+      
+      <div id="ungradedModalEmptyState" class="empty-state" style="padding: 2.5rem 0; text-align: center; display: <%= hasAnyUngraded ? 'none' : 'block' %>;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 48px; height: 48px; margin-bottom: 1rem; color: var(--text-muted);"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <p style="color: var(--text-sub); font-weight: 500; font-size: 0.9rem;">All clear! No ungraded submissions pending.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .ungraded-student-item:hover {
+    border-color: rgba(255, 204, 0, 0.45) !important;
+    background: rgba(255, 204, 0, 0.04) !important;
+    transform: translateX(4px);
+  }
+</style>

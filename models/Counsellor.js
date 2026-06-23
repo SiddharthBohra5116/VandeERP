@@ -41,6 +41,10 @@ counsellorSchema.virtual('profilePic').get(function() {
   return this.user && this.user.profilePic ? this.user.profilePic : '';
 });
 
+counsellorSchema.virtual('initials').get(function() {
+  return this.user && this.user.initials ? this.user.initials : '';
+});
+
 counsellorSchema.set('toJSON', { virtuals: true });
 counsellorSchema.set('toObject', { virtuals: true });
 

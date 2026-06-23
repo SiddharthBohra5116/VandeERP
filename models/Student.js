@@ -215,6 +215,10 @@ studentSchema.virtual('profilePic').get(function() {
   return this.user && this.user.profilePic ? this.user.profilePic : '';
 });
 
+studentSchema.virtual('initials').get(function() {
+  return this.user && this.user.initials ? this.user.initials : '';
+});
+
 studentSchema.virtual('fatherName').get(function() {
   return this.family && this.family.father && this.family.father.name ? this.family.father.name : '';
 });

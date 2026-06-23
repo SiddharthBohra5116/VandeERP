@@ -57,10 +57,10 @@
               const endVal = endDateInput.value;
               if (startVal < today) {
                 e.preventDefault();
-                alert('Start date cannot be in the past!');
+                showToast('Start date cannot be in the past.', 'warning');
               } else if (endVal < startVal) {
                 e.preventDefault();
-                alert('End date cannot be earlier than start date!');
+                showToast('End date cannot be earlier than start date.', 'warning');
               }
             });
           }

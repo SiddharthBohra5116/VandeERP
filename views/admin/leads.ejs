@@ -5,6 +5,15 @@
   page = 'leads';
 %>
 
+<style>
+  .lead-row { cursor: pointer; transition: background .16s ease; }
+  .lead-row:hover { background: var(--bg-hover); }
+  .lead-row:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+  .lead-row.is-priority { background: linear-gradient(90deg, rgba(212,175,55,0.08) 0%, rgba(0,0,0,0) 100%); border-left: 3px solid var(--gold); }
+  .lead-row .td-name a { color: var(--gold); font-weight: 700; }
+  .lead-row-hint { display: block; margin-top: 3px; color: var(--text-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+</style>
+
 <% if (typeof filter !== 'undefined' && filter.error) { %>
   <div class="card" style="border-color:var(--red); background:rgba(239,68,68,0.05); margin-bottom:20px; padding:12px 16px; color:var(--red); font-size:13px; font-weight:500; border-left:4px solid var(--red);">
     ❌ <%= filter.error %>
@@ -76,9 +85,9 @@
             <% 
               const isOverdue = l.nextFollowUpAt && new Date(l.nextFollowUpAt) < new Date() && l.status !== 'admission_completed' && l.status !== 'lost';
             %>
-            <tr <%= l.status === 'joining_interested' ? 'style="background: linear-gradient(90deg, rgba(212,175,55,0.08) 0%, rgba(0,0,0,0) 100%); border-left: 3px solid var(--gold);"' : '' %>>
+            <tr class="lead-row <%= l.status === 'joining_interested' ? 'is-priority' : '' %>" data-row-href="/admin/leads/<%= l._id %>" tabindex="0" aria-label="Open <%= l.name %> lead file">
               <td class="td-name">
-                <a href="/admin/leads/<%= l._id %>" style="color:var(--gold); font-weight:600;"><%= l.name %></a>
+                <a href="/admin/leads/<%= l._id %>"><%= l.name %></a>
                 <% if (l.status === 'joining_interested') { %>
                   <span class="badge badge-gold" style="font-size: 9px; margin-left: 6px; vertical-align: middle; background: var(--gold-dim); border: 1px solid var(--gold-border); color: var(--gold); padding: 2px 6px; border-radius: 4px; font-weight: bold;">👑 Ready</span>
                 <% } %>
@@ -242,5 +251,28 @@
       closeConvertModal();
     }
   });
+
+  function initLeadRows() {
+    document.querySelectorAll('[data-row-href]').forEach(row => {
+      if (row.dataset.rowReady) return;
+      const open = event => {
+        if (event.target.closest('a, button, input, select, textarea, form, label')) return;
+        if (window.AppSoftNav && typeof window.AppSoftNav.navigateTo === 'function') {
+          window.AppSoftNav.navigateTo(row.dataset.rowHref);
+        } else {
+          window.location.href = row.dataset.rowHref;
+        }
+      };
+      row.addEventListener('click', open);
+      row.addEventListener('keydown', event => {
+        if (event.key === 'Enter') open(event);
+      });
+      row.dataset.rowReady = '1';
+    });
+  }
+
+  initLeadRows();
+  document.addEventListener('resultsUpdated', initLeadRows);
+  document.addEventListener('softnav:load', initLeadRows);
 </script>
 <script src="/js/instant-filter.js"></script>

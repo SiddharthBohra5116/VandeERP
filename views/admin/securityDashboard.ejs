@@ -393,7 +393,7 @@
 
   async function confirmBlacklist() {
     const reason = document.getElementById('blacklistReason').value.trim();
-    if (!reason) { alert('Please enter a reason.'); return; }
+    if (!reason) { showToast('Please enter a reason.', 'warning'); return; }
 
     try {
       const res = await fetch('/admin/security/blacklist', {
@@ -404,13 +404,13 @@
       });
       const data = await res.json();
       if (res.ok) {
-        alert('✅ ' + data.message);
+        showToast(data.message, 'success');
         closeBlacklistModal();
       } else {
-        alert('❌ ' + data.error);
+        showToast(data.error, 'error');
       }
     } catch (err) {
-      alert('Request failed: ' + err.message);
+      showToast('Request failed: ' + err.message, 'error');
     }
   }
 </script>

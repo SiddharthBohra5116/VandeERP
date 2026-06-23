@@ -3,10 +3,29 @@
   title = 'Class Schedules';
   subtitle = 'Master calendar, classrooms layout, and visual batch planning';
   page = 'schedules';
+  const visibleMonthSchedules = Object.values(monthSchedulesGrouped || {}).flat();
+  const monthRoomCount = new Set(visibleMonthSchedules.map(item => String(item.classroom?._id || item.classroom || '')).filter(Boolean)).size;
+  const monthBatchCount = new Set(visibleMonthSchedules.map(item => String(item.batch?._id || item.batch || '')).filter(Boolean)).size;
+  const monthCompletedCount = visibleMonthSchedules.filter(item => item.status === 'completed').length;
+  const parseTimeToMinutes = (timeStr) => {
+    if (!timeStr) return 0;
+    const raw = String(timeStr).trim().toUpperCase();
+    const match = raw.match(/^(\d+):(\d+)\s*(AM|PM)?$/);
+    if (!match) return 0;
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    const ampm = match[3];
+    if (ampm === 'PM' && hours < 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  };
 %>
 
 <!-- Style block for visual weekly planner & premium grid -->
 <style>
+  :root {
+    --row-height: 60px;
+  }
   .tab-btn {
     background: none;
     border: none;
@@ -79,7 +98,7 @@
     background: rgba(0, 0, 0, 0.15);
   }
   .weekly-grid-hour-label {
-    height: 60px;
+    height: var(--row-height);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -94,7 +113,7 @@
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     position: relative;
-    height: 720px; /* 12 hours * 60px */
+    height: calc(var(--row-height) * 12);
   }
 
   .weekly-grid-day-col {
@@ -102,7 +121,7 @@
     height: 100%;
     border-right: 1px solid var(--border);
     background-image: linear-gradient(var(--border-light) 1px, transparent 1px);
-    background-size: 100% 60px; /* hourly lines */
+    background-size: 100% var(--row-height); /* hourly lines */
     cursor: cell;
     transition: background 0.15s;
   }
@@ -127,24 +146,27 @@
     cursor: pointer;
     overflow: hidden;
     line-height: 1.25;
-    border-left: 3px solid var(--gold);
     background: rgba(255, 204, 0, 0.04);
     box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   }
-  .weekly-grid-block:hover {
-    transform: scale(1.02);
-    box-shadow: 0 6px 20px rgba(255, 204, 0, 0.1);
+
+  .schedule-bar {
+    border-left: 3px solid var(--gold);
+    transition: box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  .schedule-bar:hover {
+    border-left-color: var(--gold-hover);
+    box-shadow: 0 0 0 1px var(--gold-hover) inset, 0 4px 12px rgba(0,0,0,0.25);
     background: rgba(255, 204, 0, 0.08);
-    z-index: 10;
+    z-index: 5;
   }
   
-  .weekly-grid-block.clashed {
+  .schedule-bar.clashed {
     border-left-color: var(--red) !important;
     background: rgba(239, 68, 68, 0.06) !important;
   }
-  .weekly-grid-block.clashed:hover {
-    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.15);
+  .schedule-bar.clashed:hover {
+    box-shadow: 0 0 0 1px var(--red) inset, 0 4px 12px rgba(239, 68, 68, 0.25);
     background: rgba(239, 68, 68, 0.1) !important;
   }
 
@@ -221,11 +243,106 @@
   .tab-hidden {
     display: none !important;
   }
+  .schedule-view-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.65rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-card);
+  }
+  .schedule-view-tabs {
+    display: flex;
+    gap: 0.3rem;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .schedule-view-tabs .tab-btn { flex: 0 0 auto; white-space: nowrap; }
+  .template-control-bar {
+    display: grid;
+    grid-template-columns: minmax(230px, 1fr) 155px 155px auto;
+    gap: 0.75rem;
+    align-items: end;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .template-control-bar .form-group { margin: 0; min-width: 0; width: auto !important; }
+  .schedule-month-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+  }
+  .schedule-month-summary > div {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-input);
+    padding: 0.75rem;
+  }
+  .schedule-month-summary span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .schedule-month-summary strong {
+    display: block;
+    margin-top: 0.3rem;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+  }
+  .schedule-calendar-scroll { overflow-x: auto; border-radius: var(--radius); }
+  .schedule-calendar-grid { min-width: 880px; }
+  .calendar-day-cell { min-height: 118px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: .55rem; display:flex; flex-direction:column; gap:.45rem; position:relative; transition: background .15s ease; }
+  .calendar-day-head { display:flex; justify-content:space-between; align-items:center; gap:.4rem; }
+  .calendar-day-number { font-size:.82rem; font-weight:900; }
+  .calendar-day-summary { appearance:none; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text); text-align:left; padding:.6rem; cursor:pointer; display:grid; gap:.35rem; min-height:76px; transition:background .15s ease, border-color .15s ease; }
+  .calendar-day-summary:hover { background:var(--bg-hover); border-color:var(--gold-border); }
+  .calendar-day-empty { color:var(--text-muted); font-size:.72rem; display:flex; align-items:center; justify-content:center; min-height:64px; border:1px dashed var(--border); border-radius:8px; }
+  .calendar-legacy-events { display:none !important; }
+  .calendar-summary-top { display:flex; justify-content:space-between; align-items:center; gap:.45rem; }
+  .calendar-summary-count { color:var(--gold); font-size:1rem; font-weight:900; }
+  .calendar-summary-meta { color:var(--text-muted); font-size:.66rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+  .calendar-summary-title,
+  .calendar-summary-next { font-size:.8rem; font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .calendar-summary-sub,
+  .calendar-summary-open { color:var(--text-sub); font-size:.68rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .schedule-day-modal { position:fixed; inset:0; z-index:1300; display:none; align-items:center; justify-content:center; padding:1rem; background:rgba(0,0,0,.62); backdrop-filter:blur(4px); }
+  .schedule-day-modal.is-open { display:flex; }
+  .schedule-day-dialog { width:min(760px,100%); max-height:86vh; overflow:auto; border:1px solid var(--border); border-radius:10px; background:var(--bg-card); box-shadow:0 24px 70px rgba(0,0,0,.45); }
+  .schedule-day-dialog-head { display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:1rem; border-bottom:1px solid var(--border); }
+  .schedule-day-dialog-body { padding:1rem; display:grid; gap:.75rem; }
+  .schedule-day-close { border:1px solid var(--border); background:var(--bg-input); color:var(--text); border-radius:6px; width:34px; height:34px; cursor:pointer; font-size:1.1rem; }
+  .schedule-day-item { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.8rem; align-items:center; padding:.8rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); }
+  .schedule-day-time { font-family:var(--mono); font-size:.78rem; font-weight:900; color:var(--gold); }
+  .schedule-day-title,
+  .schedule-day-item-title { font-weight:900; color:var(--text); }
+  .schedule-day-meta,
+  .schedule-day-item-meta { color:var(--text-sub); font-size:.74rem; margin-top:.15rem; }
+  @media (max-width: 900px) {
+    .schedule-view-nav { align-items: stretch; flex-direction: column; }
+    .schedule-view-nav > .btn { width: 100%; justify-content: center; }
+    .template-control-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .schedule-month-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 600px) {
+    .template-control-bar { grid-template-columns: 1fr; }
+    .template-control-bar .btn { width: 100%; justify-content: center; }
+    .schedule-day-item { grid-template-columns:1fr; }
+  }
 </style>
 
 <!-- Header Tabs Navigation -->
-<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; flex-wrap: wrap; gap: 10px;">
-  <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+<div class="schedule-view-nav">
+  <div class="schedule-view-tabs">
     <button type="button" class="btn tab-btn active" onclick="switchTab('monthCalendar')" id="btn-monthCalendar">Monthly Calendar View</button>
     <button type="button" class="btn tab-btn" onclick="switchTab('dailyTimeline')" id="btn-dailyTimeline">Daily Room Planner</button>
     <button type="button" class="btn tab-btn" onclick="switchTab('hierarchyTree')" id="btn-hierarchyTree">Classroom Hierarchy Tree</button>
@@ -233,9 +350,7 @@
     <button type="button" class="btn tab-btn" onclick="switchTab('classroomView')" id="btn-classroomView">Classroom Grid View</button>
     <button type="button" class="btn tab-btn" onclick="switchTab('classrooms')" id="btn-classrooms">Manage Classrooms</button>
   </div>
-  <div style="padding-bottom: 0.5rem; display: flex; gap: 0.5rem;">
-    <button type="button" class="btn btn-primary btn-sm" onclick="openCreateDrawer('')">+ Add Schedule</button>
-  </div>
+  <button type="button" class="btn btn-primary btn-sm" onclick="openCreateDrawer('')">+ Add Schedule</button>
 </div>
 
 <!-- ==================== TAB 1: MONTHLY CALENDAR GRID ==================== -->
@@ -252,8 +367,16 @@
       </div>
     </div>
 
+    <div class="schedule-month-summary">
+      <div><span>Sessions this month</span><strong><%= visibleMonthSchedules.length %></strong></div>
+      <div><span>Completed</span><strong><%= monthCompletedCount %></strong></div>
+      <div><span>Active batches</span><strong><%= monthBatchCount %></strong></div>
+      <div><span>Rooms in use</span><strong><%= monthRoomCount %></strong></div>
+    </div>
+
     <!-- Monthly Calendar Grid Layout -->
-    <div style="display: grid; grid-template-columns: repeat(7, 1fr); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--bg-card);">
+    <div class="schedule-calendar-scroll">
+    <div class="schedule-calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--bg-card);">
       <% ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => { %>
         <div style="background: rgba(0,0,0,0.25); text-align: center; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 0.65rem; border-bottom: 1px solid var(--border);"><%= day %></div>
       <% }) %>
@@ -276,8 +399,49 @@
             <button class="day-cell-add-btn" onclick="openCreateDrawer('<%= dateStr %>')" style="opacity: 0; background: none; border: none; color: var(--gold-light); font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: opacity 0.15s; display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%;">+</button>
           </div>
 
-          <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1; padding-bottom: 4px;">
-            <% daySchedules.forEach(sched => { 
+          <%
+            const completedCount = daySchedules.filter(sched => sched.status === 'completed').length;
+            const roomNames = [...new Set(daySchedules.map(sched => sched.classroom ? sched.classroom.name : '').filter(Boolean))];
+            const firstSchedule = daySchedules.slice().sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime))[0];
+            const dayTemplateId = `schedule-day-template-${d}`;
+          %>
+          <% if (daySchedules.length) { %>
+            <button type="button" class="calendar-day-summary" data-template="<%= dayTemplateId %>" data-date-label="<%= new Date(dateStr).toLocaleDateString('en-IN', {weekday:'short', day:'numeric', month:'short', year:'numeric'}) %>">
+              <span class="calendar-summary-count"><%= daySchedules.length %> class<%= daySchedules.length === 1 ? '' : 'es' %></span>
+              <span class="calendar-summary-meta"><%= roomNames.length %> room<%= roomNames.length === 1 ? '' : 's' %> &middot; <%= completedCount %> done</span>
+              <span class="calendar-summary-next"><%= firstSchedule.batch?.name || 'Batch' %> &middot; <%= firstSchedule.startTime %></span>
+              <span class="calendar-summary-open">View day</span>
+            </button>
+            <template id="<%= dayTemplateId %>">
+              <% daySchedules.slice().sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime)).forEach(sched => { %>
+                <div class="schedule-day-item">
+                  <div>
+                    <div class="schedule-day-item-title"><%= sched.batch?.name || 'Batch' %></div>
+                    <div class="schedule-day-item-meta"><%= sched.course?.name || 'Course' %> &middot; <%= sched.teacher ? sched.teacher.name : 'Teacher not set' %></div>
+                    <div class="schedule-day-item-meta"><%= sched.startTime %> - <%= sched.endTime %> &middot; <%= sched.classroom ? sched.classroom.name : 'Room not set' %></div>
+                  </div>
+                  <button type="button"
+                    class="btn btn-ghost btn-xs calendar-event-card"
+                    data-id="<%= sched._id %>"
+                    data-subject="<%= sched.note || '-' %>"
+                    data-batch="<%= sched.batch && sched.batch._id ? sched.batch._id : sched.batch %>"
+                    data-course="<%= sched.course && sched.course._id ? sched.course._id : sched.course %>"
+                    data-teacher="<%= sched.teacher ? sched.teacher._id : '' %>"
+                    data-classroom="<%= sched.classroom ? sched.classroom._id : '' %>"
+                    data-date="<%= sched.date %>"
+                    data-starttime="<%= sched.startTime %>"
+                    data-endtime="<%= sched.endTime %>"
+                    data-status="<%= sched.status %>"
+                    onclick="closeScheduleDayModal(); openEditDrawer(this);">Edit</button>
+                </div>
+              <% }) %>
+            </template>
+          <% } else { %>
+            <button type="button" class="calendar-day-empty" onclick="openCreateDrawer('<%= dateStr %>')">No classes</button>
+          <% } %>
+
+          <div class="calendar-legacy-events" style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1; padding-bottom: 4px;">
+            <% daySchedules.slice(0, 3).forEach(sched => {
                 const isCancelled = sched.status === 'cancelled';
                 const isCompleted = sched.status === 'completed';
             %>
@@ -293,15 +457,18 @@
                    data-endtime="<%= sched.endTime %>"
                    data-status="<%= sched.status %>"
                    onclick="openEditDrawer(this)"
-                   <%= `style="background: var(--bg-hover); border-left: 2px solid ${isCancelled ? 'var(--red)' : (isCompleted ? 'var(--blue)' : 'var(--gold)')}; border-radius: 4px; padding: 0.35rem 0.45rem; font-size: 0.65rem; color: var(--text-sub); cursor: pointer; display: flex; flex-direction: column; gap: 2px; transition: transform 0.1s; line-height: 1.2;"` %>
-                   onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='none';">
-                <div style="font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= sched.note || '—' %></div>
+                   class="schedule-bar"
+                   <%= `style="background: var(--bg-hover); border-left: 2px solid ${isCancelled ? 'var(--red)' : (isCompleted ? 'var(--blue)' : 'var(--gold)')}; border-radius: 4px; padding: 0.35rem 0.45rem; font-size: 0.65rem; color: var(--text-sub); cursor: pointer; display: flex; flex-direction: column; gap: 2px; line-height: 1.2;"` %>>
+                <div style="font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= sched.batch?.name || 'Batch' %></div>
                 <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.58rem;">
-                  <span><%= sched.startTime.split(' ')[0] %>-<%= sched.endTime.split(' ')[0] %></span>
+                  <span><%= sched.course?.name || 'Course' %> - <%= sched.startTime.split(' ')[0] %></span>
                   <span style="color: var(--gold-light); font-weight:600;"><%= sched.classroom ? sched.classroom.name.replace(/^(classroom|room)\s+/i, '') : 'Room' %></span>
                 </div>
               </div>
             <% }) %>
+            <% if (daySchedules.length > 3) { %>
+              <button type="button" class="btn btn-ghost btn-xs" style="width:100%; justify-content:center;" onclick="switchTab('dailyTimeline'); changeDailyPlannerDate('<%= dateStr %>');">+<%= daySchedules.length - 3 %> more</button>
+            <% } %>
           </div>
         </div>
       <% } %>
@@ -313,6 +480,7 @@
       <% for (let i = 0; i < trailingCells; i++) { %>
         <div style="background: rgba(0,0,0,0.05); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-height: 120px;"></div>
       <% } %>
+    </div>
     </div>
   </div>
 </div>
@@ -354,9 +522,9 @@
                      data-starttime="<%= sched.startTime %>"
                      data-endtime="<%= sched.endTime %>"
                      data-status="<%= sched.status %>"
+                     class="schedule-bar"
                      onclick="openEditDrawer(this)"
-                     style="background: var(--bg-card); border-left: 3px solid var(--gold); border-radius: 4px; padding: 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.7rem; cursor: pointer; transition: border-color 0.15s, transform 0.15s;"
-                     onmouseover="this.style.borderColor='var(--gold-hover)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--gold)'; this.style.transform='none'">
+                     style="background: var(--bg-card); border-left: 3px solid var(--gold); border-radius: 4px; padding: 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.7rem; cursor: pointer;">
                   <div style="font-weight: 700; color: var(--text);"><%= sched.note || '—' %></div>
                   <div style="font-size: 0.65rem; color: var(--text-sub); display: flex; flex-direction: column; gap: 1px; margin-top: auto; padding-top: 4px; border-top: 1px dashed var(--border-light);">
                     <span style="font-weight: 600;"><%= sched.batch && sched.batch.name ? sched.batch.name : sched.batch %></span>
@@ -396,14 +564,8 @@
           classroomTree[cName] = { id: s.classroom._id, courses: {} };
         }
         
-        let courseName = 'Other General';
+        let courseName = s.course && s.course.name ? s.course.name : 'Course not assigned';
         const batchName = s.batch && s.batch.name ? s.batch.name : String(s.batch);
-        const bLower = batchName.toLowerCase();
-        if (bLower.includes('video') || bLower.includes('ve')) {
-          courseName = 'Video Editing';
-        } else if (bLower.includes('marketing') || bLower.includes('dm')) {
-          courseName = 'Digital Marketing';
-        }
         
         if (!classroomTree[cName].courses[courseName]) {
           classroomTree[cName].courses[courseName] = {};
@@ -456,7 +618,7 @@
                           <table style="margin: 0; font-size: 0.75rem;">
                             <thead>
                               <tr>
-                                <th>Subject</th>
+                                <th>Course / Session</th>
                                 <th>Teacher</th>
                                 <th>Date & Time</th>
                                 <th>Status</th>
@@ -466,7 +628,10 @@
                             <tbody>
                               <% batchSchedules.forEach(sched => { %>
                                 <tr>
-                                  <td><strong><%= sched.note || '—' %></strong></td>
+                                  <td>
+                                    <strong><%= sched.course?.name || courseName %></strong>
+                                    <% if (sched.note) { %><div class="td-muted text-xs"><%= sched.note %></div><% } %>
+                                  </td>
                                   <td><%= sched.teacher ? sched.teacher.name : '—' %></td>
                                   <td><%= new Date(sched.date + "T00:00:00").toLocaleDateString('en-IN') %> &middot; <span class="text-gold"><%= sched.startTime %> - <%= sched.endTime %></span></td>
                                   <td>
@@ -512,8 +677,8 @@
   <div class="card" style="padding: 1.25rem;">
     
     <!-- Top control parameters -->
-    <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; border-bottom: 1px solid var(--border); padding-bottom: 1.25rem; margin-bottom: 1rem;">
-      <div class="form-group" style="margin: 0; min-width: 220px;">
+    <div class="template-control-bar">
+      <div class="form-group">
         <label class="form-label">Selected Planning Batch *</label>
         <select id="v_select_batch" class="form-control" onchange="loadBatchTemplate(this.value)">
           <option value="">-- Select Batch to Configure --</option>
@@ -522,16 +687,16 @@
           <% }) %>
         </select>
       </div>
-      <div class="form-group" style="margin: 0; width: 140px;">
+      <div class="form-group">
         <label class="form-label">Start Date</label>
         <input type="date" id="v_startDate" class="form-control">
       </div>
-      <div class="form-group" style="margin: 0; width: 140px;">
+      <div class="form-group">
         <label class="form-label">End Date</label>
         <input type="date" id="v_endDate" class="form-control">
       </div>
       
-      <button class="btn btn-primary btn-sm" onclick="saveActiveTemplate()" style="margin-left: auto;">Save & Propagate Calendar</button>
+      <button class="btn btn-primary btn-sm" onclick="saveActiveTemplate()">Save & Propagate Calendar</button>
     </div>
 
     <!-- Interactive Workspace Wrapper -->
@@ -732,7 +897,7 @@
                       <div class="clash-badge" style="position: static; display: inline-block; margin-bottom: 4px; background: var(--red);">Double Booked</div>
                     <% } %>
                     <% matchedClasses.forEach(sched => { %>
-                      <div class="calendar-event-card"
+                      <div class="schedule-bar calendar-event-card <%= matchedClasses.length > 1 ? 'clashed' : '' %>"
                            data-id="<%= sched._id %>"
                            data-subject="<%= sched.note || '—' %>"
                            data-batch="<%= sched.batch && sched.batch._id ? sched.batch._id : sched.batch %>"
@@ -744,8 +909,7 @@
                            data-endtime="<%= sched.endTime %>"
                            data-status="<%= sched.status %>"
                            onclick="openEditDrawer(this)"
-                           <%= `style="background: var(--bg-hover); border-left: 3px solid ${matchedClasses.length > 1 ? 'var(--red)' : 'var(--gold)'}; border-radius: 4px; padding: 0.4rem; text-align: left; cursor: pointer; transition: transform 0.1s; margin-bottom: 4px;"` %>
-                           onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='none';">
+                           style="background: var(--bg-hover); border-left: 3px solid <%= matchedClasses.length > 1 ? 'var(--red)' : 'var(--gold)' %>; border-radius: 4px; padding: 0.4rem; text-align: left; cursor: pointer; margin-bottom: 4px;">
                         <div style="font-weight: 700; color: var(--text);"><%= sched.note || '—' %></div>
                         <div style="color: var(--text-muted); font-size: 0.65rem; margin-top: 2px;">
                           👥 <%= sched.batch && sched.batch.name ? sched.batch.name : sched.batch %><br>
@@ -810,7 +974,7 @@
                     data-location="<%= room.location %>" 
                     data-active="<%= room.isActive %>" 
                     onclick="openEditRoomModal(this)">Edit</button>
-            <form action="/admin/classrooms/<%= room._id %>/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this classroom? All its schedule references will be lost.')" style="margin:0;">
+            <form action="/admin/classrooms/<%= room._id %>/delete" method="POST" data-confirm="Delete this classroom? Existing schedule references may be affected." data-confirm-title="Delete classroom" data-confirm-label="Delete classroom" style="margin:0;">
               <button type="submit" class="btn btn-danger btn-xs" style="padding: 0.25rem 0.5rem; font-size: 0.65rem;">Delete</button>
             </form>
           </div>
@@ -824,7 +988,7 @@
 <div id="createRoomModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 2000; align-items: center; justify-content: center;">
   <div class="card" style="width: 100%; max-width: 420px; padding: 1.5rem; border-color: var(--border-light); position: relative;">
     <h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; color: var(--text); margin-bottom: 1rem;">Create Classroom</h3>
-    <form action="/admin/classrooms/create" method="POST" style="margin: 0;">
+    <form id="createRoomForm" action="/admin/classrooms/create" method="POST" data-no-soft-nav="true" style="margin: 0;">
       <div class="form-group">
         <label class="form-label" for="room_c_name">Classroom Name *</label>
         <input type="text" id="room_c_name" name="name" class="form-control" placeholder="Room 101" required>
@@ -905,7 +1069,7 @@
         <select id="c_teacher" name="teacher" class="form-control" required>
           <option value="">-- Select Instructor --</option>
           <% teachers.forEach(t => { %>
-            <option value="<%= t._id %>"><%= t.name %> (<%= t.subject || 'Faculty' %>)</option>
+            <option value="<%= t._id %>"><%= t.name %><%= t.rollNumber ? ' - ' + t.rollNumber : '' %></option>
           <% }) %>
         </select>
       </div>
@@ -915,7 +1079,7 @@
         <select id="c_classroom" name="classroom" class="form-control" required>
           <option value="">-- Select Classroom --</option>
           <% classrooms.forEach(r => { %>
-            <option value="<%= r._id %>"><%= r.name %> (Cap: <%= r.capacity %>)</option>
+            <option value="<%= r._id %>"><%= r.name %> - Capacity <%= r.capacity || 0 %></option>
           <% }) %>
         </select>
       </div>
@@ -1024,8 +1188,21 @@
       </div>
     </form>
 
-    <form action="" method="POST" id="deleteScheduleForm" style="display: none;" onsubmit="return confirm('Delete this schedule slot permanently?')">
+    <form action="" method="POST" id="deleteScheduleForm" style="display: none;" data-confirm="Delete this schedule slot permanently?" data-confirm-title="Delete class slot" data-confirm-label="Delete slot">
     </form>
+  </div>
+</div>
+
+<div class="schedule-day-modal" id="scheduleDayModal" aria-hidden="true">
+  <div class="schedule-day-dialog" role="dialog" aria-modal="true" aria-labelledby="scheduleDayModalTitle">
+    <div class="schedule-day-dialog-head">
+      <div>
+        <div class="card-title" id="scheduleDayModalTitle">Day schedule</div>
+        <div class="text-muted text-sm" id="scheduleDayModalMeta">Class plan</div>
+      </div>
+      <button type="button" class="schedule-day-close" onclick="closeScheduleDayModal()" aria-label="Close schedule details">&times;</button>
+    </div>
+    <div class="schedule-day-dialog-body" id="scheduleDayModalBody"></div>
   </div>
 </div>
 
@@ -1129,6 +1306,48 @@
 
   function changeClassroomGridDate(val) {
     window.location.href = `?day=${val}&month=<%= monthParam %>&view=classroom`;
+  }
+
+  function openScheduleDayModal(templateId, dateLabel) {
+    const modal = document.getElementById('scheduleDayModal');
+    const body = document.getElementById('scheduleDayModalBody');
+    const title = document.getElementById('scheduleDayModalTitle');
+    const meta = document.getElementById('scheduleDayModalMeta');
+    const template = document.getElementById(templateId);
+    if (!modal || !body || !template) return;
+
+    title.textContent = dateLabel || 'Day schedule';
+    meta.textContent = 'Full class list for this date';
+    body.innerHTML = '';
+    body.appendChild(template.content.cloneNode(true));
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeScheduleDayModal() {
+    const modal = document.getElementById('scheduleDayModal');
+    if (!modal) return;
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function initScheduleDaySummaries() {
+    document.querySelectorAll('.calendar-day-summary').forEach(button => {
+      button.addEventListener('click', () => {
+        openScheduleDayModal(button.dataset.template, button.dataset.dateLabel);
+      });
+    });
+
+    const modal = document.getElementById('scheduleDayModal');
+    if (modal) {
+      modal.addEventListener('click', event => {
+        if (event.target === modal) closeScheduleDayModal();
+      });
+    }
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeScheduleDayModal();
+    });
   }
 
   // Slide-over drawer actions
@@ -1298,10 +1517,10 @@
       
       // Calculate layout offsets: grid spans 8:00 AM (480 mins) to 8:00 PM (1200 mins)
       const gridStart = 8 * 60; 
-      const gridHeightMins = 12 * 60; // 12 hours total
+      const ROW_HEIGHT_PX = 60; // matches --row-height in CSS
       
-      const topOffset = ((startMin - gridStart) / gridHeightMins) * 100;
-      const heightVal = ((endMin - startMin) / gridHeightMins) * 100;
+      const topPx = ((startMin - gridStart) / 60) * ROW_HEIGHT_PX;
+      const heightPx = ((endMin - startMin) / 60) * ROW_HEIGHT_PX;
 
       // Cross-reference details
       const teacher = teachersData.find(x => x._id === slot.teacher);
@@ -1311,9 +1530,9 @@
       const clash = checkClientClash(slot, index);
 
       const block = document.createElement('div');
-      block.className = `weekly-grid-block ${clash.clashed ? 'clashed' : ''}`;
-      block.style.top = `${topOffset}%`;
-      block.style.height = `${heightVal}%`;
+      block.className = `weekly-grid-block schedule-bar ${clash.clashed ? 'clashed' : ''}`;
+      block.style.top = `${topPx}px`;
+      block.style.height = `${heightPx}px`;
       block.title = clash.clashed ? clash.reason : `${slot.subject} with ${teacher ? teacher.name : 'Faculty'}`;
       
       block.innerHTML = `
@@ -1347,14 +1566,7 @@
       const extEnd = parseTimeToMinutes(slot.endTime);
 
       if (newStart < extEnd && extStart < newEnd) {
-        if (slot.classroom === activeSlot.classroom) {
-          const room = classroomsData.find(r => r._id === slot.classroom);
-          return { clashed: true, reason: `Local Room Clash: "${room ? room.name : 'Classroom'}" is double-booked with another slot in this batch.` };
-        }
-        if (slot.teacher === activeSlot.teacher) {
-          const t = teachersData.find(x => x._id === slot.teacher);
-          return { clashed: true, reason: `Local Teacher Clash: Instructor "${t ? t.name : 'Teacher'}" is scheduled at two slots simultaneously.` };
-        }
+        return { clashed: true, reason: `Batch Clash: this batch already has a class on ${activeSlot.dayOfWeek} from ${slot.startTime} to ${slot.endTime}.` };
       }
     }
 
@@ -1392,7 +1604,7 @@
 
   function onGridColumnClick(event, day) {
     if (!activeBatch) {
-      alert("Please select a batch from the dropdown first!");
+      showToast('Select a batch before adding a class slot.', 'warning');
       return;
     }
     
@@ -1481,14 +1693,14 @@
     const end = document.getElementById('pop_end').value;
 
     if (!teacher || !classroom || !start || !end) {
-      alert("All fields are required!");
+      showToast('Complete every class slot field.', 'warning');
       return;
     }
 
     const startMin = parseTimeToMinutes(start);
     const endMin = parseTimeToMinutes(end);
     if (startMin >= endMin) {
-      alert("Error: Start time must be scheduled before end time.");
+      showToast('Start time must be before end time.', 'warning');
       return;
     }
 
@@ -1500,6 +1712,12 @@
       startTime: format24hToAMPM(start),
       endTime: format24hToAMPM(end)
     };
+
+    const clash = checkClientClash(slotData, index);
+    if (clash.clashed) {
+      showToast(clash.reason, 'error');
+      return;
+    }
 
     if (index === -1) {
       activeSlots.push(slotData);
@@ -1523,7 +1741,7 @@
   // Submit and Save visual timetable to DB
   function saveActiveTemplate() {
     if (!activeBatch) {
-      alert("Please select a batch first!");
+      showToast('Select a batch before saving the calendar.', 'warning');
       return;
     }
     
@@ -1531,8 +1749,21 @@
     const endDate = document.getElementById('v_endDate').value;
     
     if (!startDate || !endDate) {
-      alert("Please set both Batch Start and End dates.");
+      showToast('Set both the batch start and end dates.', 'warning');
       return;
+    }
+
+    if (new Date(startDate) > new Date(endDate)) {
+      showToast('The timetable end date must be after its start date.', 'warning');
+      return;
+    }
+
+    for (let index = 0; index < activeSlots.length; index++) {
+      const clash = checkClientClash(activeSlots[index], index);
+      if (clash.clashed) {
+        showToast(`Calendar not saved. ${clash.reason}`, 'error');
+        return;
+      }
     }
 
     // Build POST form dynamically
@@ -1594,6 +1825,7 @@
       activeTab = 'classroomView';
     }
     switchTab(activeTab);
+    initScheduleDaySummaries();
 
     // Check for alerts/messages
     const err = urlParams.get('error');
@@ -1601,7 +1833,7 @@
       if (typeof showToast !== 'undefined') {
         showToast(decodeURIComponent(err), 'error');
       } else {
-        alert(decodeURIComponent(err));
+        showToast(decodeURIComponent(err), 'error');
       }
     }
 
@@ -1621,4 +1853,44 @@
       if (matchCard) openEditDrawer(matchCard);
     }
   });
+
+  // Controlled AJAX submission for Classroom creation modal
+  const createRoomForm = document.getElementById('createRoomForm');
+  if (createRoomForm) {
+    createRoomForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn.disabled) return;
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(form.action, {
+          method: 'POST',
+          headers: { 'Accept': 'application/json' },
+          body: new URLSearchParams(new FormData(form))
+        });
+        const result = await res.json();
+        if (result.status === 'success') {
+          toggleRoomModal('createRoomModal', false);
+          form.reset();
+          if (window.AppSoftNav) {
+            window.AppSoftNav.navigateTo('/admin/schedules?tab=classrooms&created=1');
+          } else {
+            window.location.href = '/admin/schedules?tab=classrooms&created=1';
+          }
+        } else {
+          const errorMsg = result.error || 'Could not create classroom.';
+          if (typeof showToast !== 'undefined') {
+            showToast(errorMsg, 'error');
+          }
+        }
+      } catch (err) {
+        console.error('AJAX classroom creation error:', err);
+        showToast('Network error. Please try again.', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
 </script>

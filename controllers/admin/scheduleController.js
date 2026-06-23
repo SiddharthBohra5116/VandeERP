@@ -11,6 +11,64 @@ const { todayIST, formatMonthLocal } = require('../../utils/dateHelper');
 const { escapeRegex } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
 
+function sameId(left, right) {
+  if (!left || !right) return false;
+  return String(left._id || left) === String(right._id || right);
+}
+
+async function findTimetableConflict({ batch, startDate, endDate, slots }) {
+  const { parseTimeToMinutes } = require('../../utils/clashDetector');
+
+  for (let i = 0; i < slots.length; i++) {
+    const current = slots[i];
+    const currentStart = parseTimeToMinutes(current.startTime);
+    const currentEnd = parseTimeToMinutes(current.endTime);
+    if (currentStart >= currentEnd) return 'Every class must end after it starts.';
+
+    for (let j = i + 1; j < slots.length; j++) {
+      const other = slots[j];
+      if (current.dayOfWeek !== other.dayOfWeek) continue;
+      const overlaps = currentStart < parseTimeToMinutes(other.endTime)
+        && parseTimeToMinutes(other.startTime) < currentEnd;
+      if (overlaps) {
+        return `Batch Clash: this batch has two overlapping classes on ${current.dayOfWeek}.`;
+      }
+    }
+  }
+
+  const otherTemplates = await Timetable.find({
+    batch: { $ne: batch },
+    startDate: { $lte: endDate },
+    endDate: { $gte: startDate }
+  })
+    .populate('batch', 'name')
+    .populate('slots.teacher', 'user')
+    .populate('slots.classroom', 'name');
+
+  for (const current of slots) {
+    const currentStart = parseTimeToMinutes(current.startTime);
+    const currentEnd = parseTimeToMinutes(current.endTime);
+    for (const template of otherTemplates) {
+      for (const existing of template.slots) {
+        if (current.dayOfWeek !== existing.dayOfWeek) continue;
+        const overlaps = currentStart < parseTimeToMinutes(existing.endTime)
+          && parseTimeToMinutes(existing.startTime) < currentEnd;
+        if (!overlaps) continue;
+
+        const batchName = template.batch?.name || 'another batch';
+        if (sameId(current.classroom, existing.classroom)) {
+          return `Classroom Clash: ${existing.classroom?.name || 'this room'} is already used by ${batchName} on ${current.dayOfWeek}, ${existing.startTime}-${existing.endTime}.`;
+        }
+        if (sameId(current.teacher, existing.teacher)) {
+          return `Teacher Clash: this instructor is already teaching ${batchName} on ${current.dayOfWeek}, ${existing.startTime}-${existing.endTime}.`;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 async function notifyBatchStudents({ adminId, batchId, teacherId, content }) {
   const students = await Student.find({ batch: batchId })
     .populate('user', '_id status');
@@ -278,7 +336,6 @@ exports.postCreateSchedule = async (req, res) => {
       startTime,
       endTime,
       status,
-      subject,
       note
     } = req.body;
 
@@ -294,7 +351,9 @@ exports.postCreateSchedule = async (req, res) => {
       startTime,
       endTime,
       classroom,
-      teacher
+      teacher,
+      null,
+      batch
     );
 
     if (clash.clashed) {
@@ -311,7 +370,7 @@ exports.postCreateSchedule = async (req, res) => {
       date,
       startTime,
       endTime,
-      note: note || subject || '',
+      note: note || '',
       status: status || 'scheduled'
     });
 
@@ -430,7 +489,6 @@ exports.postEditSchedule = async (req, res) => {
       startTime,
       endTime,
       status,
-      subject,
       note
     } = req.body;
 
@@ -447,7 +505,8 @@ exports.postEditSchedule = async (req, res) => {
       endTime,
       classroom,
       teacher,
-      req.params.id
+      req.params.id,
+      batch
     );
 
     if (clash.clashed) {
@@ -464,7 +523,7 @@ exports.postEditSchedule = async (req, res) => {
       date,
       startTime,
       endTime,
-      note: note || subject || '',
+      note: note || '',
       status
     });
 
@@ -594,6 +653,16 @@ exports.postSaveTimetable = async (req, res) => {
       }
     }
 
+    if (!batch || !course || !startDate || !endDate || slots.length === 0) {
+      throw new Error('Choose a batch, date range, and at least one complete class slot.');
+    }
+    if (new Date(startDate) > new Date(endDate)) {
+      throw new Error('The timetable end date must be after its start date.');
+    }
+
+    const conflictReason = await findTimetableConflict({ batch, startDate, endDate, slots });
+    if (conflictReason) throw new Error(conflictReason);
+
     let timetable = await Timetable.findOne({ batch });
 
     if (!timetable) {
@@ -674,17 +743,27 @@ exports.postDeleteTimetable = async (req, res) => {
 exports.postCreateClassroom = async (req, res) => {
   try {
     const { name, capacity, location, isActive } = req.body;
+    const trimmedName = name?.trim();
+    const wantsJson = req.headers.accept?.includes('json');
 
-    await Classroom.create({
-      name,
+    const existing = await Classroom.findOne({ name: trimmedName });
+    if (existing) {
+      logger.info('Classroom create resubmit ignored (already exists)', { name: trimmedName });
+      return respond(res, wantsJson, { status: 'success', data: { classroomId: existing._id }, code: 200 },
+        '/admin/schedules?tab=classrooms&created=1');
+    }
+
+    const classroom = await Classroom.create({
+      name: trimmedName,
       capacity: capacity ? parseInt(capacity, 10) : 0,
       location,
       isActive: isActive === 'on' || isActive === true
     });
 
-    logger.info('Classroom created successfully', { name });
+    logger.info('Classroom created successfully', { name: trimmedName });
 
-    res.redirect('/admin/schedules?tab=classrooms&created=1');
+    return respond(res, wantsJson, { status: 'success', data: { classroomId: classroom._id }, code: 201 },
+      '/admin/schedules?tab=classrooms&created=1');
 
   } catch (err) {
     logger.error('Create Classroom Error', {
@@ -692,9 +771,18 @@ exports.postCreateClassroom = async (req, res) => {
       stack: err.stack
     });
 
+    const wantsJson = req.headers.accept?.includes('json');
+    if (wantsJson) {
+      return res.status(500).json({ status: 'error', error: err.message || 'Could not create classroom.', code: 500 });
+    }
     res.redirect('/admin/schedules?tab=classrooms&error=1');
   }
 };
+
+function respond(res, wantsJson, envelope, redirectUrl) {
+  if (wantsJson) return res.status(envelope.code).json(envelope);
+  return res.redirect(redirectUrl);
+}
 
 
 // POST /admin/classrooms/:id/edit

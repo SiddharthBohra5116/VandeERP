@@ -6,7 +6,17 @@
 %>
 
 <!-- Greeting Header -->
-<h2 id="dashboardGreeting" class="dashboard-greeting">Welcome back!</h2>
+<div style="display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.25rem;">
+  <div>
+    <p class="student-kicker" style="margin-bottom:0.35rem;">Academy operations</p>
+    <h2 id="dashboardGreeting" class="dashboard-greeting" style="margin:0;">Welcome back!</h2>
+  </div>
+  <div class="d-flex gap-1" style="flex-wrap:wrap;">
+    <a href="/admin/users/create?role=student" class="btn btn-primary btn-sm">Add student</a>
+    <a href="/admin/fees" class="btn btn-ghost btn-sm">Record payment</a>
+    <a href="/admin/schedules" class="btn btn-ghost btn-sm">Plan classes</a>
+  </div>
+</div>
 
 <!-- Stats Grid -->
 <div class="stats-grid">
@@ -101,50 +111,6 @@
 </div>
 <% } %>
 
-<!-- Incoming Messages -->
-<div class="card" style="margin-bottom: 1.5rem;">
-  <div class="card-header card-header--divided">
-    <div class="card-title">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gold"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      Incoming Student & Staff Messages
-    </div>
-  </div>
-  <% if (typeof messages === 'undefined' || !messages || messages.length === 0) { %>
-    <div class="empty-state" style="padding: 1.5rem;">
-      <p style="font-size:0.8rem;">No messages or queries received from students or staff yet.</p>
-    </div>
-  <% } else { %>
-    <div style="display: flex; flex-direction: column; gap: 0.75rem; padding: 0.25rem 0.5rem;">
-      <% messages.forEach(msg => { %>
-        <div class="message-item">
-          <div style="flex: 1;">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-              <strong style="color: var(--text); font-size: 13px;"><%= msg.sender ? msg.sender.name : 'Unknown' %></strong>
-              <span class="badge <%= msg.sender && msg.sender.role === 'teacher' ? 'badge-blue' : msg.sender && msg.sender.role === 'counsellor' ? 'badge-orange' : 'badge-grey' %>" style="font-size: 9px; padding: 1px 4px;"><%= msg.sender ? msg.sender.role : 'user' %></span>
-            </div>
-            <p style="font-size: 13px; color: var(--text-sub); line-height: 1.5; margin: 0;"><%= msg.content %></p>
-          </div>
-          <div class="message-item-meta">
-            <span class="message-time"><%= new Date(msg.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %></span>
-            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;"><%= new Date(msg.createdAt).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}) %></div>
-            <% if (msg.sender) { %>
-              <div style="margin-top: 6px;">
-                <% if (msg.sender.role === 'student') { %>
-                  <a href="/admin/students/<%= msg.sender._id %>" class="btn btn-ghost btn-xs">Reply</a>
-                <% } else if (msg.sender.role === 'teacher') { %>
-                  <a href="/admin/teachers/<%= msg.sender._id %>" class="btn btn-ghost btn-xs">Reply</a>
-                <% } else if (msg.sender.role === 'counsellor') { %>
-                  <a href="/admin/counsellors/<%= msg.sender._id %>" class="btn btn-ghost btn-xs">Reply</a>
-                <% } %>
-              </div>
-            <% } %>
-          </div>
-        </div>
-      <% }) %>
-    </div>
-  <% } %>
-</div>
-
 <div class="grid-2">
   <!-- Recent Students -->
   <div class="card">
@@ -170,8 +136,11 @@
           </thead>
           <tbody>
             <% recentStudents.forEach(student => { %>
-              <tr>
-                <td class="td-name"><%= student.user && student.user.name ? student.user.name : 'Unknown Student' %></td>
+              <tr style="cursor:pointer;" onclick="window.location.href='/admin/students/<%= student._id %>'">
+                <td class="td-name">
+                  <%= student.user && student.user.name ? student.user.name : 'Unknown Student' %>
+                  <div class="td-muted text-xs mono"><%= student.rollNumber || 'ID not generated' %></div>
+                </td>
                 <td><span class="badge badge-orange"><%= student.course && student.course.name ? student.course.name : '—' %></span></td>
                 <td class="td-muted"><%= student.batch && student.batch.name ? student.batch.name : '—' %></td>
               </tr>

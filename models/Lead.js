@@ -72,6 +72,11 @@ const followUpSchema = new mongoose.Schema({
   doneAt: {
     type: Date,
     default: Date.now
+  },
+
+  nextFollowUpAt: {
+    type: Date,
+    default: null
   }
 }, { _id: false });
 

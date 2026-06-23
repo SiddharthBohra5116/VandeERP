@@ -39,7 +39,10 @@ exports.getHolidaysLeaves = async (req, res) => {
 exports.postAddHoliday = async (req, res) => {
   const { name, date } = req.body;
   try {
-    await Holiday.create({ name, date });
+    const existing = await Holiday.findOne({ date, name: String(name || '').trim() });
+    if (!existing) {
+      await Holiday.create({ name: String(name || '').trim(), date });
+    }
     logger.info('Holiday added successfully', { name, date });
     res.redirect('/admin/holidays-leaves?saved=1');
   } catch (err) {

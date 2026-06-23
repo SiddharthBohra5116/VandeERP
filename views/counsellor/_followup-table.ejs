@@ -29,7 +29,7 @@
             ? lead.followUpHistory[lead.followUpHistory.length - 1].note
             : null;
         %>
-        <tr>
+        <tr data-row-href="/counsellor/leads/<%= lead._id %>">
           <td><strong><%= lead.name %></strong></td>
           <td class="td-mono">
             <a href="tel:<%= lead.phone %>" style="color:var(--gold); font-weight:600;"><%= lead.phone %></a>
@@ -50,3 +50,29 @@
     </tbody>
   </table>
 </div>
+<script>
+  function initFollowupRowClicks() {
+    document.querySelectorAll('[data-row-href]').forEach(row => {
+      if (row.dataset.rowReady) return;
+      const open = event => {
+        if (event.target.closest('a, button, input, select, textarea, form, label')) return;
+        if (window.AppSoftNav && typeof window.AppSoftNav.navigateTo === 'function') {
+          window.AppSoftNav.navigateTo(row.dataset.rowHref);
+        } else {
+          window.location.href = row.dataset.rowHref;
+        }
+      };
+      row.addEventListener('click', open);
+      row.dataset.rowReady = 'true';
+      row.style.cursor = 'pointer';
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initFollowupRowClicks);
+  } else {
+    initFollowupRowClicks();
+  }
+
+  document.addEventListener('softnav:load', initFollowupRowClicks);
+</script>
