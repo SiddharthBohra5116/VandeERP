@@ -9,6 +9,22 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+  /* Custom scrollbar for horizontal scrolling charts */
+  .card div[style*="overflow-x: auto"]::-webkit-scrollbar {
+    height: 6px;
+  }
+  .card div[style*="overflow-x: auto"]::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 3px;
+  }
+  .card div[style*="overflow-x: auto"]::-webkit-scrollbar-thumb {
+    background: rgba(212, 175, 55, 0.25);
+    border-radius: 3px;
+  }
+  .card div[style*="overflow-x: auto"]::-webkit-scrollbar-thumb:hover {
+    background: rgba(212, 175, 55, 0.45);
+  }
+
   .analytics-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
@@ -149,8 +165,10 @@
           <div class="card-title">Assignment Grade History</div>
           <p class="td-muted text-xs">Scores obtained per homework assignment</p>
         </div>
-        <div style="padding: 1rem; height: 260px; position: relative;">
-          <canvas id="studentAssignmentChart"></canvas>
+        <div style="padding: 1rem; height: 260px; overflow-x: auto; position: relative;">
+          <div id="studentAssignmentChartWrapper" style="height: 100%; min-width: 100%;">
+            <canvas id="studentAssignmentChart"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -162,8 +180,10 @@
           <div class="card-title">Test Average by Subject</div>
           <p class="td-muted text-xs">Your academic mastery ratings per topic area</p>
         </div>
-        <div style="padding: 1rem; height: 260px; position: relative;">
-          <canvas id="studentTestScoresChart"></canvas>
+        <div style="padding: 1rem; height: 260px; overflow-x: auto; position: relative;">
+          <div id="studentTestScoresChartWrapper" style="height: 100%; min-width: 100%;">
+            <canvas id="studentTestScoresChart"></canvas>
+          </div>
         </div>
       </div>
 
@@ -338,6 +358,10 @@
 
     // 2. Assignment Grades
     const assignData = <%- JSON.stringify(assignmentScores) %>;
+    const assignWrapper = document.getElementById('studentAssignmentChartWrapper');
+    if (assignWrapper && assignData.length > 5) {
+      assignWrapper.style.width = (assignData.length * 75) + 'px';
+    }
     new Chart(document.getElementById('studentAssignmentChart').getContext('2d'), {
       type: 'bar',
       data: {
@@ -365,6 +389,10 @@
 
     // 3. Test Scores
     const testData = <%- JSON.stringify(avgTestScores) %>;
+    const testWrapper = document.getElementById('studentTestScoresChartWrapper');
+    if (testWrapper && testData.length > 5) {
+      testWrapper.style.width = (testData.length * 80) + 'px';
+    }
     new Chart(document.getElementById('studentTestScoresChart').getContext('2d'), {
       type: 'bar',
       data: {
