@@ -1316,15 +1316,15 @@ exports.getReports = async (req, res) => {
           fileContent += `"${tl.teacher.name.replace(/"/g, '""')}",${tl.classesConducted},${tl.assignmentsCreated},${tl.submissionsGraded},${tl.attendanceSessionsMarked},${tl.curriculumCompletion}%\n`;
         });
 
-        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename=academy_full_report_${new Date().toISOString().slice(0, 10)}.csv`);
-        return res.status(200).send(fileContent);
+        return res.status(200).send('\ufeff' + fileContent);
       }
 
       const csvStr = convertToCSV(reportData);
-      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename=report_${tab}_${new Date().toISOString().slice(0, 10)}.csv`);
-      return res.status(200).send(csvStr);
+      return res.status(200).send('\ufeff' + csvStr);
     }
 
     // Render EJS
