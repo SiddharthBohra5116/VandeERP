@@ -10,7 +10,7 @@
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', callback, { once: true });
     } else {
-      callback();
+      setTimeout(callback, 0);
     }
   };
 </script>

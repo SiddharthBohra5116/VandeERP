@@ -327,5 +327,40 @@
     navigateTo(window.location.href, { pushState: false });
   });
 
+  const originalDocumentAddEventListener = document.addEventListener;
+  document.addEventListener = function(type, listener, options) {
+    if (type === 'DOMContentLoaded' && document.readyState !== 'loading') {
+      if (typeof listener === 'function') {
+        setTimeout(listener, 0);
+      } else if (listener && typeof listener.handleEvent === 'function') {
+        setTimeout(() => listener.handleEvent(new Event('DOMContentLoaded')), 0);
+      }
+    } else {
+      originalDocumentAddEventListener.call(this, type, listener, options);
+    }
+  };
+
+  const originalWindowAddEventListener = window.addEventListener;
+  window.addEventListener = function(type, listener, options) {
+    if (type === 'load' && document.readyState === 'complete') {
+      if (typeof listener === 'function') {
+        setTimeout(listener, 0);
+      } else if (listener && typeof listener.handleEvent === 'function') {
+        setTimeout(() => listener.handleEvent(new Event('load')), 0);
+      }
+    } else {
+      originalWindowAddEventListener.call(this, type, listener, options);
+    }
+  };
+
+  const originalSubmit = HTMLFormElement.prototype.submit;
+  HTMLFormElement.prototype.submit = function() {
+    if (this.dataset.noSoftNav === 'true' || this.dataset.nativeSubmit === 'true' || shouldSkipForm(this)) {
+      originalSubmit.call(this);
+    } else {
+      submitFormSoftly(this);
+    }
+  };
+
   window.AppSoftNav = { navigateTo, refreshActiveNav };
 })();

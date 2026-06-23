@@ -136,7 +136,7 @@
           </thead>
           <tbody>
             <% recentStudents.forEach(student => { %>
-              <tr style="cursor:pointer;" onclick="window.location.href='/admin/students/<%= student._id %>'">
+              <tr style="cursor:pointer;" onclick="if(window.AppSoftNav){window.AppSoftNav.navigateTo('/admin/students/<%= student._id %>')}else{window.location.href='/admin/students/<%= student._id %>'}">
                 <td class="td-name">
                   <%= student.user && student.user.name ? student.user.name : 'Unknown Student' %>
                   <div class="td-muted text-xs mono"><%= student.rollNumber || 'ID not generated' %></div>

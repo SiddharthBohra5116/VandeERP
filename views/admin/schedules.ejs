@@ -406,7 +406,7 @@
             const dayTemplateId = `schedule-day-template-${d}`;
           %>
           <% if (daySchedules.length) { %>
-            <button type="button" class="calendar-day-summary" data-template="<%= dayTemplateId %>" data-date-label="<%= new Date(dateStr).toLocaleDateString('en-IN', {weekday:'short', day:'numeric', month:'short', year:'numeric'}) %>">
+            <button type="button" class="calendar-day-summary" data-template="<%= dayTemplateId %>" data-date-label="<%= new Date(dateStr).toLocaleDateString('en-IN', {weekday:'short', day:'numeric', month:'short', year:'numeric'}) %>" onclick="openScheduleDayModal(this.dataset.template, this.dataset.dateLabel)">
               <span class="calendar-summary-count"><%= daySchedules.length %> class<%= daySchedules.length === 1 ? '' : 'es' %></span>
               <span class="calendar-summary-meta"><%= roomNames.length %> room<%= roomNames.length === 1 ? '' : 's' %> &middot; <%= completedCount %> done</span>
               <span class="calendar-summary-next"><%= firstSchedule.batch?.name || 'Batch' %> &middot; <%= firstSchedule.startTime %></span>
@@ -1193,7 +1193,7 @@
   </div>
 </div>
 
-<div class="schedule-day-modal" id="scheduleDayModal" aria-hidden="true">
+<div class="schedule-day-modal" id="scheduleDayModal" aria-hidden="true" onclick="if(event.target === this) closeScheduleDayModal()">
   <div class="schedule-day-dialog" role="dialog" aria-modal="true" aria-labelledby="scheduleDayModalTitle">
     <div class="schedule-day-dialog-head">
       <div>
@@ -1301,11 +1301,15 @@
   }
 
   function changeDailyPlannerDate(val) {
-    window.location.href = `?day=${val}&month=<%= monthParam %>`;
+    const url = `?day=${val}&month=<%= monthParam %>`;
+    if (window.AppSoftNav) window.AppSoftNav.navigateTo(url);
+    else window.location.href = url;
   }
 
   function changeClassroomGridDate(val) {
-    window.location.href = `?day=${val}&month=<%= monthParam %>&view=classroom`;
+    const url = `?day=${val}&month=<%= monthParam %>&view=classroom`;
+    if (window.AppSoftNav) window.AppSoftNav.navigateTo(url);
+    else window.location.href = url;
   }
 
   function openScheduleDayModal(templateId, dateLabel) {
