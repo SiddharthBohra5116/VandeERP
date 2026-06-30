@@ -2,6 +2,12 @@ const jwt     = require('jsonwebtoken');
 const User    = require('../models/User');
 const behaviorEngine = require('./security/behaviorEngine');
 
+const wantsHtmlResponse = (req) => {
+  if (req.xhr || req.originalUrl.startsWith('/api/')) return false;
+  if (req.headers.accept && req.headers.accept.includes('application/json')) return false;
+  return req.accepts(['html', 'json']) === 'html';
+};
+
 const protect = async (req, res, next) => {
   let token;
 
@@ -12,7 +18,7 @@ const protect = async (req, res, next) => {
   }
 
   if (!token) {
-    if (req.accepts('html')) return res.redirect('/auth/login');
+    if (wantsHtmlResponse(req)) return res.redirect('/auth/login');
     return res.status(401).json({ message: 'Not authorized' });
   }
 
@@ -21,7 +27,7 @@ const protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = await User.findById(decoded.id).select('-password');
     if (!req.user || (!req.user.isActive && req.user.status !== 'complete')) {
-      if (req.accepts('html')) return res.redirect('/auth/login');
+      if (wantsHtmlResponse(req)) return res.redirect('/auth/login');
       return res.status(401).json({ message: 'Account inactive or not found' });
     }
     
@@ -72,7 +78,7 @@ const protect = async (req, res, next) => {
     const isLogoutRoute = req.path === '/logout';
 
     if ((req.user.mustChangePassword || req.user.firstLoginCompleted === false) && !isPasswordChangeRoute && !isLogoutRoute) {
-      if (req.accepts('html')) return res.redirect('/auth/force-change-password');
+      if (wantsHtmlResponse(req)) return res.redirect('/auth/force-change-password');
       return res.status(403).json({ message: 'Password change required' });
     }
 
@@ -81,7 +87,7 @@ const protect = async (req, res, next) => {
 
     next();
   } catch (err) {
-    if (req.accepts('html')) return res.redirect('/auth/login');
+    if (wantsHtmlResponse(req)) return res.redirect('/auth/login');
     return res.status(401).json({ message: 'Token invalid' });
   }
 };
