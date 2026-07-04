@@ -6,6 +6,7 @@ const ctrl = require('../controllers/counsellorController');
 const Lead = require('../models/Lead');
 const Message = require('../models/Message');
 const Student = require('../models/Student');
+const { getClosedLeadStatusKeys } = require('../utils/leadStatusOptions');
 
 const populateCounsellorSidebar = async (req, res, next) => {
   if (req.user && req.user.role === 'counsellor') {
@@ -15,12 +16,13 @@ const populateCounsellorSidebar = async (req, res, next) => {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
+      const closedStatuses = await getClosedLeadStatusKeys();
       const [leadCount, followupCount, studentCount] = await Promise.all([
         Lead.countDocuments({ assignedTo: req.user.counsellorProfileId }),
         Lead.countDocuments({
           assignedTo: req.user.counsellorProfileId,
           nextFollowUpAt: { $lt: tomorrow },
-          status: { $nin: ['admission_completed', 'lost'] }
+          status: { $nin: closedStatuses }
         }),
         Student.countDocuments({ counsellor: req.user.counsellorProfileId })
       ]);

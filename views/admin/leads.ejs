@@ -3,6 +3,30 @@
   title = 'Lead Pipeline';
   subtitle = 'Manage Academy queries and registrations';
   page = 'leads';
+  const statusOptions = typeof leadStatuses !== 'undefined'
+    ? leadStatuses
+    : [
+      { key: 'new', label: 'New', badgeClass: 'badge-orange' },
+      { key: 'contacted', label: 'Contacted', badgeClass: 'badge-blue' },
+      { key: 'mentorship_scheduled', label: 'Mentorship Scheduled', badgeClass: 'badge-blue' },
+      { key: 'mentorship_attended', label: 'Mentorship Attended', badgeClass: 'badge-yellow' },
+      { key: 'follow_up', label: 'Follow Up', badgeClass: 'badge-yellow' },
+      { key: 'joining_interested', label: 'Joining Interested', badgeClass: 'badge-gold' },
+      { key: 'admission_completed', label: 'Admission Completed', badgeClass: 'badge-green', isClosed: true },
+      { key: 'lost', label: 'Lost', badgeClass: 'badge-red', isClosed: true }
+    ];
+  const statusLabelMap = statusOptions.reduce((map, status) => {
+    map[status.key] = status.label;
+    return map;
+  }, {});
+  const statusBadgeMap = statusOptions.reduce((map, status) => {
+    map[status.key] = status.badgeClass || 'badge-grey';
+    return map;
+  }, {});
+  const statusClosedMap = statusOptions.reduce((map, status) => {
+    map[status.key] = Boolean(status.isClosed);
+    return map;
+  }, {});
 %>
 
 <style>
@@ -12,36 +36,284 @@
   .lead-row.is-priority { background: linear-gradient(90deg, rgba(212,175,55,0.08) 0%, rgba(0,0,0,0) 100%); border-left: 3px solid var(--gold); }
   .lead-row .td-name a { color: var(--gold); font-weight: 700; }
   .lead-row-hint { display: block; margin-top: 3px; color: var(--text-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  
+  /* Glassmorphism panels */
+  .lead-tools-comfort-bar { display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; border:1px solid var(--border); border-radius:12px; background:linear-gradient(180deg, rgba(255,255,255,.025), rgba(0,0,0,.16)); padding:.85rem 1rem; margin-bottom:1rem; box-shadow:var(--shadow-sm); }
+  .lead-tools-comfort-copy { min-width:220px; }
+  .lead-tools-comfort-title { margin:0; color:var(--text); font-size:.82rem; font-weight:900; text-transform:uppercase; letter-spacing:.055em; }
+  .lead-tools-comfort-sub { margin-top:.18rem; color:var(--text-muted); font-size:.74rem; line-height:1.45; }
+  .lead-tools-toggle { min-height:34px; display:inline-flex; align-items:center; gap:.45rem; border-radius:999px; white-space:nowrap; }
+  .lead-tools-toggle-icon { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; border:1px solid currentColor; font-size:.75rem; line-height:1; }
+  .lead-tools-shell-wrap { overflow:hidden; transition:max-height .28s ease, opacity .2s ease, margin-bottom .2s ease; }
+  .lead-tools-shell-wrap.is-hidden { max-height:0 !important; opacity:0; margin-bottom:0; pointer-events:none; }
+  .lead-tools-shell { display:grid; grid-template-columns:minmax(300px,.9fr) minmax(420px,1.35fr); gap:1.25rem; margin-bottom:1.25rem; }
+  .lead-tool-panel { position:relative; border:1px solid var(--border); border-radius:12px; background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005)); backdrop-filter: blur(12px); box-shadow:var(--shadow-md); overflow:hidden; transition: border-color .22s ease, box-shadow .22s ease; }
+  .lead-tool-panel:hover { border-color: rgba(255,204,0,0.2); box-shadow: var(--shadow-lg), 0 0 16px rgba(255,204,0,0.02); }
+  .lead-tool-panel::before { content:''; position:absolute; inset:0 0 auto 0; height:3px; background:linear-gradient(90deg, var(--gold), transparent 70%); opacity:.65; }
+  .lead-tool-panel-body { padding:1.25rem; display:grid; gap:1rem; }
+  .lead-tool-title { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin:0; color:var(--text); font-size:.85rem; font-weight:900; text-transform:uppercase; letter-spacing:.055em; }
+  .lead-tool-kicker { color:var(--text-muted); font-size:.76rem; line-height:1.5; max-width:68ch; }
+  .lead-tool-meta { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; color:var(--text-muted); font-size:.68rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; }
+  .lead-tool-meta span { display:inline-flex; align-items:center; min-height:22px; border:1px solid var(--border); border-radius:999px; padding:.16rem .5rem; background:rgba(255,255,255,.025); }
+  
+  /* Drag and Drop Zone */
+  .lead-upload-zone { border: 2px dashed rgba(255, 204, 0, 0.2); border-radius: 10px; background: rgba(255, 255, 255, 0.015); padding: 1.5rem 1rem; text-align: center; cursor: pointer; transition: all 0.22s ease; display: flex; flex-direction: column; align-items: center; gap: 0.6rem; position: relative; }
+  .lead-upload-zone:hover, .lead-upload-zone.is-dragover { border-color: var(--gold); background: rgba(255, 204, 0, 0.03); box-shadow: 0 0 16px rgba(255, 204, 0, 0.08); }
+  .lead-upload-zone svg { width: 34px; height: 34px; color: var(--text-muted); transition: all 0.22s ease; }
+  .lead-upload-zone:hover svg, .lead-upload-zone.is-dragover svg { color: var(--gold); transform: translateY(-2px); }
+  .upload-zone-title { font-size: 0.82rem; font-weight: 700; color: var(--text); }
+  .upload-zone-subtitle { font-size: 0.72rem; color: var(--text-muted); }
+  .upload-file-info { display: none; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0.5rem; }
+  .upload-file-name { font-size: 0.85rem; font-weight: 800; color: var(--gold); word-break: break-all; }
+  .upload-file-size { font-size: 0.72rem; color: var(--text-muted); }
+  .upload-file-remove { background: rgba(239, 68, 68, 0.12); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px; padding: 0.3rem 0.65rem; font-size: 0.7rem; font-weight: 800; cursor: pointer; transition: all 0.16s ease; text-transform: uppercase; letter-spacing: 0.03em; }
+  .upload-file-remove:hover { background: var(--red); color: #fff; }
+
+  /* iOS switch toggle */
+  .switch-container { display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; user-select: none; }
+  .switch-input { display: none; }
+  .switch-track { width: 36px; height: 18px; border-radius: 99px; background: var(--border-light); position: relative; transition: background-color 0.2s ease; }
+  .switch-thumb { width: 12px; height: 12px; border-radius: 50%; background: #fff; position: absolute; top: 3px; left: 3px; transition: transform 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+  .switch-input:checked + .switch-track { background: var(--gold); }
+  .switch-input:checked + .switch-track .switch-thumb { transform: translateX(18px); background: #000; }
+  .switch-label { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-sub); }
+
+  /* Redesigned Status Form Layout */
+  .lead-status-form { display: grid; grid-template-columns: minmax(220px, 1fr) auto; gap: 0.85rem; align-items: end; margin-bottom:1rem; }
+  .status-form-full { grid-column: 1 / span 2; }
+  .status-form-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; width: 100%; margin-top: 0.25rem; }
+  .status-form-options { grid-column:1 / span 2; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; padding:.75rem; border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,.018); }
+  .status-preview-chip { min-height:30px; display:inline-flex; align-items:center; gap:.45rem; border-radius:20px; padding:.28rem .7rem; border:1px solid var(--border); background:rgba(255,255,255,.03); color:var(--text); font-size:.72rem; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
+
+  .lead-badge-picker { display:grid; gap:.4rem; min-width:0; }
+  .lead-badge-swatches { display:flex; gap:.35rem; min-height:36px; align-items:center; flex-wrap:wrap; }
+  .lead-badge-swatch { position:relative; width:26px; height:26px; border:2px solid transparent; border-radius:50%; background:transparent; cursor:pointer; transition: all 0.2s ease; display:flex; align-items:center; justify-content:center; }
+  .lead-badge-swatch::before { content:''; width:16px; height:16px; border-radius:50%; background:var(--swatch-color, #777); box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: transform 0.2s ease; }
+  .lead-badge-swatch:hover::before { transform:scale(1.15); }
+  .lead-badge-swatch.is-selected { border-color:var(--gold); background:rgba(212,175,55,.1); }
+  .lead-badge-swatch.is-selected::after { content:''; position:absolute; width:6px; height:6px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.7); }
+  
+  .lead-badge-swatch[data-badge="badge-grey"] { --swatch-color:#8a8f98; }
+  .lead-badge-swatch[data-badge="badge-blue"] { --swatch-color:#3b82f6; }
+  .lead-badge-swatch[data-badge="badge-yellow"] { --swatch-color:#eab308; }
+  .lead-badge-swatch[data-badge="badge-orange"] { --swatch-color:#f97316; }
+  .lead-badge-swatch[data-badge="badge-green"] { --swatch-color:#22c55e; }
+  .lead-badge-swatch[data-badge="badge-red"] { --swatch-color:#ef4444; }
+  .lead-badge-swatch[data-badge="badge-gold"] { --swatch-color:#d4af37; }
+
+  /* Active Status Chips */
+  .lead-status-chip-list { display:flex; gap:.45rem; flex-wrap:wrap; padding-top:.75rem; border-top: 1px solid var(--border); }
+  .lead-status-chip { min-height:28px; display:inline-flex; align-items:center; gap:.45rem; border-radius:20px; padding: 0.25rem 0.65rem; border:1px solid var(--border); background:rgba(255,255,255,0.02); transition:all 0.2s ease; }
+  .lead-status-chip:hover { border-color: var(--border-light); background:rgba(255,255,255,0.05); }
+  .lead-status-chip-dot { width:7px; height:7px; border-radius:50%; background:var(--swatch-color, #8a8f98); box-shadow: 0 0 6px var(--swatch-color, #8a8f98); }
+  .lead-status-chip.is-closed { border-style:dashed; opacity:0.75; }
+  .lead-status-chip-delete { width:15px; height:15px; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:50%; background:rgba(0,0,0,.22); color:var(--text-muted); cursor:pointer; font-size:.65rem; line-height:1; transition:all 0.16s ease; }
+  .lead-status-chip-delete:hover { background:rgba(255,255,255,.12); color:#fff; }
+  
+  .lead-status-chip[class*="badge-grey"] { --swatch-color:#8a8f98; }
+  .lead-status-chip[class*="badge-blue"] { --swatch-color:#3b82f6; }
+  .lead-status-chip[class*="badge-yellow"] { --swatch-color:#eab308; }
+  .lead-status-chip[class*="badge-orange"] { --swatch-color:#f97316; }
+  .lead-status-chip[class*="badge-green"] { --swatch-color:#22c55e; }
+  .lead-status-chip[class*="badge-red"] { --swatch-color:#ef4444; }
+  .lead-status-chip[class*="badge-gold"] { --swatch-color:#d4af37; }
+
+  /* Filters & select styles */
+  .lead-filter-card { border:1px solid var(--border); border-radius:12px; background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,0.15)); padding:1.25rem; margin-bottom:1.25rem; box-shadow:var(--shadow-sm); }
+  .lead-select-badge {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg fill='%23949494' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+    background-size: 16px;
+    padding-right: 1.4rem !important;
+    border-radius: 20px !important;
+    border: 1px solid var(--border) !important;
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    color: var(--text-sub) !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    height: 28px;
+    padding: 0.2rem 0.65rem !important;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  .lead-select-badge:hover {
+    border-color: var(--border-light) !important;
+    background-color: rgba(255, 255, 255, 0.06) !important;
+    color: var(--text) !important;
+  }
+  .lead-select-badge:focus {
+    border-color: var(--gold) !important;
+    outline: none;
+    box-shadow: 0 0 0 2px var(--gold-dim) !important;
+  }
+  
+  @media (max-width:1180px) {
+    .lead-tools-shell { grid-template-columns:1fr; }
+  }
+  @media (max-width:760px) {
+    .lead-tools-comfort-bar { align-items:stretch; }
+    .lead-tools-toggle { width:100%; justify-content:center; }
+    .lead-status-form { grid-template-columns:1fr; }
+    .status-form-full { grid-column: 1; }
+    .status-form-options { grid-column:1; align-items:flex-start; }
+    .lead-badge-swatches { justify-content:start; }
+    .status-form-row { flex-direction: column; align-items: stretch; gap: 0.8rem; }
+    .status-form-row .btn { width:100%; justify-content:center; }
+  }
 </style>
 
 <% if (typeof filter !== 'undefined' && filter.error) { %>
-  <div class="card" style="border-color:var(--red); background:rgba(239,68,68,0.05); margin-bottom:20px; padding:12px 16px; color:var(--red); font-size:13px; font-weight:500; border-left:4px solid var(--red);">
-    ❌ <%= filter.error %>
+  <div class="alert alert-toast alert-error" style="margin-bottom: 20px;" role="alert">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span><%= filter.error %></span>
   </div>
 <% } %>
 
-<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+<% if (typeof filter !== 'undefined' && (filter.imported || filter.skipped || filter.failed)) { %>
+  <div class="alert alert-toast alert-success" style="margin-bottom: 20px;" role="status">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    <span>Import summary: imported <b><%= filter.imported || 0 %></b> new leads, skipped <b><%= filter.skipped || 0 %></b> duplicates, failed <b><%= filter.failed || 0 %></b> records.</span>
+  </div>
+<% } %>
+
+<% if (typeof filter !== 'undefined' && (filter.statusCreated || filter.statusDeleted)) { %>
+  <div class="alert alert-toast alert-success" style="margin-bottom: 20px;" role="status">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    <span><%= filter.statusCreated ? 'Lead pipeline status updated.' : 'Lead pipeline status deleted successfully.' %></span>
+  </div>
+<% } %>
+
+<div class="lead-tools-comfort-bar" aria-label="Lead setup tools visibility">
+  <div class="lead-tools-comfort-copy">
+    <h2 class="lead-tools-comfort-title">Lead setup tools</h2>
+    <div class="lead-tools-comfort-sub">Import CSV data or manage status labels only when you need them.</div>
+  </div>
+  <button type="button" class="btn btn-ghost btn-sm lead-tools-toggle" id="leadToolsToggle" aria-controls="leadToolsPanel" aria-expanded="false">
+    <span class="lead-tools-toggle-icon" aria-hidden="true">+</span>
+    <span class="lead-tools-toggle-text">Show tools</span>
+  </button>
+</div>
+
+<div class="lead-tools-shell-wrap is-hidden" id="leadToolsPanel">
+  <section class="lead-tools-shell" aria-label="Lead import and status tools">
+    <div class="lead-tool-panel">
+      <form method="POST" action="/admin/leads/import" enctype="multipart/form-data" class="lead-tool-panel-body" data-no-soft-nav="true" id="importForm">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+      <div>
+        <h2 class="lead-tool-title">Import Leads</h2>
+        <div class="lead-tool-kicker">Upload CSV, TSV, or TXT exports. The importer understands flexible headers like full_name, phone_number, and lead_status.</div>
+        <div class="lead-tool-meta" aria-label="Supported import fields">
+          <span>CSV</span>
+          <span>TSV</span>
+          <span>TXT</span>
+          <span>Duplicate check</span>
+        </div>
+      </div>
+      
+      <div class="lead-upload-zone" id="uploadZone">
+        <div class="upload-zone-content" id="uploadZoneContent">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+          </svg>
+          <span class="upload-zone-title">Drag & Drop file here or <span style="color:var(--gold); text-decoration:underline;">browse</span></span>
+          <span class="upload-zone-subtitle">Supports .csv, .tsv, .txt</span>
+        </div>
+        
+        <div class="upload-file-info" id="uploadFileInfo">
+          <span class="upload-file-name" id="selectedFileName">filename.csv</span>
+          <span class="upload-file-size" id="selectedFileSize">0 KB</span>
+          <button type="button" class="upload-file-remove" id="removeFileBtn">Remove File</button>
+        </div>
+
+        <input id="leadCsv" type="file" name="leadCsv" class="form-control" accept=".csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values" required style="display:none;">
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-sm" style="width:100%; justify-content:center; min-height:40px; font-weight:800;" id="importSubmitBtn" disabled>
+        Import Selected File
+      </button>
+      </form>
+    </div>
+
+    <div class="lead-tool-panel">
+      <div class="lead-tool-panel-body">
+      <div>
+        <h2 class="lead-tool-title">Lead Statuses</h2>
+        <div class="lead-tool-kicker">Create custom pipeline labels for imports and follow-ups. Mark a status closed when it should leave the active pipeline.</div>
+      </div>
+      <form method="POST" action="/admin/leads/statuses" class="lead-status-form" data-no-soft-nav="true" id="leadStatusForm">
+        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+        <input type="hidden" name="badgeClass" id="statusBadgeClass" value="badge-grey">
+        <div class="form-group" style="margin: 0;">
+          <label class="form-label" for="statusLabel">Add lead status</label>
+          <input id="statusLabel" name="label" class="form-control" placeholder="e.g. Documents Pending" required style="width: 100%; min-height: 40px;">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm" style="min-height: 40px; padding: 0 1.5rem; font-weight: 800; flex-shrink: 0; justify-content: center;">Add Status</button>
+        <div class="status-form-options">
+          <div class="lead-badge-picker">
+            <label class="form-label" style="margin:0;">Status color</label>
+            <div class="lead-badge-swatches" role="radiogroup" aria-label="Lead status color">
+              <% ['badge-grey', 'badge-blue', 'badge-yellow', 'badge-orange', 'badge-green', 'badge-red', 'badge-gold'].forEach((badge, index) => { %>
+                <button type="button" class="lead-badge-swatch <%= index === 0 ? 'is-selected' : '' %>" data-badge="<%= badge %>" aria-label="<%= badge.replace('badge-', '') %>" aria-pressed="<%= index === 0 ? 'true' : 'false' %>"></button>
+              <% }) %>
+            </div>
+          </div>
+          <label class="switch-container" for="statusIsClosed" title="Closed statuses do not appear in active counsellor pipeline counts.">
+            <input type="checkbox" id="statusIsClosed" name="isClosed" class="switch-input">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span class="switch-label">Closed pipeline</span>
+          </label>
+          <span class="status-preview-chip lead-status-chip badge-grey" id="statusPreviewChip">
+            <span class="lead-status-chip-dot"></span>
+            <span id="statusPreviewLabel">Preview</span>
+          </span>
+        </div>
+      </form>
+      <div class="lead-status-chip-list">
+        <% if (!statusOptions.length) { %>
+          <span class="td-muted text-sm">No statuses yet. Add one above to start building the pipeline.</span>
+        <% } %>
+        <% statusOptions.forEach(status => { %>
+          <% 
+            const isClosedStatus = status.isClosed;
+            const swatchDotClass = status.badgeClass || 'badge-grey';
+          %>
+          <span class="badge lead-status-chip <%= swatchDotClass %> <%= isClosedStatus ? 'is-closed' : '' %>" title="<%= isClosedStatus ? 'Closed pipeline status' : 'Active status' %>">
+            <span class="lead-status-chip-dot"></span>
+            <%= status.label %>
+            <% if (isClosedStatus) { %>
+              <span style="font-size:9px; opacity:0.65; margin-left:2px;">(Closed)</span>
+            <% } %>
+            <form method="POST" action="/admin/leads/statuses/<%= status._id %>/delete" style="display:inline; margin:0;" data-no-soft-nav="true" data-confirm="Delete this status? It will disappear from admin and counsellor status dropdowns. Existing leads keep their saved status value." data-confirm-title="Delete Status" data-confirm-label="Delete">
+              <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+              <button type="submit" class="lead-status-chip-delete" aria-label="Delete <%= status.label %> status">&times;</button>
+            </form>
+          </span>
+        <% }) %>
+      </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="lead-filter-card">
   <form method="GET" action="/admin/leads" class="filter-bar" style="margin:0; gap:0.75rem;">
     <input type="text" name="search" class="form-control" placeholder="Search by name / phone..." value="<%= filter.search || '' %>" style="flex:1;" onchange="this.form.submit()">
     
     <select name="status" class="form-control" onchange="this.form.submit()">
       <option value="">All Statuses</option>
-      <option value="new" <%= filter.status === 'new' ? 'selected' : '' %>>New</option>
-      <option value="contacted" <%= filter.status === 'contacted' ? 'selected' : '' %>>Contacted</option>
-      <option value="mentorship_scheduled" <%= filter.status === 'mentorship_scheduled' ? 'selected' : '' %>>Mentorship Scheduled</option>
-      <option value="mentorship_attended" <%= filter.status === 'mentorship_attended' ? 'selected' : '' %>>Mentorship Attended</option>
-      <option value="follow_up" <%= filter.status === 'follow_up' ? 'selected' : '' %>>Follow Up</option>
-      <option value="joining_interested" <%= filter.status === 'joining_interested' ? 'selected' : '' %>>Joining Interested</option>
-      <option value="admission_completed" <%= filter.status === 'admission_completed' ? 'selected' : '' %>>Admission Completed</option>
-      <option value="lost" <%= filter.status === 'lost' ? 'selected' : '' %>>Lost</option>
+      <% statusOptions.forEach(status => { %>
+        <option value="<%= status.key %>" <%= filter.status === status.key ? 'selected' : '' %>><%= status.label %></option>
+      <% }); %>
     </select>
 
     <select name="course" class="form-control" onchange="this.form.submit()">
       <option value="">All Courses</option>
-      <option value="Video Editing" <%= filter.course === 'Video Editing' ? 'selected' : '' %>>Video Editing</option>
-      <option value="Digital Marketing" <%= filter.course === 'Digital Marketing' ? 'selected' : '' %>>Digital Marketing</option>
-      <option value="Both" <%= filter.course === 'Both' ? 'selected' : '' %>>Both</option>
-      <option value="Undecided" <%= filter.course === 'Undecided' ? 'selected' : '' %>>Undecided</option>
+      <% courses.forEach(c => { %>
+        <option value="<%= c.name %>" <%= filter.course === c.name ? 'selected' : '' %>><%= c.name %></option>
+      <% }) %>
     </select>
 
     <select name="source" class="form-control" onchange="this.form.submit()">
@@ -83,15 +355,51 @@
         <tbody>
           <% leads.forEach(l => { %>
             <% 
-              const isOverdue = l.nextFollowUpAt && new Date(l.nextFollowUpAt) < new Date() && l.status !== 'admission_completed' && l.status !== 'lost';
+              const isClosedLead = Boolean(statusClosedMap[l.status]);
+              const isOverdue = l.nextFollowUpAt && new Date(l.nextFollowUpAt) < new Date() && !isClosedLead;
             %>
             <tr class="lead-row <%= l.status === 'joining_interested' ? 'is-priority' : '' %>" data-row-href="/admin/leads/<%= l._id %>" tabindex="0" aria-label="Open <%= l.name %> lead file">
               <td class="td-name">
-                <a href="/admin/leads/<%= l._id %>"><%= l.name %></a>
-                <% if (l.status === 'joining_interested') { %>
-                  <span class="badge badge-gold" style="font-size: 9px; margin-left: 6px; vertical-align: middle; background: var(--gold-dim); border: 1px solid var(--gold-border); color: var(--gold); padding: 2px 6px; border-radius: 4px; font-weight: bold;">👑 Ready</span>
-                <% } %>
-                <div class="td-muted text-sm"><%= l.phone %> &nbsp;·&nbsp; <%= l.email || 'No email' %></div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <% 
+                    const firstChar = String(l.name || 'L').charAt(0).toUpperCase();
+                    const nameCode = firstChar.charCodeAt(0) % 5;
+                    const bgGradients = [
+                      'linear-gradient(135deg, rgba(255, 204, 0, 0.15) 0%, rgba(255, 204, 0, 0.05) 100%)',
+                      'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%)',
+                      'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.05) 100%)',
+                      'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(168, 85, 247, 0.05) 100%)',
+                      'linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.05) 100%)'
+                    ];
+                    const borderColors = [
+                      'rgba(255, 204, 0, 0.3)',
+                      'rgba(59, 130, 246, 0.3)',
+                      'rgba(34, 197, 94, 0.3)',
+                      'rgba(168, 85, 247, 0.3)',
+                      'rgba(249, 115, 22, 0.3)'
+                    ];
+                    const textColors = [
+                      'var(--gold)',
+                      '#60a5fa',
+                      '#4ade80',
+                      '#c084fc',
+                      '#fb923c'
+                    ];
+                    const initialsBg = bgGradients[nameCode];
+                    const initialsBorder = borderColors[nameCode];
+                    const initialsText = textColors[nameCode];
+                  %>
+                  <div style="width: 36px; height: 36px; border-radius: 8px; background: <%= initialsBg %>; border: 1px solid <%= initialsBorder %>; color: <%= initialsText %>; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0;">
+                    <%= firstChar %>
+                  </div>
+                  <div>
+                    <a href="/admin/leads/<%= l._id %>"><%= l.name %></a>
+                    <% if (l.status === 'joining_interested') { %>
+                      <span class="badge badge-gold" style="font-size: 9px; margin-left: 6px; vertical-align: middle; background: var(--gold-dim); border: 1px solid var(--gold-border); color: var(--gold); padding: 2px 6px; border-radius: 4px; font-weight: bold;">Ready</span>
+                    <% } %>
+                    <div class="td-muted text-sm"><%= l.phone %> &nbsp;-&nbsp; <%= l.email || 'No email' %></div>
+                  </div>
+                </div>
               </td>
               <td>
                 <span class="badge badge-orange"><%= l.interestedCourse ? l.interestedCourse.name : 'Undecided' %></span>
@@ -99,7 +407,7 @@
               <td><%= l.source %></td>
               <td>
                 <form action="/admin/leads/<%= l._id %>/assign" method="POST" style="margin:0; display:flex; gap:0.5rem; align-items:center;">
-                  <select name="counsellorId" class="form-control" style="padding: 0.35rem 0.5rem; font-size: 12px;" onchange="this.form.submit()">
+                  <select name="counsellorId" class="lead-select-badge" onchange="this.form.submit()">
                     <option value="">Unassigned</option>
                     <% counsellors.forEach(c => { %>
                       <option value="<%= c._id %>" <%= (l.assignedTo && l.assignedTo._id.toString() === c._id.toString()) ? 'selected' : '' %>><%= c.name %></option>
@@ -108,30 +416,18 @@
                 </form>
               </td>
               <td>
-                <% 
-                  const badgeClass = {
-                    new: 'badge-orange',
-                    contacted: 'badge-blue',
-                    mentorship_scheduled: 'badge-blue',
-                    mentorship_attended: 'badge-yellow',
-                    follow_up: 'badge-yellow',
-                    joining_interested: 'badge-gold',
-                    admission_completed: 'badge-green',
-                    lost: 'badge-red'
-                  }[l.status] || 'badge-grey';
-                %>
-                <span class="badge <%= badgeClass %>"><%= l.status %></span>
+                <span class="badge <%= statusBadgeMap[l.status] || 'badge-grey' %>"><%= statusLabelMap[l.status] || l.status %></span>
                 <% if (isOverdue) { %>
-                  <div style="font-size:10px; color:var(--red); margin-top:2px;">⚠️ Follow-up Overdue</div>
+                  <div style="font-size:10px; color:var(--red); margin-top:2px;">Follow-up overdue</div>
                 <% } %>
               </td>
               <td>
                 <% if (l.status !== 'admission_completed' && l.status !== 'lost') { %>
-                  <a href="/admin/leads/<%= l._id %>/convert" class="btn btn-success btn-xs">
+                  <a href="/admin/leads/<%= l._id %>/convert" class="btn btn-success btn-xs" style="border-radius: 20px; font-weight: 700;">
                     Convert to Student
                   </a>
                 <% } else if (l.status === 'admission_completed') { %>
-                  <span class="text-green text-sm" style="font-weight:600;">✓ Converted</span>
+                  <span class="text-green text-sm" style="font-weight:600;">Converted</span>
                 <% } else { %>
                   <span class="text-red text-sm" style="font-weight:600;">Lost</span>
                 <% } %>
@@ -150,7 +446,7 @@
       }; %>
       <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border);">
         <div class="td-muted text-sm">
-          Showing page <strong><%= pagination.page %></strong> of <strong><%= pagination.pages %></strong> · <%= pagination.total %> leads
+          Showing page <strong><%= pagination.page %></strong> of <strong><%= pagination.pages %></strong> - <%= pagination.total %> leads
         </div>
         <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
           <a class="btn btn-ghost btn-sm <%= pagination.page <= 1 ? 'disabled' : '' %>" href="<%= pagination.page <= 1 ? '#' : pageUrl(pagination.page - 1) %>">Previous</a>
@@ -165,51 +461,51 @@
 </div>
 
 <!-- Convert Lead Modal -->
-<div id="convertModal" class="modal-overlay">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">Convert Lead to Student</div>
+<div id="convertModal" class="modal-overlay" style="backdrop-filter: blur(8px); transition: all 0.25s ease;">
+  <div class="modal" style="border-radius: 12px; border: 1px solid var(--border); overflow: hidden; background: linear-gradient(180deg, var(--bg-card), rgba(0,0,0,0.9)); box-shadow: var(--shadow-lg);">
+    <div class="modal-header" style="border-bottom: 1px solid var(--border); padding: 1rem 1.25rem;">
+      <div class="modal-title" style="font-weight: 900; color: var(--text); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em;">Convert Lead to Student</div>
       <button class="modal-close" onclick="closeConvertModal()">&times;</button>
     </div>
-    <form id="convertForm" method="POST">
-      <p style="font-size:13px; color:var(--text-sub); margin-bottom:1.25rem;">
-        Converting lead <strong id="convertLeadName">Prospect</strong>. This will create an active student account and initialize their fee structure.
+    <form id="convertForm" method="POST" style="padding: 1.25rem;">
+      <p style="font-size:13px; color:var(--text-sub); margin-bottom:1.25rem; line-height: 1.5;">
+        Converting lead <strong id="convertLeadName" style="color: var(--gold);">Prospect</strong>. This will create an active student account and initialize their fee structure.
       </p>
       
       <div class="form-group">
         <label class="form-label" for="student_email">Student Login Email</label>
-        <input type="email" id="student_email" name="email" class="form-control" required>
+        <input type="email" id="student_email" name="email" class="form-control" required style="border-radius: 8px;">
       </div>
 
       <div class="form-group">
         <label class="form-label" for="student_password">Initial Login Password</label>
-        <input type="text" id="student_password" name="password" class="form-control" required>
-        <div class="form-hint">By default, the student's mobile number will be set. You can override it here.</div>
+        <input type="text" id="student_password" name="password" class="form-control" required style="border-radius: 8px;">
+        <div class="form-hint" style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">By default, the student's mobile number will be set. You can override it here.</div>
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
+      <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div class="form-group" style="margin-bottom: 0;">
           <label class="form-label" for="student_batch">Assign Batch</label>
-          <input type="text" id="student_batch" name="batch" class="form-control" placeholder="e.g. Morning 10AM" required>
+          <input type="text" id="student_batch" name="batch" class="form-control" placeholder="e.g. Morning 10AM" required style="border-radius: 8px;">
         </div>
-        <div class="form-group">
+        <div class="form-group" style="margin-bottom: 0;">
           <label class="form-label" for="student_fees">Total Invoice Fees (INR)</label>
-          <input type="number" id="student_fees" name="fees_total" class="form-control" placeholder="e.g. 30000" required min="0" oninput="checkAdminDownpayment()">
+          <input type="number" id="student_fees" name="fees_total" class="form-control" placeholder="e.g. 30000" required min="0" oninput="checkAdminDownpayment()" style="border-radius: 8px;">
         </div>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" style="margin-bottom: 1.25rem;">
         <label class="form-label" for="student_paid">Fees Paid (INR)</label>
-        <input type="number" id="student_paid" name="fees_paid" class="form-control" placeholder="e.g. 15000" value="0" min="0" oninput="checkAdminDownpayment()">
+        <input type="number" id="student_paid" name="fees_paid" class="form-control" placeholder="e.g. 15000" value="0" min="0" oninput="checkAdminDownpayment()" style="border-radius: 8px;">
       </div>
 
-      <div id="downpayment_warning" style="display:none; color:var(--orange); font-size:12px; font-weight:500; margin-bottom:12px; border-left:2px solid var(--orange); padding-left:8px;">
-        ⚠️ Warning: Paid amount is less than the standard 50% down payment requirement. Admin authorization will bypass this check.
+      <div id="downpayment_warning" style="display:none; color:var(--orange); font-size:12px; font-weight:500; margin-bottom:12px; border-left:3px solid var(--orange); padding-left:10px; background: rgba(249, 115, 22, 0.05); padding-top: 6px; padding-bottom: 6px; border-radius: 0 6px 6px 0;">
+        Warning: Paid amount is less than the standard 50% down payment requirement. Admin authorization will bypass this check.
       </div>
 
-      <div class="modal-footer">
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid var(--border); padding-top: 1.25rem;">
         <button type="button" class="btn btn-ghost btn-sm" onclick="closeConvertModal()">Cancel</button>
-        <button type="submit" class="btn btn-primary btn-sm">Confirm Admission</button>
+        <button type="submit" class="btn btn-primary btn-sm" style="font-weight: 800;">Confirm Admission</button>
       </div>
     </form>
   </div>
@@ -220,8 +516,6 @@
     const form = document.getElementById('convertForm');
     form.action = '/admin/leads/' + leadId + '/convert';
     document.getElementById('convertLeadName').innerText = leadName;
-    
-    // Auto populate defaults (removed fake/insecure defaults)
     document.getElementById('convertModal').classList.add('open');
   }
 
@@ -274,5 +568,219 @@
   initLeadRows();
   document.addEventListener('resultsUpdated', initLeadRows);
   document.addEventListener('softnav:load', initLeadRows);
+
+  function initDragAndDrop() {
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('leadCsv');
+    const zoneContent = document.getElementById('uploadZoneContent');
+    const fileInfo = document.getElementById('uploadFileInfo');
+    const fileName = document.getElementById('selectedFileName');
+    const fileSize = document.getElementById('selectedFileSize');
+    const removeBtn = document.getElementById('removeFileBtn');
+    const submitBtn = document.getElementById('importSubmitBtn');
+    const importForm = document.getElementById('importForm');
+
+    if (!uploadZone || !fileInput || fileInput.dataset.dragReady === '1') return;
+
+    const isAllowedFile = (file) => {
+      return /\.(csv|tsv|txt)$/i.test(file.name || '');
+    };
+
+    const showFile = (file) => {
+      if (!isAllowedFile(file)) {
+        clearFile();
+        alert('Please select a CSV, TSV, or TXT file.');
+        return;
+      }
+      fileName.textContent = file.name;
+      const sizeKB = (file.size / 1024).toFixed(1);
+      fileSize.textContent = `${sizeKB} KB`;
+      zoneContent.style.display = 'none';
+      fileInfo.style.display = 'flex';
+      submitBtn.disabled = false;
+      uploadZone.style.borderColor = 'var(--gold)';
+      uploadZone.style.background = 'rgba(255, 204, 0, 0.04)';
+    };
+
+    const clearFile = () => {
+      fileInput.value = '';
+      zoneContent.style.display = 'flex';
+      fileInfo.style.display = 'none';
+      submitBtn.disabled = true;
+      uploadZone.style.borderColor = 'rgba(255, 204, 0, 0.2)';
+      uploadZone.style.background = 'rgba(255, 255, 255, 0.015)';
+    };
+
+    uploadZone.addEventListener('click', (e) => {
+      if (e.target.closest('#removeFileBtn')) return;
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) {
+        showFile(fileInput.files[0]);
+      } else {
+        clearFile();
+      }
+    });
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('is-dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('is-dragover');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('is-dragover');
+      if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        showFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearFile();
+    });
+
+    if (importForm && !importForm.dataset.submitReady) {
+      importForm.addEventListener('submit', (event) => {
+        if (!fileInput.files.length) {
+          event.preventDefault();
+          alert('Please select a CSV, TSV, or TXT file first.');
+          return;
+        }
+        if (!isAllowedFile(fileInput.files[0])) {
+          event.preventDefault();
+          alert('Please select a CSV, TSV, or TXT file.');
+          return;
+        }
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Importing...';
+      });
+      importForm.dataset.submitReady = '1';
+    }
+
+    fileInput.dataset.dragReady = '1';
+  }
+
+  function initLeadStatusForm() {
+    const form = document.getElementById('leadStatusForm');
+    if (!form || form.dataset.statusReady === '1') return;
+
+    const labelInput = document.getElementById('statusLabel');
+    const badgeInput = document.getElementById('statusBadgeClass');
+    const preview = document.getElementById('statusPreviewChip');
+    const previewLabel = document.getElementById('statusPreviewLabel');
+    const closedInput = document.getElementById('statusIsClosed');
+    const swatches = form.querySelectorAll('.lead-badge-swatch');
+    const badgeClasses = ['badge-grey', 'badge-blue', 'badge-yellow', 'badge-orange', 'badge-green', 'badge-red', 'badge-gold'];
+
+    const setPreview = () => {
+      const label = (labelInput.value || '').trim() || 'Preview';
+      badgeClasses.forEach(className => preview.classList.remove(className));
+      preview.classList.add(badgeInput.value || 'badge-grey');
+      preview.classList.toggle('is-closed', closedInput.checked);
+      previewLabel.textContent = closedInput.checked ? `${label} (Closed)` : label;
+    };
+
+    swatches.forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        swatches.forEach(item => {
+          item.classList.remove('is-selected');
+          item.setAttribute('aria-pressed', 'false');
+        });
+        swatch.classList.add('is-selected');
+        swatch.setAttribute('aria-pressed', 'true');
+        badgeInput.value = swatch.dataset.badge || 'badge-grey';
+        setPreview();
+      });
+    });
+
+    labelInput.addEventListener('input', setPreview);
+    closedInput.addEventListener('change', setPreview);
+    setPreview();
+    form.dataset.statusReady = '1';
+  }
+
+  function initLeadToolsToggle() {
+    const panel = document.getElementById('leadToolsPanel');
+    const toggle = document.getElementById('leadToolsToggle');
+    if (!panel || !toggle || toggle.dataset.toolsReady === '1') return;
+
+    const text = toggle.querySelector('.lead-tools-toggle-text');
+    const icon = toggle.querySelector('.lead-tools-toggle-icon');
+    const storageKey = 'adminLeadToolsVisible';
+    const url = new URL(window.location.href);
+    const actionParams = ['statusDeleted', 'statusCreated', 'imported', 'skipped', 'failed', 'error'];
+    const shouldOpenForFeedback = actionParams.some(param => url.searchParams.has(param));
+
+    const setVisible = (visible, persist = true) => {
+      panel.classList.toggle('is-hidden', !visible);
+      panel.style.maxHeight = visible ? `${panel.scrollHeight}px` : '0px';
+      toggle.setAttribute('aria-expanded', visible ? 'true' : 'false');
+      text.textContent = visible ? 'Hide tools' : 'Show tools';
+      icon.textContent = visible ? '-' : '+';
+      if (persist) localStorage.setItem(storageKey, visible ? '1' : '0');
+    };
+
+    const saved = localStorage.getItem(storageKey);
+    setVisible(shouldOpenForFeedback || saved === '1', !shouldOpenForFeedback);
+
+    toggle.addEventListener('click', () => {
+      setVisible(panel.classList.contains('is-hidden'));
+    });
+
+    window.addEventListener('resize', () => {
+      if (!panel.classList.contains('is-hidden')) {
+        panel.style.maxHeight = `${panel.scrollHeight}px`;
+      }
+    });
+
+    toggle.dataset.toolsReady = '1';
+  }
+
+  function initQueryAlerts() {
+    const alerts = document.querySelectorAll('.alert-toast');
+    if (alerts.length) {
+      setTimeout(() => {
+        alerts.forEach(alert => {
+          alert.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+          alert.style.opacity = '0';
+          alert.style.transform = 'translateY(-10px)';
+          setTimeout(() => alert.remove(), 500);
+        });
+      }, 3500);
+
+      // Clean the URL query parameters so they don't persist on reload
+      const url = new URL(window.location.href);
+      const params = ['statusDeleted', 'statusCreated', 'imported', 'skipped', 'failed', 'error'];
+      let changed = false;
+      params.forEach(p => {
+        if (url.searchParams.has(p)) {
+          url.searchParams.delete(p);
+          changed = true;
+        }
+      });
+      if (changed) {
+        window.history.replaceState({}, document.title, url.pathname + url.search);
+      }
+    }
+  }
+
+  initDragAndDrop();
+  initLeadStatusForm();
+  initLeadToolsToggle();
+  initQueryAlerts();
+  document.addEventListener('softnav:load', () => {
+    initDragAndDrop();
+    initLeadStatusForm();
+    initLeadToolsToggle();
+    initQueryAlerts();
+  });
 </script>
 <script src="/js/instant-filter.js"></script>

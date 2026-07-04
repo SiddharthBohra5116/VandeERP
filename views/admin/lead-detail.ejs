@@ -206,26 +206,28 @@
   .lead-timeline-tools .app-select { width:auto; min-width:150px; }
   .lead-timeline-tools .app-select-button { min-height:40px; padding:.52rem .7rem; border-radius:8px; font-size:.78rem; font-weight:850; }
   .lead-timeline-tools .app-select-menu { min-width:100%; }
-  .lead-story { position:relative; display:grid; gap:.7rem; padding-left:1.55rem; }
+  .lead-story { position:relative; display:grid; gap:1rem; padding-left:1.55rem; }
   .lead-story::before { content:''; position:absolute; left:.52rem; top:.35rem; bottom:.35rem; width:2px; background:var(--border); }
-  .lead-story-item { position:relative; display:grid; grid-template-columns:minmax(110px,140px) minmax(0,1fr) auto; gap:.8rem; align-items:center; padding:.78rem .85rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); }
-  .lead-story-item:hover { background:var(--bg-hover); }
-  .lead-story-item::before { content:''; position:absolute; left:-1.48rem; top:1.05rem; width:13px; height:13px; border-radius:50%; background:var(--gold); border:3px solid var(--bg-card); box-shadow:0 0 0 2px var(--gold-border); }
-  .lead-story-time { color:var(--text); font-weight:900; font-size:.82rem; line-height:1.35; }
+  .lead-story-item { position:relative; display:grid; grid-template-columns:minmax(110px,140px) minmax(0,1fr) auto; gap:.8rem; align-items:start; padding:.85rem; border:1px solid var(--border); border-radius:10px; background:var(--bg-input); transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+  .lead-story-item:hover { background:var(--bg-hover); border-color: rgba(255,204,0,0.15); }
+  .lead-story-item::before { content:''; position:absolute; left:-1.48rem; top:1.05rem; width:13px; height:13px; border-radius:50%; background:var(--gold); border:3px solid var(--bg-card); box-shadow:0 0 0 2px var(--gold-border); z-index: 2; }
+  .lead-story-time { color:var(--text); font-weight:900; font-size:.82rem; line-height:1.35; background: transparent; border: 0; padding: 0; text-align: left; cursor: pointer; }
   .lead-story-time span { display:block; color:var(--text-muted); font-size:.72rem; font-weight:750; margin-top:.15rem; }
-  .lead-story-date-btn { appearance:none; border:0; background:transparent; text-align:left; cursor:pointer; padding:0; }
-  .lead-story-date-btn:hover { color:var(--gold); }
+  .lead-story-time:hover { color: var(--gold); }
   .lead-story-main { min-width:0; }
-  .lead-story-top { display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; margin-bottom:.25rem; }
-  .lead-story-action { font-size:.94rem; font-weight:900; }
-  .lead-story-actor { color:var(--text-sub); font-size:.76rem; font-weight:750; }
-  .lead-story-summary { color:var(--text-sub); font-size:.78rem; margin-top:.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .lead-story-open { min-width:92px; justify-content:center; }
+  .lead-story-top { display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; margin-bottom:.35rem; }
+  .lead-story-action { font-size:.92rem; font-weight:900; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+  .lead-story-icon-wrap { width: 22px; height: 22px; border-radius: 50%; background: var(--gold-dim); border: 1px solid var(--gold-border); display: inline-flex; align-items: center; justify-content: center; color: var(--gold); flex-shrink: 0; }
+  .lead-story-actor { color:var(--text-muted); font-size:.76rem; font-weight:750; }
+  .lead-story-summary { color:var(--text-sub); font-size:.78rem; margin-top:.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition: opacity 0.2s ease; }
+  .lead-story-item.is-active .lead-story-summary { opacity: 0; pointer-events: none; }
+  .lead-story-detail { grid-column: 1 / span 3; display: grid; max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, padding 0.3s ease, margin 0.3s ease; border-top: 1px solid transparent; padding-top: 0; margin-top: 0; }
+  .lead-story-item.is-active .lead-story-detail { max-height: 800px; opacity: 1; border-color: var(--border); padding-top: 0.85rem; margin-top: 0.65rem; }
   .lead-story-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.6rem; margin:.65rem 0; }
   .lead-story-fact { padding:.55rem .65rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-card); min-width:0; }
   .lead-story-fact b { display:block; color:var(--text-muted); font-size:.62rem; font-weight:900; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.18rem; }
   .lead-story-fact span { display:block; color:var(--text); font-size:.78rem; font-weight:800; overflow-wrap:anywhere; }
-  .lead-story-note { color:var(--text-sub); font-size:.88rem; line-height:1.55; overflow-wrap:anywhere; }
+  .lead-story-note { color:var(--text-sub); font-size:.85rem; line-height:1.55; overflow-wrap:anywhere; background: var(--bg-card); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); }
   .lead-detail-modal { position:fixed; inset:0; z-index:1200; display:none; align-items:center; justify-content:center; padding:1rem; background:rgba(0,0,0,.62); backdrop-filter:blur(4px); }
   .lead-detail-modal.is-open { display:flex; }
   .lead-detail-dialog { width:min(720px,100%); max-height:86vh; overflow:auto; border:1px solid var(--border); border-radius:10px; background:var(--bg-card); box-shadow:0 24px 70px rgba(0,0,0,.45); }
@@ -337,6 +339,30 @@
       <% if (!timelineFeed.length) { %>
         <div class="empty-state" style="padding:1.5rem 1rem;"><p>No activity logs recorded yet.</p></div>
       <% } else { %>
+        <%
+          const getTimelineIcon = (type) => {
+            const t = String(type).toLowerCase();
+            if (t.includes('call')) {
+              return `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`;
+            }
+            if (t.includes('whatsapp') || t.includes('chat') || t.includes('message')) {
+              return `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`;
+            }
+            if (t.includes('created')) {
+              return `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>`;
+            }
+            if (t.includes('assign')) {
+              return `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+            }
+            if (t.includes('missed')) {
+              return `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+            }
+            if (t.includes('completed') || t.includes('admit') || t.includes('convert')) {
+              return `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;
+            }
+            return `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>`;
+          };
+        %>
         <div class="lead-story" id="leadTimelineList">
           <% timelineFeed.forEach((item, index) => { %>
             <%
@@ -355,14 +381,13 @@
               const roleLabel = item.actorRole ? item.actorRole : item.source === 'assignment' ? 'admin' : '';
               const channelLabel = item.channel || 'Activity';
               const resultLabel = item.callOutcome || item.callDuration
-                ? `${item.callOutcome || 'Outcome not set'}${item.callDuration ? ' - ' + item.callDuration : ''}`
-                : 'No result recorded';
+                ? `${item.callOutcome || 'Outcome'}${item.callDuration ? ' - ' + item.callDuration : ''}`
+                : 'No result';
               const itemType = item.type || item.channel || 'activity';
-              const detailId = `timeline-detail-${index}`;
               const contextLabel = `Step ${index + 1} - ${new Date(item.date).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })} - ${item.title}`;
             %>
             <article class="lead-story-item" data-date-ms="<%= itemDateMs %>" data-type="<%= String(itemType).toLowerCase() %>">
-              <button type="button" class="lead-story-time lead-story-date-btn lead-story-open" data-template-id="<%= detailId %>">
+              <button type="button" class="lead-story-time toggle-detail-btn" aria-label="Toggle details for <%= item.title %>">
                 <%= new Date(item.date).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) %>
                 <span><%= new Date(item.date).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }) %></span>
               </button>
@@ -371,18 +396,24 @@
                   <span class="badge badge-grey">Step <%= index + 1 %></span>
                   <% if (item.status) { %><span class="badge <%= rowStatusBadge %>"><%= statusLabels[item.status] || item.status %></span><% } %>
                 </div>
-                <div class="lead-story-action"><%= item.title %></div>
+                <div class="lead-story-action">
+                  <span class="lead-story-icon-wrap">
+                    <%- getTimelineIcon(itemType) %>
+                  </span>
+                  <%= item.title %>
+                </div>
                 <div class="lead-story-actor">By <strong><%= actorLabel %></strong><%= roleLabel ? ` (${roleLabel})` : '' %></div>
                 <div class="lead-story-summary"><%= channelLabel %> · <%= resultLabel %><%= item.note ? ` · ${String(item.note).slice(0, 86)}${String(item.note).length > 86 ? '...' : ''}` : '' %></div>
               </div>
-              <button type="button" class="btn btn-ghost btn-xs lead-story-open" data-template-id="<%= detailId %>">View details</button>
-              <template id="<%= detailId %>">
+              <button type="button" class="btn btn-ghost btn-xs toggle-detail-btn" style="min-width: 90px; justify-content: center;">View details</button>
+              
+              <div class="lead-story-detail">
                 <div class="lead-story-top">
                   <span class="badge badge-grey">Step <%= index + 1 %></span>
                   <% if (item.status) { %><span class="badge <%= rowStatusBadge %>"><%= statusLabels[item.status] || item.status %></span><% } %>
                 </div>
-                <h3 style="margin:.35rem 0 .2rem; font-size:1.05rem;"><%= item.title %></h3>
-                <div class="activity-meta">
+                <h3 style="margin:.35rem 0 .2rem; font-size:1.02rem; font-weight: 800; color: var(--text);"><%= item.title %></h3>
+                <div class="activity-meta" style="color: var(--text-muted); font-size: 0.72rem; margin-bottom: 0.5rem;">
                   <%= actorLabel %><%= roleLabel ? ` (${roleLabel})` : '' %> ·
                   <%= new Date(item.date).toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' }) %> ·
                   <%= new Date(item.date).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }) %>
@@ -390,17 +421,20 @@
                 <div class="lead-story-grid">
                   <div class="lead-story-fact"><b>Channel</b><span><%= channelLabel %></span></div>
                   <div class="lead-story-fact"><b>Result</b><span><%= resultLabel %></span></div>
-                  <div class="lead-story-fact"><b>Next follow-up</b><span><%= item.nextFollowUpDate ? new Date(item.nextFollowUpDate).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : 'Not set' %></span></div>
+                  <div class="lead-story-fact"><b>Next follow-up</b><span><%= item.nextFollowUpDate ? new Date(item.nextFollowUpDate).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : 'Not scheduled' %></span></div>
                 </div>
-                <div class="lead-story-note"><%= item.note || 'No note added.' %></div>
+                <div class="lead-story-note">
+                  <div style="font-size: 10px; font-weight: 900; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; letter-spacing: 0.05em;">Log Note:</div>
+                  <%= item.note || 'No descriptive note added.' %>
+                </div>
                 <form action="/admin/leads/<%= lead._id %>/comment" method="POST" class="timeline-comment-box">
                   <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                   <input type="hidden" name="context" value="<%= contextLabel %>">
-                  <label class="form-label" for="timeline-comment-<%= index %>">Add comment to this timeline item</label>
-                  <textarea id="timeline-comment-<%= index %>" name="note" class="form-control" placeholder="Write a clear comment for this event..." required maxlength="500" style="min-height:90px;"></textarea>
-                  <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.7rem;">Save Comment</button>
+                  <label class="form-label" for="timeline-comment-<%= index %>" style="color: var(--gold); font-size: 10px; font-weight: 700; margin-bottom: 6px;">Add comment to this event</label>
+                  <textarea id="timeline-comment-<%= index %>" name="note" class="form-control" placeholder="Write comment details here..." required maxlength="500" style="min-height:80px; border-radius: 8px; font-size: 13px;"></textarea>
+                  <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.7rem; font-weight: 800;">Save Comment</button>
                 </form>
-              </template>
+              </div>
             </article>
           <% }) %>
         </div>
@@ -451,24 +485,11 @@
   </aside>
 </div>
 
-<div class="lead-detail-modal" id="timelineDetailModal" aria-hidden="true">
-  <div class="lead-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="timelineDetailTitle">
-    <div class="lead-detail-dialog-head">
-      <div class="lead-panel-title" id="timelineDetailTitle" style="margin-bottom:0;">Timeline detail</div>
-      <button type="button" class="lead-detail-close" id="timelineDetailClose" aria-label="Close timeline detail">&times;</button>
-    </div>
-    <div class="lead-detail-dialog-body" id="timelineDetailBody"></div>
-  </div>
-</div>
-
 <script>
   function initLeadTimelineControls() {
     const list = document.getElementById('leadTimelineList');
     const sortSelect = document.getElementById('timelineSort');
     const filterSelect = document.getElementById('timelineFilter');
-    const modal = document.getElementById('timelineDetailModal');
-    const modalBody = document.getElementById('timelineDetailBody');
-    const closeBtn = document.getElementById('timelineDetailClose');
 
     if (!list) return;
 
@@ -491,37 +512,40 @@
       });
     };
 
-    const openDetail = button => {
-      const template = document.getElementById(button.dataset.templateId);
-      if (!template || !modal || !modalBody) return;
-      modalBody.innerHTML = '';
-      modalBody.appendChild(template.content.cloneNode(true));
-      modal.classList.add('is-open');
-      modal.setAttribute('aria-hidden', 'false');
-    };
+    list.querySelectorAll('.toggle-detail-btn').forEach(btn => {
+      if (btn.dataset.bound === '1') return;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const row = btn.closest('.lead-story-item');
+        if (!row) return;
 
-    const closeDetail = () => {
-      if (!modal || !modalBody) return;
-      modal.classList.remove('is-open');
-      modal.setAttribute('aria-hidden', 'true');
-      modalBody.innerHTML = '';
-    };
+        const isAlreadyActive = row.classList.contains('is-active');
 
-    list.querySelectorAll('.lead-story-open').forEach(button => {
-      if (button.dataset.bound) return;
-      button.addEventListener('click', () => openDetail(button));
-      button.dataset.bound = '1';
+        // Collapse all others
+        list.querySelectorAll('.lead-story-item').forEach(r => {
+          if (r !== row) {
+            r.classList.remove('is-active');
+            const otherBtn = r.querySelector('.btn.toggle-detail-btn');
+            if (otherBtn) otherBtn.textContent = 'View details';
+          }
+        });
+
+        // Toggle active row
+        if (isAlreadyActive) {
+          row.classList.remove('is-active');
+          const rowBtn = row.querySelector('.btn.toggle-detail-btn');
+          if (rowBtn) rowBtn.textContent = 'View details';
+        } else {
+          row.classList.add('is-active');
+          const rowBtn = row.querySelector('.btn.toggle-detail-btn');
+          if (rowBtn) rowBtn.textContent = 'Hide details';
+        }
+      });
+      btn.dataset.bound = '1';
     });
 
     sortSelect?.addEventListener('change', applyTimelineView);
     filterSelect?.addEventListener('change', applyTimelineView);
-    closeBtn?.addEventListener('click', closeDetail);
-    modal?.addEventListener('click', event => {
-      if (event.target === modal) closeDetail();
-    });
-    document.addEventListener('keydown', event => {
-      if (event.key === 'Escape') closeDetail();
-    });
 
     applyTimelineView();
   }

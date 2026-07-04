@@ -4,6 +4,30 @@
   subtitle = `${typeof pagination !== 'undefined' && pagination ? pagination.total : leads.length} total leads`;
   page = 'leads';
   topbarActions = `<a href="/counsellor/leads/new" class="btn btn-primary btn-sm">+ Add Lead</a>`;
+  const statusOptions = typeof leadStatuses !== 'undefined'
+    ? leadStatuses
+    : [
+      { key: 'new', label: 'New', badgeClass: 'badge-orange' },
+      { key: 'contacted', label: 'Contacted', badgeClass: 'badge-blue' },
+      { key: 'mentorship_scheduled', label: 'Mentorship Scheduled', badgeClass: 'badge-blue' },
+      { key: 'mentorship_attended', label: 'Mentorship Attended', badgeClass: 'badge-yellow' },
+      { key: 'follow_up', label: 'Follow Up', badgeClass: 'badge-yellow' },
+      { key: 'joining_interested', label: 'Joining Interested', badgeClass: 'badge-gold' },
+      { key: 'admission_completed', label: 'Admission Completed', badgeClass: 'badge-green' },
+      { key: 'lost', label: 'Lost', badgeClass: 'badge-red' }
+    ];
+  const statusLabelMap = statusOptions.reduce((map, status) => {
+    map[status.key] = status.label;
+    return map;
+  }, {});
+  const statusBadgeMap = statusOptions.reduce((map, status) => {
+    map[status.key] = status.badgeClass || 'badge-grey';
+    return map;
+  }, {});
+  const statusClosedMap = statusOptions.reduce((map, status) => {
+    map[status.key] = Boolean(status.isClosed);
+    return map;
+  }, {});
 %>
 
 <style>
@@ -86,8 +110,8 @@
     <label class="form-label" style="font-size: 10px;">Status</label>
     <select name="status" class="form-control" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
       <option value="">All Statuses</option>
-      <% ['new','contacted','mentorship_scheduled','mentorship_attended','follow_up','joining_interested','admission_completed','lost'].forEach(s => { %>
-        <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= s.replace(/_/g, ' ').charAt(0).toUpperCase() + s.replace(/_/g, ' ').slice(1) %></option>
+      <% statusOptions.forEach(s => { %>
+        <option value="<%= s.key %>" <%= filters.status === s.key ? 'selected' : '' %>><%= s.label %></option>
       <% }); %>
     </select>
   </div>
@@ -131,19 +155,11 @@
       </div>
       <% leads.forEach((lead, i) => { %>
         <%
-          const statusBadge = {
-            new: 'badge-orange',
-            contacted: 'badge-blue',
-            mentorship_scheduled: 'badge-blue',
-            mentorship_attended: 'badge-yellow',
-            follow_up: 'badge-yellow',
-            joining_interested: 'badge-gold',
-            admission_completed: 'badge-green',
-            lost: 'badge-red'
-          }[lead.status] || 'badge-grey';
+          const statusBadge = statusBadgeMap[lead.status] || 'badge-grey';
 
           const initials = lead.name.split(/\s+/).map(n => n[0]).join('').toUpperCase().slice(0, 2);
-          const isOverdue = lead.nextFollowUpAt && new Date(lead.nextFollowUpAt) < new Date() && lead.status !== 'admission_completed' && lead.status !== 'lost';
+          const isClosedLead = Boolean(statusClosedMap[lead.status]);
+          const isOverdue = lead.nextFollowUpAt && new Date(lead.nextFollowUpAt) < new Date() && !isClosedLead;
         %>
         <article class="person-directory-row" data-row-href="/counsellor/leads/<%= lead._id %>" tabindex="0" aria-label="Open <%= lead.name %> details">
           
@@ -167,7 +183,7 @@
 
           <!-- Column 3: Signals & Badges -->
           <div class="person-signals">
-            <span class="badge <%= statusBadge %>" style="text-transform: uppercase;"><%= lead.status.replace(/_/g, ' ') %></span>
+            <span class="badge <%= statusBadge %>" style="text-transform: uppercase;"><%= statusLabelMap[lead.status] || lead.status.replace(/_/g, ' ') %></span>
             <% if (lead.status === 'admission_completed') { %>
               <span class="badge badge-green">Enrolled</span>
             <% } else if (lead.status === 'lost') { %>

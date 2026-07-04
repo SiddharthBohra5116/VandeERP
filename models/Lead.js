@@ -3,7 +3,6 @@ const {
   LEAD_SOURCES,
   LEAD_TYPES,
   LEAD_CATEGORIES,
-  LEAD_STATUSES,
   LOST_REASONS,
   AUTOMATION_PROVIDERS
 } = require('../config/constants');
@@ -131,7 +130,6 @@ const leadSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: LEAD_STATUSES,
     default: 'new'
   },
 

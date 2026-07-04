@@ -3,13 +3,25 @@ const Student = require('../../models/Student');
 const Course = require('../../models/Course');
 const Batch = require('../../models/Batch');
 const Lead = require('../../models/Lead');
+const LeadStatus = require('../../models/LeadStatus');
 const LeadActivity = require('../../models/LeadActivity');
 const Fee = require('../../models/Fee');
 const Message = require('../../models/Message');
 const Counsellor = require('../../models/Counsellor');
 
+const fs = require('fs');
+const path = require('path');
+const { LEAD_SOURCES } = require('../../config/constants');
 const { escapeRegex } = require('../../utils/sanitize');
+const { parseCsv } = require('../../utils/csvParser');
 const { computeSourceStats } = require('../../utils/leadAnalytics');
+const {
+  ALLOWED_BADGE_CLASSES,
+  findOrCreateLeadStatus,
+  getLeadStatuses,
+  normalizeBadgeClass,
+  slugifyStatus
+} = require('../../utils/leadStatusOptions');
 const logger = require('../../utils/logger');
 
 async function resolveCourse(courseValue, fallbackCourseId = null) {
@@ -33,6 +45,49 @@ async function resolveCourse(courseValue, fallbackCourseId = null) {
   }
 
   return null;
+}
+
+function firstValue(row, keys) {
+  for (const key of keys) {
+    const value = row[key];
+    if (value !== undefined && String(value).trim()) {
+      return String(value).trim();
+    }
+  }
+  return '';
+}
+
+function buildImportNotes(row) {
+  const preferredNoteKeys = [
+    'notes',
+    'note',
+    'comment',
+    'comments',
+    'call_follow_up',
+    'wa_follow_up',
+    'comment_21_april',
+    'coming_mentroship',
+    'coming_mentorship',
+    'prefarable_day',
+    'preferable_day',
+    'confrimations',
+    'confirmations',
+    'text_message',
+    'notes_workshop_status',
+    'what_are_you_currently_doing',
+    'why_do_you_want_to_learn_video_editing',
+    'can_you_attend_a_2_hour_offline_workshop_in_jodhpur',
+    'do_you_have_access_to_a_laptop_pc'
+  ];
+
+  return preferredNoteKeys
+    .map(key => {
+      const value = row[key];
+      if (!value || !String(value).trim()) return '';
+      return `${key.replace(/_/g, ' ')}: ${String(value).trim()}`;
+    })
+    .filter(Boolean)
+    .join(' | ');
 }
 
 exports.getLeads = async (req, res) => {
@@ -61,14 +116,15 @@ exports.getLeads = async (req, res) => {
       ];
     }
 
-    const [leads, totalLeads] = await Promise.all([
+    const [leads, totalLeads, leadStatuses] = await Promise.all([
       Lead.find(filter)
         .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name email phone' } })
         .populate('interestedCourse', 'name code')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      Lead.countDocuments(filter)
+      Lead.countDocuments(filter),
+      getLeadStatuses()
     ]);
 
     const Counsellor = require('../../models/Counsellor');
@@ -93,6 +149,7 @@ exports.getLeads = async (req, res) => {
       leads,
       counsellors,
       courses,
+      leadStatuses,
       sourceStats: sourceStatsMap,
       pagination: {
         page,
@@ -114,6 +171,322 @@ exports.getLeads = async (req, res) => {
       user: req.user,
       layout: 'main'
     });
+  }
+};
+
+exports.postImportLeads = async (req, res) => {
+  const redirectBase = '/admin/leads';
+
+  try {
+    if (!req.file) {
+      return res.redirect(`${redirectBase}?error=${encodeURIComponent('Please choose a CSV file to import.')}`);
+    }
+
+    const allowedExtensions = ['.csv', '.tsv', '.txt'];
+    const ext = path.extname(req.file.originalname || '').toLowerCase();
+    if (!allowedExtensions.includes(ext)) {
+      if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+      return res.redirect(`${redirectBase}?error=${encodeURIComponent('Import file must be a CSV, TSV, or TXT file.')}`);
+    }
+
+    const csvText = await fs.promises.readFile(req.file.path, 'utf8');
+    if (!csvText.trim()) {
+      if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+      return res.redirect(`${redirectBase}?error=${encodeURIComponent('Import file is empty.')}`);
+    }
+
+    const rows = parseCsv(csvText);
+    
+    if (!rows.length) {
+      if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+      return res.redirect(`${redirectBase}?error=${encodeURIComponent('CSV file has no data rows.')}`);
+    }
+
+    const counsellorProfiles = await Counsellor.find().populate('user', 'name email phone status');
+    const counsellorsByEmail = new Map();
+    const counsellorsByName = new Map();
+    counsellorProfiles.forEach(profile => {
+      if (!profile.user) return;
+      counsellorsByEmail.set(String(profile.user.email || '').toLowerCase().trim(), profile);
+      counsellorsByName.set(String(profile.user.name || '').toLowerCase().trim(), profile);
+    });
+
+    const isRowBlank = (r) => {
+      return Object.values(r).every(val => !val || String(val).trim() === '');
+    };
+
+    // ==========================================
+    // PASS 1: Strict File Validation
+    // ==========================================
+    const seenPhonesInCsv = new Map();
+    const seenEmailsInCsv = new Map();
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowIndex = i + 2; // 1-based index, plus 1 for header row
+
+      if (isRowBlank(row)) continue;
+
+      const name = firstValue(row, ['name', 'full_name', 'lead', 'customer', 'student_name', 'candidate_name']);
+      const phone = firstValue(row, ['phone', 'mobile', 'phone_number', 'contact_no', 'contact_number', 'mobile_number']);
+      const email = firstValue(row, ['email', 'email_address', 'mail']);
+
+      let normalizedPhone = String(phone || '').trim();
+      let normalizedEmail = String(email || '').trim().toLowerCase();
+
+      // 1. Ensure at least one contact channel exists
+      if (!normalizedPhone && !normalizedEmail) {
+        if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+        return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Contact details are missing. Every lead must have a phone number or an email address.`)}`);
+      }
+
+      // 2. Email format validation (if provided)
+      if (normalizedEmail) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(normalizedEmail)) {
+          if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+          return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Invalid email address format "${email}". Please correct it.`)}`);
+        }
+      }
+
+      // 3. Prevent duplicate contact details within the CSV file itself
+      const cleanPhone = normalizedPhone.replace(/\D/g, '');
+      if (cleanPhone && cleanPhone.length >= 10) {
+        const suffix = cleanPhone.slice(-10);
+        if (seenPhonesInCsv.has(suffix)) {
+          if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+          return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Duplicate phone number "${phone}" found in this file (already seen in Row ${seenPhonesInCsv.get(suffix)}).`)}`);
+        }
+        seenPhonesInCsv.set(suffix, rowIndex);
+      } else if (normalizedPhone) {
+        if (seenPhonesInCsv.has(normalizedPhone)) {
+          if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+          return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Duplicate phone number "${phone}" found in this file (already seen in Row ${seenPhonesInCsv.get(normalizedPhone)}).`)}`);
+        }
+        seenPhonesInCsv.set(normalizedPhone, rowIndex);
+      }
+
+      if (normalizedEmail) {
+        if (seenEmailsInCsv.has(normalizedEmail)) {
+          if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+          return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Duplicate email address "${email}" found in this file (already seen in Row ${seenEmailsInCsv.get(normalizedEmail)}).`)}`);
+        }
+        seenEmailsInCsv.set(normalizedEmail, rowIndex);
+      }
+
+      // 4. Validate Course exists (if specified)
+      const courseValue = firstValue(row, ['course', 'interestedcourse', 'interested_course', 'program', 'class', 'course_interest']);
+      if (courseValue) {
+        const course = await resolveCourse(courseValue);
+        if (!course) {
+          if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+          return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Course "${courseValue}" was not found in the system. Check spelling or create it first.`)}`);
+        }
+      }
+
+      // 5. Validate Counsellor spelling/existence (if specified)
+      const counsellorLookup = String(firstValue(row, ['counsellor', 'assignedto', 'assigned_to', 'owner', 'counsellor_name', 'counsellor_email']) || '').toLowerCase().trim();
+      if (counsellorLookup) {
+        let matchedCounsellor = counsellorsByEmail.get(counsellorLookup) || counsellorsByName.get(counsellorLookup);
+        if (!matchedCounsellor) {
+          for (const [nameKey, profile] of counsellorsByName.entries()) {
+            if (nameKey.includes(counsellorLookup) || counsellorLookup.includes(nameKey)) {
+              matchedCounsellor = profile;
+              break;
+            }
+          }
+        }
+        if (!matchedCounsellor) {
+          if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+          return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Counsellor assignment "${counsellorLookup}" does not match any registered counsellor.`)}`);
+        }
+      }
+
+      // 6. Validate follow-up date formats (if specified)
+      const followUpValue = firstValue(row, ['followup', 'follow_up', 'nextfollowup', 'next_follow_up', 'follow_up_date', 'call_follow_up_date']);
+      if (followUpValue) {
+        const parsedDate = new Date(followUpValue);
+        if (isNaN(parsedDate.getTime())) {
+          if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+          return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Invalid follow-up date format "${followUpValue}". Use YYYY-MM-DD or standard date format.`)}`);
+        }
+      }
+    }
+
+    // ==========================================
+    // PASS 2: Safe Database Insertion
+    // ==========================================
+    let created = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const row of rows) {
+      if (isRowBlank(row)) continue;
+
+      try {
+        const name = firstValue(row, ['name', 'full_name', 'lead', 'customer', 'student_name', 'candidate_name']);
+        const phone = firstValue(row, ['phone', 'mobile', 'phone_number', 'contact_no', 'contact_number', 'mobile_number']);
+
+        let normalizedName = String(name || '').trim();
+        let normalizedPhone = String(phone || '').trim();
+
+        if (!normalizedPhone) {
+          const emailVal = String(firstValue(row, ['email', 'email_address', 'mail']) || '').trim();
+          if (emailVal) {
+            normalizedPhone = emailVal;
+            if (!normalizedName) normalizedName = emailVal.split('@')[0];
+          }
+        }
+
+        if (!normalizedName) {
+          normalizedName = `Lead (${normalizedPhone})`;
+        }
+
+        // Database duplicate lookup
+        const cleanPhone = normalizedPhone.replace(/\D/g, '');
+        const emailCheckVal = String(firstValue(row, ['email', 'email_address', 'mail']) || '').trim().toLowerCase();
+        
+        let duplicate = null;
+        if (cleanPhone.length >= 10) {
+          const suffix = cleanPhone.slice(-10);
+          duplicate = await Lead.findOne({
+            $or: [
+              { phone: normalizedPhone },
+              { phone: cleanPhone },
+              { phone: new RegExp(suffix + '$') }
+            ]
+          }).select('_id');
+        } else {
+          duplicate = await Lead.findOne({
+            $or: [
+              { phone: normalizedPhone },
+              ...(emailCheckVal ? [{ email: emailCheckVal }] : [])
+            ]
+          }).select('_id');
+        }
+
+        if (duplicate) {
+          skipped += 1;
+          continue;
+        }
+
+        const courseValue = firstValue(row, ['course', 'interestedcourse', 'interested_course', 'program', 'class', 'course_interest']);
+        const statusValue = firstValue(row, ['status', 'lead_status', 'stage', 'lead_stage', 'pipeline_status']);
+        const sourceValue = firstValue(row, ['source', 'lead_source', 'platform', 'campaign']);
+        const followUpValue = firstValue(row, ['followup', 'follow_up', 'nextfollowup', 'next_follow_up', 'follow_up_date', 'call_follow_up_date']);
+        const counsellorLookup = String(firstValue(row, ['counsellor', 'assignedto', 'assigned_to', 'owner', 'counsellor_name', 'counsellor_email']) || '').toLowerCase().trim();
+
+        const course = await resolveCourse(courseValue);
+        const statusDoc = await findOrCreateLeadStatus(statusValue || 'new');
+
+        let assignedCounsellor = null;
+        if (counsellorLookup) {
+          if (counsellorsByEmail.has(counsellorLookup)) {
+            assignedCounsellor = counsellorsByEmail.get(counsellorLookup);
+          } else if (counsellorsByName.has(counsellorLookup)) {
+            assignedCounsellor = counsellorsByName.get(counsellorLookup);
+          } else {
+            for (const [nameKey, profile] of counsellorsByName.entries()) {
+              if (nameKey.includes(counsellorLookup) || counsellorLookup.includes(nameKey)) {
+                assignedCounsellor = profile;
+                break;
+              }
+            }
+          }
+        }
+
+        const rawSource = String(sourceValue || '').trim().toLowerCase();
+        const matchedSource = LEAD_SOURCES.find(s => s.toLowerCase() === rawSource) || 'Other';
+
+        let nextFollowUpDate = null;
+        if (followUpValue) {
+          const parsedDate = new Date(followUpValue);
+          if (!isNaN(parsedDate.getTime())) {
+            nextFollowUpDate = parsedDate;
+          }
+        }
+
+        const lead = await Lead.create({
+          name: normalizedName,
+          phone: normalizedPhone,
+          email: emailCheckVal,
+          interestedCourse: course ? course._id : null,
+          source: matchedSource,
+          status: statusDoc ? statusDoc.key : 'new',
+          notes: buildImportNotes(row),
+          assignedTo: assignedCounsellor ? assignedCounsellor._id : null,
+          nextFollowUpAt: nextFollowUpDate,
+          createdBy: req.user._id,
+          ownershipHistory: assignedCounsellor ? [{
+            counsellor: assignedCounsellor._id,
+            assignedBy: req.user._id,
+            note: 'Lead assigned during CSV import.'
+          }] : []
+        });
+
+        await LeadActivity.create({
+          lead: lead._id,
+          type: 'lead_created',
+          title: 'Lead imported from CSV',
+          note: `Imported by admin from ${req.file.originalname}.`,
+          counsellor: assignedCounsellor ? assignedCounsellor._id : null,
+          doneBy: req.user._id,
+          newStatus: lead.status
+        });
+
+        created += 1;
+      } catch (rowErr) {
+        failed += 1;
+        logger.warn('Lead CSV row import failed', { err: rowErr.message, row });
+      }
+    }
+
+    if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+    res.redirect(`${redirectBase}?imported=${created}&skipped=${skipped}&failed=${failed}`);
+  } catch (err) {
+    logger.error('Lead CSV Import Error', { err: err.message, stack: err.stack });
+    if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+    res.redirect(`${redirectBase}?error=${encodeURIComponent(err.message)}`);
+  }
+};
+
+exports.postCreateStatus = async (req, res) => {
+  try {
+    const label = String(req.body.label || '').trim();
+    if (!label) return res.redirect('/admin/leads?error=Status+label+is+required');
+    if (label.length > 50) return res.redirect('/admin/leads?error=Status+label+must+be+50+characters+or+less');
+
+    const key = slugifyStatus(label);
+    if (!key) return res.redirect('/admin/leads?error=Status+label+needs+letters+or+numbers');
+
+    if (req.body.badgeClass && !ALLOWED_BADGE_CLASSES.includes(req.body.badgeClass)) {
+      return res.redirect('/admin/leads?error=Invalid+status+color');
+    }
+
+    const badgeClass = normalizeBadgeClass(req.body.badgeClass);
+    const isClosed = req.body.isClosed === 'on' || req.body.isClosed === 'true';
+    const statusDoc = await findOrCreateLeadStatus(label, { badgeClass, isClosed });
+    if (!statusDoc) return res.redirect('/admin/leads?error=Failed+to+create+status');
+
+    res.redirect('/admin/leads?statusCreated=1');
+  } catch (err) {
+    logger.error('Create Lead Status Error', { err: err.message });
+    res.redirect(`/admin/leads?error=${encodeURIComponent(err.message)}`);
+  }
+};
+
+exports.postDeleteStatus = async (req, res) => {
+  try {
+    const status = await LeadStatus.findById(req.params.id);
+    if (!status) return res.redirect('/admin/leads?error=Status+not+found');
+
+    status.isDeleted = true;
+    status.deletedAt = new Date();
+    await status.save();
+    res.redirect('/admin/leads?statusDeleted=1');
+  } catch (err) {
+    logger.error('Delete Lead Status Error', { err: err.message });
+    res.redirect(`/admin/leads?error=${encodeURIComponent(err.message)}`);
   }
 };
 
@@ -153,12 +526,15 @@ exports.getLeadDetail = async (req, res) => {
         phone: p.user.phone
       }));
 
+    const leadStatuses = await getLeadStatuses();
+
     res.render('admin/lead-detail', {
       title: lead.name,
       user: req.user,
       lead,
       leadActivities,
       counsellors,
+      leadStatuses,
       error: req.query.error
     });
 

@@ -3,10 +3,34 @@
   title = lead.name;
   subtitle = `Lead File · ${lead.interestedCourse ? lead.interestedCourse.name : 'Undecided'}`;
   page = 'leads';
+  const statusOptions = typeof leadStatuses !== 'undefined'
+    ? leadStatuses
+    : [
+      { key: 'new', label: 'New', badgeClass: 'badge-orange' },
+      { key: 'contacted', label: 'Contacted', badgeClass: 'badge-blue' },
+      { key: 'mentorship_scheduled', label: 'Mentorship Scheduled', badgeClass: 'badge-blue' },
+      { key: 'mentorship_attended', label: 'Mentorship Attended', badgeClass: 'badge-yellow' },
+      { key: 'follow_up', label: 'Follow Up', badgeClass: 'badge-yellow' },
+      { key: 'joining_interested', label: 'Ready For Admission', badgeClass: 'badge-gold' },
+      { key: 'admission_completed', label: 'Admitted', badgeClass: 'badge-green' },
+      { key: 'lost', label: 'Lost', badgeClass: 'badge-red' }
+    ];
+  const dynamicStatusLabels = statusOptions.reduce((map, status) => {
+    map[status.key] = status.label;
+    return map;
+  }, {});
+  const dynamicStatusBadges = statusOptions.reduce((map, status) => {
+    map[status.key] = status.badgeClass || 'badge-grey';
+    return map;
+  }, {});
+  const dynamicStatusClosed = statusOptions.reduce((map, status) => {
+    map[status.key] = Boolean(status.isClosed);
+    return map;
+  }, {});
 %>
 
 <%
-  const statusBadge = {
+  const defaultStatusBadge = {
     new: 'badge-orange',
     contacted: 'badge-blue',
     mentorship_scheduled: 'badge-blue',
@@ -16,6 +40,7 @@
     admission_completed: 'badge-green',
     lost: 'badge-red'
   }[lead.status] || 'badge-grey';
+  const statusBadge = dynamicStatusBadges[lead.status] || defaultStatusBadge;
   const statusLabels = {
     new: 'New',
     contacted: 'Contacted',
@@ -26,6 +51,7 @@
     admission_completed: 'Admitted',
     lost: 'Lost'
   };
+  Object.assign(statusLabels, dynamicStatusLabels);
   const activityRecords = typeof leadActivities !== 'undefined' && Array.isArray(leadActivities) ? leadActivities : [];
   const timelineFeed = [{
     title: 'Lead created',
@@ -78,7 +104,7 @@
     });
   });
   const scheduledFollowUpDate = lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt) : null;
-  const closedLead = ['admission_completed', 'lost'].includes(lead.status);
+  const closedLead = Boolean(dynamicStatusClosed[lead.status]);
   const hasCompletedScheduledFollowUp = scheduledFollowUpDate && activityRecords.some(item => {
     const completedAt = item.followUp?.completedAt ? new Date(item.followUp.completedAt) : null;
     return completedAt && completedAt >= scheduledFollowUpDate;
@@ -382,7 +408,7 @@
         <div>
           <div style="font-size:20px; font-weight:700; color:var(--text);"><%= lead.name %></div>
           <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
-            <span class="badge <%= statusBadge %>" style="text-transform: uppercase;"><%= lead.status.replace(/_/g, ' ') %></span>
+            <span class="badge <%= statusBadge %>" style="text-transform: uppercase;"><%= statusLabels[lead.status] || lead.status.replace(/_/g, ' ') %></span>
             <span class="badge badge-orange" style="text-transform: uppercase;"><%= lead.interestedCourse ? lead.interestedCourse.name : 'Undecided' %></span>
           </div>
           <%
@@ -478,7 +504,7 @@
         <div class="lead-story">
           <% cleanTimelineFeed.slice().sort((a, b) => new Date(b.date) - new Date(a.date)).forEach((item, index) => {
               const detailId = `counsellor-history-detail-${index}`;
-              const itemStatusClass = {
+              const defaultItemStatusClass = {
                 new: 'badge-orange',
                 contacted: 'badge-blue',
                 mentorship_scheduled: 'badge-blue',
@@ -488,6 +514,7 @@
                 admission_completed: 'badge-green',
                 lost: 'badge-red'
               }[item.status] || 'badge-grey';
+              const itemStatusClass = dynamicStatusBadges[item.status] || defaultItemStatusClass;
           %>
             <div class="lead-story-item">
               <button type="button" class="lead-story-time" onclick="toggleCounsellorHistory('<%= detailId %>')">
@@ -537,7 +564,7 @@
             const reversedHistory = lead.followUpHistory.slice().reverse();
             reversedHistory.forEach((fu) => {
               const originalIndex = lead.followUpHistory.findIndex(item => item === fu);
-              const fuBadge = {
+              const defaultFuBadge = {
                 new: 'badge-orange',
                 contacted: 'badge-blue',
                 mentorship_scheduled: 'badge-blue',
@@ -547,6 +574,7 @@
                 admission_completed: 'badge-green',
                 lost: 'badge-red'
               }[fu.status] || 'badge-grey';
+              const fuBadge = dynamicStatusBadges[fu.status] || defaultFuBadge;
           %>
             <div class="timeline-item">
               <div class="timeline-dot <%= fu.doneBy && fu.doneBy.role === 'admin' ? 'active' : '' %>"></div>
@@ -698,8 +726,11 @@
             <div class="form-group">
               <label class="form-label" style="font-size: 10px;">New Status</label>
               <select name="status" class="form-control" required>
-                <% ['new','contacted','mentorship_scheduled','mentorship_attended','follow_up','joining_interested','admission_completed','lost'].forEach(s => { %>
-                  <option value="<%= s %>" <%= lead.status === s ? 'selected' : '' %>><%= s.replace(/_/g, ' ').charAt(0).toUpperCase() + s.replace(/_/g, ' ').slice(1) %></option>
+                <% if (!statusOptions.length) { %>
+                  <option value="<%= lead.status || 'new' %>">No statuses configured</option>
+                <% } %>
+                <% statusOptions.forEach(s => { %>
+                  <option value="<%= s.key %>" <%= lead.status === s.key ? 'selected' : '' %>><%= s.label %></option>
                 <% }); %>
               </select>
             </div>

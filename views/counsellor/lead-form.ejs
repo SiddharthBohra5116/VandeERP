@@ -4,6 +4,18 @@
   title = isEdit ? `Edit: ${lead.name}` : 'Add New Lead';
   subtitle = isEdit ? 'Update prospect lead details' : 'Enter new candidate inquiry details';
   page = isEdit ? 'leads' : 'leads-new';
+  const statusOptions = typeof leadStatuses !== 'undefined'
+    ? leadStatuses
+    : [
+      { key: 'new', label: 'New' },
+      { key: 'contacted', label: 'Contacted' },
+      { key: 'mentorship_scheduled', label: 'Mentorship Scheduled' },
+      { key: 'mentorship_attended', label: 'Mentorship Attended' },
+      { key: 'follow_up', label: 'Follow Up' },
+      { key: 'joining_interested', label: 'Joining Interested' },
+      { key: 'admission_completed', label: 'Admission Completed' },
+      { key: 'lost', label: 'Lost' }
+    ];
 %>
 
 <style>
@@ -206,8 +218,11 @@
         <div class="form-group">
           <label class="premium-label">Status</label>
           <select name="status" class="premium-input">
-            <% ['new','contacted','mentorship_scheduled','mentorship_attended','follow_up','joining_interested','admission_completed','lost'].forEach(s => { %>
-              <option value="<%= s %>" <%= isEdit && lead.status === s ? 'selected' : (!isEdit && s === 'new' ? 'selected' : '') %>><%= s.charAt(0).toUpperCase() + s.slice(1) %></option>
+            <% if (!statusOptions.length) { %>
+              <option value="new">No statuses configured</option>
+            <% } %>
+            <% statusOptions.forEach(s => { %>
+              <option value="<%= s.key %>" <%= isEdit && lead.status === s.key ? 'selected' : (!isEdit && s.key === 'new' ? 'selected' : '') %>><%= s.label %></option>
             <% }); %>
           </select>
         </div>

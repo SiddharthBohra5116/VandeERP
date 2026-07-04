@@ -4,7 +4,8 @@ const fs = require('fs');
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const DOCUMENT_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
-const ALLOWED = [...new Set([...IMAGE_TYPES, ...DOCUMENT_TYPES])];
+const CSV_TYPES = ['text/csv', 'text/plain', 'text/tab-separated-values', 'application/csv', 'application/vnd.ms-excel'];
+const ALLOWED = [...new Set([...IMAGE_TYPES, ...DOCUMENT_TYPES, ...CSV_TYPES])];
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -29,10 +30,15 @@ const upload = multer({
       cb(null, true);
     } else if (file.fieldname === 'idProof' && DOCUMENT_TYPES.includes(file.mimetype)) {
       cb(null, true);
+    } else if (
+      file.fieldname === 'leadCsv' &&
+      (CSV_TYPES.includes(file.mimetype) || ['.csv', '.tsv', '.txt'].includes(path.extname(file.originalname).toLowerCase()))
+    ) {
+      cb(null, true);
     } else if (!['profilePic', 'idProof'].includes(file.fieldname) && ALLOWED.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('File type not allowed. Profile pictures must be JPG, PNG, or WebP. Documents must be JPG, PNG, or PDF.'));
+      cb(new Error('File type not allowed. Profile pictures must be JPG, PNG, or WebP. Documents must be JPG, PNG, PDF, or CSV where supported.'));
     }
   }
 });

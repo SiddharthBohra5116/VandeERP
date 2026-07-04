@@ -4,6 +4,7 @@ const Counsellor = require('../models/Counsellor');
 const User = require('../models/User');
 const Message = require('../models/Message');
 const Course = require('../models/Course');
+const { getOpenLeadStatusKeys } = require('./leadStatusOptions');
 
 const OPEN_STATUSES = ['new', 'contacted', 'mentorship_scheduled', 'mentorship_attended', 'follow_up', 'joining_interested'];
 
@@ -61,12 +62,13 @@ async function chooseBestCounsellor() {
   const tomorrow = new Date(todayStart);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
+  const openStatuses = await getOpenLeadStatusKeys();
   const scored = await Promise.all(activeProfiles.map(async profile => {
     const [openCount, dueTodayCount] = await Promise.all([
-      Lead.countDocuments({ assignedTo: profile._id, status: { $in: OPEN_STATUSES } }),
+      Lead.countDocuments({ assignedTo: profile._id, status: { $in: openStatuses } }),
       Lead.countDocuments({
         assignedTo: profile._id,
-        status: { $in: OPEN_STATUSES },
+        status: { $in: openStatuses },
         nextFollowUpAt: { $gte: todayStart, $lt: tomorrow }
       })
     ]);

@@ -10,6 +10,11 @@ const {
   recordLeadCreation,
   resolveCourse
 } = require('../../utils/leadAutomation');
+const {
+  getClosedLeadStatusKeys,
+  getLeadStatuses,
+  isValidLeadStatus
+} = require('../../utils/leadStatusOptions');
 
 function getLeadActivityType(status, channel) {
   if (channel === 'Call') return 'call';
@@ -53,7 +58,8 @@ exports.getLeads = async (req, res) => {
       }
     }
     const baseFilter = { assignedTo: req.user.counsellorProfileId };
-    const [leads, totalLeads, activeCount, followupDueCount, convertedCount] = await Promise.all([
+    const closedStatuses = await getClosedLeadStatusKeys();
+    const [leads, totalLeads, activeCount, followupDueCount, convertedCount, leadStatuses] = await Promise.all([
       Lead.find(filter)
         .populate('interestedCourse')
         .sort({ nextFollowUpAt: 1, createdAt: -1 })
@@ -62,17 +68,18 @@ exports.getLeads = async (req, res) => {
       Lead.countDocuments(filter),
       Lead.countDocuments({
         ...baseFilter,
-        status: { $nin: ['admission_completed', 'lost'] }
+        status: { $nin: closedStatuses }
       }),
       Lead.countDocuments({
         ...baseFilter,
-        status: { $nin: ['admission_completed', 'lost'] },
+        status: { $nin: closedStatuses },
         nextFollowUpAt: { $lte: new Date() }
       }),
       Lead.countDocuments({
         ...baseFilter,
         status: 'admission_completed'
-      })
+      }),
+      getLeadStatuses()
     ]);
     res.render('counsellor/leads', {
       title: 'My Leads',
@@ -89,6 +96,7 @@ exports.getLeads = async (req, res) => {
         followupDueCount,
         convertedCount
       },
+      leadStatuses,
       filter: req.query,
       filters: req.query,
     });
@@ -102,8 +110,9 @@ exports.getLeads = async (req, res) => {
  * GET /counsellor/leads/create
  * Renders the new lead creation form.
  */
-exports.getCreateLead = (req, res) => {
-  res.render('counsellor/lead-form', { title: 'New Lead', user: req.user, target: null });
+exports.getCreateLead = async (req, res) => {
+  const leadStatuses = await getLeadStatuses();
+  res.render('counsellor/lead-form', { title: 'New Lead', user: req.user, target: null, leadStatuses });
 };
 
 /**
@@ -120,18 +129,20 @@ exports.postCreateLead = async (req, res) => {
         title: 'New Lead',
         user: req.user,
         target: null,
-        error: `A lead with this phone number already exists for ${duplicate.name}.`
+        error: `A lead with this phone number already exists for ${duplicate.name}.`,
+        leadStatuses: await getLeadStatuses()
       });
     }
 
     const courseDoc = await resolveCourse(course);
+    const cleanStatus = status && await isValidLeadStatus(status) ? status : 'new';
     const leadData = {
       name,
       phone: cleanPhone,
       email,
       interestedCourse: courseDoc ? courseDoc._id : null,
       source,
-      status: status || 'new',
+      status: cleanStatus,
       nextFollowUpAt: followUpDate ? new Date(followUpDate) : nextBusinessFollowUpDate(),
       notes: notes || '',
       assignedTo: req.user.counsellorProfileId,
@@ -159,7 +170,7 @@ exports.postCreateLead = async (req, res) => {
     res.redirect('/counsellor/leads?created=1');
   } catch (err) {
     logger.error('Create Lead Error', { err: err.message });
-    res.render('counsellor/lead-form', { title: 'New Lead', user: req.user, target: null, error: err.message });
+    res.render('counsellor/lead-form', { title: 'New Lead', user: req.user, target: null, error: err.message, leadStatuses: await getLeadStatuses() });
   }
 };
 
@@ -182,7 +193,8 @@ exports.getLeadDetail = async (req, res) => {
       .populate('doneBy', 'name role')
       .populate('counsellor', 'name role')
       .sort({ createdAt: 1 });
-    res.render('counsellor/lead-detail', { title: lead.name, user: req.user, lead, leadActivities });
+    const leadStatuses = await getLeadStatuses();
+    res.render('counsellor/lead-detail', { title: lead.name, user: req.user, lead, leadActivities, leadStatuses });
   } catch (err) {
     logger.error('Counsellor Lead Detail Error', { err: err.message });
     res.status(500).render('500', { title: 'Error', user: req.user, layout: 'main' });
@@ -200,7 +212,8 @@ exports.getEditLead = async (req, res) => {
       logger.warn('Counsellor unauthorized edit page request', { leadId: req.params.id });
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });
     }
-    res.render('counsellor/lead-form', { title: 'Edit Lead', user: req.user, lead, target: lead });
+    const leadStatuses = await getLeadStatuses();
+    res.render('counsellor/lead-form', { title: 'Edit Lead', user: req.user, lead, target: lead, leadStatuses });
   } catch (err) {
     logger.error('Counsellor Edit Lead Page Error', { err: err.message });
     res.status(500).render('500', { title: 'Error', user: req.user });
@@ -214,7 +227,7 @@ exports.getEditLead = async (req, res) => {
 exports.postEditLead = async (req, res) => {
   try {
     const Course = require('../../models/Course');
-    const { name, phone, email, course, source, notes, followUpDate } = req.body;
+    const { name, phone, email, course, source, status, notes, followUpDate } = req.body;
     const cleanPhone = String(phone || '').trim();
     const duplicate = await Lead.findOne({
       phone: cleanPhone,
@@ -229,6 +242,7 @@ exports.postEditLead = async (req, res) => {
       const courseDoc = await Course.findOne({ name: course });
       if (courseDoc) interestedCourse = courseDoc._id;
     }
+    const cleanStatus = status && await isValidLeadStatus(status) ? status : 'new';
     const updated = await Lead.findOneAndUpdate(
       { _id: req.params.id, assignedTo: req.user.counsellorProfileId },
       {
@@ -237,6 +251,7 @@ exports.postEditLead = async (req, res) => {
         email,
         interestedCourse,
         source,
+        status: cleanStatus,
         notes: notes || '',
         nextFollowUpAt: followUpDate ? new Date(followUpDate) : null
       }
@@ -255,6 +270,8 @@ exports.postEditLead = async (req, res) => {
       followUp: {
         scheduledFor: followUpDate ? new Date(followUpDate) : null
       },
+      oldStatus: updated.status,
+      newStatus: cleanStatus,
       metadata: { name, phone: cleanPhone, email, source }
     });
     res.redirect(`/counsellor/leads/${req.params.id}?updated=1`);
@@ -280,9 +297,7 @@ exports.postAddFollowUp = async (req, res) => {
     let finalStatus = status;
     if (status === 'interested') finalStatus = 'joining_interested';
 
-    // Server-side status validation guard (Issue 2.11 / 4.1)
-    const validStatuses = ['new', 'contacted', 'mentorship_scheduled', 'mentorship_attended', 'follow_up', 'joining_interested', 'admission_completed', 'lost'];
-    if (!validStatuses.includes(finalStatus)) {
+    if (!(await isValidLeadStatus(finalStatus))) {
       logger.warn('Invalid status update parameter submitted', { status: finalStatus });
       return res.redirect(`/counsellor/leads/${req.params.id}?error=Invalid+status+action`);
     }
@@ -485,7 +500,7 @@ exports.getFollowUps = async (req, res) => {
     const leads = await Lead.find({
       assignedTo: req.user.counsellorProfileId,
       nextFollowUpAt: { $lte: new Date() },
-      status: { $nin: ['admission_completed', 'lost'] },
+      status: { $nin: await getClosedLeadStatusKeys() },
     }).populate('interestedCourse').sort({ nextFollowUpAt: 1 });
     res.render('counsellor/followups', { title: 'Follow-ups', user: req.user, leads });
   } catch (err) {

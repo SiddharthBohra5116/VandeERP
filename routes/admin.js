@@ -302,6 +302,25 @@ router.post(
 
 router.get('/leads', ...guard, leadCtrl.getLeads);
 
+router.post(
+  '/leads/import',
+  ...guard,
+  upload.single('leadCsv'),
+  leadCtrl.postImportLeads
+);
+
+router.post(
+  '/leads/statuses',
+  ...guard,
+  leadCtrl.postCreateStatus
+);
+
+router.post(
+  '/leads/statuses/:id/delete',
+  ...guard,
+  leadCtrl.postDeleteStatus
+);
+
 router.get(
   '/leads/:id',
   ...guard,

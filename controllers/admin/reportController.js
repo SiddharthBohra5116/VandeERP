@@ -17,6 +17,7 @@ const Course = require('../../models/Course');
 const { todayIST } = require('../../utils/dateHelper');
 const { escapeRegex } = require('../../utils/sanitize');
 const { calculateStudentsAttendance } = require('../../utils/attendanceHelper');
+const { getOpenLeadStatusKeys } = require('../../utils/leadStatusOptions');
 const logger = require('../../utils/logger');
 
 /**
@@ -182,7 +183,8 @@ exports.getReports = async (req, res) => {
     if (course !== 'all') leadFilter.course = course;
     leadFilter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
     const leads = await Lead.find(leadFilter);
-    const openLeadsCount = leads.filter(l => ['new', 'contacted', 'mentorship_scheduled', 'mentorship_attended', 'follow_up', 'joining_interested'].includes(l.status)).length;
+    const openStatuses = await getOpenLeadStatusKeys();
+    const openLeadsCount = leads.filter(l => openStatuses.includes(l.status)).length;
     const convertedCount = leads.filter(l => l.status === 'admission_completed').length;
     const totalLeads = leads.length;
     const cRate = totalLeads > 0 ? Math.round((convertedCount / totalLeads) * 100) : 0;
