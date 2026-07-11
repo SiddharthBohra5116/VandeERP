@@ -6,6 +6,7 @@ const role = require('../middleware/role');
 const ctrl = require('../controllers/teacherController');
 const Message = require('../models/Message');
 const upload = require('../utils/uploadHelper');
+const csrfProtection = require('../middleware/security/csrfProtection');
 const guard = [protect, role('teacher', 'admin')];
 
 router.get('/dashboard', ...guard, ctrl.getDashboard);
@@ -18,7 +19,10 @@ router.get('/attendance/history', ...guard, ctrl.getAttendanceHistory);
 // Assignments
 router.get('/assignments', ...guard, ctrl.getAssignments);
 router.get('/assignments/create', ...guard, ctrl.getCreateAssignment);
-router.post('/assignments/create', ...guard, upload.single('file'), ctrl.postCreateAssignment);
+router.post('/assignments/create', ...guard, upload.single('file'), csrfProtection, (req, res, next) => {
+  res.locals.csrfToken = req.csrfToken();
+  next();
+}, ctrl.postCreateAssignment);
 router.get('/assignments/:id', ...guard, ctrl.getAssignmentDetail);
 router.post('/assignments/:id/extend', ...guard, ctrl.postExtendDueDate);
 router.post('/assignments/:id/bulk-grade', ...guard, ctrl.postBulkGradeSubmissions);
@@ -27,7 +31,10 @@ router.post('/assignments/:id/grade/:subId', ...guard, ctrl.postGradeSubmission)
 // Daily updates
 router.get('/updates', ...guard, ctrl.getDailyUpdates);
 router.get('/updates/create', ...guard, ctrl.getCreateUpdate);
-router.post('/updates/create', ...guard, upload.single('file'), ctrl.postCreateUpdate);
+router.post('/updates/create', ...guard, upload.single('file'), csrfProtection, (req, res, next) => {
+  res.locals.csrfToken = req.csrfToken();
+  next();
+}, ctrl.postCreateUpdate);
 
 // Curriculum
 router.get('/curriculum', ...guard, ctrl.getCurriculum);

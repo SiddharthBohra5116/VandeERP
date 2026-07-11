@@ -5,6 +5,7 @@ const protect = require('../middleware/auth');
 const ctrl = require('../controllers/authController');
 
 const upload = require('../utils/uploadHelper');
+const csrfProtection = require('../middleware/security/csrfProtection');
 
 const rateLimit = require('express-rate-limit');
 const isTest = process.env.NODE_ENV === 'test' || (process.env.PORT && process.env.PORT.startsWith('31'));
@@ -39,13 +40,19 @@ router.get('/force-change-password', protect, ctrl.getForceChangePassword);
 router.post('/force-change-password', protect, ctrl.postForceChangePassword);
 
 router.get('/profile', protect, ctrl.getProfile);
-router.post('/profile', protect, upload.single('profilePic'), ctrl.updateProfile);
+router.post('/profile', protect, upload.single('profilePic'), csrfProtection, (req, res, next) => {
+  res.locals.csrfToken = req.csrfToken();
+  next();
+}, ctrl.updateProfile);
 router.post('/change-password', protect, ctrl.changePassword);
 
 // Messaging Inbox
 router.get('/inbox', protect, ctrl.getInbox);
 router.get('/inbox/messages', protect, ctrl.getInboxMessages);
-router.post('/inbox/send', protect, upload.array('attachments', 5), ctrl.postInboxSend);
+router.post('/inbox/send', protect, upload.array('attachments', 5), csrfProtection, (req, res, next) => {
+  res.locals.csrfToken = req.csrfToken();
+  next();
+}, ctrl.postInboxSend);
 router.post('/inbox/react', protect, ctrl.postAddReaction);
 router.get('/inbox/user-profile/:id', protect, ctrl.getContactProfileData);
 

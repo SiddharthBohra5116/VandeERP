@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Message = require('../models/Message');
 const Course = require('../models/Course');
 const { getOpenLeadStatusKeys } = require('./leadStatusOptions');
+const { escapeRegex } = require('./sanitize');
 
 const OPEN_STATUSES = ['new', 'contacted', 'mentorship_scheduled', 'mentorship_attended', 'follow_up', 'joining_interested'];
 
@@ -45,7 +46,7 @@ async function resolveCourse(courseValue) {
   if (!value || value === 'Both' || value === 'Undecided') return null;
   return Course.findOne({
     $or: [
-      { name: value },
+      { name: new RegExp('^' + escapeRegex(value) + '$', 'i') },
       { code: value.toUpperCase() }
     ]
   });

@@ -4,6 +4,7 @@ const router = express.Router();
 const protect = require('../middleware/auth');
 const role = require('../middleware/role');
 const upload = require('../utils/uploadHelper');
+const csrfProtection = require('../middleware/security/csrfProtection');
 
 // ================================
 // Split Admin Controllers
@@ -86,6 +87,11 @@ router.post(
   '/users/create',
   ...guard,
   upload.single('profilePic'),
+  csrfProtection,
+  (req, res, next) => {
+    res.locals.csrfToken = req.csrfToken();
+    next();
+  },
   userValidator,
   userDirectoryCtrl.postCreateUser
 );
@@ -100,6 +106,11 @@ router.post(
   '/users/:id/edit',
   ...guard,
   upload.single('profilePic'),
+  csrfProtection,
+  (req, res, next) => {
+    res.locals.csrfToken = req.csrfToken();
+    next();
+  },
   userValidator,
   userDirectoryCtrl.postEditUser
 );
@@ -267,6 +278,11 @@ router.post(
   '/messages/send',
   ...guard,
   upload.array('attachments', 5),
+  csrfProtection,
+  (req, res, next) => {
+    res.locals.csrfToken = req.csrfToken();
+    next();
+  },
   messageCtrl.postSendMessage
 );
 
@@ -305,7 +321,19 @@ router.get('/leads', ...guard, leadCtrl.getLeads);
 router.post(
   '/leads/import',
   ...guard,
-  upload.single('leadCsv'),
+  (req, res, next) => {
+    upload.single('leadCsv')(req, res, function (err) {
+      if (err) {
+        return res.redirect(`/admin/leads?error=${encodeURIComponent(err.message)}`);
+      }
+      next();
+    });
+  },
+  csrfProtection,
+  (req, res, next) => {
+    res.locals.csrfToken = req.csrfToken();
+    next();
+  },
   leadCtrl.postImportLeads
 );
 

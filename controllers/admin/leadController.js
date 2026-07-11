@@ -32,8 +32,8 @@ async function resolveCourse(courseValue, fallbackCourseId = null) {
   if (courseValue) {
     const course = await Course.findOne({
       $or: [
-        { name: courseValue },
-        { code: String(courseValue).toUpperCase() }
+        { name: new RegExp('^' + escapeRegex(String(courseValue).trim()) + '$', 'i') },
+        { code: String(courseValue).trim().toUpperCase() }
       ]
     });
 
@@ -58,36 +58,45 @@ function firstValue(row, keys) {
 }
 
 function buildImportNotes(row) {
-  const preferredNoteKeys = [
-    'notes',
-    'note',
-    'comment',
-    'comments',
-    'call_follow_up',
-    'wa_follow_up',
-    'comment_21_april',
-    'coming_mentroship',
-    'coming_mentorship',
-    'prefarable_day',
-    'preferable_day',
-    'confrimations',
-    'confirmations',
-    'text_message',
-    'notes_workshop_status',
-    'what_are_you_currently_doing',
-    'why_do_you_want_to_learn_video_editing',
-    'can_you_attend_a_2_hour_offline_workshop_in_jodhpur',
+  const knownKeys = new Set([
+    'name', 'full_name', 'lead', 'customer', 'student_name', 'candidate_name', 'client_name', 'prospect_name', 'prospect',
+    'phone', 'mobile', 'phone_number', 'contact_no', 'contact_number', 'mobile_number', 'phone_no', 'mobile_no', 'mob', 'contact', 'telephone',
+    'email', 'email_address', 'mail', 'email_id', 'emailid',
+    'course', 'interestedcourse', 'interested_course', 'program', 'class', 'course_interest', 'course_name', 'interested_course_name',
+    'counsellor', 'assignedto', 'assigned_to', 'owner', 'counsellor_name', 'counsellor_email', 'assigned_counsellor', 'counsellor_assigned',
+    'followup', 'follow_up', 'nextfollowup', 'next_follow_up', 'follow_up_date', 'call_follow_up_date', 'next_follow_up_date', 'follow_up_at', 'next_followup_date', 'next_follow_up_date_and_time', 'next_followup_date_and_time',
+    'status', 'lead_status', 'stage', 'lead_stage', 'pipeline_status', 'current_status', 'status_label',
+    'source', 'lead_source', 'platform', 'campaign',
+    's_no', 's_no_', 'sno', 'sr_no', 'serial_number'
+  ]);
+
+  const preferredNotes = [];
+  const customNotes = [];
+
+  const preferredKeys = [
+    'notes', 'note', 'comment', 'comments', 'call_follow_up', 'wa_follow_up', 'comment_21_april',
+    'coming_mentroship', 'coming_mentorship', 'prefarable_day', 'preferable_day', 'confrimations',
+    'confirmations', 'text_message', 'notes_workshop_status', 'what_are_you_currently_doing',
+    'why_do_you_want_to_learn_video_editing', 'can_you_attend_a_2_hour_offline_workshop_in_jodhpur',
     'do_you_have_access_to_a_laptop_pc'
   ];
 
-  return preferredNoteKeys
-    .map(key => {
-      const value = row[key];
-      if (!value || !String(value).trim()) return '';
-      return `${key.replace(/_/g, ' ')}: ${String(value).trim()}`;
-    })
-    .filter(Boolean)
-    .join(' | ');
+  for (const key of preferredKeys) {
+    const value = row[key];
+    if (value && String(value).trim()) {
+      preferredNotes.push(`${key.replace(/_/g, ' ')}: ${String(value).trim()}`);
+    }
+  }
+
+  for (const key of Object.keys(row)) {
+    if (knownKeys.has(key) || preferredKeys.includes(key)) continue;
+    const value = row[key];
+    if (value && String(value).trim()) {
+      customNotes.push(`${key.replace(/_/g, ' ')}: ${String(value).trim()}`);
+    }
+  }
+
+  return [...preferredNotes, ...customNotes].join(' | ');
 }
 
 exports.getLeads = async (req, res) => {
@@ -215,6 +224,21 @@ exports.postImportLeads = async (req, res) => {
       return Object.values(r).every(val => !val || String(val).trim() === '');
     };
 
+    const isPlaceholderPhone = (val) => {
+      const clean = String(val || '').trim().toLowerCase();
+      return !clean || ['n/a', 'na', 'nil', '-', 'no', 'none', 'null', 'undefined'].includes(clean);
+    };
+
+    // Header aliases maps
+    const nameAliases = ['name', 'full_name', 'lead', 'customer', 'student_name', 'candidate_name', 'client_name', 'prospect_name', 'prospect'];
+    const phoneAliases = ['phone', 'mobile', 'phone_number', 'contact_no', 'contact_number', 'mobile_number', 'phone_no', 'mobile_no', 'mob', 'contact', 'telephone'];
+    const emailAliases = ['email', 'email_address', 'mail', 'email_id', 'emailid'];
+    const courseAliases = ['course', 'interestedcourse', 'interested_course', 'program', 'class', 'course_interest', 'course_name', 'interested_course_name'];
+    const counsellorAliases = ['counsellor', 'assignedto', 'assigned_to', 'owner', 'counsellor_name', 'counsellor_email', 'assigned_counsellor', 'counsellor_assigned'];
+    const followUpAliases = ['followup', 'follow_up', 'nextfollowup', 'next_follow_up', 'follow_up_date', 'call_follow_up_date', 'next_follow_up_date', 'follow_up_at', 'next_followup_date', 'next_follow_up_date_and_time', 'next_followup_date_and_time'];
+    const statusAliases = ['status', 'lead_status', 'stage', 'lead_stage', 'pipeline_status', 'current_status', 'status_label'];
+    const sourceAliases = ['source', 'lead_source', 'platform', 'campaign'];
+
     // ==========================================
     // PASS 1: Strict File Validation
     // ==========================================
@@ -227,15 +251,15 @@ exports.postImportLeads = async (req, res) => {
 
       if (isRowBlank(row)) continue;
 
-      const name = firstValue(row, ['name', 'full_name', 'lead', 'customer', 'student_name', 'candidate_name']);
-      const phone = firstValue(row, ['phone', 'mobile', 'phone_number', 'contact_no', 'contact_number', 'mobile_number']);
-      const email = firstValue(row, ['email', 'email_address', 'mail']);
+      const name = firstValue(row, nameAliases);
+      const phone = firstValue(row, phoneAliases);
+      const email = firstValue(row, emailAliases);
 
       let normalizedPhone = String(phone || '').trim();
       let normalizedEmail = String(email || '').trim().toLowerCase();
 
       // 1. Ensure at least one contact channel exists
-      if (!normalizedPhone && !normalizedEmail) {
+      if (isPlaceholderPhone(normalizedPhone) && !normalizedEmail) {
         if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
         return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Contact details are missing. Every lead must have a phone number or an email address.`)}`);
       }
@@ -250,20 +274,22 @@ exports.postImportLeads = async (req, res) => {
       }
 
       // 3. Prevent duplicate contact details within the CSV file itself
-      const cleanPhone = normalizedPhone.replace(/\D/g, '');
-      if (cleanPhone && cleanPhone.length >= 10) {
-        const suffix = cleanPhone.slice(-10);
-        if (seenPhonesInCsv.has(suffix)) {
-          if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
-          return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Duplicate phone number "${phone}" found in this file (already seen in Row ${seenPhonesInCsv.get(suffix)}).`)}`);
+      if (!isPlaceholderPhone(normalizedPhone)) {
+        const cleanPhone = normalizedPhone.replace(/\D/g, '');
+        if (cleanPhone && cleanPhone.length >= 10) {
+          const suffix = cleanPhone.slice(-10);
+          if (seenPhonesInCsv.has(suffix)) {
+            if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+            return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Duplicate phone number "${phone}" found in this file (already seen in Row ${seenPhonesInCsv.get(suffix)}).`)}`);
+          }
+          seenPhonesInCsv.set(suffix, rowIndex);
+        } else {
+          if (seenPhonesInCsv.has(normalizedPhone)) {
+            if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+            return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Duplicate phone number "${phone}" found in this file (already seen in Row ${seenPhonesInCsv.get(normalizedPhone)}).`)}`);
+          }
+          seenPhonesInCsv.set(normalizedPhone, rowIndex);
         }
-        seenPhonesInCsv.set(suffix, rowIndex);
-      } else if (normalizedPhone) {
-        if (seenPhonesInCsv.has(normalizedPhone)) {
-          if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
-          return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Duplicate phone number "${phone}" found in this file (already seen in Row ${seenPhonesInCsv.get(normalizedPhone)}).`)}`);
-        }
-        seenPhonesInCsv.set(normalizedPhone, rowIndex);
       }
 
       if (normalizedEmail) {
@@ -275,7 +301,7 @@ exports.postImportLeads = async (req, res) => {
       }
 
       // 4. Validate Course exists (if specified)
-      const courseValue = firstValue(row, ['course', 'interestedcourse', 'interested_course', 'program', 'class', 'course_interest']);
+      const courseValue = firstValue(row, courseAliases);
       if (courseValue) {
         const course = await resolveCourse(courseValue);
         if (!course) {
@@ -285,7 +311,7 @@ exports.postImportLeads = async (req, res) => {
       }
 
       // 5. Validate Counsellor spelling/existence (if specified)
-      const counsellorLookup = String(firstValue(row, ['counsellor', 'assignedto', 'assigned_to', 'owner', 'counsellor_name', 'counsellor_email']) || '').toLowerCase().trim();
+      const counsellorLookup = String(firstValue(row, counsellorAliases) || '').toLowerCase().trim();
       if (counsellorLookup) {
         let matchedCounsellor = counsellorsByEmail.get(counsellorLookup) || counsellorsByName.get(counsellorLookup);
         if (!matchedCounsellor) {
@@ -303,7 +329,7 @@ exports.postImportLeads = async (req, res) => {
       }
 
       // 6. Validate follow-up date formats (if specified)
-      const followUpValue = firstValue(row, ['followup', 'follow_up', 'nextfollowup', 'next_follow_up', 'follow_up_date', 'call_follow_up_date']);
+      const followUpValue = firstValue(row, followUpAliases);
       if (followUpValue) {
         const parsedDate = new Date(followUpValue);
         if (isNaN(parsedDate.getTime())) {
@@ -324,14 +350,14 @@ exports.postImportLeads = async (req, res) => {
       if (isRowBlank(row)) continue;
 
       try {
-        const name = firstValue(row, ['name', 'full_name', 'lead', 'customer', 'student_name', 'candidate_name']);
-        const phone = firstValue(row, ['phone', 'mobile', 'phone_number', 'contact_no', 'contact_number', 'mobile_number']);
+        const name = firstValue(row, nameAliases);
+        const phone = firstValue(row, phoneAliases);
 
         let normalizedName = String(name || '').trim();
         let normalizedPhone = String(phone || '').trim();
 
-        if (!normalizedPhone) {
-          const emailVal = String(firstValue(row, ['email', 'email_address', 'mail']) || '').trim();
+        if (isPlaceholderPhone(normalizedPhone)) {
+          const emailVal = String(firstValue(row, emailAliases) || '').trim();
           if (emailVal) {
             normalizedPhone = emailVal;
             if (!normalizedName) normalizedName = emailVal.split('@')[0];
@@ -343,26 +369,30 @@ exports.postImportLeads = async (req, res) => {
         }
 
         // Database duplicate lookup
-        const cleanPhone = normalizedPhone.replace(/\D/g, '');
-        const emailCheckVal = String(firstValue(row, ['email', 'email_address', 'mail']) || '').trim().toLowerCase();
+        const emailCheckVal = String(firstValue(row, emailAliases) || '').trim().toLowerCase();
         
         let duplicate = null;
-        if (cleanPhone.length >= 10) {
-          const suffix = cleanPhone.slice(-10);
-          duplicate = await Lead.findOne({
-            $or: [
-              { phone: normalizedPhone },
-              { phone: cleanPhone },
-              { phone: new RegExp(suffix + '$') }
-            ]
-          }).select('_id');
-        } else {
-          duplicate = await Lead.findOne({
-            $or: [
-              { phone: normalizedPhone },
-              ...(emailCheckVal ? [{ email: emailCheckVal }] : [])
-            ]
-          }).select('_id');
+        if (!isPlaceholderPhone(normalizedPhone)) {
+          const cleanPhone = normalizedPhone.replace(/\D/g, '');
+          if (cleanPhone.length >= 10) {
+            const suffix = cleanPhone.slice(-10);
+            duplicate = await Lead.findOne({
+              $or: [
+                { phone: normalizedPhone },
+                { phone: cleanPhone },
+                { phone: new RegExp(suffix + '$') }
+              ]
+            }).select('_id');
+          } else {
+            duplicate = await Lead.findOne({
+              $or: [
+                { phone: normalizedPhone },
+                ...(emailCheckVal ? [{ email: emailCheckVal }] : [])
+              ]
+            }).select('_id');
+          }
+        } else if (emailCheckVal) {
+          duplicate = await Lead.findOne({ email: emailCheckVal }).select('_id');
         }
 
         if (duplicate) {
@@ -370,11 +400,11 @@ exports.postImportLeads = async (req, res) => {
           continue;
         }
 
-        const courseValue = firstValue(row, ['course', 'interestedcourse', 'interested_course', 'program', 'class', 'course_interest']);
-        const statusValue = firstValue(row, ['status', 'lead_status', 'stage', 'lead_stage', 'pipeline_status']);
-        const sourceValue = firstValue(row, ['source', 'lead_source', 'platform', 'campaign']);
-        const followUpValue = firstValue(row, ['followup', 'follow_up', 'nextfollowup', 'next_follow_up', 'follow_up_date', 'call_follow_up_date']);
-        const counsellorLookup = String(firstValue(row, ['counsellor', 'assignedto', 'assigned_to', 'owner', 'counsellor_name', 'counsellor_email']) || '').toLowerCase().trim();
+        const courseValue = firstValue(row, courseAliases);
+        const statusValue = firstValue(row, statusAliases);
+        const sourceValue = firstValue(row, sourceAliases);
+        const followUpValue = firstValue(row, followUpAliases);
+        const counsellorLookup = String(firstValue(row, counsellorAliases) || '').toLowerCase().trim();
 
         const course = await resolveCourse(courseValue);
         const statusDoc = await findOrCreateLeadStatus(statusValue || 'new');

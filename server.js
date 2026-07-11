@@ -111,14 +111,23 @@ app.use((req, res, next) => {
   next();
 });
 
-const csurf = require('csurf');
-const csrfProtection = csurf({ cookie: true });
+const csrfProtection = require('./middleware/security/csrfProtection');
 app.use((req, res, next) => {
   // CSRF bypass ONLY in test environment — never port-based in production
   if (process.env.NODE_ENV === 'test') {
     res.locals.csrfToken = 'test-token';
     return next();
   }
+
+  const isMultipart = (req.headers['content-type'] || '').includes('multipart/form-data');
+  const isPostLike = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method.toUpperCase());
+
+  if (isMultipart && isPostLike) {
+    // Skip global CSRF check for multipart POST/PUT/DELETE requests.
+    // They will run csrfProtection individually after multer executes.
+    return next();
+  }
+
   csrfProtection(req, res, (err) => {
     if (err) return next(err);
     res.locals.csrfToken = req.csrfToken();

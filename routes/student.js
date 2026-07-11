@@ -7,11 +7,15 @@ const ctrl = require('../controllers/studentController');
 const Message = require('../models/Message');
 
 const upload = require('../utils/uploadHelper');
+const csrfProtection = require('../middleware/security/csrfProtection');
 const guard = [protect, role('student', 'admin')];
 
 router.get('/dashboard', ...guard, ctrl.getDashboard);
 router.get('/assignments', ...guard, ctrl.getAssignments);
-router.post('/assignments/:id/submit', ...guard, upload.single('file'), ctrl.postSubmitAssignment);
+router.post('/assignments/:id/submit', ...guard, upload.single('file'), csrfProtection, (req, res, next) => {
+  res.locals.csrfToken = req.csrfToken();
+  next();
+}, ctrl.postSubmitAssignment);
 router.get('/attendance', ...guard, ctrl.getAttendance);
 router.get('/updates', ...guard, ctrl.getDailyUpdates);
 router.get('/progress', ...guard, ctrl.getProgress);
@@ -20,7 +24,10 @@ router.get('/fees', ...guard, ctrl.getFees);
 router.get('/analytics', ...guard, ctrl.getAnalytics);
 
 // Profile & Feedback Upgrades
-router.post('/profile/upload-id', ...guard, upload.single('idProof'), ctrl.postUploadIdProof);
+router.post('/profile/upload-id', ...guard, upload.single('idProof'), csrfProtection, (req, res, next) => {
+  res.locals.csrfToken = req.csrfToken();
+  next();
+}, ctrl.postUploadIdProof);
 router.post('/feedback', ...guard, ctrl.postSubmitFeedback);
 router.get('/certificate', ...guard, ctrl.getCertificate);
 
