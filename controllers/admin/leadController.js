@@ -244,6 +244,65 @@ exports.postImportLeads = async (req, res) => {
     };
 
     // ==========================================
+    // Pre-load existing leads for in-memory O(1) duplicate checks
+    // ==========================================
+    const candidatePhones = [];
+    const candidateSuffixes = [];
+    const candidateEmails = [];
+
+    for (const row of rows) {
+      if (isRowBlank(row)) continue;
+
+      const phone = firstValue(row, PHONE_KEYS);
+      const email = firstValue(row, EMAIL_KEYS);
+
+      const normalizedPhone = String(phone || '').trim();
+      const emailCheckVal = String(email || '').trim().toLowerCase();
+
+      if (!isPlaceholderPhone(normalizedPhone)) {
+        const cleanPhone = normalizedPhone.replace(/\D/g, '');
+        candidatePhones.push(normalizedPhone);
+        if (cleanPhone) {
+          candidatePhones.push(cleanPhone);
+          if (cleanPhone.length >= 10) {
+            candidateSuffixes.push(cleanPhone.slice(-10));
+          }
+        }
+      }
+
+      if (emailCheckVal && emailCheckVal.includes('@')) {
+        candidateEmails.push(emailCheckVal);
+      }
+    }
+
+    const existingLeads = await Lead.find({
+      $or: [
+        { phone: { $in: candidatePhones } },
+        ...(candidateEmails.length ? [{ email: { $in: candidateEmails } }] : []),
+        ...(candidateSuffixes.length ? candidateSuffixes.map(suff => ({ phone: new RegExp(escapeRegex(suff) + '$') })) : [])
+      ]
+    }).select('phone email');
+
+    const existingPhonesSet = new Set();
+    const existingEmailsSet = new Set();
+
+    for (const lead of existingLeads) {
+      if (lead.phone) {
+        existingPhonesSet.add(lead.phone);
+        const clean = lead.phone.replace(/\D/g, '');
+        if (clean) {
+          existingPhonesSet.add(clean);
+          if (clean.length >= 10) {
+            existingPhonesSet.add(clean.slice(-10));
+          }
+        }
+      }
+      if (lead.email) {
+        existingEmailsSet.add(lead.email.toLowerCase().trim());
+      }
+    }
+
+    // ==========================================
     // PASS 1: Strict File Validation
     // ==========================================
     const seenPhonesInCsv = new Map();
@@ -371,34 +430,26 @@ exports.postImportLeads = async (req, res) => {
           normalizedName = `Lead (${normalizedPhone})`;
         }
 
-        // Database duplicate lookup
+        // Database duplicate lookup (in-memory Set checks)
         const emailCheckVal = String(firstValue(row, EMAIL_KEYS) || '').trim().toLowerCase();
         
-        let duplicate = null;
+        let isDuplicate = false;
         if (!isPlaceholderPhone(normalizedPhone)) {
           const cleanPhone = normalizedPhone.replace(/\D/g, '');
-          if (cleanPhone.length >= 10) {
-            const suffix = cleanPhone.slice(-10);
-            duplicate = await Lead.findOne({
-              $or: [
-                { phone: normalizedPhone },
-                { phone: cleanPhone },
-                { phone: new RegExp(suffix + '$') }
-              ]
-            }).select('_id');
-          } else {
-            duplicate = await Lead.findOne({
-              $or: [
-                { phone: normalizedPhone },
-                ...(emailCheckVal ? [{ email: emailCheckVal }] : [])
-              ]
-            }).select('_id');
+          if (existingPhonesSet.has(normalizedPhone)) {
+            isDuplicate = true;
+          } else if (cleanPhone && existingPhonesSet.has(cleanPhone)) {
+            isDuplicate = true;
+          } else if (cleanPhone && cleanPhone.length >= 10 && existingPhonesSet.has(cleanPhone.slice(-10))) {
+            isDuplicate = true;
           }
-        } else if (emailCheckVal) {
-          duplicate = await Lead.findOne({ email: emailCheckVal }).select('_id');
+        }
+        
+        if (!isDuplicate && emailCheckVal && existingEmailsSet.has(emailCheckVal)) {
+          isDuplicate = true;
         }
 
-        if (duplicate) {
+        if (isDuplicate) {
           skipped += 1;
           continue;
         }
@@ -456,6 +507,21 @@ exports.postImportLeads = async (req, res) => {
             note: 'Lead assigned during CSV import.'
           }] : []
         });
+
+        // Add newly created lead data to in-memory sets to catch dynamic same-batch duplicates
+        if (lead.phone) {
+          existingPhonesSet.add(lead.phone);
+          const clean = lead.phone.replace(/\D/g, '');
+          if (clean) {
+            existingPhonesSet.add(clean);
+            if (clean.length >= 10) {
+              existingPhonesSet.add(clean.slice(-10));
+            }
+          }
+        }
+        if (lead.email) {
+          existingEmailsSet.add(lead.email.toLowerCase().trim());
+        }
 
         await LeadActivity.create({
           lead: lead._id,
