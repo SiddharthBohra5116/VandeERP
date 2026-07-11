@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const { LEAD_SOURCES } = require('../../config/constants');
 const { escapeRegex } = require('../../utils/sanitize');
-const { parseCsv } = require('../../utils/csvParser');
+const { normalizeHeader, parseCsv } = require('../../utils/csvParser');
 const { computeSourceStats } = require('../../utils/leadAnalytics');
 const {
   ALLOWED_BADGE_CLASSES,
@@ -88,7 +88,7 @@ function buildImportNotes(row) {
   const customNotes = [];
 
   const preferredKeys = [
-    'notes', 'note', 'comment', 'comments', 'call_follow_up', 'wa_follow_up', 'comment_21_april',
+    'notes', 'note', 'comment', 'comments', 'h_comments', 'secondary_notes', 'call_follow_up', 'wa_follow_up', 'comment_21_april',
     'coming_mentroship', 'coming_mentorship', 'prefarable_day', 'preferable_day', 'confrimations',
     'confirmations', 'text_message', 'notes_workshop_status', 'what_are_you_currently_doing',
     'why_do_you_want_to_learn_video_editing', 'can_you_attend_a_2_hour_offline_workshop_in_jodhpur',
@@ -111,6 +111,41 @@ function buildImportNotes(row) {
   }
 
   return [...preferredNotes, ...customNotes].join(' | ');
+}
+
+function isRepeatedImportHeaderRow(row) {
+  const name = normalizeHeader(firstValue(row, NAME_KEYS));
+  const phone = normalizeHeader(firstValue(row, PHONE_KEYS));
+  const email = normalizeHeader(firstValue(row, EMAIL_KEYS));
+  return NAME_KEYS.includes(name) && PHONE_KEYS.includes(phone) && (!email || EMAIL_KEYS.includes(email));
+}
+
+function isSerialOnlyRow(row) {
+  return Object.entries(row).every(([key, value]) => {
+    const clean = String(value || '').trim();
+    return !clean || (['s_no', 's_no_', 'sno', 'sr_no', 'serial_number'].includes(key) && /^\d+$/.test(clean));
+  });
+}
+
+function parseImportDate(value) {
+  const text = String(value || '').trim();
+  if (!text) return null;
+
+  const numericDate = text.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b/);
+  if (numericDate) {
+    const day = Number(numericDate[1]);
+    const month = Number(numericDate[2]);
+    const year = Number(numericDate[3]) + (numericDate[3].length === 2 ? 2000 : 0);
+    const parsed = new Date(year, month - 1, day);
+    return parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day ? parsed : null;
+  }
+
+  if (/[a-z]{3,}/i.test(text)) {
+    const parsed = new Date(text);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  return null;
 }
 
 exports.getLeads = async (req, res) => {
@@ -238,6 +273,8 @@ exports.postImportLeads = async (req, res) => {
       return Object.values(r).every(val => !val || String(val).trim() === '');
     };
 
+    const shouldSkipRow = (r) => isRowBlank(r) || isRepeatedImportHeaderRow(r) || isSerialOnlyRow(r);
+
     const isPlaceholderPhone = (val) => {
       const clean = String(val || '').trim().toLowerCase();
       return !clean || ['n/a', 'na', 'nil', '-', 'no', 'none', 'null', 'undefined'].includes(clean);
@@ -251,7 +288,7 @@ exports.postImportLeads = async (req, res) => {
     const candidateEmails = [];
 
     for (const row of rows) {
-      if (isRowBlank(row)) continue;
+      if (shouldSkipRow(row)) continue;
 
       const phone = firstValue(row, PHONE_KEYS);
       const email = firstValue(row, EMAIL_KEYS);
@@ -313,7 +350,7 @@ exports.postImportLeads = async (req, res) => {
       const row = rows[i];
       const rowIndex = i + 2; // 1-based index, plus 1 for header row
 
-      if (isRowBlank(row)) continue;
+      if (shouldSkipRow(row)) continue;
 
       const name = firstValue(row, NAME_KEYS);
       const phone = firstValue(row, PHONE_KEYS);
@@ -404,7 +441,7 @@ exports.postImportLeads = async (req, res) => {
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      if (isRowBlank(row)) continue;
+      if (shouldSkipRow(row)) continue;
 
       if (duplicateRowIndexes.has(i)) {
         skipped += 1;
@@ -484,10 +521,7 @@ exports.postImportLeads = async (req, res) => {
 
         let nextFollowUpDate = null;
         if (followUpValue) {
-          const parsedDate = new Date(followUpValue);
-          if (!isNaN(parsedDate.getTime())) {
-            nextFollowUpDate = parsedDate;
-          }
+          nextFollowUpDate = parseImportDate(followUpValue);
         }
 
         const lead = await Lead.create({
