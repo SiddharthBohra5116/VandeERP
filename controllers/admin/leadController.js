@@ -24,6 +24,32 @@ const {
 } = require('../../utils/leadStatusOptions');
 const logger = require('../../utils/logger');
 
+// Shared CSV header mappings constants
+const NAME_KEYS = ['name', 'full_name', 'lead', 'customer', 'student_name', 'candidate_name', 'client_name', 'prospect_name', 'prospect'];
+const PHONE_KEYS = ['phone', 'mobile', 'phone_number', 'contact_no', 'contact_number', 'mobile_number', 'phone_no', 'mobile_no', 'mob', 'contact', 'telephone'];
+const EMAIL_KEYS = ['email', 'email_address', 'email_id', 'mail', 'mail_id', 'emailid'];
+const COURSE_KEYS = ['course', 'interestedcourse', 'interested_course', 'program', 'class', 'course_interest', 'course_name', 'interested_course_name'];
+const COUNSELLOR_KEYS = ['counsellor', 'assignedto', 'assigned_to', 'owner', 'counsellor_name', 'counsellor_email', 'assigned_counsellor', 'counsellor_assigned'];
+const STATUS_KEYS = ['status', 'lead_status', 'stage', 'lead_stage', 'pipeline_status', 'current_status', 'status_label'];
+const SOURCE_KEYS = ['source', 'lead_source', 'platform', 'campaign'];
+const FOLLOWUP_KEYS = [
+  'followup', 'follow_up', 'nextfollowup', 'next_follow_up', 'follow_up_date',
+  'call_follow_up_date', 'next_follow_up_date_and_time', 'next_follow_up_date',
+  'follow_up_date_and_time', 'follow_up_at', 'next_followup_date'
+];
+
+const KNOWN_KEYS = new Set([
+  ...NAME_KEYS,
+  ...PHONE_KEYS,
+  ...EMAIL_KEYS,
+  ...COURSE_KEYS,
+  ...COUNSELLOR_KEYS,
+  ...STATUS_KEYS,
+  ...SOURCE_KEYS,
+  ...FOLLOWUP_KEYS,
+  's_no', 's_no_', 'sno', 'sr_no', 'serial_number'
+]);
+
 async function resolveCourse(courseValue, fallbackCourseId = null) {
   if (courseValue && courseValue.match && courseValue.match(/^[0-9a-fA-F]{24}$/)) {
     return await Course.findById(courseValue);
@@ -58,18 +84,6 @@ function firstValue(row, keys) {
 }
 
 function buildImportNotes(row) {
-  const knownKeys = new Set([
-    'name', 'full_name', 'lead', 'customer', 'student_name', 'candidate_name', 'client_name', 'prospect_name', 'prospect',
-    'phone', 'mobile', 'phone_number', 'contact_no', 'contact_number', 'mobile_number', 'phone_no', 'mobile_no', 'mob', 'contact', 'telephone',
-    'email', 'email_address', 'mail', 'email_id', 'emailid',
-    'course', 'interestedcourse', 'interested_course', 'program', 'class', 'course_interest', 'course_name', 'interested_course_name',
-    'counsellor', 'assignedto', 'assigned_to', 'owner', 'counsellor_name', 'counsellor_email', 'assigned_counsellor', 'counsellor_assigned',
-    'followup', 'follow_up', 'nextfollowup', 'next_follow_up', 'follow_up_date', 'call_follow_up_date', 'next_follow_up_date', 'follow_up_at', 'next_followup_date', 'next_follow_up_date_and_time', 'next_followup_date_and_time',
-    'status', 'lead_status', 'stage', 'lead_stage', 'pipeline_status', 'current_status', 'status_label',
-    'source', 'lead_source', 'platform', 'campaign',
-    's_no', 's_no_', 'sno', 'sr_no', 'serial_number'
-  ]);
-
   const preferredNotes = [];
   const customNotes = [];
 
@@ -89,7 +103,7 @@ function buildImportNotes(row) {
   }
 
   for (const key of Object.keys(row)) {
-    if (knownKeys.has(key) || preferredKeys.includes(key)) continue;
+    if (KNOWN_KEYS.has(key) || preferredKeys.includes(key)) continue;
     const value = row[key];
     if (value && String(value).trim()) {
       customNotes.push(`${key.replace(/_/g, ' ')}: ${String(value).trim()}`);
@@ -229,21 +243,12 @@ exports.postImportLeads = async (req, res) => {
       return !clean || ['n/a', 'na', 'nil', '-', 'no', 'none', 'null', 'undefined'].includes(clean);
     };
 
-    // Header aliases maps
-    const nameAliases = ['name', 'full_name', 'lead', 'customer', 'student_name', 'candidate_name', 'client_name', 'prospect_name', 'prospect'];
-    const phoneAliases = ['phone', 'mobile', 'phone_number', 'contact_no', 'contact_number', 'mobile_number', 'phone_no', 'mobile_no', 'mob', 'contact', 'telephone'];
-    const emailAliases = ['email', 'email_address', 'mail', 'email_id', 'emailid'];
-    const courseAliases = ['course', 'interestedcourse', 'interested_course', 'program', 'class', 'course_interest', 'course_name', 'interested_course_name'];
-    const counsellorAliases = ['counsellor', 'assignedto', 'assigned_to', 'owner', 'counsellor_name', 'counsellor_email', 'assigned_counsellor', 'counsellor_assigned'];
-    const followUpAliases = ['followup', 'follow_up', 'nextfollowup', 'next_follow_up', 'follow_up_date', 'call_follow_up_date', 'next_follow_up_date', 'follow_up_at', 'next_followup_date', 'next_follow_up_date_and_time', 'next_followup_date_and_time'];
-    const statusAliases = ['status', 'lead_status', 'stage', 'lead_stage', 'pipeline_status', 'current_status', 'status_label'];
-    const sourceAliases = ['source', 'lead_source', 'platform', 'campaign'];
-
     // ==========================================
     // PASS 1: Strict File Validation
     // ==========================================
     const seenPhonesInCsv = new Map();
     const seenEmailsInCsv = new Map();
+    const duplicateRowIndexes = new Set();
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -251,9 +256,9 @@ exports.postImportLeads = async (req, res) => {
 
       if (isRowBlank(row)) continue;
 
-      const name = firstValue(row, nameAliases);
-      const phone = firstValue(row, phoneAliases);
-      const email = firstValue(row, emailAliases);
+      const name = firstValue(row, NAME_KEYS);
+      const phone = firstValue(row, PHONE_KEYS);
+      const email = firstValue(row, EMAIL_KEYS);
 
       let normalizedPhone = String(phone || '').trim();
       let normalizedEmail = String(email || '').trim().toLowerCase();
@@ -279,29 +284,31 @@ exports.postImportLeads = async (req, res) => {
         if (cleanPhone && cleanPhone.length >= 10) {
           const suffix = cleanPhone.slice(-10);
           if (seenPhonesInCsv.has(suffix)) {
-            if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
-            return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Duplicate phone number "${phone}" found in this file (already seen in Row ${seenPhonesInCsv.get(suffix)}).`)}`);
+            duplicateRowIndexes.add(i);
+          } else {
+            seenPhonesInCsv.set(suffix, i);
           }
-          seenPhonesInCsv.set(suffix, rowIndex);
         } else {
           if (seenPhonesInCsv.has(normalizedPhone)) {
-            if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
-            return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Duplicate phone number "${phone}" found in this file (already seen in Row ${seenPhonesInCsv.get(normalizedPhone)}).`)}`);
+            duplicateRowIndexes.add(i);
+          } else {
+            seenPhonesInCsv.set(normalizedPhone, i);
           }
-          seenPhonesInCsv.set(normalizedPhone, rowIndex);
         }
       }
 
       if (normalizedEmail) {
         if (seenEmailsInCsv.has(normalizedEmail)) {
-          if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
-          return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Duplicate email address "${email}" found in this file (already seen in Row ${seenEmailsInCsv.get(normalizedEmail)}).`)}`);
+          duplicateRowIndexes.add(i);
+        } else {
+          seenEmailsInCsv.set(normalizedEmail, i);
         }
-        seenEmailsInCsv.set(normalizedEmail, rowIndex);
       }
 
+      if (duplicateRowIndexes.has(i)) continue;
+
       // 4. Validate Course exists (if specified)
-      const courseValue = firstValue(row, courseAliases);
+      const courseValue = firstValue(row, COURSE_KEYS);
       if (courseValue) {
         const course = await resolveCourse(courseValue);
         if (!course) {
@@ -311,7 +318,7 @@ exports.postImportLeads = async (req, res) => {
       }
 
       // 5. Validate Counsellor spelling/existence (if specified)
-      const counsellorLookup = String(firstValue(row, counsellorAliases) || '').toLowerCase().trim();
+      const counsellorLookup = String(firstValue(row, COUNSELLOR_KEYS) || '').toLowerCase().trim();
       if (counsellorLookup) {
         let matchedCounsellor = counsellorsByEmail.get(counsellorLookup) || counsellorsByName.get(counsellorLookup);
         if (!matchedCounsellor) {
@@ -327,16 +334,6 @@ exports.postImportLeads = async (req, res) => {
           return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Counsellor assignment "${counsellorLookup}" does not match any registered counsellor.`)}`);
         }
       }
-
-      // 6. Validate follow-up date formats (if specified)
-      const followUpValue = firstValue(row, followUpAliases);
-      if (followUpValue) {
-        const parsedDate = new Date(followUpValue);
-        if (isNaN(parsedDate.getTime())) {
-          if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
-          return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Invalid follow-up date format "${followUpValue}". Use YYYY-MM-DD or standard date format.`)}`);
-        }
-      }
     }
 
     // ==========================================
@@ -346,18 +343,24 @@ exports.postImportLeads = async (req, res) => {
     let skipped = 0;
     let failed = 0;
 
-    for (const row of rows) {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
       if (isRowBlank(row)) continue;
 
+      if (duplicateRowIndexes.has(i)) {
+        skipped += 1;
+        continue;
+      }
+
       try {
-        const name = firstValue(row, nameAliases);
-        const phone = firstValue(row, phoneAliases);
+        const name = firstValue(row, NAME_KEYS);
+        const phone = firstValue(row, PHONE_KEYS);
 
         let normalizedName = String(name || '').trim();
         let normalizedPhone = String(phone || '').trim();
 
         if (isPlaceholderPhone(normalizedPhone)) {
-          const emailVal = String(firstValue(row, emailAliases) || '').trim();
+          const emailVal = String(firstValue(row, EMAIL_KEYS) || '').trim();
           if (emailVal) {
             normalizedPhone = emailVal;
             if (!normalizedName) normalizedName = emailVal.split('@')[0];
@@ -369,7 +372,7 @@ exports.postImportLeads = async (req, res) => {
         }
 
         // Database duplicate lookup
-        const emailCheckVal = String(firstValue(row, emailAliases) || '').trim().toLowerCase();
+        const emailCheckVal = String(firstValue(row, EMAIL_KEYS) || '').trim().toLowerCase();
         
         let duplicate = null;
         if (!isPlaceholderPhone(normalizedPhone)) {
@@ -400,11 +403,11 @@ exports.postImportLeads = async (req, res) => {
           continue;
         }
 
-        const courseValue = firstValue(row, courseAliases);
-        const statusValue = firstValue(row, statusAliases);
-        const sourceValue = firstValue(row, sourceAliases);
-        const followUpValue = firstValue(row, followUpAliases);
-        const counsellorLookup = String(firstValue(row, counsellorAliases) || '').toLowerCase().trim();
+        const courseValue = firstValue(row, COURSE_KEYS);
+        const statusValue = firstValue(row, STATUS_KEYS);
+        const sourceValue = firstValue(row, SOURCE_KEYS);
+        const followUpValue = firstValue(row, FOLLOWUP_KEYS);
+        const counsellorLookup = String(firstValue(row, COUNSELLOR_KEYS) || '').toLowerCase().trim();
 
         const course = await resolveCourse(courseValue);
         const statusDoc = await findOrCreateLeadStatus(statusValue || 'new');
