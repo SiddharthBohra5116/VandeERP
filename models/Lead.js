@@ -234,9 +234,21 @@ const leadSchema = new mongoose.Schema({
   convertedAt: {
     type: Date,
     default: null
-  }
+  },
+
+  archivedAt: { type: Date, default: null }
 
 }, { timestamps: true });
+
+leadSchema.pre(/^find/, function(next) {
+  if (this.getQuery().archivedAt === undefined) this.where({ archivedAt: null });
+  next();
+});
+
+leadSchema.pre('countDocuments', function(next) {
+  if (this.getQuery().archivedAt === undefined) this.where({ archivedAt: null });
+  next();
+});
 
 leadSchema.index({ assignedTo: 1, status: 1 });
 leadSchema.index({ nextFollowUpAt: 1 });

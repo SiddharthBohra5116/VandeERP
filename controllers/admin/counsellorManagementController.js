@@ -14,7 +14,8 @@ exports.getCounsellors = async (req, res) => {
     const { search } = req.query;
 
     const userFilter = {
-      role: 'counsellor'
+      role: 'counsellor',
+      archivedAt: null
     };
 
     if (search) {

@@ -21,7 +21,8 @@ exports.getStudents = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const userFilter = {
-      role: 'student'
+      role: 'student',
+      archivedAt: null
     };
 
     if (search) {

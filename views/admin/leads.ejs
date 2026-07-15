@@ -194,6 +194,12 @@
   </div>
 <% } %>
 
+<% if (typeof filter !== 'undefined' && filter.deleted !== undefined) { %>
+  <div class="alert alert-toast alert-success" style="margin-bottom:20px;" role="status">
+    <span>Moved <b><%= filter.deleted %></b> lead(s) to the Recycle Bin.<% if (Number(filter.protected || 0)) { %> Kept <b><%= filter.protected %></b> admitted lead(s) for student history.<% } %></span>
+  </div>
+<% } %>
+
 <div class="lead-tools-comfort-bar" aria-label="Lead setup tools visibility">
   <div class="lead-tools-comfort-copy">
     <h2 class="lead-tools-comfort-title">Lead setup tools</h2>
@@ -237,6 +243,16 @@
         </div>
 
         <input id="leadCsv" type="file" name="leadCsv" class="form-control" accept=".csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values" required style="display:none;">
+      </div>
+
+      <div class="form-group" style="margin:0;">
+        <label class="form-label" for="defaultCourse">Course for rows without a course</label>
+        <select id="defaultCourse" name="defaultCourse" class="form-control">
+          <option value="">Leave undecided</option>
+          <% courses.forEach(course => { %>
+            <option value="<%= course._id %>"><%= course.name %></option>
+          <% }) %>
+        </select>
       </div>
 
       <button type="submit" class="btn btn-primary btn-sm" style="width:100%; justify-content:center; min-height:40px; font-weight:800;" id="importSubmitBtn" disabled>
@@ -345,6 +361,12 @@
       <option value="Other" <%= filter.source === 'Other' ? 'selected' : '' %>>Other</option>
     </select>
 
+    <select name="limit" class="form-control" onchange="this.form.submit()" aria-label="Leads per page">
+      <% [25, 50, 100].forEach(size => { %>
+        <option value="<%= size %>" <%= Number(pagination.limit) === size ? 'selected' : '' %>><%= size %> per page</option>
+      <% }) %>
+    </select>
+
     <a href="/admin/leads" class="btn btn-ghost btn-sm">Clear</a>
   </form>
 </div>
@@ -356,10 +378,14 @@
       <p>No leads found in the system.</p>
     </div>
   <% } else { %>
+    <form id="bulkDeleteForm" method="POST" action="/admin/leads/delete" data-native-submit="true" data-confirm="Delete the selected leads and their activity history? Admitted leads will be kept." data-confirm-title="Delete selected leads" data-confirm-label="Delete leads" style="display:flex; justify-content:flex-end; padding:0 0 0.75rem;">
+      <button type="submit" class="btn btn-danger btn-sm" id="bulkDeleteButton" disabled>Delete selected</button>
+    </form>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
+            <th style="width:42px;"><input type="checkbox" id="selectAllLeads" aria-label="Select all deletable leads on this page"></th>
             <th>Lead Info</th>
             <th>Course</th>
             <th>Source</th>
@@ -375,6 +401,11 @@
               const isOverdue = l.nextFollowUpAt && new Date(l.nextFollowUpAt) < new Date() && !isClosedLead;
             %>
             <tr class="lead-row <%= l.status === 'joining_interested' ? 'is-priority' : '' %>" data-row-href="/admin/leads/<%= l._id %>" tabindex="0" aria-label="Open <%= l.name %> lead file">
+              <td>
+                <% if (!l.convertedStudent && l.status !== 'admission_completed') { %>
+                  <input type="checkbox" name="leadIds" value="<%= l._id %>" form="bulkDeleteForm" class="lead-delete-checkbox" aria-label="Select <%= l.name %> for deletion">
+                <% } %>
+              </td>
               <td class="td-name">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                   <% 
@@ -435,6 +466,12 @@
                 <span class="badge <%= statusBadgeMap[l.status] || 'badge-grey' %>"><%= statusLabelMap[l.status] || l.status %></span>
                 <% if (isOverdue) { %>
                   <div style="font-size:10px; color:var(--red); margin-top:2px;">Follow-up overdue</div>
+                <% } %>
+                <% if (!l.convertedStudent && l.status !== 'admission_completed') { %>
+                  <form method="POST" action="/admin/leads/delete" data-confirm="Delete this lead and its activity history?" data-confirm-title="Delete lead" data-confirm-label="Delete" style="display:inline-block; margin-left:0.35rem;">
+                    <input type="hidden" name="leadIds" value="<%= l._id %>">
+                    <button type="submit" class="btn btn-danger btn-xs">Delete</button>
+                  </form>
                 <% } %>
               </td>
               <td>
@@ -585,6 +622,28 @@
   document.addEventListener('resultsUpdated', initLeadRows);
   document.addEventListener('softnav:load', initLeadRows);
 
+  function initLeadDeletion() {
+    const selectAll = document.getElementById('selectAllLeads');
+    const button = document.getElementById('bulkDeleteButton');
+    const checkboxes = [...document.querySelectorAll('.lead-delete-checkbox')];
+    if (!selectAll || !button || selectAll.dataset.ready) return;
+    const refresh = () => {
+      const selected = checkboxes.filter(box => box.checked).length;
+      button.disabled = selected === 0;
+      button.textContent = selected ? `Delete selected (${selected})` : 'Delete selected';
+      selectAll.checked = selected > 0 && selected === checkboxes.length;
+      selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
+    };
+    selectAll.addEventListener('change', () => { checkboxes.forEach(box => { box.checked = selectAll.checked; }); refresh(); });
+    checkboxes.forEach(box => box.addEventListener('change', refresh));
+    selectAll.dataset.ready = '1';
+    refresh();
+  }
+
+  initLeadDeletion();
+  document.addEventListener('resultsUpdated', initLeadDeletion);
+  document.addEventListener('softnav:load', initLeadDeletion);
+
   function initDragAndDrop() {
     const uploadZone = document.getElementById('uploadZone');
     const fileInput = document.getElementById('leadCsv');
@@ -731,30 +790,41 @@
         event.preventDefault();
         submitBtn.disabled = true;
         submitBtn.textContent = 'Uploading...';
-        setProgress(5, 'Uploading file...', `${selectedRecordCount || 'Selected'} records queued. Keep this tab open.`);
+        const importJobId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        setProgress(1, 'Uploading file...', `${selectedRecordCount || 'Selected'} records queued. Keep this tab open.`);
+
+        const progressStream = new EventSource(`/admin/leads/import/progress/${encodeURIComponent(importJobId)}`);
+        progressStream.addEventListener('message', (message) => {
+          const update = JSON.parse(message.data);
+          setProgress(update.percent || 0, update.status || 'Importing leads...', update.detail || '');
+          if (update.created !== undefined) {
+            progressDetail.textContent = `${update.detail} Imported: ${update.created}, skipped: ${update.skipped}, failed: ${update.failed}.`;
+          }
+          if (update.done) progressStream.close();
+        });
 
         const request = new XMLHttpRequest();
         request.open(importForm.method || 'POST', importForm.action);
-        request.upload.addEventListener('progress', (uploadEvent) => {
-          if (!uploadEvent.lengthComputable) return;
-          setProgress(5 + ((uploadEvent.loaded / uploadEvent.total) * 65), 'Uploading file...', `${selectedRecordCount || 'Selected'} records queued. Keep this tab open.`);
-        });
         request.addEventListener('readystatechange', () => {
           if (request.readyState === 2) {
             submitBtn.textContent = 'Processing...';
-            setProgress(75, 'Importing leads...', 'Checking duplicates, creating statuses, saving leads, and preparing the summary.');
+            setProgress(2, 'Importing leads...', 'Server is reading and validating rows.');
           }
         });
         request.addEventListener('load', () => {
+          progressStream.close();
           setProgress(100, 'Import complete', 'Opening the import summary.');
           window.location.href = request.responseURL || '/admin/leads';
         });
         request.addEventListener('error', () => {
+          progressStream.close();
           submitBtn.disabled = false;
           submitBtn.textContent = idleSubmitText;
           setProgress(0, 'Upload failed', 'Please check your connection and try again.');
         });
-        request.send(new FormData(importForm));
+        const formData = new FormData(importForm);
+        formData.append('importJobId', importJobId);
+        request.send(formData);
       });
       importForm.dataset.submitReady = '1';
     }

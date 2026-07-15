@@ -1,0 +1,32 @@
+<%
+  layout = 'main';
+  title = 'Recycle Bin';
+%>
+
+<div class="d-flex justify-between align-center gap-1" style="margin-bottom:1rem;">
+  <div><h1 style="margin:0;">Recycle Bin</h1><p class="td-muted">Records can be restored for 7 days. After that, leads are deleted and account personal data is removed while academy history is retained.</p></div>
+  <a href="/admin/users" class="btn btn-ghost btn-sm">Back to users</a>
+</div>
+
+<% if (filter.error) { %><div class="alert alert-toast alert-error"><span><%= filter.error %></span></div><% } %>
+<% if (filter.restored) { %><div class="alert alert-toast alert-success"><span>Record restored successfully.</span></div><% } %>
+
+<h2>Leads</h2>
+<div class="card" style="margin-bottom:1rem;">
+  <% if (!leads.length) { %><div class="empty-state"><p>No deleted leads.</p></div><% } else { %>
+    <div class="table-wrap"><table><thead><tr><th>Lead</th><th>Archived</th><th>Permanent deletion</th><th>Action</th></tr></thead><tbody>
+    <% leads.forEach(item => { const expiresAt = new Date(new Date(item.archivedAt).getTime() + 7 * 86400000); %>
+      <tr><td><strong><%= item.name %></strong><div class="td-muted"><%= item.phone %> &middot; <%= item.email || 'No email' %></div></td><td><%= new Date(item.archivedAt).toLocaleString('en-IN') %></td><td><%= expiresAt.toLocaleString('en-IN') %></td><td><form method="POST" action="/admin/leads/<%= item._id %>/restore"><button class="btn btn-success btn-sm" type="submit">Restore</button></form></td></tr>
+    <% }) %></tbody></table></div>
+  <% } %>
+</div>
+
+<h2>Accounts</h2>
+<div class="card">
+  <% if (!users.length) { %><div class="empty-state"><p>No archived accounts.</p></div><% } else { %>
+    <div class="table-wrap"><table><thead><tr><th>Person</th><th>Role</th><th>Archived</th><th>Personal-data removal</th><th>Action</th></tr></thead><tbody>
+    <% users.forEach(item => { const expiresAt = new Date(new Date(item.archivedAt).getTime() + 7 * 86400000); %>
+      <tr><td><strong><%= item.name %></strong><div class="td-muted"><%= item.email %><% if (item.phone) { %> &middot; <%= item.phone %><% } %></div></td><td><span class="badge badge-grey"><%= item.role %></span></td><td><%= new Date(item.archivedAt).toLocaleString('en-IN') %></td><td><%= expiresAt.toLocaleString('en-IN') %></td><td><form method="POST" action="/admin/users/<%= item._id %>/restore"><button class="btn btn-success btn-sm" type="submit">Restore</button></form></td></tr>
+    <% }) %></tbody></table></div>
+  <% } %>
+</div>

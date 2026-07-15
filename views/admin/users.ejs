@@ -13,7 +13,7 @@
 %>
 
 <style>
-  .people-toolbar { display:grid; grid-template-columns:minmax(240px,1fr) minmax(190px,260px) auto auto; gap:.75rem; align-items:end; padding:1rem; }
+  .people-toolbar { display:grid; grid-template-columns:minmax(240px,1fr) minmax(190px,260px) auto auto auto; gap:.75rem; align-items:end; padding:1rem; }
   .people-toolbar .form-group { margin:0; }
   .people-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border:1px solid var(--border); border-radius:8px; margin-bottom:1rem; overflow:hidden; }
   .people-summary-item { padding:.8rem 1rem; background:var(--bg-card); }
@@ -63,6 +63,9 @@
   }
 </style>
 
+<% if (filter.error) { %><div class="alert alert-toast alert-error" role="alert"><span><%= filter.error %></span></div><% } %>
+<% if (filter.archived !== undefined) { %><div class="alert alert-toast alert-success" role="status"><span>Archived <b><%= filter.archived %></b> account(s).<% if (Number(filter.protected || 0)) { %> Protected <b><%= filter.protected %></b> admin account(s).<% } %></span></div><% } %>
+
 <section class="people-summary" aria-label="Directory summary">
   <div class="people-summary-item"><span class="people-summary-label">Showing</span><span class="people-summary-value"><%= users.length %></span></div>
   <div class="people-summary-item"><span class="people-summary-label">Active accounts</span><span class="people-summary-value" style="color:var(--green);"><%= activeCount %></span></div>
@@ -80,6 +83,7 @@
     <div class="form-group"><label for="attendanceTier">Attendance</label><select id="attendanceTier" name="attendance" class="form-control" onchange="this.form.submit()"><option value="">All attendance</option><option value="low" <%= filter.attendance === 'low' ? 'selected' : '' %>>Below 75%</option><option value="medium" <%= filter.attendance === 'medium' ? 'selected' : '' %>>75% to 85%</option><option value="high" <%= filter.attendance === 'high' ? 'selected' : '' %>>Above 85%</option><option value="not_marked_today" <%= filter.attendance === 'not_marked_today' ? 'selected' : '' %>>Unmarked today</option></select></div>
   <% } else { %><div></div><% } %>
   <a href="<%= directoryUrl %>" class="btn btn-ghost btn-sm">Clear</a>
+  <a href="/admin/users/bin" class="btn btn-ghost btn-sm">Recycle Bin</a>
   <a href="/admin/users/create<%= hasRole ? '?role=' + activeRole : '' %>" class="btn btn-primary btn-sm">Add <%= roleName %></a>
 </form>
 
@@ -87,6 +91,10 @@
   <% if (!users.length) { %>
     <div class="card empty-state"><p>No people match these filters.</p></div>
   <% } else { %>
+    <form id="bulkArchiveForm" action="/admin/users/bulk-archive" method="POST" data-native-submit="true" data-confirm="Archive the selected accounts? They will be unable to sign in, but their history will remain." data-confirm-title="Archive selected accounts" data-confirm-label="Archive accounts">
+      <input type="hidden" name="returnTo" value="<%= directoryUrl %>">
+    </form>
+    <div class="people-bulk-bar"><span class="people-bulk-copy">Archive accounts without deleting attendance, fees, schedules, or reports.</span><div class="d-flex gap-1"><button type="button" class="btn btn-ghost btn-sm" id="selectAllAccounts">Select all</button><button type="submit" form="bulkArchiveForm" class="btn btn-danger btn-sm" id="bulkArchiveButton" disabled>Archive selected</button></div></div>
     <% if (activeRole === 'student') { %>
       <form id="bulkKycForm" action="/admin/students/bulk-verify-id" method="POST"></form>
       <div class="people-bulk-bar"><span class="people-bulk-copy">Select students whose documents are ready, then verify them together.</span><div class="d-flex gap-1"><button type="button" class="btn btn-ghost btn-sm" onclick="toggleAllKycChecks(this)">Select ready KYC</button><button type="submit" form="bulkKycForm" class="btn btn-primary btn-sm">Verify selected</button></div></div>
@@ -118,7 +126,8 @@
             <% if (u.role === 'student') { %><span class="badge <%= pct < 75 ? 'badge-red' : pct >= 85 ? 'badge-green' : 'badge-gold' %>"><%= pct %>% attendance</span><span class="badge <%= u.idVerified ? 'badge-green' : hasKycDocs ? 'badge-gold' : 'badge-grey' %>"><%= u.idVerified ? 'KYC verified' : hasKycDocs ? 'KYC ready' : 'KYC pending' %></span><% } %>
           </div>
           <div class="person-actions">
-            <form action="/admin/users/<%= u._id %>/status" method="POST" class="person-status-form"><label class="sr-only" for="status-<%= u._id %>">Account status for <%= u.name %></label><select id="status-<%= u._id %>" name="status" class="person-status-select" onchange="this.form.submit()"><option value="active" <%= statusVal === 'active' ? 'selected' : '' %>>Active</option><option value="inactive" <%= statusVal === 'inactive' ? 'selected' : '' %>>Inactive</option><option value="drop" <%= statusVal === 'drop' ? 'selected' : '' %>>Dropped</option><option value="complete" <%= statusVal === 'complete' ? 'selected' : '' %>>Completed</option></select></form>
+            <% if (u.role !== 'admin') { %><input type="checkbox" class="people-select account-archive-check" name="userIds" value="<%= u._id %>" form="bulkArchiveForm" aria-label="Select <%= u.name %> for archiving"><% } %>
+            <form action="/admin/users/<%= u._id %>/status" method="POST" class="person-status-form" data-native-submit="true"><label class="sr-only" for="status-<%= u._id %>">Account status for <%= u.name %></label><select id="status-<%= u._id %>" name="status" class="person-status-select" onchange="this.form.submit()"><option value="active" <%= statusVal === 'active' ? 'selected' : '' %>>Active</option><option value="inactive" <%= statusVal === 'inactive' ? 'selected' : '' %>>Archived</option><option value="drop" <%= statusVal === 'drop' ? 'selected' : '' %>>Dropped</option><option value="complete" <%= statusVal === 'complete' ? 'selected' : '' %>>Completed</option></select></form>
             <a href="/admin/users/<%= u._id %>/edit" class="btn btn-ghost btn-xs">Edit</a>
             <button type="button" class="btn btn-ghost btn-xs reset-password-btn" data-user-id="<%= u._id %>" data-user-name="<%= u.name %>" data-user-phone="<%= u.phone || '' %>">Reset password</button>
           </div>
@@ -153,7 +162,26 @@
     checks.forEach(check => { check.checked = shouldCheck; });
     if (button) button.textContent = shouldCheck ? 'Clear selection' : 'Select ready KYC';
   }
+  function initBulkArchive() {
+    const toggle = document.getElementById('selectAllAccounts');
+    const submit = document.getElementById('bulkArchiveButton');
+    const checks = Array.from(document.querySelectorAll('.account-archive-check'));
+    if (!toggle || !submit || toggle.dataset.ready) return;
+    const refresh = () => {
+      const count = checks.filter(check => check.checked).length;
+      submit.disabled = count === 0;
+      submit.textContent = count ? `Archive selected (${count})` : 'Archive selected';
+      toggle.textContent = count === checks.length && count ? 'Clear selection' : 'Select all';
+    };
+    toggle.addEventListener('click', () => { const check = checks.some(item => !item.checked); checks.forEach(item => { item.checked = check; }); refresh(); });
+    checks.forEach(check => check.addEventListener('change', refresh));
+    toggle.dataset.ready = '1';
+    refresh();
+  }
   initAdminPersonRows();
+  initBulkArchive();
   document.addEventListener('resultsUpdated', initAdminPersonRows);
+  document.addEventListener('resultsUpdated', initBulkArchive);
   document.addEventListener('softnav:load', initAdminPersonRows);
+  document.addEventListener('softnav:load', initBulkArchive);
 </script>

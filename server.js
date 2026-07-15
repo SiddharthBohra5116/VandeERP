@@ -13,6 +13,12 @@ if (!process.env.JWT_SECRET) {
 // Connect to Database
 connectDB();
 
+const { purgeExpiredUsers, purgeExpiredLeads } = require('./utils/userRecycleBin');
+const cleanRecycleBin = () => Promise.all([purgeExpiredUsers(), purgeExpiredLeads()]);
+const recycleBinTimer = setInterval(() => cleanRecycleBin().catch(err => console.error('Recycle bin cleanup failed:', err.message)), 6 * 60 * 60 * 1000);
+recycleBinTimer.unref();
+cleanRecycleBin().catch(err => console.error('Recycle bin cleanup failed:', err.message));
+
 const fs = require('fs');
 const privateUploadsDir = path.join(__dirname, 'private-uploads');
 if (!fs.existsSync(privateUploadsDir)) {

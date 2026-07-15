@@ -6,6 +6,7 @@ const Course = require('../../models/Course');
 const Batch = require('../../models/Batch');
 const Fee = require('../../models/Fee');
 const Attendance = require('../../models/Attendance');
+const Lead = require('../../models/Lead');
 
 const { escapeRegex } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
@@ -50,7 +51,7 @@ exports.getUsers = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 10), 100);
     const skip = (page - 1) * limit;
 
-    const userFilter = {};
+    const userFilter = { archivedAt: null };
     if (role) {
       userFilter.role = role;
     }
@@ -625,6 +626,7 @@ exports.setUserStatus = async (req, res) => {
     }
 
     user.status = nextStatus;
+    user.archivedAt = nextStatus === 'inactive' ? (user.archivedAt || new Date()) : null;
     await user.save();
 
     logger.info('Admin updated user status', {
@@ -637,5 +639,67 @@ exports.setUserStatus = async (req, res) => {
   } catch (err) {
     logger.error('setUserStatus Error', { err: err.message, userId: req.params.id });
     return res.redirect('/admin/users?error=Unable%20to%20update%20status');
+  }
+};
+
+exports.bulkArchiveUsers = async (req, res) => {
+  try {
+    const submitted = Array.isArray(req.body.userIds) ? req.body.userIds : [req.body.userIds];
+    const userIds = [...new Set(submitted.filter(id => /^[0-9a-fA-F]{24}$/.test(String(id || ''))))].slice(0, 500);
+    const returnTo = ['/admin/students', '/admin/teachers', '/admin/counsellors', '/admin/users'].includes(req.body.returnTo)
+      ? req.body.returnTo
+      : '/admin/users';
+    if (!userIds.length) return res.redirect(`${returnTo}?error=Select+at+least+one+account+to+archive`);
+
+    const result = await User.updateMany(
+      { _id: { $in: userIds }, role: { $ne: 'admin' } },
+      { $set: { status: 'inactive', isActive: false, archivedAt: new Date(), tokenBlacklistedBefore: new Date() } }
+    );
+    return res.redirect(`${returnTo}?archived=${result.modifiedCount}&protected=${userIds.length - result.matchedCount}`);
+  } catch (err) {
+    logger.error('Bulk Archive Users Error', { err: err.message });
+    return res.redirect('/admin/users?error=Unable+to+archive+selected+accounts');
+  }
+};
+
+exports.getRecycleBin = async (req, res) => {
+  try {
+    const [users, leads] = await Promise.all([
+      User.find({ archivedAt: { $ne: null }, role: { $ne: 'admin' } }).sort({ archivedAt: -1 }),
+      Lead.find({ archivedAt: { $ne: null } }).sort({ archivedAt: -1 })
+    ]);
+    return res.render('admin/recycle-bin', { title: 'Recycle Bin', user: req.user, users, leads });
+  } catch (err) {
+    logger.error('Get Recycle Bin Error', { err: err.message });
+    return res.redirect('/admin/users?error=Unable+to+open+recycle+bin');
+  }
+};
+
+exports.restoreUser = async (req, res) => {
+  try {
+    const user = await User.findOne({ _id: req.params.id, archivedAt: { $ne: null }, role: { $ne: 'admin' } });
+    if (!user) return res.redirect('/admin/users/bin?error=Account+not+found+in+recycle+bin');
+    user.status = 'active';
+    user.isActive = true;
+    user.archivedAt = null;
+    user.tokenBlacklistedBefore = new Date();
+    await user.save();
+    return res.redirect('/admin/users/bin?restored=1');
+  } catch (err) {
+    logger.error('Restore User Error', { err: err.message });
+    return res.redirect('/admin/users/bin?error=Unable+to+restore+account');
+  }
+};
+
+exports.restoreLead = async (req, res) => {
+  try {
+    const lead = await Lead.findOne({ _id: req.params.id, archivedAt: { $ne: null } });
+    if (!lead) return res.redirect('/admin/users/bin?error=Lead+not+found+in+recycle+bin');
+    lead.archivedAt = null;
+    await lead.save();
+    return res.redirect('/admin/users/bin?restored=1');
+  } catch (err) {
+    logger.error('Restore Lead Error', { err: err.message });
+    return res.redirect('/admin/users/bin?error=Unable+to+restore+lead');
   }
 };

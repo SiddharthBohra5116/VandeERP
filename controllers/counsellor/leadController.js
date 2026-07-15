@@ -559,8 +559,13 @@ exports.postMarkReady = async (req, res) => {
 exports.deleteLead = async (req, res) => {
   logger.info('Delete lead request', { leadId: req.params.id });
   try {
-    const deleted = await Lead.findOneAndDelete({ _id: req.params.id, assignedTo: req.user.counsellorProfileId });
-    if (!deleted) return res.status(403).render('403', { title: 'Access Denied', user: req.user });
+    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId });
+    if (!lead) return res.status(403).render('403', { title: 'Access Denied', user: req.user });
+    if (lead.convertedStudent || lead.status === 'admission_completed') {
+      return res.redirect(`/counsellor/leads/${lead._id}?error=${encodeURIComponent('Admitted leads are retained as student history and cannot be deleted.')}`);
+    }
+    lead.archivedAt = new Date();
+    await lead.save();
     res.redirect('/counsellor/leads?deleted=1');
   } catch (err) {
     logger.error('Delete Lead Error', { err: err.message });

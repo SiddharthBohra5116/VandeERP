@@ -24,6 +24,9 @@ const {
 } = require('../../utils/leadStatusOptions');
 const logger = require('../../utils/logger');
 
+// ponytail: in-memory progress is enough for one app instance; use Redis if imports run across multiple instances.
+const importProgress = new Map();
+
 // Shared CSV header mappings constants
 const NAME_KEYS = ['name', 'full_name', 'lead', 'customer', 'student_name', 'candidate_name', 'client_name', 'prospect_name', 'prospect'];
 const PHONE_KEYS = ['phone', 'mobile', 'phone_number', 'contact_no', 'contact_number', 'mobile_number', 'phone_no', 'mobile_no', 'mob', 'contact', 'telephone'];
@@ -148,6 +151,50 @@ function parseImportDate(value) {
   return null;
 }
 
+function setImportProgress(jobId, patch) {
+  if (!jobId) return;
+  importProgress.set(jobId, {
+    percent: 0,
+    status: 'Starting import...',
+    detail: '',
+    done: false,
+    updatedAt: Date.now(),
+    ...importProgress.get(jobId),
+    ...patch
+  });
+}
+
+exports.getImportProgress = (req, res) => {
+  const jobId = String(req.params.jobId || '').trim();
+  if (!/^[\w-]{8,80}$/.test(jobId)) return res.sendStatus(400);
+
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive'
+  });
+  res.flushHeaders?.();
+
+  const send = () => {
+    const progress = importProgress.get(jobId) || {
+      percent: 0,
+      status: 'Waiting for upload...',
+      detail: 'Starting as soon as the file reaches the server.',
+      done: false
+    };
+    res.write(`data: ${JSON.stringify(progress)}\n\n`);
+    if (progress.done) {
+      clearInterval(timer);
+      setTimeout(() => importProgress.delete(jobId), 60000);
+      res.end();
+    }
+  };
+
+  const timer = setInterval(send, 400);
+  send();
+  req.on('close', () => clearInterval(timer));
+};
+
 exports.getLeads = async (req, res) => {
   try {
     const { status, course, source, search } = req.query;
@@ -234,30 +281,46 @@ exports.getLeads = async (req, res) => {
 
 exports.postImportLeads = async (req, res) => {
   const redirectBase = '/admin/leads';
+  const importJobId = String(req.body.importJobId || '').trim();
+  let defaultCourse = null;
+  const failImport = async (message) => {
+    setImportProgress(importJobId, {
+      percent: 100,
+      status: 'Import stopped',
+      detail: message,
+      done: true
+    });
+    if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+    return res.redirect(`${redirectBase}?error=${encodeURIComponent(message)}`);
+  };
 
   try {
+    defaultCourse = await resolveCourse(req.body.defaultCourse);
     if (!req.file) {
-      return res.redirect(`${redirectBase}?error=${encodeURIComponent('Please choose a CSV file to import.')}`);
+      return failImport('Please choose a CSV file to import.');
     }
 
     const allowedExtensions = ['.csv', '.tsv', '.txt'];
     const ext = path.extname(req.file.originalname || '').toLowerCase();
     if (!allowedExtensions.includes(ext)) {
-      if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
-      return res.redirect(`${redirectBase}?error=${encodeURIComponent('Import file must be a CSV, TSV, or TXT file.')}`);
+      return failImport('Import file must be a CSV, TSV, or TXT file.');
     }
+
+    setImportProgress(importJobId, {
+      percent: 1,
+      status: 'Reading file...',
+      detail: 'The file reached the server. Reading rows now.'
+    });
 
     const csvText = await fs.promises.readFile(req.file.path, 'utf8');
     if (!csvText.trim()) {
-      if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
-      return res.redirect(`${redirectBase}?error=${encodeURIComponent('Import file is empty.')}`);
+      return failImport('Import file is empty.');
     }
 
     const rows = parseCsv(csvText);
     
     if (!rows.length) {
-      if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
-      return res.redirect(`${redirectBase}?error=${encodeURIComponent('CSV file has no data rows.')}`);
+      return failImport('CSV file has no data rows.');
     }
 
     const counsellorProfiles = await Counsellor.find().populate('user', 'name email phone status');
@@ -274,6 +337,20 @@ exports.postImportLeads = async (req, res) => {
     };
 
     const shouldSkipRow = (r) => isRowBlank(r) || isRepeatedImportHeaderRow(r) || isSerialOnlyRow(r);
+    const importRows = rows.filter(row => !shouldSkipRow(row));
+    const totalWork = Math.max(importRows.length * 2, 1);
+    let progressWork = 0;
+    const reportProgress = (status, detail, counts = {}) => {
+      setImportProgress(importJobId, {
+        percent: Math.min(99, Math.round((progressWork / totalWork) * 100)),
+        status,
+        detail,
+        done: false,
+        ...counts
+      });
+    };
+
+    reportProgress('Checking file...', `${importRows.length} importable rows found.`);
 
     const isPlaceholderPhone = (val) => {
       const clean = String(val || '').trim().toLowerCase();
@@ -361,16 +438,14 @@ exports.postImportLeads = async (req, res) => {
 
       // 1. Ensure at least one contact channel exists
       if (isPlaceholderPhone(normalizedPhone) && !normalizedEmail) {
-        if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
-        return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Contact details are missing. Every lead must have a phone number or an email address.`)}`);
+        return failImport(`Row ${rowIndex}: Contact details are missing. Every lead must have a phone number or an email address.`);
       }
 
       // 2. Email format validation (if provided)
       if (normalizedEmail) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(normalizedEmail)) {
-          if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
-          return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Invalid email address format "${email}". Please correct it.`)}`);
+          return failImport(`Row ${rowIndex}: Invalid email address format "${email}". Please correct it.`);
         }
       }
 
@@ -401,15 +476,18 @@ exports.postImportLeads = async (req, res) => {
         }
       }
 
-      if (duplicateRowIndexes.has(i)) continue;
+      if (duplicateRowIndexes.has(i)) {
+        progressWork += 1;
+        reportProgress('Validating rows...', `Checked ${progressWork} of ${totalWork} import steps.`);
+        continue;
+      }
 
       // 4. Validate Course exists (if specified)
       const courseValue = firstValue(row, COURSE_KEYS);
       if (courseValue) {
         const course = await resolveCourse(courseValue);
         if (!course) {
-          if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
-          return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Course "${courseValue}" was not found in the system. Check spelling or create it first.`)}`);
+          return failImport(`Row ${rowIndex}: Course "${courseValue}" was not found in the system. Check spelling or create it first.`);
         }
       }
 
@@ -426,10 +504,11 @@ exports.postImportLeads = async (req, res) => {
           }
         }
         if (!matchedCounsellor) {
-          if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
-          return res.redirect(`${redirectBase}?error=${encodeURIComponent(`Row ${rowIndex}: Counsellor assignment "${counsellorLookup}" does not match any registered counsellor.`)}`);
+          return failImport(`Row ${rowIndex}: Counsellor assignment "${counsellorLookup}" does not match any registered counsellor.`);
         }
       }
+      progressWork += 1;
+      reportProgress('Validating rows...', `Checked ${progressWork} of ${totalWork} import steps.`);
     }
 
     // ==========================================
@@ -445,6 +524,8 @@ exports.postImportLeads = async (req, res) => {
 
       if (duplicateRowIndexes.has(i)) {
         skipped += 1;
+        progressWork += 1;
+        reportProgress('Importing leads...', `Processed ${progressWork} of ${totalWork} import steps.`, { created, skipped, failed });
         continue;
       }
 
@@ -488,6 +569,8 @@ exports.postImportLeads = async (req, res) => {
 
         if (isDuplicate) {
           skipped += 1;
+          progressWork += 1;
+          reportProgress('Importing leads...', `Processed ${progressWork} of ${totalWork} import steps.`, { created, skipped, failed });
           continue;
         }
 
@@ -497,7 +580,7 @@ exports.postImportLeads = async (req, res) => {
         const followUpValue = firstValue(row, FOLLOWUP_KEYS);
         const counsellorLookup = String(firstValue(row, COUNSELLOR_KEYS) || '').toLowerCase().trim();
 
-        const course = await resolveCourse(courseValue);
+        const course = await resolveCourse(courseValue, defaultCourse?._id);
         const statusDoc = await findOrCreateLeadStatus(statusValue || 'new');
 
         let assignedCounsellor = null;
@@ -572,14 +655,24 @@ exports.postImportLeads = async (req, res) => {
         failed += 1;
         logger.warn('Lead CSV row import failed', { err: rowErr.message, row });
       }
+      progressWork += 1;
+      reportProgress('Importing leads...', `Processed ${progressWork} of ${totalWork} import steps.`, { created, skipped, failed });
     }
 
     if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+    setImportProgress(importJobId, {
+      percent: 100,
+      status: 'Import complete',
+      detail: `Imported ${created}, skipped ${skipped}, failed ${failed}. Opening summary.`,
+      created,
+      skipped,
+      failed,
+      done: true
+    });
     res.redirect(`${redirectBase}?imported=${created}&skipped=${skipped}&failed=${failed}`);
   } catch (err) {
     logger.error('Lead CSV Import Error', { err: err.message, stack: err.stack });
-    if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
-    res.redirect(`${redirectBase}?error=${encodeURIComponent(err.message)}`);
+    return failImport(err.message);
   }
 };
 
@@ -620,6 +713,29 @@ exports.postDeleteStatus = async (req, res) => {
   } catch (err) {
     logger.error('Delete Lead Status Error', { err: err.message });
     res.redirect(`/admin/leads?error=${encodeURIComponent(err.message)}`);
+  }
+};
+
+exports.postDeleteLeads = async (req, res) => {
+  try {
+    const submitted = Array.isArray(req.body.leadIds) ? req.body.leadIds : [req.body.leadIds];
+    const leadIds = [...new Set(submitted.filter(id => /^[0-9a-fA-F]{24}$/.test(String(id || ''))))].slice(0, 500);
+    if (!leadIds.length) return res.redirect('/admin/leads?error=Select+at+least+one+lead+to+delete');
+
+    const deletable = await Lead.find({
+      _id: { $in: leadIds },
+      status: { $ne: 'admission_completed' },
+      $or: [{ convertedStudent: null }, { convertedStudent: { $exists: false } }]
+    }).select('_id');
+    const deletableIds = deletable.map(lead => lead._id);
+
+    if (deletableIds.length) await Lead.updateMany({ _id: { $in: deletableIds } }, { $set: { archivedAt: new Date() } });
+
+    const protectedCount = leadIds.length - deletableIds.length;
+    return res.redirect(`/admin/leads?deleted=${deletableIds.length}&protected=${protectedCount}`);
+  } catch (err) {
+    logger.error('Delete Leads Error', { err: err.message });
+    return res.redirect(`/admin/leads?error=${encodeURIComponent('Unable to delete selected leads.')}`);
   }
 };
 

@@ -112,6 +112,9 @@ const userSchema = new mongoose.Schema({
   // Security: timestamp of last password change for token freshness checks
   passwordChangedAt: { type: Date, default: null },
 
+  archivedAt: { type: Date, default: null },
+  anonymizedAt: { type: Date, default: null },
+
 }, { timestamps: true });
 
 // HASH PASSWORD

@@ -67,6 +67,7 @@ router.get(
 // ===================================
 
 router.get('/users', ...guard, userDirectoryCtrl.getUsers);
+router.get('/users/bin', ...guard, userDirectoryCtrl.getRecycleBin);
 
 router.get('/students', ...guard, studentCtrl.getStudents);
 router.get('/teachers', ...guard, teacherCtrl.getTeachers);
@@ -126,6 +127,20 @@ router.post(
   ...guard,
   userDirectoryCtrl.setUserStatus
 );
+
+router.post(
+  '/users/bulk-archive',
+  ...guard,
+  userDirectoryCtrl.bulkArchiveUsers
+);
+
+router.post(
+  '/users/:id/restore',
+  ...guard,
+  userDirectoryCtrl.restoreUser
+);
+
+router.post('/leads/:id/restore', ...guard, userDirectoryCtrl.restoreLead);
 
 
 // ===================================
@@ -317,6 +332,7 @@ router.post(
 // ===================================
 
 router.get('/leads', ...guard, leadCtrl.getLeads);
+router.get('/leads/import/progress/:jobId', ...guard, leadCtrl.getImportProgress);
 
 router.post(
   '/leads/import',
@@ -347,6 +363,12 @@ router.post(
   '/leads/statuses/:id/delete',
   ...guard,
   leadCtrl.postDeleteStatus
+);
+
+router.post(
+  '/leads/delete',
+  ...guard,
+  leadCtrl.postDeleteLeads
 );
 
 router.get(

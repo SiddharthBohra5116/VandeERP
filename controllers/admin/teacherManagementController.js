@@ -15,7 +15,8 @@ exports.getTeachers = async (req, res) => {
     const { search } = req.query;
 
     const userFilter = {
-      role: 'teacher'
+      role: 'teacher',
+      archivedAt: null
     };
 
     if (search) {
