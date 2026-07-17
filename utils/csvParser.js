@@ -18,6 +18,27 @@ function normalizeHeader(header) {
     .replace(/^_+|_+$/g, '');
 }
 
+function cleanImportedPhone(phone) {
+  return String(phone || '').replace(/^\s*p\s*:\s*/i, '').trim();
+}
+
+function courseFromFileName(fileName) {
+  return String(fileName || '')
+    .replace(/\.(?:csv|tsv|txt)$/i, '')
+    .replace(/^academy\s+leads?\s*[-–—]+\s*/i, '')
+    .replace(/(?:\s*\(\d+\))+\s*$/g, '')
+    .trim();
+}
+
+function normalizeCourseName(value) {
+  return String(value || '').trim().toLowerCase().replace(/\s+course\s*$/, '').trim();
+}
+
+function importedCourseCode(name) {
+  const words = String(name || '').toUpperCase().match(/[A-Z0-9]+/g) || [];
+  return (words.length > 1 ? words.map(word => word[0]).join('') : words[0] || 'COURSE').slice(0, 10);
+}
+
 function parseCsv(text) {
   const delimiter = detectDelimiter(text);
   const rows = [];
@@ -60,6 +81,10 @@ function parseCsv(text) {
 }
 
 module.exports = {
+  cleanImportedPhone,
+  courseFromFileName,
+  importedCourseCode,
+  normalizeCourseName,
   normalizeHeader,
   parseCsv
 };

@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const { LEAD_SOURCES } = require('../../config/constants');
 const { escapeRegex } = require('../../utils/sanitize');
-const { normalizeHeader, parseCsv } = require('../../utils/csvParser');
+const { cleanImportedPhone, courseFromFileName, importedCourseCode, normalizeCourseName, normalizeHeader, parseCsv } = require('../../utils/csvParser');
 const { computeSourceStats } = require('../../utils/leadAnalytics');
 const {
   ALLOWED_BADGE_CLASSES,
@@ -295,10 +295,11 @@ exports.postImportLeads = async (req, res) => {
   };
 
   try {
-    defaultCourse = await resolveCourse(req.body.defaultCourse);
     if (!req.file) {
       return failImport('Please choose a CSV file to import.');
     }
+
+    defaultCourse = await resolveCourse(req.body.defaultCourse);
 
     const allowedExtensions = ['.csv', '.tsv', '.txt'];
     const ext = path.extname(req.file.originalname || '').toLowerCase();
@@ -321,6 +322,40 @@ exports.postImportLeads = async (req, res) => {
     
     if (!rows.length) {
       return failImport('CSV file has no data rows.');
+    }
+
+    const courses = await Course.find().select('name code');
+    const coursesByValue = new Map();
+    courses.forEach(course => {
+      coursesByValue.set(String(course._id), course);
+      coursesByValue.set(normalizeCourseName(course.name), course);
+      coursesByValue.set(String(course.code || '').trim().toLowerCase(), course);
+    });
+    const usedCourseCodes = new Set(courses.map(course => String(course.code || '').toUpperCase()));
+    const resolveImportedCourse = async value => {
+      const name = String(value || '').trim();
+      if (!name) return defaultCourse;
+
+      const existing = coursesByValue.get(normalizeCourseName(name));
+      if (existing) return existing;
+
+      const baseCode = importedCourseCode(name);
+      let code = baseCode;
+      let suffix = 2;
+      while (usedCourseCodes.has(code)) code = `${baseCode.slice(0, 8)}${suffix++}`;
+
+      const course = await Course.create({ name, code });
+      usedCourseCodes.add(code);
+      coursesByValue.set(normalizeCourseName(name), course);
+      coursesByValue.set(code.toLowerCase(), course);
+      return course;
+    };
+
+    if (!defaultCourse) {
+      const inferredCourse = courseFromFileName(req.file.originalname);
+      if (normalizeCourseName(inferredCourse) !== 'academy leads') {
+        defaultCourse = await resolveImportedCourse(inferredCourse);
+      }
     }
 
     const counsellorProfiles = await Counsellor.find().populate('user', 'name email phone status');
@@ -482,16 +517,7 @@ exports.postImportLeads = async (req, res) => {
         continue;
       }
 
-      // 4. Validate Course exists (if specified)
-      const courseValue = firstValue(row, COURSE_KEYS);
-      if (courseValue) {
-        const course = await resolveCourse(courseValue);
-        if (!course) {
-          return failImport(`Row ${rowIndex}: Course "${courseValue}" was not found in the system. Check spelling or create it first.`);
-        }
-      }
-
-      // 5. Validate Counsellor spelling/existence (if specified)
+      // 4. Validate Counsellor spelling/existence (if specified)
       const counsellorLookup = String(firstValue(row, COUNSELLOR_KEYS) || '').toLowerCase().trim();
       if (counsellorLookup) {
         let matchedCounsellor = counsellorsByEmail.get(counsellorLookup) || counsellorsByName.get(counsellorLookup);
@@ -534,7 +560,7 @@ exports.postImportLeads = async (req, res) => {
         const phone = firstValue(row, PHONE_KEYS);
 
         let normalizedName = String(name || '').trim();
-        let normalizedPhone = String(phone || '').trim();
+        let normalizedPhone = cleanImportedPhone(phone);
 
         if (isPlaceholderPhone(normalizedPhone)) {
           const emailVal = String(firstValue(row, EMAIL_KEYS) || '').trim();
@@ -580,7 +606,7 @@ exports.postImportLeads = async (req, res) => {
         const followUpValue = firstValue(row, FOLLOWUP_KEYS);
         const counsellorLookup = String(firstValue(row, COUNSELLOR_KEYS) || '').toLowerCase().trim();
 
-        const course = await resolveCourse(courseValue, defaultCourse?._id);
+        const course = await resolveImportedCourse(courseValue);
         const statusDoc = await findOrCreateLeadStatus(statusValue || 'new');
 
         let assignedCounsellor = null;
@@ -718,9 +744,11 @@ exports.postDeleteStatus = async (req, res) => {
 
 exports.postDeleteLeads = async (req, res) => {
   try {
+    const returnTo = /^\/admin\/leads(?:\?|$)/.test(String(req.body.returnTo || '')) ? req.body.returnTo : '/admin/leads';
+    const withResult = params => `${returnTo}${returnTo.includes('?') ? '&' : '?'}${params}`;
     const submitted = Array.isArray(req.body.leadIds) ? req.body.leadIds : [req.body.leadIds];
     const leadIds = [...new Set(submitted.filter(id => /^[0-9a-fA-F]{24}$/.test(String(id || ''))))].slice(0, 500);
-    if (!leadIds.length) return res.redirect('/admin/leads?error=Select+at+least+one+lead+to+delete');
+    if (!leadIds.length) return res.redirect(withResult('error=Select+at+least+one+lead+to+delete'));
 
     const deletable = await Lead.find({
       _id: { $in: leadIds },
@@ -732,7 +760,7 @@ exports.postDeleteLeads = async (req, res) => {
     if (deletableIds.length) await Lead.updateMany({ _id: { $in: deletableIds } }, { $set: { archivedAt: new Date() } });
 
     const protectedCount = leadIds.length - deletableIds.length;
-    return res.redirect(`/admin/leads?deleted=${deletableIds.length}&protected=${protectedCount}`);
+    return res.redirect(withResult(`deleted=${deletableIds.length}&protected=${protectedCount}`));
   } catch (err) {
     logger.error('Delete Leads Error', { err: err.message });
     return res.redirect(`/admin/leads?error=${encodeURIComponent('Unable to delete selected leads.')}`);
