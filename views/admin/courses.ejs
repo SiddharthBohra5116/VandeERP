@@ -1,0 +1,44 @@
+<%
+  layout = 'main';
+  title = 'Course Management';
+  subtitle = 'Review and maintain courses created by lead imports';
+  page = 'courses';
+%>
+
+<% if (filter.error) { %><div class="alert alert-error"><%= filter.error %></div><% } %>
+<% if (filter.created || filter.updated) { %><div class="alert alert-success">Course saved successfully.</div><% } %>
+
+<div class="card" style="padding:1rem 1.25rem; margin-bottom:1.25rem;">
+  <form method="POST" action="/admin/courses" class="filter-bar" style="margin:0; gap:.75rem;">
+    <input name="name" class="form-control" placeholder="Course name" required>
+    <input name="code" class="form-control" placeholder="Code (automatic if blank)" style="max-width:220px;">
+    <button class="btn btn-primary btn-sm" type="submit">+ Add Course</button>
+  </form>
+</div>
+
+<div class="card">
+  <% if (!courses.length) { %>
+    <div class="empty-state"><p>No courses yet. Imports will create them automatically.</p></div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Course</th><th>Code</th><th>Imported Leads</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          <% courses.forEach(course => { %>
+            <tr>
+              <td><input form="course-<%= course._id %>" name="name" class="form-control" value="<%= course.name %>" required></td>
+              <td><input form="course-<%= course._id %>" name="code" class="form-control mono" value="<%= course.code %>" required style="max-width:150px;"></td>
+              <td><strong><%= course.leadCount %></strong></td>
+              <td><span class="badge <%= course.isActive ? 'badge-green' : 'badge-grey' %>"><%= course.isActive ? 'Active' : 'Inactive' %></span></td>
+              <td style="display:flex; gap:.5rem;">
+                <form id="course-<%= course._id %>" method="POST" action="/admin/courses/<%= course._id %>"><button class="btn btn-primary btn-xs" type="submit">Save</button></form>
+                <form method="POST" action="/admin/courses/<%= course._id %>/toggle"><button class="btn btn-ghost btn-xs" type="submit"><%= course.isActive ? 'Deactivate' : 'Activate' %></button></form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:1rem 1.25rem; color:var(--text-muted); font-size:.8rem;">Courses are deactivated instead of deleted so existing lead and student history remains safe.</div>
+  <% } %>
+</div>

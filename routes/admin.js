@@ -31,6 +31,7 @@ const reportCtrl = require('../controllers/admin/reportController');
 const attendanceCtrl = require('../controllers/admin/attendanceController');
 const holidayCtrl = require('../controllers/admin/holidayController');
 const batchCtrl = require('../controllers/admin/batchController');
+const courseCtrl = require('../controllers/admin/courseController');
 const announcementCtrl = require('../controllers/admin/announcementController');
 
 // Validators
@@ -163,6 +164,11 @@ router.post(
 // ===================================
 // BATCH MANAGEMENT
 // ===================================
+
+router.get('/courses', ...guard, courseCtrl.getCourses);
+router.post('/courses', ...guard, courseCtrl.postCreateCourse);
+router.post('/courses/:id', ...guard, courseCtrl.postUpdateCourse);
+router.post('/courses/:id/toggle', ...guard, courseCtrl.postToggleCourse);
 
 router.get('/batches', ...guard, batchCtrl.getBatches);
 
