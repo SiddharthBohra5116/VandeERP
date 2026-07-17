@@ -188,6 +188,21 @@ async function createStudentFromImportedLead(lead, course, adminId) {
   }
 }
 
+async function enrollExistingImportedStudents(adminId) {
+  const leads = await Lead.find({
+    status: { $in: ['paid', 'student', 'enrolled', 'admitted'] },
+    $or: [{ convertedStudent: null }, { convertedStudent: { $exists: false } }]
+  }).populate('interestedCourse', 'name');
+
+  for (const lead of leads) {
+    try {
+      await createStudentFromImportedLead(lead, lead.interestedCourse, adminId);
+    } catch (err) {
+      logger.warn('Unable to auto-enroll imported student lead', { leadId: lead._id, err: err.message });
+    }
+  }
+}
+
 function setImportProgress(jobId, patch) {
   if (!jobId) return;
   importProgress.set(jobId, {
@@ -234,6 +249,7 @@ exports.getImportProgress = (req, res) => {
 
 exports.getLeads = async (req, res) => {
   try {
+    await enrollExistingImportedStudents(req.user._id);
     const { status, course, source, search } = req.query;
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 10), 100);
