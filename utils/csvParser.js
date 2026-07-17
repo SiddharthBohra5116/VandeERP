@@ -39,6 +39,10 @@ function importedCourseCode(name) {
   return (words.length > 1 ? words.map(word => word[0]).join('') : words[0] || 'COURSE').slice(0, 10);
 }
 
+function isImportedStudentStatus(status) {
+  return ['paid', 'student', 'enrolled', 'admitted', 'admission_completed'].includes(String(status || '').trim().toLowerCase());
+}
+
 function parseCsv(text) {
   const delimiter = detectDelimiter(text);
   const rows = [];
@@ -84,6 +88,7 @@ module.exports = {
   cleanImportedPhone,
   courseFromFileName,
   importedCourseCode,
+  isImportedStudentStatus,
   normalizeCourseName,
   normalizeHeader,
   parseCsv

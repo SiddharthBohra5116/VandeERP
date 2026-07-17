@@ -11,9 +11,10 @@ const Counsellor = require('../../models/Counsellor');
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { LEAD_SOURCES } = require('../../config/constants');
 const { escapeRegex } = require('../../utils/sanitize');
-const { cleanImportedPhone, courseFromFileName, importedCourseCode, normalizeCourseName, normalizeHeader, parseCsv } = require('../../utils/csvParser');
+const { cleanImportedPhone, courseFromFileName, importedCourseCode, isImportedStudentStatus, normalizeCourseName, normalizeHeader, parseCsv } = require('../../utils/csvParser');
 const { computeSourceStats } = require('../../utils/leadAnalytics');
 const {
   ALLOWED_BADGE_CLASSES,
@@ -149,6 +150,42 @@ function parseImportDate(value) {
   }
 
   return null;
+}
+
+async function createStudentFromImportedLead(lead, course, adminId) {
+  if (!course || !isImportedStudentStatus(lead.status)) return;
+
+  let studentUser;
+  let studentProfile;
+  try {
+    studentUser = await User.create({
+      name: lead.name,
+      email: lead.email || `lead-${lead._id}@pending.local`,
+      phone: lead.phone,
+      password: crypto.randomBytes(16).toString('hex'),
+      role: 'student',
+      status: 'active',
+      mustChangePassword: true,
+      passwordSetByAdmin: true,
+      firstLoginCompleted: false
+    });
+    studentProfile = await Student.create({
+      user: studentUser._id,
+      course: course._id,
+      counsellor: lead.assignedTo || null,
+      fees_total: 0,
+      fees_paid: 0,
+      statusHistory: [{ status: 'active', changedBy: adminId, reason: `Imported as student from lead status: ${lead.status}` }]
+    });
+    lead.status = 'admission_completed';
+    lead.convertedStudent = studentProfile._id;
+    lead.convertedAt = new Date();
+    await lead.save();
+  } catch (err) {
+    if (studentProfile) await Student.findByIdAndDelete(studentProfile._id).catch(() => {});
+    if (studentUser) await User.findByIdAndDelete(studentUser._id).catch(() => {});
+    throw err;
+  }
 }
 
 function setImportProgress(jobId, patch) {
@@ -650,6 +687,8 @@ exports.postImportLeads = async (req, res) => {
             note: 'Lead assigned during CSV import.'
           }] : []
         });
+
+        await createStudentFromImportedLead(lead, course, req.user._id);
 
         // Add newly created lead data to in-memory sets to catch dynamic same-batch duplicates
         if (lead.phone) {
