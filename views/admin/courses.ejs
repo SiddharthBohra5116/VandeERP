@@ -12,6 +12,7 @@
   <form method="POST" action="/admin/courses" class="filter-bar" style="margin:0; gap:.75rem;">
     <input name="name" class="form-control" placeholder="Course name" required>
     <input name="code" class="form-control" placeholder="Code (automatic if blank)" style="max-width:220px;">
+    <input name="requiredClasses" class="form-control" type="number" min="0" placeholder="Required classes" style="max-width:190px;">
     <button class="btn btn-primary btn-sm" type="submit">+ Add Course</button>
   </form>
 </div>
@@ -22,12 +23,13 @@
   <% } else { %>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Course</th><th>Code</th><th>Imported Leads</th><th>Status</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Course</th><th>Code</th><th>Required Classes</th><th>Imported Leads</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody>
           <% courses.forEach(course => { %>
             <tr>
               <td><input form="course-<%= course._id %>" name="name" class="form-control" value="<%= course.name %>" required></td>
               <td><input form="course-<%= course._id %>" name="code" class="form-control mono" value="<%= course.code %>" required style="max-width:150px;"></td>
+              <td><input form="course-<%= course._id %>" name="requiredClasses" class="form-control" type="number" min="0" value="<%= course.requiredClasses || 0 %>" style="max-width:130px;"></td>
               <td><strong><%= course.leadCount %></strong></td>
               <td><span class="badge <%= course.isActive ? 'badge-green' : 'badge-grey' %>"><%= course.isActive ? 'Active' : 'Inactive' %></span></td>
               <td style="display:flex; gap:.5rem;">

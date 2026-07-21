@@ -8,6 +8,7 @@
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
   <a href="/admin/counsellors" class="btn btn-ghost btn-sm">&larr; Back to Counsellors</a>
   <div style="display:flex; gap:0.5rem;">
+    <form action="/portal-view/<%= counsellor._id %>" method="POST" data-no-soft-nav="true"><button class="btn btn-ghost btn-sm" type="submit">Open Counsellor Portal</button></form>
     <a href="/admin/users/<%= counsellor._id %>/edit" class="btn btn-primary btn-sm">Edit Profile</a>
   </div>
 </div>

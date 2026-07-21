@@ -6,6 +6,7 @@ const { todayIST } = require('../../utils/dateHelper');
 const Course = require('../../models/Course');
 const Batch = require('../../models/Batch');
 const Student = require('../../models/Student');
+const syncCourseCompletion = require('../../utils/syncCourseCompletion');
 
 /**
  * GET /teacher/attendance
@@ -227,6 +228,7 @@ exports.postMarkAttendance = async (req, res) => {
     }));
 
     const result = await Attendance.bulkWrite(ops);
+    await syncCourseCompletion(Object.keys(statuses), req.user._id);
     console.log('✅ Attendance marked successfully:', {
       batch, course, date: today, upserted: result.upsertedCount, modified: result.modifiedCount,
     });

@@ -106,6 +106,11 @@ const userSchema = new mongoose.Schema({
     default: true
   },
 
+  profileIncomplete: {
+    type: Boolean,
+    default: false
+  },
+
   // Security: timestamp before which ALL tokens for this user are invalid.
   // Set by admin blacklist action. Any JWT with iat < this value is rejected.
   tokenBlacklistedBefore: { type: Date, default: null },

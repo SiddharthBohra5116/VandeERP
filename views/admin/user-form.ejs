@@ -31,6 +31,12 @@
         <label class="form-label" for="password">Password</label>
         <input type="password" id="password" name="password" class="form-control" placeholder="Minimum 8 characters" minlength="8" required>
       </div>
+    <% } else if (target.profileIncomplete) { %>
+      <div class="alert alert-warning" role="alert">Temporary <%= target.role %> profile. Add the real contact details and password to activate it.</div>
+      <div class="form-group">
+        <label class="form-label" for="password">Temporary Password</label>
+        <input type="password" id="password" name="password" class="form-control" minlength="8" required>
+      </div>
     <% } %>
 
     <div class="form-row">
@@ -110,18 +116,20 @@
           <select id="teacher" name="teacher" class="form-control">
             <option value="">Not assigned</option>
             <% (typeof teachers !== 'undefined' ? teachers : []).forEach(profile => { %>
-              <option value="<%= profile._id %>" <%= String(studentData?.teacher || '') === String(profile._id) ? 'selected' : '' %>><%= profile.user?.name || profile.rollNumber %></option>
+              <option value="<%= profile._id %>" <%= String(studentData?.teacher || '') === String(profile._id) ? 'selected' : '' %>><%= profile.user?.name || profile.rollNumber %><%= profile.user?.profileIncomplete ? ' (temporary)' : '' %></option>
             <% }) %>
           </select>
+          <div class="d-flex gap-1" style="margin-top:0.5rem;"><input id="newTeacherName" class="form-control" placeholder="Type future teacher name"><button type="button" class="btn btn-ghost btn-sm" onclick="createTemporaryStaff('teacher')">Add temporary</button></div>
         </div>
         <div class="form-group">
           <label class="form-label" for="counsellor">Assigned Counsellor</label>
           <select id="counsellor" name="counsellor" class="form-control">
             <option value="">Not assigned</option>
             <% (typeof counsellors !== 'undefined' ? counsellors : []).forEach(profile => { %>
-              <option value="<%= profile._id %>" <%= String(studentData?.counsellor || '') === String(profile._id) ? 'selected' : '' %>><%= profile.user?.name || profile.rollNumber %></option>
+              <option value="<%= profile._id %>" <%= String(studentData?.counsellor || '') === String(profile._id) ? 'selected' : '' %>><%= profile.user?.name || profile.rollNumber %><%= profile.user?.profileIncomplete ? ' (temporary)' : '' %></option>
             <% }) %>
           </select>
+          <div class="d-flex gap-1" style="margin-top:0.5rem;"><input id="newCounsellorName" class="form-control" placeholder="Type future counsellor name"><button type="button" class="btn btn-ghost btn-sm" onclick="createTemporaryStaff('counsellor')">Add temporary</button></div>
         </div>
       </div>
       
@@ -290,6 +298,37 @@
   }
 
   roleSelect.addEventListener('change', toggleRoleFields);
+
+  async function createTemporaryStaff(role) {
+    const input = document.getElementById(role === 'teacher' ? 'newTeacherName' : 'newCounsellorName');
+    const name = input.value.trim();
+    if (!name) return window.showToast?.('Type the staff name first.', 'warning');
+
+    try {
+      const response = await fetch('/admin/users/temporary-staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, role })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not create temporary staff.');
+
+      const select = document.getElementById(role);
+      const option = new Option(`${result.name} (temporary)`, result.profileId, true, true);
+      select.add(option);
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      input.value = '';
+
+      const completeNow = await window.AppFeedback.confirm({
+        title: 'Temporary profile saved',
+        message: `${result.name} is assigned but cannot log in until the full ${role} account is completed.`,
+        confirmLabel: 'Complete now'
+      });
+      if (completeNow) window.open(result.editUrl, '_blank', 'noopener');
+    } catch (err) {
+      window.showToast?.(err.message, 'error');
+    }
+  }
   
   // Call once on page load to initialize
   toggleRoleFields();

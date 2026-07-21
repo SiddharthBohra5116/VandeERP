@@ -122,6 +122,16 @@ async function calculateNotifications(user) {
 
     // 2. Role-specific alerts
     if (user.role === 'admin') {
+      const incompleteStaff = await User.find({ profileIncomplete: true }).select('name role updatedAt').limit(10);
+      incompleteStaff.forEach(staff => alerts.push({
+        id: `incomplete-staff-${staff._id}`,
+        type: 'profile_request',
+        title: 'Temporary Staff Profile',
+        message: `Complete ${staff.name}'s ${staff.role} account before they start work.`,
+        link: `/admin/users/${staff._id}/edit`,
+        date: staff.updatedAt
+      }));
+
       // Ready to convert leads alert
       const readyLeads = await Lead.find({ status: 'joining_interested' }).limit(5);
       readyLeads.forEach(l => {

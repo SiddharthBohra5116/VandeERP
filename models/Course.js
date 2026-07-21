@@ -71,6 +71,12 @@ const courseSchema = new mongoose.Schema({
     default: 3
   },
 
+  requiredClasses: {
+    type: Number,
+    min: 0,
+    default: 0
+  },
+
   fees: {
     type: Number,
     default: 0

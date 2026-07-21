@@ -193,7 +193,13 @@ app.use((req, res, next) => {
     error: 'An error occurred. Please try again.',
     exists: 'Record already exists.',
     already: 'You have already submitted this assignment.',
-    invalid_dates: 'Invalid dates selected. Start date cannot be in the past, and end date cannot be earlier than start date.'
+    invalid_dates: 'Invalid dates selected. Start date cannot be in the past, and end date cannot be earlier than start date.',
+    invalid_fee_plan: 'Fee and EMI values are invalid. EMI amounts must equal the net fee and dates must be chronological.',
+    fee_below_paid: 'Net fee cannot be lower than the amount already collected.',
+    invalid_attendance: 'Choose a valid batch date that is not in the future, outside the batch period, or a holiday.',
+    attendance_reason: 'Enter a reason for the admin attendance update.',
+    attendance_empty: 'Mark at least one student before saving attendance.',
+    incomplete_staff: 'Complete the real email, 10-digit phone number, and temporary password before activating this staff account.'
   };
 
   for (const [key, val] of Object.entries(req.query)) {
@@ -244,6 +250,46 @@ app.use('/teacher', require('./routes/teacher'));
 app.use('/student', require('./routes/student'));
 app.use('/counsellor', require('./routes/counsellor'));
 
+app.post('/portal-view/stop', protect, (req, res) => {
+  if (!req.adminUser && req.user.role !== 'admin') return res.status(403).render('403', { title: 'Access Denied', user: req.user, layout: 'main' });
+  res.clearCookie('portalViewUser');
+  res.redirect('/admin/dashboard');
+});
+
+app.get('/portal-view/users', protect, async (req, res, next) => {
+  if (!req.adminUser && req.user.role !== 'admin') return res.status(403).json({ message: 'Access denied' });
+  try {
+    const User = require('./models/User');
+    const users = await User.find({ role: { $in: ['teacher', 'counsellor'] }, isActive: true })
+      .select('name role')
+      .sort({ role: 1, name: 1 });
+    res.json(users);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/portal-view/:userId', protect, async (req, res, next) => {
+  if (!req.adminUser && req.user.role !== 'admin') return res.status(403).render('403', { title: 'Access Denied', user: req.user, layout: 'main' });
+  if (!/^[a-f\d]{24}$/i.test(req.params.userId)) return res.status(404).render('404', { title: 'Staff portal not found', user: req.user, layout: 'main' });
+
+  try {
+    const User = require('./models/User');
+    const portalUser = await User.findOne({ _id: req.params.userId, role: { $in: ['teacher', 'counsellor'] }, isActive: true }).select('role');
+    if (!portalUser) return res.status(404).render('404', { title: 'Staff portal not found', user: req.user, layout: 'main' });
+
+    res.cookie('portalViewUser', String(portalUser._id), {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 4 * 60 * 60 * 1000
+    });
+    res.redirect(`/${portalUser.role}/dashboard`);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Root route redirect logic
 app.get('/', protect, (req, res) => {
   const redirectMap = {
@@ -271,6 +317,7 @@ app.get('/files/:filename', protect, (req, res) => {
 // Post logout form submissions handling
 app.post('/logout', (req, res) => {
   res.clearCookie('token');
+  res.clearCookie('portalViewUser');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
