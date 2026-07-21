@@ -13,6 +13,7 @@ const logger = require('../../utils/logger');
 const { USER_STATUSES } = require('../../config/constants');
 const { todayIST } = require('../../utils/dateHelper');
 const { calculateStudentsAttendance } = require('../../utils/attendanceHelper');
+const crypto = require('crypto');
 
 function getRoleRedirect(role, queryParams = '') {
   const map = {
@@ -30,17 +31,54 @@ async function getUserFormOptions() {
   const [courses, batches, teachers, counsellors] = await Promise.all([
     Course.find({ isActive: true }).sort({ name: 1 }),
     Batch.find({ isActive: true }).populate('course', 'name code').sort({ name: 1 }),
-    Teacher.find().populate('user', 'name status').sort({ createdAt: -1 }),
-    Counsellor.find().populate('user', 'name status').sort({ createdAt: -1 })
+    Teacher.find().populate('user', 'name status profileIncomplete').sort({ createdAt: -1 }),
+    Counsellor.find().populate('user', 'name status profileIncomplete').sort({ createdAt: -1 })
   ]);
 
   return {
     courses,
     batches,
-    teachers: teachers.filter(profile => profile.user && profile.user.status === 'active'),
-    counsellors: counsellors.filter(profile => profile.user && profile.user.status === 'active')
+    teachers: teachers.filter(profile => profile.user && (profile.user.status === 'active' || profile.user.profileIncomplete)),
+    counsellors: counsellors.filter(profile => profile.user && (profile.user.status === 'active' || profile.user.profileIncomplete))
   };
 }
+
+exports.postCreateTemporaryStaff = async (req, res) => {
+  const name = String(req.body.name || '').trim();
+  const role = req.body.role;
+  if (name.length < 2 || name.length > 100 || !['teacher', 'counsellor'].includes(role)) {
+    return res.status(400).json({ error: 'Enter a valid staff name and role.' });
+  }
+
+  let temporaryUser;
+  try {
+    temporaryUser = await User.create({
+      name,
+      email: `pending-${crypto.randomUUID()}@staff.invalid`,
+      password: crypto.randomBytes(24).toString('hex'),
+      role,
+      status: 'inactive',
+      profileIncomplete: true,
+      mustChangePassword: true,
+      firstLoginCompleted: false
+    });
+    const profile = role === 'teacher'
+      ? await Teacher.create({ user: temporaryUser._id })
+      : await Counsellor.create({ user: temporaryUser._id });
+
+    res.status(201).json({
+      profileId: profile._id,
+      userId: temporaryUser._id,
+      name,
+      role,
+      editUrl: `/admin/users/${temporaryUser._id}/edit`
+    });
+  } catch (err) {
+    if (temporaryUser) await User.deleteOne({ _id: temporaryUser._id }).catch(() => {});
+    logger.error('Temporary staff creation failed', { error: err.message, role, adminId: req.user._id });
+    res.status(500).json({ error: 'Temporary staff could not be created.' });
+  }
+};
 
 
 // GET /admin/users
@@ -443,6 +481,14 @@ exports.postEditUser = async (req, res) => {
       return res.redirect('/admin/dashboard');
     }
 
+    const completingTemporaryStaff = targetUser.profileIncomplete;
+    if (completingTemporaryStaff) {
+      const email = String(data.email || '').trim().toLowerCase();
+      if (email.endsWith('.invalid') || !/^\d{10}$/.test(data.phone || '') || String(data.password || '').length < 8) {
+        return res.redirect(`/admin/users/${targetUser._id}/edit?incomplete_staff=1`);
+      }
+    }
+
     if (data.email) {
       const email = data.email.trim().toLowerCase();
 
@@ -487,6 +533,15 @@ exports.postEditUser = async (req, res) => {
       ...targetUser.socialHandle?.toObject?.(),
       instagram: data.socialHandle || ''
     };
+
+    if (completingTemporaryStaff) {
+      targetUser.password = data.password;
+      targetUser.profileIncomplete = false;
+      targetUser.status = 'active';
+      targetUser.mustChangePassword = true;
+      targetUser.passwordSetByAdmin = true;
+      targetUser.firstLoginCompleted = false;
+    }
 
     if (req.file) {
       targetUser.profilePic = `/files/${req.file.filename}`;

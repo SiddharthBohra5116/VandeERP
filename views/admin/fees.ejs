@@ -5,6 +5,17 @@
   page = 'fees';
 %>
 
+<% if (filter.imported || filter.failed) { %><div class="alert alert-success">Fee import: <%= filter.imported || 0 %> students updated, <%= filter.failed || 0 %> failed.</div><% } %>
+<% if (filter.error) { %><div class="alert alert-error"><%= filter.error %></div><% } %>
+<div class="card" style="padding:1rem 1.25rem; margin-bottom:1.25rem;">
+  <form method="POST" action="/admin/fees/import" enctype="multipart/form-data" data-no-soft-nav="true" style="display:flex; gap:.75rem; align-items:center; flex-wrap:wrap;">
+    <strong>Mass Fee &amp; EMI Update</strong>
+    <input class="form-control" type="file" name="feeCsv" accept=".csv,.tsv,.txt" required style="flex:1;">
+    <button class="btn btn-primary btn-sm" type="submit">Import</button>
+    <small class="text-muted">Columns: student_name, total_amount, discount, discount_reason, installment_name, installment_amount, due_date. Use one row per EMI.</small>
+  </form>
+</div>
+
 <!-- Search & Filter Form -->
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
   <form method="GET" action="/admin/fees" class="filter-bar" style="margin: 0; display: flex; gap: 0.75rem; flex-wrap: wrap;">
@@ -34,6 +45,7 @@
     <div class="empty-state">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
       <p>No fee accounts open yet. Add a student to start tracking fees.</p>
+      <a href="/admin/students" class="btn btn-primary btn-sm">Choose Student &amp; Set Up Invoice</a>
     </div>
   <% } else { %>
     <div class="table-wrap">

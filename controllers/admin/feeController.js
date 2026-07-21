@@ -4,6 +4,7 @@ const Message = require('../../models/Message');
 
 const { escapeRegex } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
+const buildFeeSchedule = require('../../utils/feeSchedule');
 
 
 // GET /admin/fees
@@ -179,7 +180,17 @@ exports.getStudentFee = async (req, res) => {
       .populate('payments.receivedBy', 'name');
 
     if (!fee) {
-      return res.redirect('/admin/fees');
+      const student = await Student.findById(req.params.studentId)
+        .populate('user', 'name phone email status')
+        .populate('course', 'name code durationMonths fees')
+        .populate('batch', 'name');
+      if (!student) return res.redirect('/admin/students');
+
+      return res.render('admin/fee-setup', {
+        title: 'Set Up Fee Invoice',
+        user: req.user,
+        student
+      });
     }
 
     const feeObj = fee.toObject();
@@ -219,6 +230,60 @@ exports.getStudentFee = async (req, res) => {
       user: req.user,
       layout: 'main'
     });
+  }
+};
+
+// POST /admin/fees/:studentId/setup
+exports.postSetupFee = async (req, res) => {
+  try {
+    const existing = await Fee.findOne({ student: req.params.studentId }).select('_id');
+    if (existing) return res.redirect(`/admin/fees/${req.params.studentId}`);
+
+    const student = await Student.findById(req.params.studentId).populate('course', 'durationMonths');
+    if (!student || !student.course) return res.redirect(`/admin/students/${req.params.studentId}?error=1`);
+
+    const totalAmount = Number(req.body.totalAmount);
+    const discount = Number(req.body.discount || 0);
+    const paidAmount = Number(req.body.paidAmount || 0);
+    const netTotal = totalAmount - discount;
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0 || !Number.isFinite(discount) || discount < 0 || discount > totalAmount || !Number.isFinite(paidAmount) || paidAmount < 0 || paidAmount > netTotal) {
+      return res.redirect(`/admin/fees/${req.params.studentId}?invalid_fee_plan=1`);
+    }
+
+    const paymentMethods = ['Cash', 'UPI', 'Bank Transfer', 'Card', 'Other'];
+    const method = paymentMethods.includes(req.body.method) ? req.body.method : 'Cash';
+    let installments;
+    try {
+      installments = buildFeeSchedule(req.body, netTotal);
+    } catch (validationError) {
+      logger.warn('Invalid initial EMI schedule rejected', { studentId: req.params.studentId, error: validationError.message });
+      return res.redirect(`/admin/fees/${req.params.studentId}?invalid_fee_plan=1`);
+    }
+    const enrollmentDate = new Date(student.enrollmentDate || Date.now()).toISOString().slice(0, 10);
+    if (!installments.length || installments.some(item => item.dueDate.toISOString().slice(0, 10) < enrollmentDate)) {
+      return res.redirect(`/admin/fees/${req.params.studentId}?invalid_fee_plan=1`);
+    }
+    const fee = new Fee({
+      student: student._id,
+      course: student.course._id,
+      batch: student.batch || null,
+      totalAmount,
+      discount,
+      discountReason: String(req.body.discountReason || '').trim().slice(0, 200),
+      paidAmount,
+      dueDate: student.enrollmentDate || new Date(),
+      courseDurationMonths: student.course.durationMonths || 3,
+      installments,
+      payments: paidAmount ? [{ amount: paidAmount, method, note: 'Opening payment', receivedBy: req.user._id, paidAt: new Date() }] : []
+    });
+    await fee.save();
+    await Student.findByIdAndUpdate(student._id, { fees_total: fee.totalAmount, fees_paid: fee.paidAmount });
+
+    res.redirect(`/admin/fees/${student._id}?created=1`);
+  } catch (err) {
+    if (err.code === 11000) return res.redirect(`/admin/fees/${req.params.studentId}`);
+    logger.error('Fee setup failed', { error: err.message, studentId: req.params.studentId, adminId: req.user._id });
+    res.redirect(`/admin/fees/${req.params.studentId}?error=1`);
   }
 };
 
@@ -319,43 +384,25 @@ exports.postUpdateFee = async (req, res) => {
       return res.redirect('/admin/fees');
     }
 
-    fee.totalAmount = Number(totalAmount) || 0;
-    fee.discount = Number(discount) || 0;
+    const nextTotal = Number(totalAmount);
+    const nextDiscount = Number(discount || 0);
+    if (!Number.isFinite(nextTotal) || nextTotal <= 0 || !Number.isFinite(nextDiscount) || nextDiscount < 0 || nextDiscount > nextTotal) {
+      return res.redirect(`/admin/fees/${req.params.studentId}?invalid_fee_plan=1`);
+    }
+
+    const netTotal = nextTotal - nextDiscount;
+    if (netTotal + 0.01 < fee.paidAmount) {
+      return res.redirect(`/admin/fees/${req.params.studentId}?fee_below_paid=1`);
+    }
+
+    fee.totalAmount = nextTotal;
+    fee.discount = nextDiscount;
     fee.discountReason = discountReason || '';
-
-    const instName =
-      req.body.instName ||
-      req.body['instName[]'];
-
-    const instAmount =
-      req.body.instAmount ||
-      req.body['instAmount[]'];
-
-    const instDueDate =
-      req.body.instDueDate ||
-      req.body['instDueDate[]'];
-
-    if (
-      instName &&
-      Array.isArray(instName) &&
-      instName.length > 0
-    ) {
-      fee.installments = instName.map((name, index) => ({
-        name: name.trim(),
-        amount: Number(instAmount[index]) || 0,
-        dueDate: instDueDate[index]
-          ? new Date(instDueDate[index])
-          : new Date(),
-        paidAmount: 0
-      }));
-
-      if (fee.installments.length > 0) {
-        fee.dueDate =
-          fee.installments[fee.installments.length - 1].dueDate;
-      }
-
-    } else {
-      fee.installments = [];
+    try {
+      fee.installments = buildFeeSchedule(req.body, netTotal);
+    } catch (validationError) {
+      logger.warn('Invalid fee schedule rejected', { studentId: req.params.studentId, error: validationError.message });
+      return res.redirect(`/admin/fees/${req.params.studentId}?invalid_fee_plan=1`);
     }
 
     await fee.save();

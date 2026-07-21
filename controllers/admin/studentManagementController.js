@@ -5,11 +5,14 @@ const Attendance = require('../../models/Attendance');
 const Progress = require('../../models/Progress');
 const Lead = require('../../models/Lead');
 const Message = require('../../models/Message');
+const Schedule = require('../../models/Schedule');
 
 const { todayIST } = require('../../utils/dateHelper');
 const { calculateStudentsAttendance } = require('../../utils/attendanceHelper');
 const { escapeRegex } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
+const calculateCourseProgress = require('../../utils/courseProgress');
+const syncCourseCompletion = require('../../utils/syncCourseCompletion');
 
 
 // GET /admin/students
@@ -187,14 +190,14 @@ exports.getStudentProfile = async (req, res) => {
       .populate('user', 'name email phone status profilePic address city dob socialHandle createdAt updatedAt')
       .populate({ path: 'teacher', populate: { path: 'user', select: 'name email phone' } })
       .populate({ path: 'counsellor', populate: { path: 'user', select: 'name email phone' } })
-      .populate('course', 'name code durationMonths fees')
+      .populate('course', 'name code durationMonths fees requiredClasses')
       .populate('batch', 'name');
 
     if (!student || !student.user) {
       return res.redirect('/admin/students');
     }
 
-    const [fee, attendance, progress, lead, messages] = await Promise.all([
+    const [fee, attendance, progress, lead, messages, futureSchedules] = await Promise.all([
       Fee.findOne({ student: student._id })
         .populate('payments.receivedBy', 'name'),
 
@@ -212,8 +215,12 @@ exports.getStudentProfile = async (req, res) => {
 
       Message.find({ recipient: student.user._id })
         .populate('sender', 'name role')
-        .sort({ createdAt: -1 })
+        .sort({ createdAt: -1 }),
+
+      student.batch ? Schedule.find({ batch: student.batch._id, date: { $gte: todayIST() }, status: { $ne: 'cancelled' } }).select('date').sort({ date: 1 }).lean() : []
     ]);
+
+    const courseProgress = calculateCourseProgress(student, attendance, futureSchedules);
 
     res.render('admin/student-profile', {
       title: `${student.user.name} — Profile`,
@@ -223,7 +230,8 @@ exports.getStudentProfile = async (req, res) => {
       attendance,
       progress,
       lead,
-      messages
+      messages,
+      courseProgress
     });
 
   } catch (err) {
@@ -237,6 +245,18 @@ exports.getStudentProfile = async (req, res) => {
       user: req.user,
       layout: 'main'
     });
+  }
+};
+
+exports.postUpdateClassTarget = async (req, res) => {
+  try {
+    const target = parseInt(req.body.requiredClassesOverride, 10);
+    if (!Number.isInteger(target) || target < 0 || target > 1000) throw new Error('Class target must be between 0 and 1000.');
+    await Student.findByIdAndUpdate(req.params.id, { requiredClassesOverride: target }, { runValidators: true });
+    await syncCourseCompletion([req.params.id], req.user._id);
+    res.redirect(`/admin/students/${req.params.id}?class_target_saved=1`);
+  } catch (err) {
+    res.redirect(`/admin/students/${req.params.id}?error=${encodeURIComponent(err.message)}`);
   }
 };
 

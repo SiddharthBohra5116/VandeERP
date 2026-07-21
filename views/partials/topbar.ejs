@@ -22,6 +22,53 @@
   
   <% if (typeof user !== 'undefined' && user) { %>
     <div class="topbar-right">
+      <% if (user.role === 'admin' || (typeof adminUser !== 'undefined' && adminUser)) { %>
+        <form id="portalModeForm" method="POST" action="/portal-view/stop" data-no-soft-nav="true" title="Switch portal mode">
+          <label class="sr-only" for="portalModeSwitch">Portal mode</label>
+          <select id="portalModeSwitch" class="form-control form-control-sm" style="min-width:180px;" aria-label="Switch portal mode">
+            <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Admin mode</option>
+            <% if (user.role !== 'admin') { %><option value="<%= user._id %>" selected><%= user.name %> (<%= user.role %>)</option><% } %>
+          </select>
+        </form>
+        <script>
+          (() => {
+            const select = document.getElementById('portalModeSwitch');
+            const form = document.getElementById('portalModeForm');
+            let loaded = false;
+
+            const loadPortalUsers = async () => {
+              if (loaded) return;
+              try {
+                const response = await fetch('/portal-view/users');
+                if (!response.ok) return;
+                const users = await response.json();
+                const current = select.value;
+                select.querySelectorAll('option:not([value="admin"]), optgroup').forEach(option => option.remove());
+                for (const role of ['teacher', 'counsellor']) {
+                  const group = document.createElement('optgroup');
+                  group.label = role === 'teacher' ? 'Teachers' : 'Counsellors';
+                  users.filter(item => item.role === role).forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item._id;
+                    option.textContent = item.name;
+                    option.selected = item._id === current;
+                    group.appendChild(option);
+                  });
+                  select.appendChild(group);
+                }
+                loaded = true;
+              } catch (_) {}
+            };
+
+            loadPortalUsers();
+
+            select.addEventListener('change', () => {
+              form.action = select.value === 'admin' ? '/portal-view/stop' : `/portal-view/${select.value}`;
+              form.submit();
+            });
+          })();
+        </script>
+      <% } %>
       <!-- Theme Toggle Switcher -->
       <button class="btn-icon theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle Theme">
         <!-- Moon Icon (Visible in Light Mode) -->

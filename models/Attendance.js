@@ -11,7 +11,7 @@ const attendanceSchema = new mongoose.Schema({
   teacher: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Teacher',
-    required: true
+    default: null
   },
 
   course: {
@@ -40,7 +40,19 @@ const attendanceSchema = new mongoose.Schema({
   note: {
     type: String,
     default: ''
-  }
+  },
+
+  markedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  changeReason: { type: String, default: '' },
+  entrySource: { type: String, enum: ['teacher', 'admin'], default: 'teacher' },
+  revisions: [{
+    status: { type: String, enum: ATTENDANCE_STATUSES },
+    note: { type: String, default: '' },
+    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    changedAt: { type: Date, default: Date.now },
+    reason: { type: String, required: true }
+  }]
 
 }, { timestamps: true });
 

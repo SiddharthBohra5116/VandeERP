@@ -30,6 +30,24 @@ const protect = async (req, res, next) => {
       if (wantsHtmlResponse(req)) return res.redirect('/auth/login');
       return res.status(401).json({ message: 'Account inactive or not found' });
     }
+
+    // Admins may work inside a real staff portal without sharing that user's password.
+    if (req.user.role === 'admin' && /^[a-f\d]{24}$/i.test(req.cookies?.portalViewUser || '')) {
+      const adminUser = req.user;
+      const portalUser = await User.findOne({
+        _id: req.cookies.portalViewUser,
+        role: { $in: ['teacher', 'counsellor'] },
+        isActive: true
+      }).select('-password');
+
+      if (portalUser) {
+        req.adminUser = adminUser;
+        req.user = portalUser;
+        res.locals.adminUser = adminUser;
+      } else {
+        res.clearCookie('portalViewUser');
+      }
+    }
     
     // If the logged-in user is a student, attach their Student profile fields to req.user
     if (req.user.role === 'student') {
@@ -68,6 +86,8 @@ const protect = async (req, res, next) => {
         req.user.counsellorProfileId = counsellorProfile._id;
       }
     }
+
+    res.locals.user = req.user;
     
     // Prevent back-button caching
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -77,7 +97,7 @@ const protect = async (req, res, next) => {
     const isPasswordChangeRoute = req.path === '/force-change-password';
     const isLogoutRoute = req.path === '/logout';
 
-    if ((req.user.mustChangePassword || req.user.firstLoginCompleted === false) && !isPasswordChangeRoute && !isLogoutRoute) {
+    if (!req.adminUser && (req.user.mustChangePassword || req.user.firstLoginCompleted === false) && !isPasswordChangeRoute && !isLogoutRoute) {
       if (wantsHtmlResponse(req)) return res.redirect('/auth/force-change-password');
       return res.status(403).json({ message: 'Password change required' });
     }

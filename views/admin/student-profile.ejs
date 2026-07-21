@@ -367,13 +367,13 @@
                           <div id="ledger" class="tab-content card">
                             <div class="card-header" style="margin-bottom:1.25rem;">
                               <div class="card-title">Fee Ledger Summary</div>
-                              <a href="/admin/fees/<%= student._id %>" class="btn btn-ghost btn-xs">Open Full
-                                Invoice</a>
+                              <a href="/admin/fees/<%= student._id %>" class="btn btn-ghost btn-xs"><%= fee ? 'Open Full Invoice' : 'Set Up Invoice' %></a>
                             </div>
 
                             <% if (!fee) { %>
                               <div class="empty-state">
                                 <p>No fee ledger configured for this student.</p>
+                                <a href="/admin/fees/<%= student._id %>" class="btn btn-primary btn-sm">Create Fee & EMI Plan</a>
                               </div>
                               <% } else { %>
                                 <% const actualTotal=fee.totalAmount - (fee.discount || 0); const due=Math.max(0,
@@ -549,6 +549,25 @@
                                 <span class="badge badge-gold">
                                   <%= pct %>% Presence Rate
                                 </span>
+                            </div>
+
+                            <div class="card" style="padding:1rem; margin-bottom:1.25rem;">
+                              <div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; align-items:end;">
+                                <div>
+                                  <div class="section-title">Course Class Target</div>
+                                  <strong><%= courseProgress.attended %> / <%= courseProgress.target || 'Not set' %> attended classes</strong>
+                                  <div class="td-muted text-sm">
+                                    <% if (courseProgress.complete) { %>Required learning classes completed.<% }
+                                    else if (courseProgress.estimatedCompletionDate) { %>Estimated last class: <%= new Date(courseProgress.estimatedCompletionDate + 'T00:00:00').toLocaleDateString('en-IN') %>.<% }
+                                    else if (courseProgress.target) { %><%= courseProgress.remaining %> classes remain; schedule <%= courseProgress.additionalSchedulesNeeded %> more to calculate the last date.<% }
+                                    else { %>Set required classes on the course or a custom target here.<% } %>
+                                  </div>
+                                </div>
+                                <form method="POST" action="/admin/students/<%= student._id %>/class-target" style="display:flex; gap:.5rem; align-items:end;">
+                                  <label class="form-group" style="margin:0;"><span class="form-label">Student-specific target (0 = course default)</span><input class="form-control" type="number" min="0" max="1000" name="requiredClassesOverride" value="<%= student.requiredClassesOverride || 0 %>" required></label>
+                                  <button class="btn btn-primary btn-sm" type="submit">Save Target</button>
+                                </form>
+                              </div>
                             </div>
 
                             <div class="stats-grid"

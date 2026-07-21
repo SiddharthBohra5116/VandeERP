@@ -52,6 +52,7 @@
 <div class="teacher-profile-page">
   <div class="teacher-profile-actions">
     <a href="/admin/teachers" class="btn btn-ghost btn-sm">&larr; Back to Teachers</a>
+    <form action="/portal-view/<%= teacher._id %>" method="POST" data-no-soft-nav="true"><button class="btn btn-ghost btn-sm" type="submit">Open Teacher Portal</button></form>
     <a href="/admin/users/<%= teacher._id %>/edit" class="btn btn-primary btn-sm">Edit Teacher Profile</a>
   </div>
 

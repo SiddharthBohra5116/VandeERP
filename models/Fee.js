@@ -38,15 +38,15 @@ feeSchema.methods.generateInstallments = function() {
   if (this.dueDate && this.dueDate < enrollDate) enrollDate = new Date(this.dueDate);
 
   const netTotal = this.totalAmount - (this.discount || 0);
-  const dpAmount = Math.round(netTotal * 0.5);
-  const inst1Amount = Math.round(netTotal * 0.25);
+  const dpAmount = Math.round(netTotal * 50) / 100;
+  const inst1Amount = Math.round(netTotal * 25) / 100;
   const inst2Amount = Math.max(0, netTotal - dpAmount - inst1Amount);
 
   const dpDue = new Date(enrollDate);
   const inst1Due = new Date(enrollDate);
   inst1Due.setDate(inst1Due.getDate() + Math.round(durationDays / 2));
   const inst2Due = new Date(enrollDate);
-  inst2Due.setDate(inst2Due.getDate() + Math.max(0, durationDays - 30));
+  inst2Due.setDate(inst2Due.getDate() + durationDays);
 
   this.installments = [
     { name: 'Down Payment (50%)', amount: dpAmount, dueDate: dpDue, paidAmount: 0 },

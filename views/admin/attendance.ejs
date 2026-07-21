@@ -7,6 +7,16 @@
   const batchNameStr = activeBatchDoc ? activeBatchDoc.name : '';
 %>
 
+<% if (typeof filter !== 'undefined' && (filter.imported || filter.failed)) { %><div class="alert alert-success">Attendance import: <%= filter.imported || 0 %> rows saved, <%= filter.failed || 0 %> failed.</div><% } %>
+<div class="card" style="padding:1rem 1.25rem; margin-bottom:1.25rem;">
+  <form method="POST" action="/admin/attendance/import" enctype="multipart/form-data" data-no-soft-nav="true" style="display:flex; gap:.75rem; align-items:center; flex-wrap:wrap;">
+    <strong>Import Past Attendance</strong>
+    <input class="form-control" type="file" name="attendanceCsv" accept=".csv,.tsv,.txt" required style="flex:1;">
+    <button class="btn btn-primary btn-sm" type="submit">Import</button>
+    <small class="text-muted">Columns: student_name, date (YYYY-MM-DD), status (present/late/absent), note, reason.</small>
+  </form>
+</div>
+
 <style>
 .calendar-container {
   margin-top: 1.5rem;
@@ -154,8 +164,56 @@
         <% }) %>
       </select>
     </div>
+    <% if (batch) { %>
+      <div class="form-group" style="margin: 0; min-width: 170px;">
+        <label class="form-label" style="margin-bottom: 0.25rem;">Attendance Date</label>
+        <input type="date" name="date" class="form-control" value="<%= selectedDate %>" max="<%= today %>" onchange="this.form.submit()">
+      </div>
+    <% } %>
   </form>
 </div>
+
+<% if (batch && studentGrid.length) { %>
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; gap:1rem;">
+      <div>
+        <h3 style="margin:0;">Admin Attendance Entry</h3>
+        <p class="td-muted text-sm" style="margin:0.25rem 0 0;">Use when staff is unavailable or when Admin needs to correct historical attendance.</p>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="document.querySelectorAll('.admin-attendance-status').forEach(input => input.value='present')">Mark all present</button>
+    </div>
+    <form action="/admin/attendance" method="POST" style="padding:1rem;">
+      <input type="hidden" name="batch" value="<%= batch %>">
+      <input type="hidden" name="date" value="<%= selectedDate %>">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Student</th><th>Status</th><th>Note</th></tr></thead>
+          <tbody>
+            <% studentGrid.forEach(row => { const current = row.attendanceByDate[selectedDate] || ''; %>
+              <tr>
+                <td class="td-name"><%= row.name %></td>
+                <td>
+                  <select name="statuses[<%= row._id %>]" class="form-control admin-attendance-status">
+                    <option value="">Not marked</option>
+                    <option value="present" <%= current === 'present' ? 'selected' : '' %>>Present</option>
+                    <option value="absent" <%= current === 'absent' ? 'selected' : '' %>>Absent</option>
+                    <option value="late" <%= current === 'late' ? 'selected' : '' %>>Late</option>
+                  </select>
+                </td>
+                <td><input name="notes[<%= row._id %>]" class="form-control" maxlength="300" value="<%= row.notesByDate[selectedDate] || '' %>" placeholder="Optional note"></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <div class="form-group" style="margin-top:1rem;">
+        <label class="form-label" for="changeReason">Reason for Admin Entry / Correction</label>
+        <input id="changeReason" name="changeReason" class="form-control" maxlength="300" placeholder="e.g. Teacher unavailable; attendance entered from paper register" required>
+      </div>
+      <button class="btn btn-primary" type="submit">Save Attendance as Admin</button>
+    </form>
+  </div>
+<% } %>
 
 <!-- Calendar Card -->
 <div class="card" style="margin-bottom: 1.5rem;">

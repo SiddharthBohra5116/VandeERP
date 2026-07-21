@@ -107,6 +107,13 @@ function stripMassAssignmentFields(obj, currentPath) {
       if (field === 'password' && currentPath && currentPath.startsWith('/auth/')) {
         continue;
       }
+      // Admin user forms explicitly validate and whitelist these account fields.
+      if (currentPath && /^\/admin\/users\/(create|[a-f\d]{24}\/edit)$/i.test(currentPath) && ['role', 'status', 'password'].includes(field)) {
+        continue;
+      }
+      if (field === 'role' && currentPath === '/admin/users/temporary-staff') {
+        continue;
+      }
       // Allow password, fees_total, and fees_paid only for lead conversion endpoints
       if (['password', 'fees_total', 'fees_paid'].includes(field) && currentPath && (currentPath.startsWith('/counsellor/leads/') || currentPath.startsWith('/admin/leads/')) && currentPath.endsWith('/convert')) {
         continue;

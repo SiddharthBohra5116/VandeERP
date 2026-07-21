@@ -147,34 +147,24 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label" for="totalAmount">Base Fee (INR)</label>
-          <input type="number" id="totalAmount" name="totalAmount" class="form-control" value="<%= fee.totalAmount %>" required>
+          <input type="number" id="totalAmount" name="totalAmount" class="form-control" value="<%= fee.totalAmount %>" min="0.01" step="0.01" required>
         </div>
         <div class="form-group">
           <label class="form-label" for="discount">Discount (INR)</label>
-          <input type="number" id="discount" name="discount" class="form-control" value="<%= fee.discount || 0 %>">
+          <input type="number" id="discount" name="discount" class="form-control" value="<%= fee.discount || 0 %>" min="0" step="0.01">
         </div>
       </div>
       <div class="form-group">
         <label class="form-label" for="discountReason">Reason for Discount</label>
         <input type="text" id="discountReason" name="discountReason" class="form-control" value="<%= fee.discountReason || '' %>" placeholder="e.g. Merit Scholarship, Seasonal Offer">
       </div>
-      <div class="form-group">
-        <label class="form-label" for="dueDate">Payment Due Date</label>
-        <% 
-          let formattedDate = '';
-          if (fee.dueDate) {
-            formattedDate = new Date(fee.dueDate).toISOString().split('T')[0];
-          }
-        %>
-        <input type="date" id="dueDate" name="dueDate" class="form-control" value="<%= formattedDate %>">
-      </div>
-
       <!-- Installments Edit List -->
       <div style="margin-top: 1rem; border-top: 1px dashed var(--border); padding-top: 1rem;">
         <div style="font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-          <span>Custom Installments</span>
+          <span>EMI / Installment Plan</span>
           <button type="button" class="btn btn-ghost btn-xs" onclick="addInstRow()">+ Add Row</button>
         </div>
+        <p class="form-hint">EMI amounts must total the net fee (base fee minus discount). Payments already received are allocated to the earliest EMI first.</p>
         <div id="inst_list_container">
           <% if (fee.installments && fee.installments.length > 0) { %>
             <% fee.installments.forEach((inst, index) => { %>
@@ -185,7 +175,7 @@
                 </div>
                 <div class="form-group" style="flex: 1.5; margin-bottom: 0;">
                   <label class="form-label" style="font-size: 9px; margin-bottom: 2px;">Amount</label>
-                  <input type="number" name="instAmount[]" class="form-control form-control-sm" value="<%= inst.amount %>" required>
+                  <input type="number" name="instAmount[]" class="form-control form-control-sm" value="<%= inst.amount %>" min="0.01" step="0.01" required>
                 </div>
                 <div class="form-group" style="flex: 2; margin-bottom: 0;">
                   <label class="form-label" style="font-size: 9px; margin-bottom: 2px;">Due Date</label>
@@ -203,6 +193,8 @@
           <% } %>
         </div>
       </div>
+
+      <div class="form-hint" id="emiTotal" style="margin-top:0.75rem;"></div>
 
       <button type="submit" class="btn btn-ghost" style="margin-top: 1rem;">Save Adjustments</button>
     </form>
@@ -225,7 +217,7 @@
       </div>
       <div class="form-group" style="flex: 1.5; margin-bottom: 0;">
         <label class="form-label" style="font-size: 9px; margin-bottom: 2px;">Amount</label>
-        <input type="number" name="instAmount[]" class="form-control form-control-sm" placeholder="0" required>
+        <input type="number" name="instAmount[]" class="form-control form-control-sm" placeholder="0" min="0.01" step="0.01" required>
       </div>
       <div class="form-group" style="flex: 2; margin-bottom: 0;">
         <label class="form-label" style="font-size: 9px; margin-bottom: 2px;">Due Date</label>
@@ -234,14 +226,27 @@
       <button type="button" class="btn btn-red btn-xs" style="padding: 4px 8px; margin-bottom: 2px;" onclick="removeInstRow(this)">X</button>
     `;
     container.appendChild(row);
+    updateEmiTotal();
   }
 
   function removeInstRow(btn) {
     const row = btn.closest('.inst-edit-row');
     if (row) {
       row.remove();
+      updateEmiTotal();
     }
   }
+
+  function updateEmiTotal() {
+    const net = (Number(document.getElementById('totalAmount').value) || 0) - (Number(document.getElementById('discount').value) || 0);
+    const emi = [...document.querySelectorAll('input[name="instAmount[]"]')].reduce((sum, input) => sum + (Number(input.value) || 0), 0);
+    const output = document.getElementById('emiTotal');
+    output.textContent = `EMI total: ₹${emi.toLocaleString('en-IN')} / Net fee: ₹${net.toLocaleString('en-IN')}`;
+    output.style.color = Math.abs(emi - net) < 0.01 ? 'var(--green)' : 'var(--red)';
+  }
+
+  document.querySelector('form[action$="/update"]').addEventListener('input', updateEmiTotal);
+  updateEmiTotal();
 </script>
 
 <!-- Receipt Ledger -->

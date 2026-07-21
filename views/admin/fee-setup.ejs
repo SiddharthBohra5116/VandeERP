@@ -1,0 +1,99 @@
+<%
+  layout = 'main';
+  title = 'Set Up Fee Invoice';
+  subtitle = `Create the first fee ledger for ${student.user?.name || 'student'}`;
+  page = 'fees';
+  const suggestedFee = Number(student.fees_total || student.course?.fees || 0);
+%>
+
+<div class="card" style="max-width:900px; margin:0 auto;">
+  <div class="card-header">
+    <div>
+      <div class="card-title">First Invoice Setup</div>
+      <p class="section-subtitle"><strong><%= student.user?.name || 'Student' %></strong> · <%= student.course?.name || 'Course not assigned' %> · <%= student.batch?.name || 'No batch assigned' %></p>
+    </div>
+    <a href="/admin/students/<%= student._id %>" class="btn btn-ghost btn-sm">Back to Student</a>
+  </div>
+
+  <% if (!student.course) { %>
+    <div class="empty-state"><p>Assign a course before creating this invoice.</p><a href="/admin/users/<%= student.user?._id %>/edit" class="btn btn-primary btn-sm">Edit Student Profile</a></div>
+  <% } else { %>
+    <form action="/admin/fees/<%= student._id %>/setup" method="POST">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label" for="totalAmount">Base Course Fee (INR)</label><input type="number" id="totalAmount" name="totalAmount" class="form-control" min="0.01" step="0.01" value="<%= suggestedFee || '' %>" required></div>
+        <div class="form-group"><label class="form-label" for="discount">Discount (INR)</label><input type="number" id="discount" name="discount" class="form-control" min="0" step="0.01" value="0"></div>
+      </div>
+      <div class="form-group"><label class="form-label" for="discountReason">Discount Reason</label><input id="discountReason" name="discountReason" class="form-control" maxlength="200" placeholder="Optional"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label" for="paidAmount">Opening Payment (INR)</label><input type="number" id="paidAmount" name="paidAmount" class="form-control" min="0" step="0.01" value="0"></div>
+        <div class="form-group"><label class="form-label" for="method">Payment Method</label><select id="method" name="method" class="form-control"><option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Card</option><option>Other</option></select></div>
+      </div>
+
+      <div style="border-top:1px solid var(--border); padding-top:1rem; margin-top:0.5rem;">
+        <div class="card-header" style="padding:0 0 0.75rem;">
+          <div><div class="card-title">Custom EMI Schedule</div><p class="section-subtitle">Amounts must total the net fee and dates must remain chronological.</p></div>
+          <div class="d-flex gap-1"><button type="button" class="btn btn-ghost btn-sm" onclick="applyDefaultPlan()">Apply 50 / 25 / 25</button><button type="button" class="btn btn-ghost btn-sm" onclick="addEmiRow()">+ Add EMI</button></div>
+        </div>
+        <div id="emiRows"></div>
+        <div id="emiTotal" class="form-hint" style="margin:0.75rem 0 1rem;"></div>
+      </div>
+
+      <div id="invoicePreview" class="form-hint" style="margin-bottom:1rem;"></div>
+      <button class="btn btn-primary" type="submit">Create Invoice &amp; EMI Schedule</button>
+    </form>
+    <script>
+      const emiRows = document.getElementById('emiRows');
+      const enrollmentDate = '<%= student.enrollmentDate ? new Date(student.enrollmentDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10) %>';
+      const durationDays = <%= Math.max(1, Number(student.course?.durationMonths || 3)) * 30 %>;
+      let planCustomized = false;
+
+      const addDays = (value, days) => {
+        const date = new Date(`${value}T00:00:00Z`);
+        date.setUTCDate(date.getUTCDate() + days);
+        return date.toISOString().slice(0, 10);
+      };
+
+      const updateInvoicePreview = () => {
+        const total = Number(document.getElementById('totalAmount').value) || 0;
+        const discount = Number(document.getElementById('discount').value) || 0;
+        const paid = Number(document.getElementById('paidAmount').value) || 0;
+        const net = Math.max(0, total - discount);
+        const emi = [...document.querySelectorAll('input[name="instAmount[]"]')].reduce((sum, input) => sum + (Number(input.value) || 0), 0);
+        const status = document.getElementById('emiTotal');
+        status.textContent = `EMI total: ₹${emi.toLocaleString('en-IN')} / Net fee: ₹${net.toLocaleString('en-IN')}`;
+        status.style.color = Math.abs(emi - net) < 0.01 ? 'var(--green)' : 'var(--red)';
+        document.getElementById('invoicePreview').textContent = `Net fee: ₹${net.toLocaleString('en-IN')} · Opening payment: ₹${paid.toLocaleString('en-IN')} · Balance: ₹${Math.max(0, net - paid).toLocaleString('en-IN')}`;
+      };
+
+      const addEmiRow = (name = '', amount = '', dueDate = enrollmentDate) => {
+        planCustomized = true;
+        const row = document.createElement('div');
+        row.className = 'form-row emi-setup-row';
+        row.style.alignItems = 'flex-end';
+        row.innerHTML = `<div class="form-group" style="flex:2"><label class="form-label">EMI Name</label><input name="instName[]" class="form-control" maxlength="80" value="${name}" required></div><div class="form-group"><label class="form-label">Amount</label><input type="number" name="instAmount[]" class="form-control" min="0.01" step="0.01" value="${amount}" required></div><div class="form-group"><label class="form-label">Due Date</label><input type="date" name="instDueDate[]" class="form-control" value="${dueDate}" required></div><button type="button" class="btn btn-red btn-sm" style="margin-bottom:1rem" onclick="removeEmiRow(this)">Remove</button>`;
+        emiRows.appendChild(row);
+        updateInvoicePreview();
+      };
+
+      const removeEmiRow = button => { planCustomized = true; button.closest('.emi-setup-row').remove(); updateInvoicePreview(); };
+
+      const applyDefaultPlan = () => {
+        const net = Math.max(0, (Number(document.getElementById('totalAmount').value) || 0) - (Number(document.getElementById('discount').value) || 0));
+        const first = Math.round(net * 50) / 100;
+        const second = Math.round(net * 25) / 100;
+        const third = Math.max(0, Math.round((net - first - second) * 100) / 100);
+        emiRows.innerHTML = '';
+        addEmiRow('Down Payment (50%)', first, enrollmentDate);
+        addEmiRow('First EMI (25%)', second, addDays(enrollmentDate, Math.round(durationDays / 2)));
+        addEmiRow('Second EMI (25%)', third, addDays(enrollmentDate, durationDays));
+        planCustomized = false;
+        updateInvoicePreview();
+      };
+
+      emiRows.addEventListener('input', () => { planCustomized = true; updateInvoicePreview(); });
+      document.getElementById('paidAmount').addEventListener('input', updateInvoicePreview);
+      ['totalAmount', 'discount'].forEach(id => document.getElementById(id).addEventListener('input', () => planCustomized ? updateInvoicePreview() : applyDefaultPlan()));
+      applyDefaultPlan();
+    </script>
+  <% } %>
+</div>

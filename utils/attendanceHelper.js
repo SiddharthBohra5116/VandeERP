@@ -33,7 +33,7 @@ async function filterValidAttendance(records) {
     }
 
     // 2. Exclude if the teacher was on approved leave on that date
-    if (rec.teacher) {
+    if (rec.teacher && rec.entrySource !== 'admin') {
       const teacherProfileId = rec.teacher._id ? rec.teacher._id.toString() : rec.teacher.toString();
       const teacherUserId = teacherProfileToUserMap[teacherProfileId] || teacherProfileId;
       const recDateStr = rec.date; // YYYY-MM-DD

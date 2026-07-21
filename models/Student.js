@@ -60,6 +60,12 @@ const studentSchema = new mongoose.Schema({
     default: Date.now
   },
 
+  requiredClassesOverride: {
+    type: Number,
+    min: 0,
+    default: 0
+  },
+
   fees_total: {
     type: Number,
     default: 0

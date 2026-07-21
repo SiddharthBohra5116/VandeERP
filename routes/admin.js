@@ -33,6 +33,7 @@ const holidayCtrl = require('../controllers/admin/holidayController');
 const batchCtrl = require('../controllers/admin/batchController');
 const courseCtrl = require('../controllers/admin/courseController');
 const announcementCtrl = require('../controllers/admin/announcementController');
+const bulkImportCtrl = require('../controllers/admin/bulkImportController');
 
 // Validators
 const {
@@ -43,6 +44,10 @@ const {
 } = require('../middleware/validators');
 
 const guard = [protect, role('admin')];
+const csvUpload = (field, redirect) => (req, res, next) => upload.single(field)(req, res, err => {
+  if (err) return res.redirect(`${redirect}?error=${encodeURIComponent(err.message)}`);
+  next();
+});
 
 
 // ===================================
@@ -128,6 +133,8 @@ router.post(
   ...guard,
   userDirectoryCtrl.setUserStatus
 );
+
+router.post('/users/temporary-staff', ...guard, userDirectoryCtrl.postCreateTemporaryStaff);
 
 router.post(
   '/users/bulk-archive',
@@ -312,12 +319,17 @@ router.post(
 // ===================================
 
 router.get('/fees', ...guard, feeCtrl.getFees);
+router.post('/fees/import', ...guard, csvUpload('feeCsv', '/admin/fees'), csrfProtection, bulkImportCtrl.postImportFees);
 
 router.get(
   '/fees/:studentId',
   ...guard,
   feeCtrl.getStudentFee
 );
+
+router.post('/students/:id/class-target', ...guard, studentCtrl.postUpdateClassTarget);
+
+router.post('/fees/:studentId/setup', ...guard, feeCtrl.postSetupFee);
 
 router.post(
   '/fees/:studentId/payment',
@@ -417,6 +429,9 @@ router.get(
   ...guard,
   attendanceCtrl.getAttendanceOverview
 );
+
+router.post('/attendance', ...guard, attendanceCtrl.postAdminAttendance);
+router.post('/attendance/import', ...guard, csvUpload('attendanceCsv', '/admin/attendance'), csrfProtection, bulkImportCtrl.postImportAttendance);
 
 
 // ===================================
