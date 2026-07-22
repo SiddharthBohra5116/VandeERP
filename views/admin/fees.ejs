@@ -19,6 +19,7 @@
         <strong><%= importFailed === 0 ? 'Import completed' : importUpdated > 0 ? 'Import partially completed' : 'Nothing was imported' %></strong>
         <div class="text-muted" style="margin-top:.25rem;"><%= importUpdated %> updated &middot; <%= importFailed %> failed</div>
       </div>
+      <button type="button" class="btn btn-ghost btn-sm" aria-label="Dismiss import result" title="Dismiss" onclick="this.closest('.card').remove(); history.replaceState(null, '', '/admin/fees')">&times;</button>
       <% if (importErrors.length) { %>
         <details style="width:100%;">
           <summary style="cursor:pointer; color:var(--red); font-weight:700;">Why rows failed</summary>
