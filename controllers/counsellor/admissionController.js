@@ -363,27 +363,6 @@ exports.postConvertLead = async (req, res) => {
       });
     }
 
-    let batchName = '';
-    if (req.body.customBatch && req.body.customBatch.trim()) {
-      batchName = req.body.customBatch.trim();
-    } else if (req.body.batch && req.body.batch.trim()) {
-      batchName = req.body.batch.trim();
-    } else {
-      batchName = 'General Batch';
-    }
-
-    if (!batchName || batchName.trim() === '') {
-      return res.render('counsellor/convert', {
-        title: `Convert: ${lead.name}`,
-        user: req.user,
-        lead,
-        batches: batchesForForm,
-        teachers,
-        courses,
-        error: 'Batch selection or a custom batch name is required.'
-      });
-    }
-
     const courseName = req.body.course || (lead.interestedCourse ? lead.interestedCourse.name : '') || 'Digital Marketing';
     let courseDoc = await Course.findOne({
       $or: [
@@ -392,6 +371,8 @@ exports.postConvertLead = async (req, res) => {
       ]
     });
     if (!courseDoc) throw new Error(`Course not found: ${courseName}`);
+    // ponytail: keep one internal roster per course while the batch UI is paused.
+    const batchName = `${courseDoc.code || courseDoc.name} - General`;
 
     const selectedTeacherProfile = req.body.teacherId
       ? teacherProfiles.find(profile => profile._id.toString() === req.body.teacherId)
@@ -399,7 +380,7 @@ exports.postConvertLead = async (req, res) => {
     const selectedTeacherUserId = selectedTeacherProfile?.user?._id || null;
 
     // Dynamic Batch creation if it doesn't exist yet
-    let targetBatchObj = await Batch.findOne({ name: batchName });
+    let targetBatchObj = await Batch.findOne({ name: batchName, course: courseDoc._id });
     if (!targetBatchObj) {
       targetBatchObj = await Batch.create({
         name: batchName,

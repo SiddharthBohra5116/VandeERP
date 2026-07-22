@@ -27,6 +27,18 @@ function getRoleRedirect(role, queryParams = '') {
   return queryParams ? `${base}${queryParams}` : base;
 }
 
+async function getCourseRoster(courseId) {
+  if (!courseId) return null;
+  const course = await Course.findById(courseId).select('name code');
+  if (!course) return null;
+  const name = `${course.code || course.name} - General`;
+  return Batch.findOneAndUpdate(
+    { name, course: course._id },
+    { $setOnInsert: { name, course: course._id, capacity: 10000, teachers: [], isActive: true } },
+    { new: true, upsert: true }
+  );
+}
+
 async function getUserFormOptions() {
   const [courses, batches, teachers, counsellors] = await Promise.all([
     Course.find({ isActive: true }).sort({ name: 1 }),
@@ -311,12 +323,13 @@ exports.postCreateUser = async (req, res) => {
     const newUser = await User.create(userPayload);
 
     if (newUser.role === 'student') {
+      const courseRoster = await getCourseRoster(data.course);
       const studentProfile = await Student.create({
         user: newUser._id,
         counsellor: data.counsellor || null,
         teacher: data.teacher || null,
         course: data.course || null,
-        batch: data.batch || null,
+        batch: courseRoster?._id || null,
         enrollmentDate: data.enrollmentDate || Date.now(),
         highestQualification: data.highestQualification || '',
         referralSource: data.referralSource || '',
@@ -552,11 +565,12 @@ exports.postEditUser = async (req, res) => {
     await targetUser.save();
 
     if (targetUser.role === 'student') {
+      const courseRoster = await getCourseRoster(data.course);
       const studentUpdate = {
         counsellor: data.counsellor || null,
         teacher: data.teacher || null,
         course: data.course || null,
-        batch: data.batch || null,
+        batch: courseRoster?._id || null,
         family: {
           father: {
             name: data.fatherName || '',

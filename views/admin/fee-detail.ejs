@@ -39,7 +39,7 @@
   <div class="stat-card red">
     <div class="stat-label">Balance Due</div>
     <div class="stat-value">₹<%= balanceDue.toLocaleString('en-IN') %></div>
-    <div class="stat-sub">Includes ₹<%= (fee.totalFine || 0).toLocaleString('en-IN') %> Late Fines</div>
+    <div class="stat-sub">Late fines are shown separately below</div>
   </div>
 </div>
 
@@ -109,7 +109,7 @@
     <div class="card-header">
       <div class="card-title">Record Payment</div>
     </div>
-    <form action="/admin/fees/<%= fee.student._id %>/payment" method="POST">
+    <form action="/admin/fees/<%= fee.student._id %>/payment" method="POST" data-native-submit="true">
       <div class="form-group">
         <label class="form-label" for="amount">Payment Amount (INR)</label>
         <input type="number" id="amount" name="amount" class="form-control" placeholder="e.g. 5000" min="1" max="<%= balanceDue %>" required>
@@ -143,7 +143,7 @@
     <div class="card-header">
       <div class="card-title">Adjust Fee / Discount</div>
     </div>
-    <form action="/admin/fees/<%= fee.student._id %>/update" method="POST">
+    <form action="/admin/fees/<%= fee.student._id %>/update" method="POST" data-native-submit="true">
       <div class="form-row">
         <div class="form-group">
           <label class="form-label" for="totalAmount">Base Fee (INR)</label>

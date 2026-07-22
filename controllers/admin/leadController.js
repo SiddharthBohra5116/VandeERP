@@ -333,6 +333,59 @@ exports.getLeads = async (req, res) => {
   }
 };
 
+exports.getCreateLead = async (req, res) => {
+  const [leadStatuses, courses] = await Promise.all([
+    getLeadStatuses(),
+    Course.find({ isActive: true }).select('name code').sort({ name: 1 })
+  ]);
+  res.render('counsellor/lead-form', {
+    title: 'New Lead',
+    user: req.user,
+    target: null,
+    leadStatuses,
+    courses
+  });
+};
+
+exports.postCreateLead = async (req, res) => {
+  try {
+    const { name, phone, email, course, source, status, followUpDate, notes } = req.body;
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+    if (!name || cleanPhone.length !== 10) {
+      throw new Error('Name and a valid 10-digit phone number are required.');
+    }
+
+    const duplicate = await Lead.findOne({ phone: cleanPhone }).select('name');
+    if (duplicate) {
+      throw new Error(`A lead with this phone number already exists for ${duplicate.name}.`);
+    }
+
+    const [courseDoc, statuses] = await Promise.all([resolveCourse(course), getLeadStatuses()]);
+    const validStatus = statuses.some(option => option.key === status);
+    await Lead.create({
+      name: String(name).trim(),
+      phone: cleanPhone,
+      email: String(email || '').trim().toLowerCase(),
+      interestedCourse: courseDoc?._id || null,
+      source: LEAD_SOURCES.includes(source) ? source : 'Manual',
+      status: validStatus ? status : 'new',
+      nextFollowUpAt: followUpDate ? new Date(followUpDate) : null,
+      notes: String(notes || '').trim().slice(0, 500),
+      assignedTo: null,
+      createdBy: req.user._id
+    });
+    return res.redirect('/admin/leads?created=1');
+  } catch (err) {
+    const [leadStatuses, courses] = await Promise.all([
+      getLeadStatuses(),
+      Course.find({ isActive: true }).select('name code').sort({ name: 1 })
+    ]);
+    return res.status(400).render('counsellor/lead-form', {
+      title: 'New Lead', user: req.user, target: null, error: err.message, leadStatuses, courses
+    });
+  }
+};
+
 exports.postImportLeads = async (req, res) => {
   const redirectBase = '/admin/leads';
   const importJobId = String(req.body.importJobId || '').trim();
@@ -1151,33 +1204,9 @@ exports.postConvertLead = async (req, res) => {
     const installments = buildFeeSchedule(req.body, totalFees);
     if (!installments.length) throw new Error('Add at least one installment.');
 
-    let targetBatch = null;
-    let batchName = '';
-
-    if (req.body.batch && req.body.batch.match && req.body.batch.match(/^[0-9a-fA-F]{24}$/)) {
-      targetBatch = await Batch.findById(req.body.batch).populate('course', 'name code fees durationMonths');
-      batchName = targetBatch ? targetBatch.name : '';
-    } else if (req.body.customBatch && req.body.customBatch.trim()) {
-      batchName = req.body.customBatch.trim();
-    } else if (req.body.batch && req.body.batch.trim()) {
-      batchName = req.body.batch.trim();
-    }
-
-    if (!batchName) {
-      return res.render('admin/convert', {
-        title: `Convert: ${lead.name}`,
-        user: req.user,
-        lead,
-        batches: batchOptions,
-        teachers,
-        courses,
-        error: 'Batch selection or custom batch name is required.'
-      });
-    }
-
-    if (!targetBatch) {
-      targetBatch = await Batch.findOne({ name: batchName });
-    }
+    // ponytail: batches remain as a compatibility layer until attendance and schedules are course-native.
+    const batchName = `${selectedCourse.code || selectedCourse.name} - General`;
+    let targetBatch = await Batch.findOne({ name: batchName, course: selectedCourse._id });
 
     const selectedTeacherProfile = req.body.teacherId
       ? await Teacher.findById(req.body.teacherId).populate('user', '_id name')

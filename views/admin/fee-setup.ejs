@@ -18,7 +18,7 @@
   <% if (!student.course) { %>
     <div class="empty-state"><p>Assign a course before creating this invoice.</p><a href="/admin/users/<%= student.user?._id %>/edit" class="btn btn-primary btn-sm">Edit Student Profile</a></div>
   <% } else { %>
-    <form action="/admin/fees/<%= student._id %>/setup" method="POST">
+    <form action="/admin/fees/<%= student._id %>/setup" method="POST" data-native-submit="true">
       <div class="form-row">
         <div class="form-group"><label class="form-label" for="totalAmount">Base Course Fee (INR)</label><input type="number" id="totalAmount" name="totalAmount" class="form-control" min="0.01" step="0.01" value="<%= suggestedFee || '' %>" required></div>
         <div class="form-group"><label class="form-label" for="discount">Discount (INR)</label><input type="number" id="discount" name="discount" class="form-control" min="0" step="0.01" value="0"></div>

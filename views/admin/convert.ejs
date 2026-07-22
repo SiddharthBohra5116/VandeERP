@@ -73,8 +73,8 @@
     <section class="convert-section">
       <div class="convert-section-head">
         <div>
-          <h3>Course & Batch</h3>
-          <p>Assign the student to the right roster and primary teacher.</p>
+          <h3>Course Assignment</h3>
+          <p>Assign the student to a course and primary teacher.</p>
         </div>
       </div>
 
@@ -93,7 +93,7 @@
             <% } %>
           </select>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="display:none" aria-hidden="true" hidden>
           <label class="form-label">Assign Roster Batch *</label>
           <select id="batch_select" name="batch" class="form-control" onchange="toggleCustomBatch()">
             <% if (batches && batches.length > 0) { %>
@@ -107,10 +107,10 @@
         </div>
       </div>
 
-      <div class="form-row" id="custom_batch_container" style="display: <%= (batches && batches.length > 0) ? 'none' : 'grid' %>;">
+      <div class="form-row" id="custom_batch_container" style="display:none" aria-hidden="true" hidden>
         <div class="form-group">
           <label class="form-label">New Batch Name *</label>
-          <input type="text" id="customBatch" name="customBatch" class="form-control" placeholder="e.g. DM-03PM-A2" <%= (batches && batches.length > 0) ? '' : 'required' %>>
+          <input type="text" id="customBatch" name="customBatch" class="form-control" placeholder="e.g. DM-03PM-A2">
         </div>
       </div>
 
@@ -123,7 +123,7 @@
               <option value="<%= t._id %>"><%= t.name %></option>
             <% }); %>
           </select>
-          <div class="form-hint">Only teachers assigned to the selected batch are shown.</div>
+          <div class="form-hint">Choose the teacher responsible for this course.</div>
         </div>
         <div class="form-group">
           <label class="form-label">Registration Date</label>

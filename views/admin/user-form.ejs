@@ -100,7 +100,7 @@
             <% }) %>
           </select>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="display:none" aria-hidden="true" hidden>
           <label class="form-label" for="batch">Batch Title</label>
           <select id="batch" name="batch" class="form-control">
             <option value="" <%= !studentData?.batch ? 'selected' : '' %>>No batch assigned</option>

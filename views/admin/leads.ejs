@@ -185,6 +185,12 @@
   </div>
 <% } %>
 
+<% if (typeof filter !== 'undefined' && filter.created) { %>
+  <div class="alert alert-toast alert-success" style="margin-bottom: 20px;" role="status">
+    <span>Lead added. It is unassigned and ready for counsellor assignment.</span>
+  </div>
+<% } %>
+
 <% if (typeof filter !== 'undefined' && (filter.imported || filter.skipped || filter.failed)) { %>
   <div class="alert alert-toast alert-success" style="margin-bottom: 20px;" role="status">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -210,10 +216,13 @@
     <h2 class="lead-tools-comfort-title">Lead setup tools</h2>
     <div class="lead-tools-comfort-sub">Import CSV data or manage status labels only when you need them.</div>
   </div>
+  <div style="display:flex; gap:.65rem; align-items:center;">
+  <a href="/admin/leads/create" class="btn btn-primary btn-sm">+ Add Lead</a>
   <button type="button" class="btn btn-ghost btn-sm lead-tools-toggle" id="leadToolsToggle" aria-controls="leadToolsPanel" aria-expanded="false">
     <span class="lead-tools-toggle-icon" aria-hidden="true">+</span>
     <span class="lead-tools-toggle-text">Show tools</span>
   </button>
+  </div>
 </div>
 
 <div class="lead-tools-shell-wrap is-hidden" id="leadToolsPanel">

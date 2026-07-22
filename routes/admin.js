@@ -350,6 +350,8 @@ router.post(
 // ===================================
 
 router.get('/leads', ...guard, leadCtrl.getLeads);
+router.get('/leads/create', ...guard, leadCtrl.getCreateLead);
+router.post('/leads/create', ...guard, leadCtrl.postCreateLead);
 router.get('/leads/import/progress/:jobId', ...guard, leadCtrl.getImportProgress);
 
 router.post(

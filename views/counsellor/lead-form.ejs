@@ -1,5 +1,7 @@
 <%
   const isEdit = typeof lead !== 'undefined' && lead;
+  const isAdmin = user && user.role === 'admin';
+  const leadsBase = isAdmin ? '/admin/leads' : '/counsellor/leads';
   layout = 'main';
   title = isEdit ? `Edit: ${lead.name}` : 'Add New Lead';
   subtitle = isEdit ? 'Update prospect lead details' : 'Enter new candidate inquiry details';
@@ -153,7 +155,7 @@
 
 <!-- Page Action Header -->
 <div style="display:flex; justify-content:flex-start; align-items:center; margin-bottom:1.25rem;">
-  <a href="/counsellor/leads" class="btn btn-ghost btn-sm" style="min-height:36px; display:inline-flex; align-items:center;">&larr; Back to Leads</a>
+  <a href="<%= leadsBase %>" class="btn btn-ghost btn-sm" style="min-height:36px; display:inline-flex; align-items:center;">&larr; Back to Leads</a>
 </div>
 
 <div style="max-width:768px; margin: 0 auto;">
@@ -164,7 +166,7 @@
       <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.5 5.5l3 3M15.5 15.5l3 3M5.5 15.5l3-3M15.5 5.5l3-3" stroke-linecap="round"/>
     </svg>
 
-    <form action="<%= isEdit ? `/counsellor/leads/${lead._id}/edit` : '/counsellor/leads/create' %>" method="POST">
+    <form action="<%= isEdit ? `${leadsBase}/${lead._id}/edit` : `${leadsBase}/create` %>" method="POST" data-native-submit="true">
       <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
 
       <!-- SECTION 1: Contact Details -->
@@ -196,15 +198,16 @@
         <div class="form-group">
           <label class="premium-label">Course Interest *</label>
           <select name="course" class="premium-input" required>
-            <% ['Video Editing','Digital Marketing','Both','Undecided'].forEach(c => { %>
-              <option value="<%= c %>" <%= isEdit && (lead.interestedCourse ? lead.interestedCourse.name === c : c === 'Undecided') ? 'selected' : '' %>><%= c %></option>
+            <% const courseOptions = (typeof courses !== 'undefined' && courses.length) ? courses : ['Video Editing','Digital Marketing']; %>
+            <% courseOptions.forEach(c => { const value = c._id || c; const label = c.name || c; %>
+              <option value="<%= value %>" <%= isEdit && lead.interestedCourse && String(lead.interestedCourse._id || lead.interestedCourse) === String(value) ? 'selected' : '' %>><%= label %></option>
             <% }); %>
           </select>
         </div>
         <div class="form-group">
           <label class="premium-label">Lead Source *</label>
           <select name="source" class="premium-input" required>
-            <% ['Walk-in','Website','Referral','Instagram','Facebook','LinkedIn','Advertisement','WhatsApp','Other'].forEach(s => { %>
+            <% ['Manual','Walk-in','Website','Referral','Instagram','Facebook','LinkedIn','Advertisement','WhatsApp','Other'].forEach(s => { %>
               <option value="<%= s %>" <%= isEdit && lead.source === s ? 'selected' : '' %>><%= s %></option>
             <% }); %>
           </select>
@@ -241,7 +244,7 @@
 
       <!-- Action Buttons -->
       <div style="display:flex; gap:12px; justify-content:flex-end; padding-top:1.5rem; border-top:1px solid var(--border); margin-top:2rem;">
-        <a href="/counsellor/leads" class="btn-premium-cancel">Cancel</a>
+        <a href="<%= leadsBase %>" class="btn-premium-cancel">Cancel</a>
         <button type="submit" class="btn-premium-save">
           <%= isEdit ? 'Update Lead File' : 'Save New Lead' %>
         </button>
