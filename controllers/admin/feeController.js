@@ -87,7 +87,7 @@ exports.getFees = async (req, res) => {
         fee.totalAmount - (fee.discount || 0);
 
       const dueAmount =
-        Math.max(0, netAmount + fee.totalFine - fee.paidAmount);
+        Math.max(0, netAmount - fee.paidAmount);
 
       let status = 'no invoice';
 

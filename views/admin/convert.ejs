@@ -151,14 +151,9 @@
         </div>
       </div>
 
-      <div id="downpayment_warning" class="convert-alert convert-alert-warning" style="display:none;">
-        <strong>Low down payment.</strong>
-        <span>Paid amount is below 50%. Admin conversion will still continue with an authorization note.</span>
-      </div>
-
       <div class="fee-live-summary">
         <div>
-          <span>Suggested Down Payment</span>
+          <span>Opening Payment</span>
           <strong id="suggested_downpayment">Rs. 0</strong>
         </div>
         <div>
@@ -175,7 +170,7 @@
         <div class="installment-panel-head">
           <div>
             <h4>Fee Installments</h4>
-            <p>Delete all rows to let the system generate default 50% / 25% / 25% installments.</p>
+            <p>Use one installment for full payment, or add/remove rows for any custom schedule.</p>
           </div>
           <button type="button" class="btn btn-ghost btn-xs" onclick="addInstallmentRow()">Add Installment</button>
         </div>
@@ -364,14 +359,7 @@
   function checkDownpayment() {
     const total = Number(document.getElementById('fees_total').value) || 0;
     const paid = Number(document.getElementById('fees_paid').value) || 0;
-    const warning = document.getElementById('downpayment_warning');
-    if (total > 0 && paid < total * 0.5) {
-      warning.style.display = 'flex';
-    } else {
-      warning.style.display = 'none';
-    }
-
-    document.getElementById('suggested_downpayment').textContent = formatINR(total * 0.5);
+    document.getElementById('suggested_downpayment').textContent = formatINR(paid);
     document.getElementById('balance_due').textContent = formatINR(total - paid);
     recalcInstallments();
   }
@@ -396,9 +384,14 @@
 
     if (rows.length !== 3 && rows.length !== 1) return;
 
-    const remaining = Math.max(0, total - paid);
+    if (paid >= total && total > 0) {
+      setInstallmentRows([{ name: 'Full Fee', amount: total }]);
+      return;
+    }
+    const first = Math.round(total * 0.5);
+    const remaining = Math.max(0, total - first);
     setInstallmentRows([
-      { name: 'Down Payment (50%)', amount: paid || Math.round(total * 0.5) },
+      { name: 'Down Payment (50%)', amount: first },
       { name: 'Installment 2 (25%)', amount: Math.round(remaining / 2) },
       { name: 'Installment 3 (25%)', amount: remaining - Math.round(remaining / 2) }
     ]);

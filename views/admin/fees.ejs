@@ -5,16 +5,50 @@
   page = 'fees';
 %>
 
-<% if (filter.imported || filter.failed) { %><div class="alert alert-success">Fee import: <%= filter.imported || 0 %> students updated, <%= filter.failed || 0 %> failed.</div><% } %>
-<% if (filter.error) { %><div class="alert alert-error"><%= filter.error %></div><% } %>
-<div class="card" style="padding:1rem 1.25rem; margin-bottom:1.25rem;">
-  <form method="POST" action="/admin/fees/import" enctype="multipart/form-data" data-no-soft-nav="true" style="display:flex; gap:.75rem; align-items:center; flex-wrap:wrap;">
-    <strong>Mass Fee &amp; EMI Update</strong>
-    <input class="form-control" type="file" name="feeCsv" accept=".csv,.tsv,.txt" required style="flex:1;">
-    <button class="btn btn-primary btn-sm" type="submit">Import</button>
-    <small class="text-muted">Columns: student_name, total_amount, discount, discount_reason, installment_name, installment_amount, due_date. Use one row per EMI.</small>
+<%
+  const importUpdated = Number(filter.imported || 0);
+  const importFailed = Number(filter.failed || 0);
+  const importRan = Boolean(filter.imported || filter.failed);
+  const importErrors = importRan && filter.error ? String(filter.error).split(' | ') : [];
+%>
+
+<% if (importRan) { %>
+  <div class="card" style="padding:1rem 1.25rem; margin-bottom:1.25rem; border-left:4px solid <%= importFailed === 0 ? 'var(--green)' : importUpdated > 0 ? 'var(--orange)' : 'var(--red)' %>;">
+    <div style="display:flex; justify-content:space-between; gap:1rem; align-items:center; flex-wrap:wrap;">
+      <div>
+        <strong><%= importFailed === 0 ? 'Import completed' : importUpdated > 0 ? 'Import partially completed' : 'Nothing was imported' %></strong>
+        <div class="text-muted" style="margin-top:.25rem;"><%= importUpdated %> updated &middot; <%= importFailed %> failed</div>
+      </div>
+      <% if (importErrors.length) { %>
+        <details style="width:100%;">
+          <summary style="cursor:pointer; color:var(--red); font-weight:700;">Why rows failed</summary>
+          <ul style="margin:.75rem 0 0 1.25rem; color:var(--text-sub);">
+            <% importErrors.forEach(message => { %><li style="margin:.35rem 0;"><%= message %></li><% }); %>
+          </ul>
+          <% if (importFailed > importErrors.length) { %><div class="form-hint">Showing the first <%= importErrors.length %> failures.</div><% } %>
+        </details>
+      <% } %>
+    </div>
+  </div>
+<% } else if (filter.error) { %><div class="alert alert-error"><%= filter.error %></div><% } %>
+
+<details class="card" style="margin-bottom:1.25rem;">
+  <summary style="padding:.85rem 1rem; cursor:pointer; font-weight:800; list-style-position:inside;">Import fees from CSV <span class="text-muted" style="font-weight:500; margin-left:.4rem;">Optional</span></summary>
+  <div style="padding:0 1rem 1rem; border-top:1px solid var(--border);">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin:1rem 0;">
+    <div class="form-hint">Matches by phone/email, converts an existing lead, or creates a minimal incomplete student when no match exists.</div>
+    <a href="data:text/csv;charset=utf-8,Student%20Name%2CContact%20No.%2CPursuing%20Course%2CPayment%20Method%2CJoining%20Date%2CTotal%20Fee%2CAmount%20Paid%2CPending%20Amount%2CNext%20EMI%20Date%2CStatus%2CRemarks" download="student-fee-import-template.csv" class="btn btn-ghost btn-sm">Download template</a>
+  </div>
+  <form method="POST" action="/admin/fees/import" enctype="multipart/form-data" data-no-soft-nav="true" style="display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.75rem; align-items:center;">
+    <label for="feeCsv" style="display:flex; align-items:center; gap:.75rem; padding:.85rem 1rem; border:1px dashed var(--border); border-radius:8px; cursor:pointer; background:var(--bg-input);">
+      <span class="btn btn-ghost btn-sm" style="pointer-events:none;">Choose CSV</span>
+      <span id="feeCsvName" class="text-muted">No file selected</span>
+      <input id="feeCsv" type="file" name="feeCsv" accept=".csv,.tsv,.txt" required hidden onchange="document.getElementById('feeCsvName').textContent=this.files[0]?.name || 'No file selected'">
+    </label>
+    <button class="btn btn-primary" type="submit">Import File</button>
   </form>
-</div>
+  </div>
+</details>
 
 <!-- Search & Filter Form -->
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">

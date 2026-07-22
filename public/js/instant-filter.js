@@ -51,13 +51,14 @@ const initInstantFilter = () => {
 
   // Instant handler for dropdown options, date, and month changes
   filterForm.addEventListener('change', (e) => {
-    if (e.target.tagName === 'SELECT' || (e.target.tagName === 'INPUT' && e.target.type !== 'text')) {
+    if (!filterForm.dataset.applyFilter && (e.target.tagName === 'SELECT' || (e.target.tagName === 'INPUT' && e.target.type !== 'text'))) {
       updateResults();
     }
   });
 
   // Intercept form submissions
   filterForm.addEventListener('submit', (e) => {
+    if (filterForm.dataset.applyFilter) return;
     e.preventDefault();
     updateResults();
   });

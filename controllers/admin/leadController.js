@@ -24,6 +24,7 @@ const {
   slugifyStatus
 } = require('../../utils/leadStatusOptions');
 const logger = require('../../utils/logger');
+const buildFeeSchedule = require('../../utils/feeSchedule');
 
 // ponytail: in-memory progress is enough for one app instance; use Redis if imports run across multiple instances.
 const importProgress = new Map();
@@ -1146,6 +1147,9 @@ exports.postConvertLead = async (req, res) => {
 
     const totalFees = Number(req.body.fees_total) || selectedCourse.fees || 0;
     const paidFees = Number(req.body.fees_paid) || 0;
+    if (totalFees <= 0 || paidFees < 0 || paidFees > totalFees) throw new Error('Fee and opening payment amounts are invalid.');
+    const installments = buildFeeSchedule(req.body, totalFees);
+    if (!installments.length) throw new Error('Add at least one installment.');
 
     let targetBatch = null;
     let batchName = '';
@@ -1237,9 +1241,7 @@ exports.postConvertLead = async (req, res) => {
       totalAmount: totalFees,
       paidAmount: paidFees,
       courseDurationMonths: selectedCourse.durationMonths || 3,
-      discountReason: paidFees < totalFees * 0.5
-        ? 'Admin bypassed 50% down payment requirement'
-        : '',
+      installments,
       payments: paidFees > 0 ? [{
         amount: paidFees,
         method: 'Cash',
@@ -1248,25 +1250,6 @@ exports.postConvertLead = async (req, res) => {
         paidAt: new Date()
       }] : []
     });
-
-    const instName = req.body.instName || req.body['instName[]'];
-    const instAmount = req.body.instAmount || req.body['instAmount[]'];
-    const instDueDate = req.body.instDueDate || req.body['instDueDate[]'];
-
-    if (instName && Array.isArray(instName) && instName.length > 0) {
-      feeLedger.installments = instName
-        .map((name, index) => ({
-          name: String(name || '').trim(),
-          amount: Number(instAmount[index]) || 0,
-          dueDate: instDueDate[index] ? new Date(instDueDate[index]) : new Date(),
-          paidAmount: 0
-        }))
-        .filter(installment => installment.name && installment.amount > 0);
-
-      if (feeLedger.installments.length > 0) {
-        feeLedger.dueDate = feeLedger.installments[feeLedger.installments.length - 1].dueDate;
-      }
-    }
 
     await feeLedger.save();
 

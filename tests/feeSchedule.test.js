@@ -11,4 +11,6 @@ assert.equal(valid.length, 2);
 assert.equal(valid.reduce((sum, item) => sum + item.amount, 0), 10000);
 assert.throws(() => buildFeeSchedule({ instName: ['EMI'], instAmount: ['9000'], instDueDate: ['2026-08-01'] }, 10000));
 assert.throws(() => buildFeeSchedule({ instName: ['A', 'B'], instAmount: ['5000', '5000'], instDueDate: ['2026-09-01', '2026-08-01'] }, 10000));
+assert.equal(buildFeeSchedule({ instName: 'Full Fee', instAmount: '10000', instDueDate: '2026-08-01' }, 10000).length, 1);
+assert.equal(buildFeeSchedule({ instName: ['A', 'B', 'C', 'D'], instAmount: ['2500', '2500', '2500', '2500'], instDueDate: ['2026-08-01', '2026-09-01', '2026-10-01', '2026-11-01'] }, 10000).length, 4);
 console.log('fee schedule checks passed');

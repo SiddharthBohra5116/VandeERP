@@ -132,8 +132,7 @@ feeSchema.virtual('totalFine').get(function() {
 // Due amount
 feeSchema.virtual('dueAmount').get(function() {
   const net = this.totalAmount - this.discount;
-  const fine = this.totalFine;
-  return Math.max(0, net + fine - this.paidAmount);
+  return Math.max(0, net - this.paidAmount);
 });
 
 // Payment percentage

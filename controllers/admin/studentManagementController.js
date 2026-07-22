@@ -18,7 +18,7 @@ const syncCourseCompletion = require('../../utils/syncCourseCompletion');
 // GET /admin/students
 exports.getStudents = async (req, res) => {
   try {
-    const { search, attendance } = req.query;
+    const { search, attendance, incomplete, status, kyc } = req.query;
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 10), 100);
     const skip = (page - 1) * limit;
@@ -27,6 +27,19 @@ exports.getStudents = async (req, res) => {
       role: 'student',
       archivedAt: null
     };
+    if (status) userFilter.status = status;
+    const incompleteProfileFilter = { $or: [{ batch: null }, { teacher: null }, { counsellor: null }] };
+    const incompleteCount = await Student.countDocuments(incompleteProfileFilter);
+
+    if (incomplete === '1' || incomplete === '0' || kyc) {
+      const profileFilter = {};
+      if (incomplete === '1') Object.assign(profileFilter, incompleteProfileFilter);
+      if (incomplete === '0') Object.assign(profileFilter, { batch: { $ne: null }, teacher: { $ne: null }, counsellor: { $ne: null } });
+      if (kyc === 'complete') profileFilter.idVerified = true;
+      if (kyc === 'pending') profileFilter.idVerified = { $ne: true };
+      const matchingProfiles = await Student.find(profileFilter).select('user');
+      userFilter._id = { $in: matchingProfiles.map(profile => profile.user).filter(Boolean) };
+    }
 
     if (search) {
       const escaped = escapeRegex(search);
@@ -60,8 +73,8 @@ exports.getStudents = async (req, res) => {
       ];
     }
 
-    const [users, totalUsers] = await Promise.all([
-      User.find(userFilter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+    let [users, totalUsers] = await Promise.all([
+      attendance ? User.find(userFilter).sort({ createdAt: -1 }) : User.find(userFilter).sort({ createdAt: -1 }).skip(skip).limit(limit),
       User.countDocuments(userFilter)
     ]);
 
@@ -149,6 +162,8 @@ exports.getStudents = async (req, res) => {
         if (attendance === 'not_marked_today') return !student.isMarkedToday;
         return true;
       });
+      totalUsers = mergedStudents.length;
+      mergedStudents = mergedStudents.slice(skip, skip + limit);
     }
 
     res.render('admin/users', {
@@ -163,7 +178,8 @@ exports.getStudents = async (req, res) => {
         total: totalUsers,
         pages: Math.max(Math.ceil(totalUsers / limit), 1)
       },
-      filter: req.query
+      filter: req.query,
+      incompleteCount
     });
 
   } catch (err) {

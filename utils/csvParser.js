@@ -22,6 +22,25 @@ function cleanImportedPhone(phone) {
   return String(phone || '').replace(/^\s*p\s*:\s*/i, '').trim();
 }
 
+function normalizePhone(phone) {
+  const digits = cleanImportedPhone(phone).replace(/\D/g, '');
+  return digits.length > 10 ? digits.slice(-10) : digits;
+}
+
+function importedMoney(value) {
+  const text = String(value == null ? '' : value).trim();
+  const number = Number(text.replace(/[^\d.]/g, '')) * (text.startsWith('-') ? -1 : 1);
+  return Number.isFinite(number) ? number : NaN;
+}
+
+function importedDate(value, year = new Date().getFullYear()) {
+  const text = String(value || '').trim();
+  if (!text || text === '-') return null;
+  const withYear = /\b\d{4}\b/.test(text) ? text : `${text} ${year}`;
+  const date = new Date(`${withYear} 12:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function courseFromFileName(fileName) {
   return String(fileName || '')
     .replace(/\.(?:csv|tsv|txt)$/i, '')
@@ -86,10 +105,13 @@ function parseCsv(text) {
 
 module.exports = {
   cleanImportedPhone,
+  importedDate,
+  importedMoney,
   courseFromFileName,
   importedCourseCode,
   isImportedStudentStatus,
   normalizeCourseName,
+  normalizePhone,
   normalizeHeader,
   parseCsv
 };

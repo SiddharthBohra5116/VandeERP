@@ -4,7 +4,10 @@ const Fee = require('../../models/Fee');
 const Student = require('../../models/Student');
 const Message = require('../../models/Message');
 const LeadActivity = require('../../models/LeadActivity');
+const Course = require('../../models/Course');
 const logger = require('../../utils/logger');
+const buildFeeSchedule = require('../../utils/feeSchedule');
+const { escapeRegex } = require('../../utils/sanitize');
 
 function buildTeacherOptions(teacherProfiles) {
   return teacherProfiles
@@ -253,7 +256,10 @@ exports.getConvertLead = async (req, res) => {
     }
 
     const Batch = require('../../models/Batch');
-    const batches = await Batch.find({ isActive: true }).populate('course');
+    const [batches, courses] = await Promise.all([
+      Batch.find({ isActive: true }).populate('course'),
+      Course.find({ isActive: true }).select('name code fees durationMonths').sort({ name: 1 })
+    ]);
     
     const Teacher = require('../../models/Teacher');
     const teacherProfiles = await Teacher.find().populate('user');
@@ -265,7 +271,8 @@ exports.getConvertLead = async (req, res) => {
       user: req.user,
       lead,
       batches: batchesForForm,
-      teachers
+      teachers,
+      courses
     });
   } catch (err) {
     logger.error('Get Convert Lead Error', { error: err.message, stack: err.stack });
@@ -281,7 +288,10 @@ exports.postConvertLead = async (req, res) => {
   logger.info('POST convert lead request received', { leadId: req.params.id });
   
   const Batch = require('../../models/Batch');
-  const batches = await Batch.find({ isActive: true }).populate('course');
+  const [batches, courses] = await Promise.all([
+    Batch.find({ isActive: true }).populate('course'),
+    Course.find({ isActive: true }).select('name code fees durationMonths').sort({ name: 1 })
+  ]);
   
   const Teacher = require('../../models/Teacher');
   const teacherProfiles = await Teacher.find().populate('user');
@@ -298,18 +308,20 @@ exports.postConvertLead = async (req, res) => {
 
     const totalFees = Number(req.body.fees_total) || 0;
     const paidFees = Number(req.body.fees_paid) || 0;
-    const minDownPayment = totalFees * 0.5;
-
-    if (paidFees < minDownPayment) {
+    if (totalFees <= 0 || paidFees < 0 || paidFees > totalFees) {
       return res.render('counsellor/convert', {
         title: `Convert: ${lead.name}`,
         user: req.user,
         lead,
         batches: batchesForForm,
         teachers,
-        error: `Admission Policy Error: On joining, a minimum 50% down payment (₹${minDownPayment.toLocaleString('en-IN')}) is required. You inputted ₹${paidFees.toLocaleString('en-IN')}.`
+        courses,
+        error: 'Total fee must be positive and opening payment must be between zero and the total fee.'
       });
     }
+
+    const installments = buildFeeSchedule(req.body, totalFees);
+    if (!installments.length) throw new Error('Add at least one installment.');
 
     const email = req.body.email ? req.body.email.trim().toLowerCase() : '';
     const password = req.body.password ? req.body.password.trim() : '';
@@ -321,6 +333,7 @@ exports.postConvertLead = async (req, res) => {
         lead,
         batches: batchesForForm,
         teachers,
+        courses,
         error: 'A valid email address is required.'
       });
     }
@@ -332,6 +345,7 @@ exports.postConvertLead = async (req, res) => {
         lead,
         batches: batchesForForm,
         teachers,
+        courses,
         error: 'Password must be at least 8 characters long.'
       });
     }
@@ -344,6 +358,7 @@ exports.postConvertLead = async (req, res) => {
         lead,
         batches: batchesForForm,
         teachers,
+        courses,
         error: 'This email address is already registered.'
       });
     }
@@ -364,23 +379,19 @@ exports.postConvertLead = async (req, res) => {
         lead,
         batches: batchesForForm,
         teachers,
+        courses,
         error: 'Batch selection or a custom batch name is required.'
       });
     }
 
-    const Course = require('../../models/Course');
-    const Student = require('../../models/Student');
-
     const courseName = req.body.course || (lead.interestedCourse ? lead.interestedCourse.name : '') || 'Digital Marketing';
     let courseDoc = await Course.findOne({
       $or: [
-        { name: courseName },
+        { name: { $regex: `^${escapeRegex(courseName)}$`, $options: 'i' } },
         { code: courseName.toUpperCase() }
       ]
     });
-    if (!courseDoc) {
-      courseDoc = await Course.findOne();
-    }
+    if (!courseDoc) throw new Error(`Course not found: ${courseName}`);
 
     const selectedTeacherProfile = req.body.teacherId
       ? teacherProfiles.find(profile => profile._id.toString() === req.body.teacherId)
@@ -442,6 +453,7 @@ exports.postConvertLead = async (req, res) => {
         totalAmount: totalFees,
         paidAmount: paidFees,
         discount: 0,
+        installments,
         payments: paidFees > 0 ? [{
           amount: paidFees,
           method: 'Cash',
@@ -451,8 +463,6 @@ exports.postConvertLead = async (req, res) => {
         }] : []
       });
 
-      feeLedger.generateInstallments();
-      feeLedger.allocatePayments();
       await feeLedger.save();
 
       await Student.findByIdAndUpdate(studentProfile._id, {
@@ -511,6 +521,7 @@ exports.postConvertLead = async (req, res) => {
         lead,
         batches: batchesForForm,
         teachers,
+        courses,
         error: cleanErrMessage
       });
     }
