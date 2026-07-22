@@ -149,8 +149,8 @@
           <div class="person-actions">
             <% if (u.role !== 'admin') { %><input type="checkbox" class="people-select account-archive-check" name="userIds" value="<%= u._id %>" form="bulkArchiveForm" aria-label="Select <%= u.name %> for archiving"><% } %>
             <form action="/admin/users/<%= u._id %>/status" method="POST" class="person-status-form" data-native-submit="true"><label class="sr-only" for="status-<%= u._id %>">Account status for <%= u.name %></label><select id="status-<%= u._id %>" name="status" class="person-status-select" onchange="this.form.submit()"><option value="active" <%= statusVal === 'active' ? 'selected' : '' %>>Active</option><option value="inactive" <%= statusVal === 'inactive' ? 'selected' : '' %>>Archived</option><option value="drop" <%= statusVal === 'drop' ? 'selected' : '' %>>Dropped</option><option value="complete" <%= statusVal === 'complete' ? 'selected' : '' %>>Completed</option></select></form>
-            <a href="/admin/users/<%= u._id %>/edit" class="btn btn-ghost btn-xs">Edit</a>
-            <button type="button" class="btn btn-ghost btn-xs reset-password-btn" data-user-id="<%= u._id %>" data-user-name="<%= u.name %>" data-user-phone="<%= u.phone || '' %>">Reset password</button>
+            <a href="/admin/users/<%= u._id %>/edit" class="btn btn-ghost btn-xs"><%= u.profileIncomplete ? 'Set up account' : 'Edit' %></a>
+            <% if (!u.profileIncomplete) { %><button type="button" class="btn btn-ghost btn-xs reset-password-btn" data-user-id="<%= u._id %>" data-user-name="<%= u.name %>" data-user-phone="<%= u.phone || '' %>">Reset password</button><% } %>
           </div>
         </article>
       <% }) %>

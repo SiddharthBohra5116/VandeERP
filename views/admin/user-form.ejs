@@ -8,6 +8,7 @@
   const counsellorData = typeof counsellorProfile !== 'undefined' && counsellorProfile ? counsellorProfile : null;
   const academyId = studentData?.rollNumber || teacherData?.rollNumber || counsellorData?.rollNumber || '';
   const inputDate = value => value ? new Date(value).toISOString().split('T')[0] : '';
+  const placeholderEmail = isEdit && /@(pending\.local|staff\.invalid)$/i.test(target.email || '');
   title = isEdit ? `Edit ${roleLabel}` : `Add ${roleLabel}`;
   subtitle = isEdit ? `Modify profile details for ${target.name}` : `Create new credentials for academy ${roleLabel ? roleLabel.toLowerCase() + 's' : 'students or staff'}`;
   page = activeRole === 'student' ? 'students' : activeRole === 'teacher' ? 'teachers' : activeRole === 'counsellor' ? 'counsellors' : 'users';
@@ -22,7 +23,7 @@
       </div>
       <div class="form-group">
         <label class="form-label" for="email">Email Address</label>
-        <input type="email" id="email" name="email" class="form-control" value="<%= isEdit ? target.email : '' %>" placeholder="e.g. john@example.com" required>
+        <input type="email" id="email" name="email" class="form-control" value="<%= isEdit && !placeholderEmail ? target.email : '' %>" placeholder="Student's real email address" required>
       </div>
     </div>
 
@@ -32,7 +33,7 @@
         <input type="password" id="password" name="password" class="form-control" placeholder="Minimum 8 characters" minlength="8" required>
       </div>
     <% } else if (target.profileIncomplete) { %>
-      <div class="alert alert-warning" role="alert">Temporary <%= target.role %> profile. Add the real contact details and password to activate it.</div>
+      <div class="alert alert-warning" role="alert">Set the student's real email and a temporary password. They will use these to sign in and must change the password after login.</div>
       <div class="form-group">
         <label class="form-label" for="password">Temporary Password</label>
         <input type="password" id="password" name="password" class="form-control" minlength="8" required>

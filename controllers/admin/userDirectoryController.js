@@ -484,9 +484,11 @@ exports.postEditUser = async (req, res) => {
     const completingTemporaryStaff = targetUser.profileIncomplete;
     if (completingTemporaryStaff) {
       const email = String(data.email || '').trim().toLowerCase();
-      if (email.endsWith('.invalid') || !/^\d{10}$/.test(data.phone || '') || String(data.password || '').length < 8) {
+      const phone = String(data.phone || '').replace(/\D/g, '').slice(-10);
+      if (email.endsWith('.invalid') || email.endsWith('@pending.local') || phone.length !== 10 || String(data.password || '').length < 8) {
         return res.redirect(`/admin/users/${targetUser._id}/edit?incomplete_staff=1`);
       }
+      data.phone = phone;
     }
 
     if (data.email) {
