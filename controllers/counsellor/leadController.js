@@ -1,6 +1,6 @@
 const Lead = require('../../models/Lead');
 const User = require('../../models/User');
-const { escapeRegex } = require('../../utils/sanitize');
+const { escapeRegex, phoneSearchPattern } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
 const Message = require('../../models/Message');
 const LeadActivity = require('../../models/LeadActivity');
@@ -42,9 +42,10 @@ exports.getLeads = async (req, res) => {
     if (source) filter.source = source;
     if (search) {
       const escaped = escapeRegex(search);
+      const phonePattern = phoneSearchPattern(search);
       filter.$or = [
         { name: { $regex: escaped, $options: 'i' } },
-        { phone: { $regex: escaped, $options: 'i' } },
+        { phone: { $regex: phonePattern, $options: 'i' } },
       ];
     }
     if (course) {

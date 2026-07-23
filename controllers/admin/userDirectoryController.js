@@ -8,7 +8,7 @@ const Fee = require('../../models/Fee');
 const Attendance = require('../../models/Attendance');
 const Lead = require('../../models/Lead');
 
-const { escapeRegex } = require('../../utils/sanitize');
+const { escapeRegex, phoneSearchPattern } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
 const { USER_STATUSES } = require('../../config/constants');
 const { todayIST } = require('../../utils/dateHelper');
@@ -109,6 +109,7 @@ exports.getUsers = async (req, res) => {
 
     if (search) {
       const escaped = escapeRegex(search);
+      const phonePattern = phoneSearchPattern(search);
 
       // Search matching courses and batches for students/teachers
       const [matchingCourses, matchingBatches] = await Promise.all([
@@ -143,7 +144,7 @@ exports.getUsers = async (req, res) => {
 
       userFilter.$or = [
         { name: { $regex: escaped, $options: 'i' } },
-        { phone: { $regex: escaped, $options: 'i' } },
+        { phone: { $regex: phonePattern, $options: 'i' } },
         { email: { $regex: escaped, $options: 'i' } },
         { _id: { $in: matchedUserIdsFromProfiles } }
       ];

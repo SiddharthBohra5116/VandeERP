@@ -4,7 +4,7 @@ const Lead = require('../../models/Lead');
 const LeadActivity = require('../../models/LeadActivity');
 const Message = require('../../models/Message');
 
-const { escapeRegex } = require('../../utils/sanitize');
+const { escapeRegex, phoneSearchPattern } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
 
 
@@ -20,11 +20,12 @@ exports.getCounsellors = async (req, res) => {
 
     if (search) {
       const escaped = escapeRegex(search);
+      const phonePattern = phoneSearchPattern(search);
 
       userFilter.$or = [
         { name: { $regex: escaped, $options: 'i' } },
         { email: { $regex: escaped, $options: 'i' } },
-        { phone: { $regex: escaped, $options: 'i' } }
+        { phone: { $regex: phonePattern, $options: 'i' } }
       ];
     }
 

@@ -9,7 +9,7 @@ const Schedule = require('../../models/Schedule');
 
 const { todayIST } = require('../../utils/dateHelper');
 const { calculateStudentsAttendance } = require('../../utils/attendanceHelper');
-const { escapeRegex } = require('../../utils/sanitize');
+const { escapeRegex, phoneSearchPattern } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
 const calculateCourseProgress = require('../../utils/courseProgress');
 const syncCourseCompletion = require('../../utils/syncCourseCompletion');
@@ -43,6 +43,7 @@ exports.getStudents = async (req, res) => {
 
     if (search) {
       const escaped = escapeRegex(search);
+      const phonePattern = phoneSearchPattern(search);
 
       const Course = require('../../models/Course');
       const Batch = require('../../models/Batch');
@@ -67,7 +68,7 @@ exports.getStudents = async (req, res) => {
 
       userFilter.$or = [
         { name: { $regex: escaped, $options: 'i' } },
-        { phone: { $regex: escaped, $options: 'i' } },
+        { phone: { $regex: phonePattern, $options: 'i' } },
         { email: { $regex: escaped, $options: 'i' } },
         { _id: { $in: matchedUserIdsFromProfiles } }
       ];

@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { LEAD_SOURCES } = require('../../config/constants');
-const { escapeRegex } = require('../../utils/sanitize');
+const { escapeRegex, phoneSearchPattern } = require('../../utils/sanitize');
 const { cleanImportedPhone, courseFromFileName, importedCourseCode, isImportedStudentStatus, normalizeCourseName, normalizeHeader, parseCsv } = require('../../utils/csvParser');
 const { computeSourceStats } = require('../../utils/leadAnalytics');
 const {
@@ -270,9 +270,10 @@ exports.getLeads = async (req, res) => {
 
     if (search) {
       const escaped = escapeRegex(search);
+      const phonePattern = phoneSearchPattern(search);
       filter.$or = [
         { name: { $regex: escaped, $options: 'i' } },
-        { phone: { $regex: escaped, $options: 'i' } },
+        { phone: { $regex: phonePattern, $options: 'i' } },
         { email: { $regex: escaped, $options: 'i' } },
         { referredBy: { $regex: escaped, $options: 'i' } }
       ];
