@@ -357,7 +357,9 @@ exports.updateProfile = async (req, res) => {
         await discardStoredFiles(uploadedPhoto ? [uploadedPhoto] : []);
         throw error;
       }
-      await discardStoredFiles(oldPhoto);
+      discardStoredFiles(oldPhoto).catch(error => {
+        logger.warn('Old profile photo cleanup failed', { userId: req.user._id, error: error.message });
+      });
     }
 
     if (req.user.role === 'student') {
@@ -394,10 +396,6 @@ exports.updateProfile = async (req, res) => {
 
       const studentUpdate = {};
       if (hasDetailChanges) studentUpdate.pendingProfileUpdate = updateRequest;
-      if (photoChanged) {
-        studentUpdate['documents.profilePic'] = user.profilePic;
-        if (!hasDetailChanges) studentUpdate['pendingProfileUpdate.profilePic'] = null;
-      }
       if (Object.keys(studentUpdate).length) {
         await Student.findOneAndUpdate({ user: req.user._id }, { $set: studentUpdate });
       }
