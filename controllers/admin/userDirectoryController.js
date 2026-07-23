@@ -159,7 +159,9 @@ exports.getUsers = async (req, res) => {
     // Fetch student profiles for these users
     const studentProfiles = await Student.find({ user: { $in: userIds } })
       .populate('course', 'name code')
-      .populate('batch', 'name');
+      .populate('batch', 'name')
+      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
+      .populate({ path: 'counsellor', populate: { path: 'user', select: 'name' } });
 
     // Fetch teacher profiles for these users
     const teacherProfiles = await Teacher.find({ user: { $in: userIds } })
@@ -167,6 +169,8 @@ exports.getUsers = async (req, res) => {
 
     const studentProfileMap = new Map(studentProfiles.map(p => [String(p.user), p]));
     const teacherProfileMap = new Map(teacherProfiles.map(p => [String(p.user), p]));
+    const fees = await Fee.find({ student: { $in: studentProfiles.map(profile => profile._id) } }).select('student totalAmount paidAmount');
+    const feeMap = new Map(fees.map(fee => [String(fee.student), fee]));
 
     // Fetch student attendance stats if there are students
     let attendanceMap = new Map();
@@ -201,6 +205,7 @@ exports.getUsers = async (req, res) => {
       const tProfile = teacherProfileMap.get(String(user._id));
       
       const stats = sProfile ? (attendanceMap.get(String(sProfile._id)) || {}) : {};
+      const fee = sProfile ? feeMap.get(String(sProfile._id)) : null;
 
       return {
         ...plainUser,
@@ -213,6 +218,8 @@ exports.getUsers = async (req, res) => {
         fatherName: sProfile?.family?.father?.name || '',
         guardianPhone: sProfile?.family?.guardian?.phone || '',
         idVerified: sProfile?.idVerified || false,
+        feeTotal: fee?.totalAmount ?? sProfile?.fees_total ?? 0,
+        feePaid: fee?.paidAmount ?? sProfile?.fees_paid ?? 0,
         qualification: tProfile?.qualification || '',
         experienceYears: tProfile?.experienceYears || 0
       };

@@ -86,6 +86,8 @@ exports.getStudents = async (req, res) => {
       .populate('user', 'name email phone status profilePic')
       .populate('course', 'name code')
       .populate('batch', 'name')
+      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
+      .populate({ path: 'counsellor', populate: { path: 'user', select: 'name' } })
       .sort({ createdAt: -1 });
 
     const studentProfileMap = new Map(
@@ -96,6 +98,8 @@ exports.getStudents = async (req, res) => {
           profile
         ])
     );
+    const fees = await Fee.find({ student: { $in: studentProfiles.map(profile => profile._id) } }).select('student totalAmount paidAmount');
+    const feeMap = new Map(fees.map(fee => [String(fee.student), fee]));
 
     let attendanceMap = new Map();
 
@@ -140,6 +144,7 @@ exports.getStudents = async (req, res) => {
       const plainUser = user.toObject();
       const profile = studentProfileMap.get(String(user._id));
       const stats = profile ? (attendanceMap.get(String(profile._id)) || {}) : {};
+      const fee = profile ? feeMap.get(String(profile._id)) : null;
 
       return {
         ...plainUser,
@@ -150,7 +155,9 @@ exports.getStudents = async (req, res) => {
         idProof: profile?.documents?.idProof || null,
         fatherName: profile?.family?.father?.name || '',
         guardianPhone: profile?.family?.guardian?.phone || '',
-        idVerified: profile?.idVerified || false
+        idVerified: profile?.idVerified || false,
+        feeTotal: fee?.totalAmount ?? profile?.fees_total ?? 0,
+        feePaid: fee?.paidAmount ?? profile?.fees_paid ?? 0
       };
     });
 

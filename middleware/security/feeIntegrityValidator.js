@@ -34,11 +34,15 @@ const { isEnabled, createAlert, noopMiddleware } = require('./index');
  * Returns a string ID or null.
  */
 async function resolveStudentId(req) {
-  if (req.body?.studentId)    return req.body.studentId;
-  if (req.params?.studentId)  return req.params.studentId;
-  if (req.params?.id)         return req.params.id;
+  const validId = value => /^[a-f\d]{24}$/i.test(String(value || '')) ? String(value) : null;
+  if (validId(req.body?.studentId))   return validId(req.body.studentId);
+  if (validId(req.params?.studentId)) return validId(req.params.studentId);
+  if (validId(req.params?.id))        return validId(req.params.id);
+  // app.use() runs before the router has populated req.params.
+  const urlId = String(req.path || '').split('/').find(validId);
+  if (urlId) return urlId;
   // If the user is a student, use their own profile ID
-  if (req.user?.studentProfileId) return req.user.studentProfileId;
+  if (validId(req.user?.studentProfileId)) return validId(req.user.studentProfileId);
   return null;
 }
 
@@ -184,4 +188,6 @@ async function feeIntegrityValidator(req, res, next) {
   next();
 }
 
-module.exports = isEnabled() ? feeIntegrityValidator : noopMiddleware;
+const exportedMiddleware = isEnabled() ? feeIntegrityValidator : noopMiddleware;
+exportedMiddleware.resolveStudentId = resolveStudentId;
+module.exports = exportedMiddleware;
