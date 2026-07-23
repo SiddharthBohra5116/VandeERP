@@ -37,6 +37,7 @@ const COURSE_KEYS = ['course', 'interestedcourse', 'interested_course', 'special
 const COUNSELLOR_KEYS = ['counsellor', 'assignedto', 'assigned_to', 'owner', 'counsellor_name', 'counsellor_email', 'assigned_counsellor', 'counsellor_assigned'];
 const STATUS_KEYS = ['status', 'lead_status', 'stage', 'lead_stage', 'pipeline_status', 'current_status', 'status_label'];
 const SOURCE_KEYS = ['source', 'lead_source', 'platform', 'campaign'];
+const REFERRED_BY_KEYS = ['referred_by', 'referrer', 'referrer_name', 'reference'];
 const FOLLOWUP_KEYS = [
   'followup', 'follow_up', 'nextfollowup', 'next_follow_up', 'follow_up_date',
   'call_follow_up_date', 'next_follow_up_date_and_time', 'next_follow_up_date',
@@ -51,6 +52,7 @@ const KNOWN_KEYS = new Set([
   ...COUNSELLOR_KEYS,
   ...STATUS_KEYS,
   ...SOURCE_KEYS,
+  ...REFERRED_BY_KEYS,
   ...FOLLOWUP_KEYS,
   's_no', 's_no_', 'sno', 'sr_no', 'serial_number'
 ]);
@@ -414,7 +416,8 @@ exports.postCreateLead = async (req, res) => {
 };
 
 exports.postImportLeads = async (req, res) => {
-  const redirectBase = '/admin/leads';
+  const isCounsellorImport = req.user.role === 'counsellor';
+  const redirectBase = isCounsellorImport ? '/counsellor/leads' : '/admin/leads';
   const importJobId = String(req.body.importJobId || '').trim();
   let defaultCourse = null;
   const failImport = async (message) => {
@@ -472,6 +475,7 @@ exports.postImportLeads = async (req, res) => {
 
       const existing = coursesByValue.get(normalizeCourseName(name));
       if (existing) return existing;
+      if (isCounsellorImport) return defaultCourse;
 
       const baseCode = importedCourseCode(name);
       let code = baseCode;
@@ -500,6 +504,13 @@ exports.postImportLeads = async (req, res) => {
       counsellorsByEmail.set(String(profile.user.email || '').toLowerCase().trim(), profile);
       counsellorsByName.set(String(profile.user.name || '').toLowerCase().trim(), profile);
     });
+    const importingCounsellor = isCounsellorImport
+      ? counsellorProfiles.find(profile => String(profile._id) === String(req.user.counsellorProfileId))
+      : null;
+    if (isCounsellorImport && !importingCounsellor) {
+      return failImport('Your counsellor profile could not be found.');
+    }
+    const knownStatuses = isCounsellorImport ? await getLeadStatuses() : [];
 
     const isRowBlank = (r) => {
       return Object.values(r).every(val => !val || String(val).trim() === '');
@@ -653,7 +664,7 @@ exports.postImportLeads = async (req, res) => {
 
       // 4. Validate Counsellor spelling/existence (if specified)
       const counsellorLookup = String(firstValue(row, COUNSELLOR_KEYS) || '').toLowerCase().trim();
-      if (counsellorLookup) {
+      if (!isCounsellorImport && counsellorLookup) {
         let matchedCounsellor = counsellorsByEmail.get(counsellorLookup) || counsellorsByName.get(counsellorLookup);
         if (!matchedCounsellor) {
           for (const [nameKey, profile] of counsellorsByName.entries()) {
@@ -737,14 +748,17 @@ exports.postImportLeads = async (req, res) => {
         const courseValue = firstValue(row, COURSE_KEYS);
         const statusValue = firstValue(row, STATUS_KEYS);
         const sourceValue = firstValue(row, SOURCE_KEYS);
+        const referredByValue = firstValue(row, REFERRED_BY_KEYS);
         const followUpValue = firstValue(row, FOLLOWUP_KEYS);
         const counsellorLookup = String(firstValue(row, COUNSELLOR_KEYS) || '').toLowerCase().trim();
 
         const course = await resolveImportedCourse(courseValue);
-        const statusDoc = await findOrCreateLeadStatus(statusValue || 'new');
+        const statusDoc = isCounsellorImport
+          ? knownStatuses.find(status => status.key === slugifyStatus(statusValue || 'new')) || { key: 'new' }
+          : await findOrCreateLeadStatus(statusValue || 'new');
 
-        let assignedCounsellor = null;
-        if (counsellorLookup) {
+        let assignedCounsellor = importingCounsellor;
+        if (!isCounsellorImport && counsellorLookup) {
           if (counsellorsByEmail.has(counsellorLookup)) {
             assignedCounsellor = counsellorsByEmail.get(counsellorLookup);
           } else if (counsellorsByName.has(counsellorLookup)) {
@@ -773,6 +787,7 @@ exports.postImportLeads = async (req, res) => {
           email: emailCheckVal,
           interestedCourse: course ? course._id : null,
           source: matchedSource,
+          referredBy: matchedSource === 'Referral' ? String(referredByValue || '').trim().slice(0, 100) : '',
           status: statusDoc ? statusDoc.key : 'new',
           notes: buildImportNotes(row),
           assignedTo: assignedCounsellor ? assignedCounsellor._id : null,
@@ -785,7 +800,7 @@ exports.postImportLeads = async (req, res) => {
           }] : []
         });
 
-        await createStudentFromImportedLead(lead, course, req.user._id);
+        if (!isCounsellorImport) await createStudentFromImportedLead(lead, course, req.user._id);
 
         // Add newly created lead data to in-memory sets to catch dynamic same-batch duplicates
         if (lead.phone) {
@@ -806,7 +821,7 @@ exports.postImportLeads = async (req, res) => {
           lead: lead._id,
           type: 'lead_created',
           title: 'Lead imported from CSV',
-          note: `Imported by admin from ${req.file.originalname}.`,
+          note: `Imported by ${isCounsellorImport ? 'counsellor' : 'admin'} from ${req.file.originalname}.`,
           counsellor: assignedCounsellor ? assignedCounsellor._id : null,
           doneBy: req.user._id,
           newStatus: lead.status

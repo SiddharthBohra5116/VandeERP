@@ -3,6 +3,9 @@ const router = express.Router();
 const protect = require('../middleware/auth');
 const role = require('../middleware/role');
 const ctrl = require('../controllers/counsellorController');
+const leadImportCtrl = require('../controllers/admin/leadController');
+const upload = require('../utils/uploadHelper');
+const csrfProtection = require('../middleware/security/csrfProtection');
 const Lead = require('../models/Lead');
 const Message = require('../models/Message');
 const Student = require('../models/Student');
@@ -45,6 +48,16 @@ router.get('/leads', ...guard, ctrl.getLeads);
 router.get('/leads/create', ...guard, ctrl.getCreateLead);
 router.get('/leads/new', ...guard, ctrl.getCreateLead); // alias for layout links
 router.post('/leads/create', ...guard, leadValidator, ctrl.postCreateLead);
+router.post(
+  '/leads/import',
+  ...guard,
+  (req, res, next) => upload.single('leadCsv')(req, res, err => {
+    if (err) return res.redirect(`/counsellor/leads?error=${encodeURIComponent(err.message)}`);
+    next();
+  }),
+  csrfProtection,
+  leadImportCtrl.postImportLeads
+);
 router.get('/leads/followups', ...guard, ctrl.getFollowUps);
 router.post('/leads/walkin', ...guard, leadValidator, ctrl.postWalkIn);
 router.get('/students', ...guard, ctrl.getMyStudents);

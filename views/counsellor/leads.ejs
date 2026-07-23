@@ -78,6 +78,31 @@
   }
 </style>
 
+<% if (filters.error) { %><div class="alert alert-error"><%= filters.error %></div><% } %>
+<% if (filters.imported || filters.skipped || filters.failed) { %>
+  <div class="alert alert-success">Import complete: <b><%= filters.imported || 0 %></b> imported, <b><%= filters.skipped || 0 %></b> duplicates skipped, <b><%= filters.failed || 0 %></b> failed.</div>
+<% } %>
+
+<details class="card" style="margin-bottom:1.25rem;">
+  <summary style="padding:1rem; cursor:pointer; font-weight:800;">Import leads from CSV <span class="text-muted" style="font-weight:500;">Optional</span></summary>
+  <form method="POST" action="/counsellor/leads/import" enctype="multipart/form-data" data-no-soft-nav="true" style="display:grid; gap:.85rem; padding:0 1rem 1rem;">
+    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+    <div class="d-flex gap-1" style="justify-content:space-between; align-items:center; flex-wrap:wrap;">
+      <span class="form-hint">Each imported lead is assigned to you. Unknown courses remain undecided.</span>
+      <a href="/templates/lead-import-template.csv" download class="btn btn-ghost btn-sm">Download template</a>
+    </div>
+    <input type="file" name="leadCsv" class="form-control" accept=".csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values" required>
+    <div class="form-group" style="margin:0;">
+      <label class="form-label" for="counsellorImportCourse">Course for rows without a matching course</label>
+      <select id="counsellorImportCourse" name="defaultCourse" class="form-control">
+        <option value="">Leave undecided</option>
+        <% courses.forEach(course => { %><option value="<%= course._id %>"><%= course.name %></option><% }) %>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Import leads</button>
+  </form>
+</details>
+
 <!-- Directory summary cards -->
 <section class="people-summary" aria-label="Leads list summary">
   <div class="people-summary-item">
@@ -119,9 +144,8 @@
     <label class="form-label" style="font-size: 10px;">Course</label>
     <select name="course" class="form-control" style="padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
       <option value="">All Courses</option>
-      <% ['Video Editing','Digital Marketing','Both','Undecided'].forEach(c => { %>
-        <option value="<%= c %>" <%= filters.course === c ? 'selected' : '' %>><%= c %></option>
-      <% }); %>
+      <% courses.forEach(c => { %><option value="<%= c.name %>" <%= filters.course === c.name ? 'selected' : '' %>><%= c.name %></option><% }); %>
+      <option value="Undecided" <%= filters.course === 'Undecided' ? 'selected' : '' %>>Undecided</option>
     </select>
   </div>
   <div class="form-group">

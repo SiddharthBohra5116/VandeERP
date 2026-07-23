@@ -12,6 +12,7 @@
   <form method="POST" action="/admin/attendance/import" enctype="multipart/form-data" data-no-soft-nav="true" style="display:flex; gap:.75rem; align-items:center; flex-wrap:wrap;">
     <strong>Import Past Attendance</strong>
     <input class="form-control" type="file" name="attendanceCsv" accept=".csv,.tsv,.txt" required style="flex:1;">
+    <a href="/templates/attendance-import-template.csv" download class="btn btn-ghost btn-sm">Download template</a>
     <button class="btn btn-primary btn-sm" type="submit">Import</button>
     <small class="text-muted">Columns: student_name, date (YYYY-MM-DD), status (present/late/absent), note, reason.</small>
   </form>

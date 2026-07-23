@@ -38,7 +38,7 @@
   <div style="padding:0 1rem 1rem; border-top:1px solid var(--border);">
   <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin:1rem 0;">
     <div class="form-hint">Matches by phone/email, converts an existing lead, or creates a minimal incomplete student when no match exists.</div>
-    <a href="data:text/csv;charset=utf-8,Student%20Name%2CContact%20No.%2CPursuing%20Course%2CPayment%20Method%2CJoining%20Date%2CTotal%20Fee%2CAmount%20Paid%2CPending%20Amount%2CNext%20EMI%20Date%2CStatus%2CRemarks" download="student-fee-import-template.csv" class="btn btn-ghost btn-sm">Download template</a>
+    <a href="/templates/fee-import-template.csv" download class="btn btn-ghost btn-sm">Download template</a>
   </div>
   <form method="POST" action="/admin/fees/import" enctype="multipart/form-data" data-no-soft-nav="true" style="display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.75rem; align-items:center;">
     <label for="feeCsv" style="display:flex; align-items:center; gap:.75rem; padding:.85rem 1rem; border:1px dashed var(--border); border-radius:8px; cursor:pointer; background:var(--bg-input);">

@@ -60,7 +60,7 @@ exports.getLeads = async (req, res) => {
     }
     const baseFilter = { assignedTo: req.user.counsellorProfileId };
     const closedStatuses = await getClosedLeadStatusKeys();
-    const [leads, totalLeads, activeCount, followupDueCount, convertedCount, leadStatuses] = await Promise.all([
+    const [leads, totalLeads, activeCount, followupDueCount, convertedCount, leadStatuses, courses] = await Promise.all([
       Lead.find(filter)
         .populate('interestedCourse')
         .sort({ nextFollowUpAt: 1, createdAt: -1 })
@@ -80,7 +80,8 @@ exports.getLeads = async (req, res) => {
         ...baseFilter,
         status: 'admission_completed'
       }),
-      getLeadStatuses()
+      getLeadStatuses(),
+      Course.find({ isActive: true }).select('name code').sort({ name: 1 })
     ]);
     res.render('counsellor/leads', {
       title: 'My Leads',
@@ -98,6 +99,7 @@ exports.getLeads = async (req, res) => {
         convertedCount
       },
       leadStatuses,
+      courses,
       filter: req.query,
       filters: req.query,
     });
