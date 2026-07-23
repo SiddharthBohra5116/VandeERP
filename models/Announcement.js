@@ -3,6 +3,8 @@ const { ANNOUNCEMENT_AUDIENCE, ANNOUNCEMENT_ROLES } = require('../config/constan
 
 const attachmentSchema = new mongoose.Schema({
   url: { type: String, required: true },
+  publicId: { type: String, default: "" },
+  resourceType: { type: String, default: "" },
   fileName: { type: String, default: "" },
   fileType: { type: String, default: "" },
   fileSize: { type: Number, default: 0 }

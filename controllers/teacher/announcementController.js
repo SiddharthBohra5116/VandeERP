@@ -3,6 +3,7 @@ const Batch = require('../../models/Batch');
 const Schedule = require('../../models/Schedule');
 const asyncHandler = require('../../middleware/asyncHandler');
 const logger = require('../../utils/logger');
+const { storeAnnouncementFiles, discardStoredFiles } = require('../../utils/announcementStorage');
 
 // GET /teacher/announcements
 exports.getTeacherAnnouncements = asyncHandler(async (req, res) => {
@@ -34,7 +35,7 @@ exports.getTeacherCreateAnnouncement = asyncHandler(async (req, res) => {
   }).sort({ name: 1 });
 
   res.render('teacher/announcement-form', {
-    title: 'Post Announcement to Batch',
+    title: 'Share with Batch',
     batches,
     user: req.user
   });
@@ -43,16 +44,23 @@ exports.getTeacherCreateAnnouncement = asyncHandler(async (req, res) => {
 // POST /teacher/announcements/create
 exports.postTeacherCreateAnnouncement = asyncHandler(async (req, res) => {
   const { title, content, batch } = req.body;
+  const attachments = await storeAnnouncementFiles(req.files);
 
   const newAnnouncement = new Announcement({
     title,
     content,
+    attachments,
     audienceType: 'batch',
     createdBy: req.user._id,
     batch
   });
 
-  await newAnnouncement.save();
+  try {
+    await newAnnouncement.save();
+  } catch (error) {
+    await discardStoredFiles(attachments);
+    throw error;
+  }
   logger.info(`Teacher ${req.user.name} posted announcement to batch ${batch}: ${title}`);
 
   res.redirect('/teacher/announcements?created=true');

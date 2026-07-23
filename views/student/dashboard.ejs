@@ -286,10 +286,19 @@
       <% } else { %>
         <div class="student-message-list">
           <% (messages || []).slice(0, 2).forEach(msg => { %>
-            <a href="/auth/inbox" class="student-message-item">
+            <div class="student-message-item">
               <strong><%= msg.content %></strong>
               <span><%= msg.sender ? msg.sender.name : 'System' %> · <%= new Date(msg.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) %></span>
-            </a>
+              <% if (msg.attachments && msg.attachments.length) { %>
+                <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+                  <% msg.attachments.forEach(file => { %>
+                    <a href="<%= file.url %>" target="_blank" rel="noopener" class="btn btn-ghost btn-xs"><%= file.fileName || 'Open material' %></a>
+                  <% }) %>
+                </div>
+              <% } else { %>
+                <a href="/auth/inbox" class="btn btn-ghost btn-xs" style="margin-top:8px;">Open inbox</a>
+              <% } %>
+            </div>
           <% }) %>
         </div>
       <% } %>

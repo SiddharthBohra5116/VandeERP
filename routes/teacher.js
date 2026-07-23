@@ -71,7 +71,10 @@ router.post('/schedules/:id/complete', ...guard, ctrl.postCompleteSchedule);
 // Announcements
 router.get('/announcements', ...guard, ctrl.getTeacherAnnouncements);
 router.get('/announcements/create', ...guard, ctrl.getTeacherCreateAnnouncement);
-router.post('/announcements/create', ...guard, ctrl.postTeacherCreateAnnouncement);
+router.post('/announcements/create', ...guard, upload.array('attachments', 5), csrfProtection, (req, res, next) => {
+  res.locals.csrfToken = req.csrfToken();
+  next();
+}, ctrl.postTeacherCreateAnnouncement);
 router.post('/announcements/:id/toggle', ...guard, ctrl.postTeacherToggleAnnouncement);
 
 module.exports = router;

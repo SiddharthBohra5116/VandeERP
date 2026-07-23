@@ -100,6 +100,7 @@ exports.getDashboard = async (req, res) => {
       content: `📢 [${ann.title}] ${ann.content}`,
       sender: ann.createdBy,
       createdAt: ann.createdAt,
+      attachments: ann.attachments || [],
       isAnnouncement: true,
       isRead: (ann.readBy || []).some(read => read.user && read.user.toString() === req.user._id.toString())
     }));
