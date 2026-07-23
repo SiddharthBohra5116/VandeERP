@@ -59,7 +59,8 @@ const paymentValidator = validate([
 
 const leadValidator = validate([
   body('name').trim().notEmpty().withMessage('Lead name is required'),
-  body('phone').trim().matches(/^\d{10}$/).withMessage('Lead phone number must be exactly 10 digits')
+  body('phone').trim().matches(/^\d{10}$/).withMessage('Lead phone number must be exactly 10 digits'),
+  body('referredBy').if(body('source').equals('Referral')).trim().notEmpty().withMessage('Referrer name is required')
 ]);
 
 const batchValidator = validate([

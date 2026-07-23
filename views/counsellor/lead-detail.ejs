@@ -459,6 +459,12 @@
           <span class="text-muted text-sm">Source</span>
           <span class="text-sm"><%= lead.source %></span>
         </div>
+        <% if (lead.referredBy) { %>
+          <div>
+            <span class="text-xs text-muted">Referred by</span>
+            <span class="text-sm"><%= lead.referredBy %></span>
+          </div>
+        <% } %>
         <div style="display:flex; justify-content:space-between;">
           <span class="text-muted text-sm">Course Interest</span>
           <span class="text-sm"><%= lead.interestedCourse ? lead.interestedCourse.name : 'Undecided' %></span>

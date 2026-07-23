@@ -309,6 +309,7 @@
         <div class="lead-fact"><span class="lead-fact-label">Added on</span><span class="lead-fact-value mono"><%= new Date(lead.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) %></span></div>
         <div class="lead-fact"><span class="lead-fact-label">Next follow-up</span><span class="lead-fact-value mono" style="<%= isOverdue ? 'color:var(--red);' : '' %>"><%= lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt).toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' }) : 'Not scheduled' %><%= isOverdue ? ' - overdue' : '' %></span></div>
         <div class="lead-fact"><span class="lead-fact-label">Last activity</span><span class="lead-fact-value"><%= lastActivity ? (statusLabels[lastActivity.status] || lastActivity.status || 'Activity logged') : 'No activity yet' %></span></div>
+        <% if (lead.referredBy) { %><div class="lead-fact"><span class="lead-fact-label">Referred by</span><span class="lead-fact-value"><%= lead.referredBy %></span></div><% } %>
       </div>
 
       <% if (lead.notes) { %>

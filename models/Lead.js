@@ -116,6 +116,12 @@ const leadSchema = new mongoose.Schema({
     default: 'Manual'
   },
 
+  referredBy: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+
   leadType: {
     type: String,
     enum: LEAD_TYPES,
@@ -253,6 +259,7 @@ leadSchema.pre('countDocuments', function(next) {
 leadSchema.index({ assignedTo: 1, status: 1 });
 leadSchema.index({ nextFollowUpAt: 1 });
 leadSchema.index({ source: 1, createdAt: -1 });
+leadSchema.index({ referredBy: 1 });
 leadSchema.index({ phone: 1 });
 leadSchema.index({ category: 1 });
 leadSchema.index({ convertedStudent: 1 });

@@ -346,7 +346,7 @@
 
 <div class="lead-filter-card">
   <form method="GET" action="/admin/leads" class="filter-bar" style="margin:0; gap:0.75rem;">
-    <input type="text" name="search" class="form-control" placeholder="Search by name / phone..." value="<%= filter.search || '' %>" style="flex:1;">
+    <input type="text" name="search" class="form-control" placeholder="Search name, phone or referrer..." value="<%= filter.search || '' %>" style="flex:1;">
     
     <select name="status" class="form-control">
       <option value="">All Statuses</option>
@@ -383,6 +383,39 @@
 
     <a href="/admin/leads" class="btn btn-ghost btn-sm">Clear</a>
   </form>
+</div>
+
+<div class="card" style="margin-bottom:1.25rem; padding:1.25rem;">
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1rem;">
+    <div>
+      <div class="card-title">Referral Directory</div>
+      <div class="text-sm text-muted">Who referred whom, sorted by highest referral count.</div>
+    </div>
+    <span class="badge badge-gold"><%= referrals.length %> referrers</span>
+  </div>
+  <% if (!referrals.length) { %>
+    <div class="empty-state" style="padding:1rem;"><p>No referrals recorded yet.</p></div>
+  <% } else { %>
+    <div style="display:grid; gap:.65rem;">
+      <% referrals.forEach(referral => { %>
+        <details style="border:1px solid var(--border); border-radius:8px; padding:.75rem 1rem;">
+          <summary style="cursor:pointer; display:flex; justify-content:space-between; gap:1rem; font-weight:700;">
+            <span><%= referral.name %></span>
+            <span class="badge badge-green"><%= referral.count %> referred</span>
+          </summary>
+          <div style="display:grid; gap:.45rem; margin-top:.75rem;">
+            <% referral.students.forEach(student => { %>
+              <a href="<%= student.studentId ? '/admin/students/' + student.studentId : '/admin/leads/' + student.leadId %>"
+                 style="display:flex; justify-content:space-between; gap:1rem; padding:.5rem .65rem; border-radius:6px; background:var(--bg3);">
+                <span><%= student.name %></span>
+                <span class="text-xs text-muted"><%= student.converted ? 'Student' : 'Lead' %></span>
+              </a>
+            <% }) %>
+          </div>
+        </details>
+      <% }) %>
+    </div>
+  <% } %>
 </div>
 
 <div id="results-container" class="card">
@@ -466,7 +499,10 @@
               <td>
                 <span class="badge badge-orange"><%= l.interestedCourse ? l.interestedCourse.name : 'Undecided' %></span>
               </td>
-              <td><%= l.source %></td>
+              <td>
+                <%= l.source %>
+                <% if (l.referredBy) { %><div class="td-muted text-xs">by <%= l.referredBy %></div><% } %>
+              </td>
               <td>
                 <form action="/admin/leads/<%= l._id %>/assign" method="POST" style="margin:0; display:flex; gap:0.5rem; align-items:center;">
                   <select name="counsellorId" class="lead-select-badge" onchange="this.form.submit()">

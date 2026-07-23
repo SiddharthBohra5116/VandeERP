@@ -110,6 +110,7 @@
       <div class="card-title">Record Payment</div>
     </div>
     <form action="/admin/fees/<%= fee.student._id %>/payment" method="POST" data-native-submit="true">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
       <div class="form-group">
         <label class="form-label" for="amount">Payment Amount (INR)</label>
         <input type="number" id="amount" name="amount" class="form-control" placeholder="e.g. 5000" min="1" max="<%= balanceDue %>" required>
@@ -144,6 +145,7 @@
       <div class="card-title">Adjust Fee / Discount</div>
     </div>
     <form action="/admin/fees/<%= fee.student._id %>/update" method="POST" data-native-submit="true">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
       <div class="form-row">
         <div class="form-group">
           <label class="form-label" for="totalAmount">Base Fee (INR)</label>

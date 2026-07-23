@@ -121,7 +121,7 @@ exports.getCreateLead = async (req, res) => {
  */
 exports.postCreateLead = async (req, res) => {
   try {
-    const { name, phone, email, course, source, status, followUpDate, notes } = req.body;
+    const { name, phone, email, course, source, referredBy, status, followUpDate, notes } = req.body;
     const cleanPhone = String(phone || '').trim();
     const duplicate = await Lead.findOne({ phone: cleanPhone }).select('_id name assignedTo status');
     if (duplicate) {
@@ -142,6 +142,7 @@ exports.postCreateLead = async (req, res) => {
       email,
       interestedCourse: courseDoc ? courseDoc._id : null,
       source,
+      referredBy: source === 'Referral' ? String(referredBy || '').trim().slice(0, 100) : '',
       status: cleanStatus,
       nextFollowUpAt: followUpDate ? new Date(followUpDate) : nextBusinessFollowUpDate(),
       notes: notes || '',
@@ -227,7 +228,7 @@ exports.getEditLead = async (req, res) => {
 exports.postEditLead = async (req, res) => {
   try {
     const Course = require('../../models/Course');
-    const { name, phone, email, course, source, status, notes, followUpDate } = req.body;
+    const { name, phone, email, course, source, referredBy, status, notes, followUpDate } = req.body;
     const cleanPhone = String(phone || '').trim();
     const duplicate = await Lead.findOne({
       phone: cleanPhone,
@@ -251,6 +252,7 @@ exports.postEditLead = async (req, res) => {
         email,
         interestedCourse,
         source,
+        referredBy: source === 'Referral' ? String(referredBy || '').trim().slice(0, 100) : '',
         status: cleanStatus,
         notes: notes || '',
         nextFollowUpAt: followUpDate ? new Date(followUpDate) : null

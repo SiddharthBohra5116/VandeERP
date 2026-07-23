@@ -732,6 +732,7 @@
                                     <div
                                       style="font-size:0.9rem; font-weight:600; color:var(--gold); margin-top:0.15rem;">
                                       <%= lead.source %>
+                                      <% if (lead.referredBy) { %> — referred by <%= lead.referredBy %><% } %>
                                     </div>
                                   </div>
                                   <div>

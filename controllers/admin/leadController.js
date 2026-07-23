@@ -271,7 +271,8 @@ exports.getLeads = async (req, res) => {
       filter.$or = [
         { name: { $regex: escaped, $options: 'i' } },
         { phone: { $regex: escaped, $options: 'i' } },
-        { email: { $regex: escaped, $options: 'i' } }
+        { email: { $regex: escaped, $options: 'i' } },
+        { referredBy: { $regex: escaped, $options: 'i' } }
       ];
     }
 
@@ -299,8 +300,25 @@ exports.getLeads = async (req, res) => {
 
     const courses = await Course.find({ isActive: true }).select('name code');
 
-    const allLeadsAnalytics = await Lead.find({}).populate('interestedCourse', 'name code');
+    const allLeadsAnalytics = await Lead.find({})
+      .populate('interestedCourse', 'name code')
+      .populate({ path: 'convertedStudent', populate: { path: 'user', select: 'name' } });
     const sourceStatsMap = computeSourceStats(allLeadsAnalytics);
+    const referralMap = new Map();
+    allLeadsAnalytics.filter(lead => lead.referredBy).forEach(lead => {
+      const key = lead.referredBy.trim().toLowerCase();
+      const entry = referralMap.get(key) || { name: lead.referredBy.trim(), students: [] };
+      entry.students.push({
+        name: lead.convertedStudent?.user?.name || lead.name,
+        leadId: lead._id,
+        studentId: lead.convertedStudent?._id || null,
+        converted: Boolean(lead.convertedStudent)
+      });
+      referralMap.set(key, entry);
+    });
+    const referrals = [...referralMap.values()]
+      .map(entry => ({ ...entry, count: entry.students.length }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
     res.render('admin/leads', {
       title: 'Leads',
@@ -310,6 +328,7 @@ exports.getLeads = async (req, res) => {
       courses,
       leadStatuses,
       sourceStats: sourceStatsMap,
+      referrals,
       pagination: {
         page,
         limit,
@@ -349,10 +368,13 @@ exports.getCreateLead = async (req, res) => {
 
 exports.postCreateLead = async (req, res) => {
   try {
-    const { name, phone, email, course, source, status, followUpDate, notes } = req.body;
+    const { name, phone, email, course, source, referredBy, status, followUpDate, notes } = req.body;
     const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
     if (!name || cleanPhone.length !== 10) {
       throw new Error('Name and a valid 10-digit phone number are required.');
+    }
+    if (source === 'Referral' && !String(referredBy || '').trim()) {
+      throw new Error('Referrer name is required for referral leads.');
     }
 
     const duplicate = await Lead.findOne({ phone: cleanPhone }).select('name');
@@ -368,6 +390,7 @@ exports.postCreateLead = async (req, res) => {
       email: String(email || '').trim().toLowerCase(),
       interestedCourse: courseDoc?._id || null,
       source: LEAD_SOURCES.includes(source) ? source : 'Manual',
+      referredBy: source === 'Referral' ? String(referredBy || '').trim().slice(0, 100) : '',
       status: validStatus ? status : 'new',
       nextFollowUpAt: followUpDate ? new Date(followUpDate) : null,
       notes: String(notes || '').trim().slice(0, 500),

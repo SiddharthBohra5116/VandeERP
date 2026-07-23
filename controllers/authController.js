@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const validator = require('validator');
 const User = require('../models/User');
 const Student = require('../models/Student');
 const logger = require('../utils/logger');
@@ -6,6 +7,11 @@ const { storeProfilePhoto, storeUploadedFiles, discardStoredFiles } = require('.
 
 const JWT_SECRET = process.env.JWT_SECRET || 'vande_secret_key';
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
+
+const emailCandidates = email => {
+  const raw = String(email || '').trim().toLowerCase();
+  return [...new Set([raw, validator.normalizeEmail(raw)].filter(Boolean))];
+};
 
 const signToken = (id) =>
   jwt.sign({ id }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
@@ -40,7 +46,7 @@ exports.postLogin = async (req, res) => {
   const { email, password } = req.body;
   console.log('🔑 Login attempt:', { email });
   try {
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    const user = await User.findOne({ email: { $in: emailCandidates(email) } });
     if (!user || (!user.isActive && user.status !== 'complete')) {
       console.log('⚠️ Login failed (User not found or inactive):', { email });
       return res.render('auth/login', { title: 'Login', error: 'Invalid credentials' });
@@ -128,7 +134,7 @@ exports.postAdminRecovery = async (req, res) => {
     }
 
     const admin = await User.findOne({
-      email: email.toLowerCase().trim(),
+      email: { $in: emailCandidates(email) },
       role: 'admin',
       isActive: true
     });
@@ -171,7 +177,7 @@ exports.postForgotPassword = async (req, res) => {
   console.log('🔒 Password reset requested:', { email, phone });
   try {
     const user = await User.findOne({
-      email: email.toLowerCase().trim(),
+      email: { $in: emailCandidates(email) },
       phone: phone.trim()
     });
 
