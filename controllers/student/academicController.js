@@ -3,6 +3,33 @@ const Progress = require('../../models/Progress');
 const Curriculum = require('../../models/Curriculum');
 const Fee = require('../../models/Fee');
 const Student = require('../../models/Student');
+const Announcement = require('../../models/Announcement');
+
+exports.getAnnouncements = async (req, res) => {
+  try {
+    const studentProfile = await Student.findOne({ user: req.user._id }).populate('counsellor', 'user');
+    const counsellorUserId = studentProfile?.counsellor?.user || null;
+    const announcements = await Announcement.find({
+      isActive: true,
+      $or: [
+        { audienceType: 'all' },
+        { audienceType: 'role', role: 'student' },
+        { audienceType: 'course', course: studentProfile.course },
+        { audienceType: 'batch', batch: studentProfile.batch },
+        ...(counsellorUserId ? [{ audienceType: 'counsellor', counsellor: counsellorUserId }] : [])
+      ]
+    }).populate('createdBy', 'name role').sort({ createdAt: -1 });
+
+    res.render('student/announcements', {
+      title: 'Announcements & Materials',
+      user: req.user,
+      announcements
+    });
+  } catch (err) {
+    console.error('Student announcements fetch error:', err);
+    res.status(500).render('500', { title: 'Error', user: req.user, layout: 'main' });
+  }
+};
 
 // ─── DAILY UPDATES ────────────────────────────────────────────────────────────
 

@@ -2,6 +2,7 @@ const Message = require('../../models/Message');
 
 const safeRedirect = require('../../utils/safeRedirect');
 const logger = require('../../utils/logger');
+const { storeUploadedFiles, discardStoredFiles } = require('../../utils/announcementStorage');
 
 
 // POST /admin/messages/send
@@ -22,26 +23,20 @@ exports.postSendMessage = async (req, res) => {
       content || ''
     );
 
-    const attachments = [];
+    const attachments = await storeUploadedFiles(req.files || [], 'messages');
 
-    if (req.files && req.files.length > 0) {
-      req.files.forEach(file => {
-        attachments.push({
-          url: `/files/${file.filename}`,
-          fileName: file.originalname,
-          fileType: file.mimetype,
-          fileSize: file.size
-        });
+    try {
+      await Message.create({
+        sender: req.user._id,
+        recipient: recipientId,
+        replyTo: replyTo || null,
+        content: cleanContent,
+        attachments
       });
+    } catch (error) {
+      await discardStoredFiles(attachments);
+      throw error;
     }
-
-    await Message.create({
-      sender: req.user._id,
-      recipient: recipientId,
-      replyTo: replyTo || null,
-      content: cleanContent,
-      attachments
-    });
 
     res.redirect(`${redirect || '/admin/users'}?posted=1`);
 

@@ -4,6 +4,8 @@ const Batch = require('../../models/Batch');
 const Student = require('../../models/Student');
 const Message = require('../../models/Message');
 const mongoose = require('mongoose');
+const Schedule = require('../../models/Schedule');
+const { storeUploadedFiles, discardStoredFiles } = require('../../utils/announcementStorage');
 
 async function notifyBatchStudents({ teacherId, batchId, content }) {
   const students = await Student.find({ batch: batchId }).populate('user', '_id status');
@@ -102,6 +104,14 @@ exports.postCreateAssignment = async (req, res) => {
     }
 
     const batchDoc = await Batch.findById(req.body.batch);
+    const canPost = req.user.role === 'admin' || await Schedule.exists({
+      teacher: req.user.teacherProfileId,
+      batch: req.body.batch
+    });
+    if (!batchDoc || !canPost) {
+      return res.status(403).render('403', { title: 'Access Denied', user: req.user });
+    }
+    const [uploadedFile] = await storeUploadedFiles(req.file ? [req.file] : [], 'assignments');
     const data = { 
       ...req.body, 
       dueDate,
@@ -109,11 +119,20 @@ exports.postCreateAssignment = async (req, res) => {
       course: batchDoc ? batchDoc.course : null,
       batch: batchDoc ? batchDoc._id : req.body.batch
     };
-    if (req.file) {
-      data.fileUrl = `/files/${req.file.filename}`;
-      data.fileName = req.file.originalname;
+    if (uploadedFile) {
+      data.fileUrl = uploadedFile.url;
+      data.fileName = uploadedFile.fileName;
+      data.filePublicId = uploadedFile.publicId;
+      data.fileResourceType = uploadedFile.resourceType;
+      data.fileDeliveryType = uploadedFile.deliveryType;
     }
-    const assign = await Assignment.create(data);
+    let assign;
+    try {
+      assign = await Assignment.create(data);
+    } catch (error) {
+      await discardStoredFiles(uploadedFile ? [uploadedFile] : []);
+      throw error;
+    }
     await notifyBatchStudents({
       teacherId: req.user._id,
       batchId: assign.batch,

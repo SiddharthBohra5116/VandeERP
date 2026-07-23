@@ -146,7 +146,12 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
         <span>My Dashboard</span>
       </a>
+      <% if (user.course && user.batch) { %>
       <div class="nav-label">Classrooms</div>
+      <a href="/student/announcements" class="nav-item <%= page === 'student-announcements' ? 'active' : '' %>">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span>Announcements & Materials</span>
+      </a>
       <a href="/student/assignments" class="nav-item <%= page === 'assignments' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 14h6"/><path d="M9 18h6"/><path d="M9 10h3"/></svg>
         <span>Assignments</span>
@@ -172,6 +177,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
         <span>My Fee Ledger</span>
       </a>
+      <% } %>
     <!-- COUNSELLOR NAVIGATION -->
     <% } else if (user.role === 'counsellor') { %>
       <div class="nav-label">Core</div>

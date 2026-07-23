@@ -1,5 +1,6 @@
 const Assignment = require('../../models/Assignment');
 const Student = require('../../models/Student');
+const { storeUploadedFiles, discardStoredFiles } = require('../../utils/announcementStorage');
 
 /**
  * GET /student/assignments
@@ -59,7 +60,11 @@ exports.postSubmitAssignment = async (req, res) => {
       assignmentId: req.params.id,
     });
 
-    const assignment = await Assignment.findById(req.params.id);
+    const assignment = await Assignment.findOne({
+      _id: req.params.id,
+      batch: studentProfile.batch,
+      isActive: true
+    });
     if (!assignment) return res.redirect('/student/assignments');
 
     const alreadySubmitted = assignment.submissions.find(
@@ -82,13 +87,22 @@ exports.postSubmitAssignment = async (req, res) => {
       submittedAt: now,
       status: isLate ? 'late' : 'submitted',
     };
-    if (req.file) {
-      sub.fileUrl = `/files/${req.file.filename}`;
-      sub.fileName = req.file.originalname;
+    const [uploadedFile] = await storeUploadedFiles(req.file ? [req.file] : [], 'assignment-submissions');
+    if (uploadedFile) {
+      sub.fileUrl = uploadedFile.url;
+      sub.fileName = uploadedFile.fileName;
+      sub.filePublicId = uploadedFile.publicId;
+      sub.fileResourceType = uploadedFile.resourceType;
+      sub.fileDeliveryType = uploadedFile.deliveryType;
     }
 
     assignment.submissions.push(sub);
-    await assignment.save();
+    try {
+      await assignment.save();
+    } catch (error) {
+      await discardStoredFiles(uploadedFile ? [uploadedFile] : []);
+      throw error;
+    }
     console.log('✅ Student assignment submitted successfully:', {
       student: studentProfile._id,
       assignmentId: req.params.id,

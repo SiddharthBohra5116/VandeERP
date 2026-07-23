@@ -44,6 +44,13 @@ exports.getTeacherCreateAnnouncement = asyncHandler(async (req, res) => {
 // POST /teacher/announcements/create
 exports.postTeacherCreateAnnouncement = asyncHandler(async (req, res) => {
   const { title, content, batch } = req.body;
+  const teacherIds = [req.user._id, req.user.teacherProfileId].filter(Boolean);
+  const canPost = req.user.role === 'admin' ||
+    await Schedule.exists({ teacher: req.user.teacherProfileId, batch }) ||
+    await Batch.exists({ _id: batch, teachers: { $in: teacherIds }, isActive: true });
+  if (!canPost) {
+    return res.status(403).render('403', { title: 'Access Denied', user: req.user });
+  }
   const attachments = await storeAnnouncementFiles(req.files);
 
   const newAnnouncement = new Announcement({

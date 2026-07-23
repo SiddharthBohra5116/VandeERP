@@ -6,6 +6,7 @@ const Student = require('../../models/Student');
 const Batch = require('../../models/Batch');
 const Course = require('../../models/Course');
 const { todayIST } = require('../../utils/dateHelper');
+const { storeUploadedFiles, discardStoredFiles } = require('../../utils/announcementStorage');
 
 // ─── DAILY UPDATES ────────────────────────────────────────────────────────────
 
@@ -122,12 +123,21 @@ exports.postCreateUpdate = async (req, res) => {
       teacher: req.user.teacherProfileId,
       course: batchDoc.course, // Set the required course ref from the batch
     };
-    if (req.file) {
-      data.fileUrl = `/uploads/${req.file.filename}`;
-      data.fileName = req.file.originalname;
+    const [uploadedFile] = await storeUploadedFiles(req.file ? [req.file] : [], 'daily-updates');
+    if (uploadedFile) {
+      data.fileUrl = uploadedFile.url;
+      data.fileName = uploadedFile.fileName;
+      data.filePublicId = uploadedFile.publicId;
+      data.fileResourceType = uploadedFile.resourceType;
+      data.fileDeliveryType = uploadedFile.deliveryType;
     }
 
-    await DailyUpdate.create(data);
+    try {
+      await DailyUpdate.create(data);
+    } catch (error) {
+      await discardStoredFiles(uploadedFile ? [uploadedFile] : []);
+      throw error;
+    }
     res.redirect('/teacher/updates?posted=1');
   } catch (err) {
     console.error('❌ Post Lesson Update Error:', { teacherId: req.user._id, error: err.message });

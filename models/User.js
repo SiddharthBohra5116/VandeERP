@@ -47,6 +47,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  profilePicDeliveryType: {
+    type: String,
+    default: null
+  },
 
   status: {
     type: String,

@@ -97,10 +97,13 @@ const studentSchema = new mongoose.Schema({
       type: String,
       default: null
     },
-    idProof: {
-      type: String,
-      default: null
-    }
+      idProof: {
+        type: String,
+        default: null
+      },
+      idProofPublicId: { type: String, default: null },
+      idProofResourceType: { type: String, default: null },
+      idProofDeliveryType: { type: String, default: null }
   },
 
   idVerified: {

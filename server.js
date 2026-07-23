@@ -302,13 +302,156 @@ app.get('/', protect, (req, res) => {
 });
 
 // Authenticated private file streaming route
-app.get('/files/:filename', protect, (req, res) => {
+app.get('/cloud-files/:resourceType/:encodedPublicId', protect, async (req, res, next) => {
+  try {
+    const publicId = Buffer.from(req.params.encodedPublicId, 'base64url').toString('utf8');
+    const resourceType = req.params.resourceType;
+    if (!publicId || !['image', 'raw', 'video'].includes(resourceType)) {
+      return res.status(404).render('404', { title: 'File Not Found', layout: 'main' });
+    }
+
+    if (req.user.role !== 'admin') {
+      const User = require('./models/User');
+      const Student = require('./models/Student');
+      const Message = require('./models/Message');
+      const Assignment = require('./models/Assignment');
+      const DailyUpdate = require('./models/DailyUpdate');
+      const Announcement = require('./models/Announcement');
+      const student = req.user.role === 'student'
+        ? await Student.findOne({ user: req.user._id }).select('_id batch course counsellor documents.idProofPublicId').populate('counsellor', 'user')
+        : null;
+      const assignmentAccess = [];
+      const updateAccess = [];
+      if (student) {
+        assignmentAccess.push(
+          { filePublicId: publicId, batch: student.batch },
+          { submissions: { $elemMatch: { filePublicId: publicId, student: student._id } } }
+        );
+        updateAccess.push({ filePublicId: publicId, batch: student.batch });
+      }
+      if (req.user.teacherProfileId) {
+        assignmentAccess.push(
+          { filePublicId: publicId, teacher: req.user.teacherProfileId },
+          { 'submissions.filePublicId': publicId, teacher: req.user.teacherProfileId }
+        );
+        updateAccess.push({ filePublicId: publicId, teacher: req.user.teacherProfileId });
+      }
+      const announcementAudience = [
+        { createdBy: req.user._id },
+        { audienceType: 'all' },
+        { audienceType: 'role', role: req.user.role }
+      ];
+      if (student) {
+        announcementAudience.push(
+          { audienceType: 'batch', batch: student.batch },
+          { audienceType: 'course', course: student.course }
+        );
+        if (student.counsellor?.user) {
+          announcementAudience.push({ audienceType: 'counsellor', counsellor: student.counsellor.user });
+        }
+      }
+      const checks = await Promise.all([
+        User.exists({ profilePicPublicId: publicId }).then(Boolean),
+        Message.exists({
+          attachments: { $elemMatch: { publicId } },
+          $or: [{ sender: req.user._id }, { recipient: req.user._id }]
+        }).then(Boolean),
+        assignmentAccess.length ? Assignment.exists({ $or: assignmentAccess }).then(Boolean) : false,
+        updateAccess.length ? DailyUpdate.exists({ $or: updateAccess }).then(Boolean) : false,
+        Announcement.exists({
+          attachments: { $elemMatch: { publicId } },
+          $or: announcementAudience
+        }).then(Boolean),
+        Promise.resolve(student?.documents?.idProofPublicId === publicId)
+      ]);
+      if (!checks.some(Boolean)) {
+        return res.status(403).render('403', { title: 'Access Denied', user: req.user });
+      }
+    }
+
+    const { getCloudinaryDeliveryUrl } = require('./utils/announcementStorage');
+    res.redirect(getCloudinaryDeliveryUrl(publicId, resourceType));
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ponytail: legacy local-file authorization mirrors cloud checks; remove this route after historical /files URLs are migrated.
+app.get('/files/:filename', protect, async (req, res, next) => {
   const filename = req.params.filename;
   const safeFilename = path.basename(filename);
   const filePath = path.join(__dirname, 'private-uploads', safeFilename);
 
   if (!fs.existsSync(filePath)) {
     return res.status(404).render('404', { title: 'File Not Found', layout: 'main' });
+  }
+
+  if (req.user.role !== 'admin') {
+    try {
+      const fileUrl = `/files/${safeFilename}`;
+      const [User, Student, Message, Assignment, DailyUpdate, Announcement] = [
+        require('./models/User'),
+        require('./models/Student'),
+        require('./models/Message'),
+        require('./models/Assignment'),
+        require('./models/DailyUpdate'),
+        require('./models/Announcement')
+      ];
+      const student = req.user.role === 'student'
+        ? await Student.findOne({ user: req.user._id }).select('_id batch course counsellor documents.idProof').populate('counsellor', 'user')
+        : null;
+      const assignmentAccess = [];
+      const updateAccess = [];
+      if (student) {
+        assignmentAccess.push(
+          { fileUrl, batch: student.batch },
+          { submissions: { $elemMatch: { fileUrl, student: student._id } } }
+        );
+        updateAccess.push({ fileUrl, batch: student.batch });
+      }
+      if (req.user.teacherProfileId) {
+        assignmentAccess.push(
+          { fileUrl, teacher: req.user.teacherProfileId },
+          { 'submissions.fileUrl': fileUrl, teacher: req.user.teacherProfileId }
+        );
+        updateAccess.push({ fileUrl, teacher: req.user.teacherProfileId });
+      }
+      const announcementAudience = [
+        { createdBy: req.user._id },
+        { audienceType: 'all' },
+        { audienceType: 'role', role: req.user.role }
+      ];
+      if (student) {
+        announcementAudience.push(
+          { audienceType: 'batch', batch: student.batch },
+          { audienceType: 'course', course: student.course }
+        );
+        if (student.counsellor?.user) {
+          announcementAudience.push({ audienceType: 'counsellor', counsellor: student.counsellor.user });
+        }
+      }
+      const checks = await Promise.all([
+        User.exists({ profilePic: fileUrl }).then(Boolean),
+        Message.exists({
+          attachments: { $elemMatch: { url: fileUrl } },
+          $or: [{ sender: req.user._id }, { recipient: req.user._id }]
+        }).then(Boolean),
+        assignmentAccess.length ? Assignment.exists({ $or: assignmentAccess }).then(Boolean) : false,
+        updateAccess.length ? DailyUpdate.exists({ $or: updateAccess }).then(Boolean) : false,
+        Announcement.exists({
+          attachments: { $elemMatch: { url: fileUrl } },
+          $or: announcementAudience
+        }).then(Boolean),
+        Promise.resolve(student?.documents?.idProof === fileUrl)
+      ]);
+      const canAccess = checks.some(Boolean);
+
+      if (!canAccess) {
+        return res.status(403).render('403', { title: 'Access Denied', user: req.user });
+      }
+    } catch (error) {
+      return next(error);
+    }
   }
 
   res.sendFile(filePath);

@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Student = require('../models/Student');
 const logger = require('../utils/logger');
-const { storeProfilePhoto, discardStoredFiles } = require('../utils/announcementStorage');
+const { storeProfilePhoto, storeUploadedFiles, discardStoredFiles } = require('../utils/announcementStorage');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'vande_secret_key';
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
@@ -342,7 +342,8 @@ exports.updateProfile = async (req, res) => {
     const user = await User.findById(req.user._id);
     const oldPhoto = user.profilePicPublicId ? [{
       publicId: user.profilePicPublicId,
-      resourceType: user.profilePicResourceType || 'image'
+      resourceType: user.profilePicResourceType || 'image',
+      deliveryType: user.profilePicDeliveryType || 'upload'
     }] : [];
     const uploadedPhoto = req.file ? await storeProfilePhoto(req.file) : null;
     const photoChanged = removeProfilePic === '1' || Boolean(uploadedPhoto);
@@ -351,6 +352,7 @@ exports.updateProfile = async (req, res) => {
       user.profilePic = uploadedPhoto ? uploadedPhoto.url : null;
       user.profilePicPublicId = uploadedPhoto ? uploadedPhoto.publicId : null;
       user.profilePicResourceType = uploadedPhoto ? uploadedPhoto.resourceType : null;
+      user.profilePicDeliveryType = uploadedPhoto ? uploadedPhoto.deliveryType : null;
       try {
         await user.save();
       } catch (error) {
@@ -777,25 +779,21 @@ exports.postInboxSend = async (req, res) => {
 
     const { cleanContent } = await validateAndSanitizeMessage(req.user, recipientId, validateContent);
 
-    const attachments = [];
-    if (hasFiles) {
-      req.files.forEach(f => {
-        attachments.push({
-          url: `/files/${f.filename}`,
-          fileName: f.originalname || '',
-          fileType: f.mimetype || '',
-          fileSize: f.size || 0
-        });
-      });
-    }
+    const attachments = await storeUploadedFiles(req.files || [], 'messages');
 
-    const newMessage = await Message.create({
-      sender: req.user._id,
-      recipient: recipientId,
-      content: cleanContent,
-      replyTo: replyTo || null,
-      attachments
-    });
+    let newMessage;
+    try {
+      newMessage = await Message.create({
+        sender: req.user._id,
+        recipient: recipientId,
+        content: cleanContent,
+        replyTo: replyTo || null,
+        attachments
+      });
+    } catch (error) {
+      await discardStoredFiles(attachments);
+      throw error;
+    }
 
     if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
       return res.json({ ok: true, message: newMessage });

@@ -14,6 +14,7 @@ const { USER_STATUSES } = require('../../config/constants');
 const { todayIST } = require('../../utils/dateHelper');
 const { calculateStudentsAttendance } = require('../../utils/attendanceHelper');
 const crypto = require('crypto');
+const { storeProfilePhoto, discardStoredFiles } = require('../../utils/announcementStorage');
 
 function getRoleRedirect(role, queryParams = '') {
   const map = {
@@ -301,6 +302,7 @@ exports.postCreateUser = async (req, res) => {
       data.email = email;
     }
 
+    const uploadedPhoto = req.file ? await storeProfilePhoto(req.file) : null;
     const userPayload = {
       name: data.name,
       email: data.email,
@@ -316,8 +318,11 @@ exports.postCreateUser = async (req, res) => {
       firstLoginCompleted: false
     };
 
-    if (req.file) {
-      userPayload.profilePic = `/files/${req.file.filename}`;
+    if (uploadedPhoto) {
+      userPayload.profilePic = uploadedPhoto.url;
+      userPayload.profilePicPublicId = uploadedPhoto.publicId;
+      userPayload.profilePicResourceType = uploadedPhoto.resourceType;
+      userPayload.profilePicDeliveryType = uploadedPhoto.deliveryType;
     }
 
     const newUser = await User.create(userPayload);
@@ -354,7 +359,7 @@ exports.postCreateUser = async (req, res) => {
         },
 
         documents: {
-          profilePic: req.file ? `/files/${req.file.filename}` : null,
+          profilePic: uploadedPhoto?.url || null,
           idProof: data.idProof || null
         }
       });
@@ -558,8 +563,17 @@ exports.postEditUser = async (req, res) => {
       targetUser.firstLoginCompleted = false;
     }
 
-    if (req.file) {
-      targetUser.profilePic = `/files/${req.file.filename}`;
+    const oldPhoto = targetUser.profilePicPublicId ? [{
+      publicId: targetUser.profilePicPublicId,
+      resourceType: targetUser.profilePicResourceType || 'image',
+      deliveryType: targetUser.profilePicDeliveryType || 'upload'
+    }] : [];
+    const uploadedPhoto = req.file ? await storeProfilePhoto(req.file) : null;
+    if (uploadedPhoto) {
+      targetUser.profilePic = uploadedPhoto.url;
+      targetUser.profilePicPublicId = uploadedPhoto.publicId;
+      targetUser.profilePicResourceType = uploadedPhoto.resourceType;
+      targetUser.profilePicDeliveryType = uploadedPhoto.deliveryType;
     }
 
     await targetUser.save();
@@ -593,7 +607,7 @@ exports.postEditUser = async (req, res) => {
       if (data.enrollmentDate) studentUpdate.enrollmentDate = data.enrollmentDate;
       if (data.fees_total !== undefined && data.fees_total !== '') studentUpdate.fees_total = Number(data.fees_total);
       if (data.fees_paid !== undefined && data.fees_paid !== '') studentUpdate.fees_paid = Number(data.fees_paid);
-      if (req.file) studentUpdate['documents.profilePic'] = `/files/${req.file.filename}`;
+      if (uploadedPhoto) studentUpdate['documents.profilePic'] = uploadedPhoto.url;
 
       await Student.findOneAndUpdate(
         { user: targetUser._id },
@@ -638,6 +652,11 @@ exports.postEditUser = async (req, res) => {
       userId: req.params.id,
       status: targetUser.status
     });
+    if (uploadedPhoto) {
+      discardStoredFiles(oldPhoto).catch(error => {
+        logger.warn('Old admin-managed profile photo cleanup failed', { userId: targetUser._id, error: error.message });
+      });
+    }
 
     res.redirect(getRoleRedirect(targetUser.role, '?updated=1'));
 

@@ -23,6 +23,7 @@
 
   const shouldSkipForm = form => {
     if (!form || form.dataset.noSoftNav === 'true') return true;
+    if (form.querySelector('input[type="file"]')) return true;
     const method = (form.getAttribute('method') || 'GET').toUpperCase();
     const action = new URL(form.getAttribute('action') || window.location.href, window.location.href);
     if (isSkippableUrl(action)) return true;

@@ -39,7 +39,15 @@
     tone: 'calm'
   };
 
-  if (isKycIncomplete) {
+  if (isNotEnrolled) {
+    primaryAction = {
+      label: 'Contact the academy',
+      href: '/auth/inbox',
+      title: 'Enrollment setup is pending',
+      body: 'Your account is ready, but a course and batch must be assigned before classroom features unlock.',
+      tone: 'warn'
+    };
+  } else if (isKycIncomplete) {
     primaryAction = {
       label: 'Complete verification',
       href: '/auth/profile#document-verification',
@@ -100,6 +108,11 @@
     </div>
   </section>
 
+  <% if (isNotEnrolled) { %>
+    <section class="card student-panel">
+      <div class="student-empty">Your classroom pages will appear after an admin assigns your course and batch.</div>
+    </section>
+  <% } else { %>
   <% if (user.status === 'complete' && user.feedback && user.feedback.submitted) { %>
     <section class="student-complete-card">
       <div>
@@ -356,4 +369,5 @@
       </div>
     <% } %>
   </section>
+  <% } %>
 </div>

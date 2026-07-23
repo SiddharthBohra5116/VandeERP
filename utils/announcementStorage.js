@@ -55,12 +55,14 @@ async function storeFiles(files = [], folder) {
     for (const file of files) {
       const result = await cloudinary.uploader.upload(file.path, {
         folder,
-        resource_type: 'auto'
+        resource_type: 'auto',
+        type: 'authenticated'
       });
       stored.push({
-        url: result.secure_url,
+        url: `/cloud-files/${result.resource_type}/${Buffer.from(result.public_id).toString('base64url')}`,
         publicId: result.public_id,
         resourceType: result.resource_type,
+        deliveryType: 'authenticated',
         fileName: file.originalname,
         fileType: file.mimetype,
         fileSize: file.size
@@ -69,7 +71,10 @@ async function storeFiles(files = [], folder) {
     return stored;
   } catch (error) {
     await Promise.all(stored.map(file =>
-      cloudinary.uploader.destroy(file.publicId, { resource_type: file.resourceType }).catch(() => {})
+      cloudinary.uploader.destroy(file.publicId, {
+        resource_type: file.resourceType,
+        type: file.deliveryType || 'upload'
+      }).catch(() => {})
     ));
     throw error;
   } finally {
@@ -79,13 +84,33 @@ async function storeFiles(files = [], folder) {
 
 const storeAnnouncementFiles = files => storeFiles(files, 'vande-erp/announcements');
 const storeProfilePhoto = async file => (await storeFiles(file ? [file] : [], 'vande-erp/profile-photos'))[0] || null;
+const storeUploadedFiles = (files, folder) => storeFiles(files, `vande-erp/${folder}`);
 
 async function discardStoredFiles(files = []) {
   if (!cloudConfigured()) return;
   configureCloudinary();
   await Promise.all(files.filter(file => file.publicId).map(file =>
-    cloudinary.uploader.destroy(file.publicId, { resource_type: file.resourceType }).catch(() => {})
+    cloudinary.uploader.destroy(file.publicId, {
+      resource_type: file.resourceType,
+      type: file.deliveryType || 'upload'
+    }).catch(() => {})
   ));
 }
 
-module.exports = { storeAnnouncementFiles, storeProfilePhoto, discardStoredFiles };
+function getCloudinaryDeliveryUrl(publicId, resourceType) {
+  configureCloudinary();
+  return cloudinary.url(publicId, {
+    resource_type: resourceType,
+    type: 'authenticated',
+    sign_url: true,
+    secure: true
+  });
+}
+
+module.exports = {
+  storeAnnouncementFiles,
+  storeProfilePhoto,
+  storeUploadedFiles,
+  discardStoredFiles,
+  getCloudinaryDeliveryUrl
+};

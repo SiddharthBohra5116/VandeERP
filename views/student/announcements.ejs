@@ -1,0 +1,36 @@
+<%
+  layout = 'main';
+  title = 'Announcements & Materials';
+  subtitle = 'Every active update and resource shared with your class';
+  page = 'student-announcements';
+%>
+
+<div class="card">
+  <% if (!announcements.length) { %>
+    <div class="empty-state">
+      <p>No announcements or materials have been shared yet.</p>
+    </div>
+  <% } else { %>
+    <div style="display:grid; gap:1rem; padding:1rem;">
+      <% announcements.forEach(item => { %>
+        <article style="border:1px solid var(--border); border-radius:var(--radius); padding:1rem;">
+          <div style="display:flex; justify-content:space-between; gap:1rem; align-items:flex-start;">
+            <div>
+              <h3 style="margin:0 0 0.4rem; color:var(--gold);"><%= item.title %></h3>
+              <% if (item.content) { %><p style="margin:0; white-space:pre-wrap;"><%= item.content %></p><% } %>
+            </div>
+            <span class="td-muted text-sm" style="white-space:nowrap;"><%= new Date(item.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) %></span>
+          </div>
+          <% if (item.attachments && item.attachments.length) { %>
+            <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.9rem;">
+              <% item.attachments.forEach(file => { %>
+                <a href="<%= file.url %>" target="_blank" rel="noopener" class="btn btn-ghost btn-sm"><%= file.fileName || 'Open material' %></a>
+              <% }) %>
+            </div>
+          <% } %>
+          <div class="td-muted text-sm" style="margin-top:0.75rem;">Shared by <%= item.createdBy?.name || 'Academy' %></div>
+        </article>
+      <% }) %>
+    </div>
+  <% } %>
+</div>

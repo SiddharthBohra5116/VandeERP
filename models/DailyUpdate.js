@@ -66,6 +66,9 @@ const dailyUpdateSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  filePublicId: { type: String, default: null },
+  fileResourceType: { type: String, default: null },
+  fileDeliveryType: { type: String, default: null },
 
   fileName: {
     type: String,

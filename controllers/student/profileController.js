@@ -2,6 +2,7 @@ const User = require('../../models/User');
 const Student = require('../../models/Student');
 const Message = require('../../models/Message');
 const logger = require('../../utils/logger');
+const { storeUploadedFiles, discardStoredFiles } = require('../../utils/announcementStorage');
 
 // ─── MESSAGING ────────────────────────────────────────────────────────────────
 
@@ -42,9 +43,18 @@ exports.postUploadIdProof = async (req, res) => {
 
     const studentProfile = await Student.findOne({ user: req.user._id });
     if (!studentProfile) return res.redirect('/auth/profile?error=1');
-    studentProfile.documents.idProof = `/files/${req.file.filename}`;
+    const [uploadedFile] = await storeUploadedFiles([req.file], 'id-proofs');
+    studentProfile.documents.idProof = uploadedFile.url;
+    studentProfile.documents.idProofPublicId = uploadedFile.publicId;
+    studentProfile.documents.idProofResourceType = uploadedFile.resourceType;
+    studentProfile.documents.idProofDeliveryType = uploadedFile.deliveryType;
     studentProfile.idVerified = false;
-    await studentProfile.save();
+    try {
+      await studentProfile.save();
+    } catch (error) {
+      await discardStoredFiles([uploadedFile]);
+      throw error;
+    }
 
     logger.info('Student uploaded ID proof', { studentId: studentProfile._id, path: studentProfile.documents.idProof });
     res.redirect('/auth/profile?saved=1');
