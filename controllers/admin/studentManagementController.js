@@ -100,6 +100,8 @@ exports.getStudents = async (req, res) => {
     );
     const fees = await Fee.find({ student: { $in: studentProfiles.map(profile => profile._id) } }).select('student totalAmount paidAmount');
     const feeMap = new Map(fees.map(fee => [String(fee.student), fee]));
+    const leads = await Lead.find({ convertedStudent: { $in: studentProfiles.map(profile => profile._id) } }).select('convertedStudent source referredBy');
+    const leadMap = new Map(leads.map(lead => [String(lead.convertedStudent), lead]));
 
     let attendanceMap = new Map();
 
@@ -145,6 +147,7 @@ exports.getStudents = async (req, res) => {
       const profile = studentProfileMap.get(String(user._id));
       const stats = profile ? (attendanceMap.get(String(profile._id)) || {}) : {};
       const fee = profile ? feeMap.get(String(profile._id)) : null;
+      const lead = profile ? leadMap.get(String(profile._id)) : null;
 
       return {
         ...plainUser,
@@ -157,7 +160,9 @@ exports.getStudents = async (req, res) => {
         guardianPhone: profile?.family?.guardian?.phone || '',
         idVerified: profile?.idVerified || false,
         feeTotal: fee?.totalAmount ?? profile?.fees_total ?? 0,
-        feePaid: fee?.paidAmount ?? profile?.fees_paid ?? 0
+        feePaid: fee?.paidAmount ?? profile?.fees_paid ?? 0,
+        leadSource: lead?.source || '',
+        referredBy: lead?.referredBy || ''
       };
     });
 

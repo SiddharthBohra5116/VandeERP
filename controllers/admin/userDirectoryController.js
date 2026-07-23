@@ -171,6 +171,8 @@ exports.getUsers = async (req, res) => {
     const teacherProfileMap = new Map(teacherProfiles.map(p => [String(p.user), p]));
     const fees = await Fee.find({ student: { $in: studentProfiles.map(profile => profile._id) } }).select('student totalAmount paidAmount');
     const feeMap = new Map(fees.map(fee => [String(fee.student), fee]));
+    const leads = await Lead.find({ convertedStudent: { $in: studentProfiles.map(profile => profile._id) } }).select('convertedStudent source referredBy');
+    const leadMap = new Map(leads.map(lead => [String(lead.convertedStudent), lead]));
 
     // Fetch student attendance stats if there are students
     let attendanceMap = new Map();
@@ -206,6 +208,7 @@ exports.getUsers = async (req, res) => {
       
       const stats = sProfile ? (attendanceMap.get(String(sProfile._id)) || {}) : {};
       const fee = sProfile ? feeMap.get(String(sProfile._id)) : null;
+      const lead = sProfile ? leadMap.get(String(sProfile._id)) : null;
 
       return {
         ...plainUser,
@@ -220,6 +223,8 @@ exports.getUsers = async (req, res) => {
         idVerified: sProfile?.idVerified || false,
         feeTotal: fee?.totalAmount ?? sProfile?.fees_total ?? 0,
         feePaid: fee?.paidAmount ?? sProfile?.fees_paid ?? 0,
+        leadSource: lead?.source || '',
+        referredBy: lead?.referredBy || '',
         qualification: tProfile?.qualification || '',
         experienceYears: tProfile?.experienceYears || 0
       };

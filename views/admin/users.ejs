@@ -54,7 +54,7 @@
   .column-picker { position:relative; }
   .column-picker > summary { list-style:none; cursor:pointer; }
   .column-picker > summary::-webkit-details-marker { display:none; }
-  .column-picker-panel { position:absolute; z-index:30; right:0; top:calc(100% + .5rem); width:min(720px,92vw); padding:1rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-card); box-shadow:0 18px 45px rgba(0,0,0,.35); }
+  .column-picker-panel { position:absolute; z-index:30; left:0; top:calc(100% + .5rem); width:min(720px,calc(100vw - 3rem)); padding:1rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-card); box-shadow:0 18px 45px rgba(0,0,0,.35); }
   .column-picker-grid { display:grid; grid-template-columns:repeat(3,minmax(150px,1fr)); gap:.45rem 1rem; margin:.85rem 0; }
   .column-picker-option { display:flex; align-items:center; gap:.5rem; min-height:32px; color:var(--text-sub); font-size:.78rem; }
   .people-table-wrap { overflow:auto; max-height:calc(100vh - 280px); border:1px solid var(--border); border-radius:8px; }
@@ -86,6 +86,7 @@
     .people-filter-panel { position:fixed; left:1rem; right:1rem; top:18%; width:auto; }
     .people-filter-grid { grid-template-columns:1fr; }
     .column-picker-grid { grid-template-columns:repeat(2,minmax(130px,1fr)); }
+    .column-picker-panel { position:fixed; left:1rem; right:1rem; top:18%; width:auto; max-height:70vh; overflow:auto; }
   }
 </style>
 
@@ -159,6 +160,8 @@
           <th data-column="academyId">Academy ID</th>
           <th data-column="role">Role</th>
           <th data-column="course">Course</th>
+          <th data-column="leadSource">Lead Source</th>
+          <th data-column="referredBy">Referred By</th>
           <th data-column="batch">Batch</th>
           <th data-column="teacher">Teacher</th>
           <th data-column="counsellor">Counsellor</th>
@@ -201,6 +204,8 @@
           <td data-column="academyId" class="person-id"><%= u.rollNumber || 'Pending' %></td>
           <td data-column="role"><%= u.role %></td>
           <td data-column="course"><%= student?.course?.name || (u.teacherProfile?.courses?.length ? u.teacherProfile.courses.map(course => course.name || course).join(', ') : '—') %></td>
+          <td data-column="leadSource"><%= u.leadSource || '—' %></td>
+          <td data-column="referredBy"><%= u.referredBy || '—' %></td>
           <td data-column="batch"><%= student?.batch?.name || '—' %></td>
           <td data-column="teacher"><%= student?.teacher?.user?.name || '—' %></td>
           <td data-column="counsellor"><%= student?.counsellor?.user?.name || '—' %></td>
@@ -290,13 +295,13 @@
     const grid = document.getElementById('columnPickerGrid');
     const reset = document.getElementById('resetColumns');
     if (!table || !grid || grid.dataset.ready) return;
-    const key = `vande.peopleColumns.<%= activeRole || 'all' %>`;
+    const key = `vande.peopleColumns.v2.<%= activeRole || 'all' %>`;
     const columns = Array.from(table.querySelectorAll('thead [data-column]')).map(cell => ({
       key: cell.dataset.column,
       label: cell.textContent.trim()
     }));
     const defaults = <%- JSON.stringify(activeRole === 'student'
-      ? ['select','name','email','phone','academyId','course','batch','attendance','kyc','status','actions']
+      ? ['select','name','email','phone','academyId','course','leadSource','referredBy','batch','attendance','kyc','status','actions']
       : ['select','name','email','phone','academyId','role','status','lastActive','actions']) %>;
     const saved = (() => { try { return JSON.parse(localStorage.getItem(key)); } catch (_) { return null; } })();
     let visible = new Set(Array.isArray(saved) ? saved : defaults);
