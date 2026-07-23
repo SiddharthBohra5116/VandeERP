@@ -53,15 +53,18 @@
   };
   Object.assign(statusLabels, dynamicStatusLabels);
   const activityRecords = typeof leadActivities !== 'undefined' && Array.isArray(leadActivities) ? leadActivities : [];
-  const timelineFeed = [{
-    title: 'Lead created',
-    status: 'new',
-    actorName: 'System',
-    actorRole: '',
-    channel: lead.source || '',
-    note: lead.notes || `Lead came from ${lead.source || 'manual entry'}.`,
-    date: lead.createdAt
-  }];
+  const timelineFeed = [];
+  if (!activityRecords.some(item => item.type === 'lead_created')) {
+    timelineFeed.push({
+      title: 'Lead created',
+      status: 'new',
+      actorName: 'System',
+      actorRole: '',
+      channel: lead.source || '',
+      note: lead.notes || `Lead came from ${lead.source || 'manual entry'}.`,
+      date: lead.createdAt
+    });
+  }
   activityRecords.forEach(item => {
     timelineFeed.push({
       title: item.title || 'Lead activity',

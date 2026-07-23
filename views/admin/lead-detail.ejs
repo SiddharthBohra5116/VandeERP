@@ -44,19 +44,23 @@
   ];
   const currentStageIndex = progressStages.findIndex(stage => stage[0] === lead.status);
   const activityFeed = [];
-  activityFeed.push({
-    key: `created-${lead._id}`,
-    source: 'system',
-    title: 'Lead created',
-    type: 'lead_created',
-    status: 'new',
-    note: lead.notes || `Lead came from ${lead.source || 'manual entry'}.`,
-    actorName: lead.createdBy && lead.createdBy.name ? lead.createdBy.name : 'System',
-    actorRole: lead.createdBy && lead.createdBy.role ? lead.createdBy.role : '',
-    channel: lead.source || '',
-    date: lead.createdAt
-  });
-  (lead.ownershipHistory || []).forEach((item, index) => {
+  const hasRecordedCreation = activityRecords.some(item => item.type === 'lead_created');
+  const hasRecordedAssignment = activityRecords.some(item => item.type === 'assigned' || item.type === 'reassigned');
+  if (!hasRecordedCreation) {
+    activityFeed.push({
+      key: `created-${lead._id}`,
+      source: 'system',
+      title: 'Lead created',
+      type: 'lead_created',
+      status: 'new',
+      note: lead.notes || `Lead came from ${lead.source || 'manual entry'}.`,
+      actorName: lead.createdBy && lead.createdBy.name ? lead.createdBy.name : 'System',
+      actorRole: lead.createdBy && lead.createdBy.role ? lead.createdBy.role : '',
+      channel: lead.source || '',
+      date: lead.createdAt
+    });
+  }
+  if (!hasRecordedAssignment) (lead.ownershipHistory || []).forEach((item, index) => {
     const counsellorName = item.counsellor && item.counsellor.user && item.counsellor.user.name
       ? item.counsellor.user.name
       : item.counsellor && item.counsellor.name
