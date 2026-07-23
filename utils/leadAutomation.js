@@ -44,6 +44,7 @@ function normalizeLeadSource(source) {
 async function resolveCourse(courseValue) {
   const value = String(courseValue || '').trim();
   if (!value || value === 'Both' || value === 'Undecided') return null;
+  if (/^[a-f\d]{24}$/i.test(value)) return Course.findById(value);
   return Course.findOne({
     $or: [
       { name: new RegExp('^' + escapeRegex(value) + '$', 'i') },

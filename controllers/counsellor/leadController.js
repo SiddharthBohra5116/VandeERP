@@ -4,6 +4,7 @@ const { escapeRegex } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
 const Message = require('../../models/Message');
 const LeadActivity = require('../../models/LeadActivity');
+const Course = require('../../models/Course');
 const {
   nextBusinessFollowUpDate,
   notifyAdmins,
@@ -111,8 +112,11 @@ exports.getLeads = async (req, res) => {
  * Renders the new lead creation form.
  */
 exports.getCreateLead = async (req, res) => {
-  const leadStatuses = await getLeadStatuses();
-  res.render('counsellor/lead-form', { title: 'New Lead', user: req.user, target: null, leadStatuses });
+  const [leadStatuses, courses] = await Promise.all([
+    getLeadStatuses(),
+    Course.find({ isActive: true }).select('name code').sort({ name: 1 })
+  ]);
+  res.render('counsellor/lead-form', { title: 'New Lead', user: req.user, target: null, leadStatuses, courses });
 };
 
 /**
@@ -125,12 +129,17 @@ exports.postCreateLead = async (req, res) => {
     const cleanPhone = String(phone || '').trim();
     const duplicate = await Lead.findOne({ phone: cleanPhone }).select('_id name assignedTo status');
     if (duplicate) {
+      const [leadStatuses, courses] = await Promise.all([
+        getLeadStatuses(),
+        Course.find({ isActive: true }).select('name code').sort({ name: 1 })
+      ]);
       return res.render('counsellor/lead-form', {
         title: 'New Lead',
         user: req.user,
         target: null,
         error: `A lead with this phone number already exists for ${duplicate.name}.`,
-        leadStatuses: await getLeadStatuses()
+        leadStatuses,
+        courses
       });
     }
 
@@ -171,7 +180,11 @@ exports.postCreateLead = async (req, res) => {
     res.redirect('/counsellor/leads?created=1');
   } catch (err) {
     logger.error('Create Lead Error', { err: err.message });
-    res.render('counsellor/lead-form', { title: 'New Lead', user: req.user, target: null, error: err.message, leadStatuses: await getLeadStatuses() });
+    const [leadStatuses, courses] = await Promise.all([
+      getLeadStatuses(),
+      Course.find({ isActive: true }).select('name code').sort({ name: 1 })
+    ]);
+    res.render('counsellor/lead-form', { title: 'New Lead', user: req.user, target: null, error: err.message, leadStatuses, courses });
   }
 };
 
@@ -213,8 +226,11 @@ exports.getEditLead = async (req, res) => {
       logger.warn('Counsellor unauthorized edit page request', { leadId: req.params.id });
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });
     }
-    const leadStatuses = await getLeadStatuses();
-    res.render('counsellor/lead-form', { title: 'Edit Lead', user: req.user, lead, target: lead, leadStatuses });
+    const [leadStatuses, courses] = await Promise.all([
+      getLeadStatuses(),
+      Course.find({ isActive: true }).select('name code').sort({ name: 1 })
+    ]);
+    res.render('counsellor/lead-form', { title: 'Edit Lead', user: req.user, lead, target: lead, leadStatuses, courses });
   } catch (err) {
     logger.error('Counsellor Edit Lead Page Error', { err: err.message });
     res.status(500).render('500', { title: 'Error', user: req.user });
@@ -227,7 +243,6 @@ exports.getEditLead = async (req, res) => {
  */
 exports.postEditLead = async (req, res) => {
   try {
-    const Course = require('../../models/Course');
     const { name, phone, email, course, source, referredBy, status, notes, followUpDate } = req.body;
     const cleanPhone = String(phone || '').trim();
     const duplicate = await Lead.findOne({
@@ -238,11 +253,8 @@ exports.postEditLead = async (req, res) => {
       return res.redirect(`/counsellor/leads/${req.params.id}/edit?error=${encodeURIComponent('Another lead already uses this phone number')}`);
     }
 
-    let interestedCourse = null;
-    if (course && course !== 'Both' && course !== 'Undecided') {
-      const courseDoc = await Course.findOne({ name: course });
-      if (courseDoc) interestedCourse = courseDoc._id;
-    }
+    const courseDoc = await resolveCourse(course);
+    const interestedCourse = courseDoc?._id || null;
     const cleanStatus = status && await isValidLeadStatus(status) ? status : 'new';
     const updated = await Lead.findOneAndUpdate(
       { _id: req.params.id, assignedTo: req.user.counsellorProfileId },

@@ -1,5 +1,5 @@
 (() => {
-  const SELECTOR = 'select.form-control, select.premium-select';
+  const SELECTOR = 'select.form-control, select.premium-select, select.premium-input';
   let openDropdown = null;
 
   const visibleOptions = (select) => Array.from(select.options).filter(option => {
@@ -58,7 +58,7 @@
     select.dataset.dropdownEnhanced = '1';
 
     const wrapper = document.createElement('div');
-    wrapper.className = `app-select ${select.classList.contains('premium-select') ? 'app-select-premium' : ''}`;
+    wrapper.className = `app-select ${select.matches('.premium-select, .premium-input') ? 'app-select-premium' : ''}`;
     ['width', 'minWidth', 'maxWidth', 'flex', 'flexGrow', 'flexShrink', 'flexBasis'].forEach(prop => {
       if (select.style[prop]) wrapper.style[prop] = select.style[prop];
     });

@@ -370,8 +370,12 @@ exports.postCreateLead = async (req, res) => {
   try {
     const { name, phone, email, course, source, referredBy, status, followUpDate, notes } = req.body;
     const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+    const cleanEmail = String(email || '').trim().toLowerCase();
     if (!name || cleanPhone.length !== 10) {
       throw new Error('Name and a valid 10-digit phone number are required.');
+    }
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      throw new Error('Enter a valid email address or leave it blank.');
     }
     if (source === 'Referral' && !String(referredBy || '').trim()) {
       throw new Error('Referrer name is required for referral leads.');
@@ -387,7 +391,7 @@ exports.postCreateLead = async (req, res) => {
     await Lead.create({
       name: String(name).trim(),
       phone: cleanPhone,
-      email: String(email || '').trim().toLowerCase(),
+      email: cleanEmail,
       interestedCourse: courseDoc?._id || null,
       source: LEAD_SOURCES.includes(source) ? source : 'Manual',
       referredBy: source === 'Referral' ? String(referredBy || '').trim().slice(0, 100) : '',

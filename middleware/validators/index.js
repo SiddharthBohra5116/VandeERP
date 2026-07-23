@@ -60,6 +60,7 @@ const paymentValidator = validate([
 const leadValidator = validate([
   body('name').trim().notEmpty().withMessage('Lead name is required'),
   body('phone').trim().matches(/^\d{10}$/).withMessage('Lead phone number must be exactly 10 digits'),
+  body('email').optional({ checkFalsy: true }).trim().isEmail().withMessage('Enter a valid email address or leave it blank').normalizeEmail(),
   body('referredBy').if(body('source').equals('Referral')).trim().notEmpty().withMessage('Referrer name is required')
 ]);
 
