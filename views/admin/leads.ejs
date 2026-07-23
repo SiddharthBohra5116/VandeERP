@@ -3,6 +3,7 @@
   title = 'Lead Pipeline';
   subtitle = 'Manage Academy queries and registrations';
   page = 'leads';
+  topbarActions = '<a href="/admin/leads/create" class="btn btn-primary btn-sm">+ Add Lead</a>';
   const statusOptions = typeof leadStatuses !== 'undefined'
     ? leadStatuses
     : [
@@ -217,7 +218,6 @@
     <div class="lead-tools-comfort-sub">Import CSV data or manage status labels only when you need them.</div>
   </div>
   <div style="display:flex; gap:.65rem; align-items:center;">
-  <a href="/admin/leads/create" class="btn btn-primary btn-sm">+ Add Lead</a>
   <button type="button" class="btn btn-ghost btn-sm lead-tools-toggle" id="leadToolsToggle" aria-controls="leadToolsPanel" aria-expanded="false">
     <span class="lead-tools-toggle-icon" aria-hidden="true">+</span>
     <span class="lead-tools-toggle-text">Show tools</span>
