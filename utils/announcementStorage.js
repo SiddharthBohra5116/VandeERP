@@ -32,7 +32,7 @@ async function removeLocal(files) {
   await Promise.all((files || []).map(file => fs.unlink(file.path).catch(() => {})));
 }
 
-async function storeAnnouncementFiles(files = []) {
+async function storeFiles(files = [], folder) {
   if (!files.length) return [];
 
   if (!cloudConfigured()) {
@@ -54,7 +54,7 @@ async function storeAnnouncementFiles(files = []) {
   try {
     for (const file of files) {
       const result = await cloudinary.uploader.upload(file.path, {
-        folder: 'vande-erp/announcements',
+        folder,
         resource_type: 'auto'
       });
       stored.push({
@@ -77,6 +77,9 @@ async function storeAnnouncementFiles(files = []) {
   }
 }
 
+const storeAnnouncementFiles = files => storeFiles(files, 'vande-erp/announcements');
+const storeProfilePhoto = async file => (await storeFiles(file ? [file] : [], 'vande-erp/profile-photos'))[0] || null;
+
 async function discardStoredFiles(files = []) {
   if (!cloudConfigured()) return;
   configureCloudinary();
@@ -85,4 +88,4 @@ async function discardStoredFiles(files = []) {
   ));
 }
 
-module.exports = { storeAnnouncementFiles, discardStoredFiles };
+module.exports = { storeAnnouncementFiles, storeProfilePhoto, discardStoredFiles };

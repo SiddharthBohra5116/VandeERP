@@ -30,6 +30,8 @@ exports.getDashboard = async (req, res) => {
       return res.render('student/dashboard', {
         title: 'My Dashboard', user: fallbackUser,
         fee: null, pendingAssignments: [], attendancePct: null,
+        assignmentStats: { pending: 0, submitted: 0, graded: 0, closed: 0 },
+        recentAssignmentResults: [],
         totalClasses: 0, presentCount: 0, updates: [], admin: null, messages: [], schedules: [],
         batchDetails: null,
         daysTimetable: { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] },

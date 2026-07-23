@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { storeAnnouncementFiles } = require('../utils/announcementStorage');
+const { storeAnnouncementFiles, storeProfilePhoto } = require('../utils/announcementStorage');
 
 (async () => {
   const previous = process.env.NODE_ENV;
@@ -13,6 +13,13 @@ const { storeAnnouncementFiles } = require('../utils/announcementStorage');
 
   assert.strictEqual(stored.url, '/files/material.pdf');
   assert.strictEqual(stored.fileName, 'Lesson material.pdf');
+  const photo = await storeProfilePhoto({
+    filename: 'avatar.png',
+    originalname: 'avatar.png',
+    mimetype: 'image/png',
+    size: 10
+  });
+  assert.strictEqual(photo.url, '/files/avatar.png');
   process.env.NODE_ENV = previous;
   console.log('announcementStorage.test.js passed');
 })().catch(error => {

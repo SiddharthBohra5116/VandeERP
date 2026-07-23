@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Student = require('../models/Student');
 const logger = require('../utils/logger');
+const { storeProfilePhoto, discardStoredFiles } = require('../utils/announcementStorage');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'vande_secret_key';
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
@@ -338,6 +339,27 @@ exports.updateProfile = async (req, res) => {
   }
 
   try {
+    const user = await User.findById(req.user._id);
+    const oldPhoto = user.profilePicPublicId ? [{
+      publicId: user.profilePicPublicId,
+      resourceType: user.profilePicResourceType || 'image'
+    }] : [];
+    const uploadedPhoto = req.file ? await storeProfilePhoto(req.file) : null;
+    const photoChanged = removeProfilePic === '1' || Boolean(uploadedPhoto);
+
+    if (photoChanged) {
+      user.profilePic = uploadedPhoto ? uploadedPhoto.url : null;
+      user.profilePicPublicId = uploadedPhoto ? uploadedPhoto.publicId : null;
+      user.profilePicResourceType = uploadedPhoto ? uploadedPhoto.resourceType : null;
+      try {
+        await user.save();
+      } catch (error) {
+        await discardStoredFiles(uploadedPhoto ? [uploadedPhoto] : []);
+        throw error;
+      }
+      await discardStoredFiles(oldPhoto);
+    }
+
     if (req.user.role === 'student') {
       const updateRequest = {
         name: name ? name.trim() : '',
@@ -354,16 +376,33 @@ exports.updateProfile = async (req, res) => {
         dob: dob ? new Date(dob) : null,
         requestedAt: new Date()
       };
-      if (removeProfilePic === '1') {
-        updateRequest.profilePic = '';
-      } else if (req.file) {
-        updateRequest.profilePic = `/files/${req.file.filename}`;
+      const currentDob = req.user.dob ? new Date(req.user.dob).toISOString().slice(0, 10) : '';
+      const hasDetailChanges = [
+        [updateRequest.name, req.user.name],
+        [updateRequest.phone, req.user.phone],
+        [updateRequest.fatherName, req.user.fatherName],
+        [updateRequest.fatherPhone, req.user.fatherPhone],
+        [updateRequest.motherName, req.user.motherName],
+        [updateRequest.motherPhone, req.user.motherPhone],
+        [updateRequest.guardianName, req.user.guardianName],
+        [updateRequest.guardianRelation, req.user.guardianRelation],
+        [updateRequest.guardianPhone, req.user.guardianPhone],
+        [updateRequest.address, req.user.address],
+        [updateRequest.city, req.user.city],
+        [dob || '', currentDob]
+      ].some(([next, current]) => String(next || '') !== String(current || ''));
+
+      const studentUpdate = {};
+      if (hasDetailChanges) studentUpdate.pendingProfileUpdate = updateRequest;
+      if (photoChanged) {
+        studentUpdate['documents.profilePic'] = user.profilePic;
+        if (!hasDetailChanges) studentUpdate['pendingProfileUpdate.profilePic'] = null;
       }
-      await Student.findOneAndUpdate({ user: req.user._id }, {
-        pendingProfileUpdate: updateRequest
-      });
+      if (Object.keys(studentUpdate).length) {
+        await Student.findOneAndUpdate({ user: req.user._id }, { $set: studentUpdate });
+      }
       console.log('✅ Profile update request submitted by student:', { userId: req.user._id });
-      return res.redirect('/auth/profile?request_submitted=1');
+      return res.redirect(`/auth/profile?${hasDetailChanges ? 'request_submitted' : 'updated'}=1`);
     }
 
     // Staff roles update immediately
@@ -376,12 +415,6 @@ exports.updateProfile = async (req, res) => {
       city: city ? city.trim() : '',
       dob: dob ? new Date(dob) : null
     };
-    if (removeProfilePic === '1') {
-      update.profilePic = null;
-    } else if (req.file) {
-      update.profilePic = `/files/${req.file.filename}`;
-    }
-
     await User.findByIdAndUpdate(req.user._id, update);
     console.log('✅ Profile updated immediately by staff:', { userId: req.user._id });
     res.redirect('/auth/profile?updated=1');

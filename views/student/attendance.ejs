@@ -29,7 +29,7 @@
 </div>
 
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
-  <form method="GET" action="/student/attendance" class="filter-bar form-inline">
+  <form method="GET" action="/student/attendance" class="filter-bar">
     <div class="form-group">
       <label class="form-label" for="monthSelect" style="margin-bottom:0.25rem;">Select Month</label>
       <input type="month" id="monthSelect" name="month" class="form-control" style="padding:0.45rem 0.75rem;" value="<%= filter.month || '' %>" onchange="this.form.submit()">

@@ -6,7 +6,7 @@
 %>
 
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
-  <form method="GET" action="/student/updates" class="filter-bar form-inline">
+  <form method="GET" action="/student/updates" class="filter-bar">
     <div class="form-group">
       <label class="form-label" for="subjectFilter" style="margin-bottom:0.25rem;">Subject</label>
       <input type="text" id="subjectFilter" name="subject" class="form-control" style="padding:0.45rem 0.75rem;" placeholder="Filter by subject" value="<%= filter.subject || '' %>" onchange="this.form.submit()">

@@ -55,11 +55,6 @@ exports.postApproveProfileUpdate = async (req, res) => {
         student.user.phone = pending.phone;
       }
 
-      if (pending.profilePic !== null && pending.profilePic !== undefined) {
-        student.user.profilePic = pending.profilePic || null;
-        student.documents.profilePic = pending.profilePic || null;
-      }
-
       if (pending.address !== null && pending.address !== undefined) {
         student.user.address = pending.address;
       }
