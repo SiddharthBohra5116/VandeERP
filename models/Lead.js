@@ -57,6 +57,12 @@ const followUpSchema = new mongoose.Schema({
     default: ''
   },
 
+  simCode: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+
   callAttemptNumber: {
     type: Number,
     default: null

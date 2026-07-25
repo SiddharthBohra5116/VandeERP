@@ -303,7 +303,7 @@ exports.postEditLead = async (req, res) => {
  * Tracks call attempt number, duration, and outcome for phone interactions.
  */
 exports.postAddFollowUp = async (req, res) => {
-  const { note, status, followUpDate, channel, callDuration, callOutcome } = req.body;
+  const { note, status, followUpDate, channel, callDuration, callOutcome, simCode } = req.body;
   logger.info('Add follow-up request', { leadId: req.params.id, status, channel });
   try {
     const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId });
@@ -321,12 +321,17 @@ exports.postAddFollowUp = async (req, res) => {
 
     const oldStatus = lead.status;
     const selectedChannel = channel || 'Call';
+    const selectedSimCode = String(simCode || '').trim().slice(0, 50);
+    if (selectedChannel === 'Call' && !selectedSimCode) {
+      return res.redirect(`/counsellor/leads/${req.params.id}?error=SIM+code+is+required+for+calls`);
+    }
     const cleanNote = String(note || '').trim();
     const duplicateWindowStart = new Date(Date.now() - 15000);
     const recentDuplicate = lead.followUpHistory.some(item => (
       String(item.doneBy || '') === String(req.user._id) &&
       item.status === finalStatus &&
       item.channel === selectedChannel &&
+      item.simCode === selectedSimCode &&
       String(item.note || '').trim() === cleanNote &&
       new Date(item.doneAt || 0) >= duplicateWindowStart
     ));
@@ -349,6 +354,7 @@ exports.postAddFollowUp = async (req, res) => {
       followUpObj.callAttemptNumber = callCount + 1;
       followUpObj.callDuration = callDuration || '';
       followUpObj.callOutcome = callOutcome || 'answered';
+      followUpObj.simCode = selectedSimCode;
     }
 
     lead.followUpHistory.push(followUpObj);
@@ -376,7 +382,8 @@ exports.postAddFollowUp = async (req, res) => {
         completedAt: new Date()
       },
       oldStatus,
-      newStatus: finalStatus
+      newStatus: finalStatus,
+      metadata: selectedSimCode ? { simCode: selectedSimCode } : null
     });
 
     logger.info('Follow-up logged successfully', { leadId: req.params.id, status: lead.status });

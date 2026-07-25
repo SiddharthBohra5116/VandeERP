@@ -74,6 +74,7 @@
       channel: item.type === 'call' ? 'Call' : item.type === 'whatsapp' ? 'WhatsApp' : item.type,
       callOutcome: item.call?.outcome && item.call.outcome !== 'not-applicable' ? item.call.outcome : '',
       callDuration: item.call?.duration || '',
+      simCode: item.metadata?.simCode || '',
       nextFollowUpDate: item.followUp?.scheduledFor || '',
       note: item.note || item.whatsapp?.message || '',
       date: item.createdAt
@@ -101,6 +102,7 @@
       channel: fu.channel || '',
       callOutcome: fu.callOutcome || '',
       callDuration: fu.callDuration || '',
+      simCode: fu.simCode || '',
       nextFollowUpDate: fu.nextFollowUpAt || '',
       note: fu.note || '',
       date: fu.doneAt
@@ -543,6 +545,7 @@
                 <div class="lead-story-note"><%= item.note || 'No note added.' %></div>
                 <div id="<%= detailId %>" class="lead-story-grid" style="display:none;">
                   <div class="lead-story-fact"><b>Channel</b><span><%= item.channel || 'Not set' %></span></div>
+                  <div class="lead-story-fact"><b>SIM code</b><span><%= item.simCode || 'Not set' %></span></div>
                   <div class="lead-story-fact"><b>Result</b><span><%= [item.callOutcome, item.callDuration].filter(Boolean).join(' - ') || 'Not set' %></span></div>
                   <div class="lead-story-fact"><b>Next follow-up</b><span><%= item.nextFollowUpDate ? new Date(item.nextFollowUpDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'}) : 'Not set' %></span></div>
                 </div>
@@ -778,6 +781,8 @@
             <div class="form-group" id="callDurationGroup">
               <label class="form-label" style="font-size: 10px;">Call Duration (e.g. 45s, 2m)</label>
               <input type="text" name="callDuration" class="form-control" placeholder="e.g. 1m 30s">
+              <label class="form-label" for="simCode" style="font-size: 10px; margin-top:10px;">SIM Code Used *</label>
+              <input type="text" id="simCode" name="simCode" class="form-control" placeholder="Enter SIM code" maxlength="50" required>
             </div>
 
             <div class="form-group" id="notesGroup" style="grid-column: span 1;">
@@ -799,16 +804,19 @@
         const select = document.getElementById('channelSelect');
         const callOutcomeGroup = document.getElementById('callOutcomeGroup');
         const callDurationGroup = document.getElementById('callDurationGroup');
+        const simCode = document.getElementById('simCode');
         const notesGroup = document.getElementById('notesGroup');
         const row3 = document.getElementById('row3Container');
 
         if (select.value === 'Call') {
           callOutcomeGroup.style.display = 'block';
           callDurationGroup.style.display = 'block';
+          simCode.required = true;
           notesGroup.style.gridColumn = 'span 1';
         } else {
           callOutcomeGroup.style.display = 'none';
           callDurationGroup.style.display = 'none';
+          simCode.required = false;
           notesGroup.style.gridColumn = 'span 2';
         }
       }
