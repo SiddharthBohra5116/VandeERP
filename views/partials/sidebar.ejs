@@ -304,11 +304,16 @@
   .sbc-grid{display:grid;gap:.55rem}
   .sbc-option{display:flex;align-items:center;gap:.8rem;padding:.75rem .85rem;background:var(--bg-input,#f8f5ed);border:1px solid var(--border,#e8dfc5);border-radius:10px;cursor:pointer;transition:transform .14s ease,border-color .14s ease,background .14s ease}
   .sbc-option:hover{transform:translateX(-3px);border-color:var(--border-light,#d8cba8)}
+  .sbc-option.dragging{opacity:.45}
+  .sbc-option.drag-over{border-color:var(--gold,#b99100);box-shadow:0 -3px 0 var(--gold,#b99100)}
   .sbc-option.selected{border-color:var(--gold-border,rgba(180,140,0,.35));background:var(--gold-dim,rgba(180,140,0,.1))}
   .sbc-monogram{display:grid;place-items:center;width:36px;height:36px;flex:0 0 auto;color:var(--gold,#b99100);background:rgba(255,204,0,.1);border:1px solid var(--gold-border,rgba(180,140,0,.3));border-radius:9px;font-size:.72rem;font-weight:850}
   .sbc-copy{min-width:0;flex:1}
   .sbc-copy strong{display:block;font-size:.83rem}
   .sbc-copy small{display:block;overflow:hidden;color:var(--text-muted,#777);font-size:.64rem;text-overflow:ellipsis;white-space:nowrap}
+  .sbc-order{display:flex;gap:.25rem}
+  .sbc-order button{width:27px;height:27px;padding:0;color:var(--text-muted,#777);background:transparent;border:1px solid var(--border,#e8dfc5);border-radius:6px;cursor:pointer}
+  .sbc-order button:hover{color:var(--gold,#b99100);border-color:var(--gold-border,rgba(180,140,0,.35))}
   .sbc-option input{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none}
   .sbc-switch{position:relative;width:40px;height:23px;flex:0 0 auto;background:var(--border-light,#d8d1bf);border-radius:999px;transition:background .18s ease}
   .sbc-switch:after{content:'';position:absolute;top:3px;left:3px;width:17px;height:17px;background:#fff;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,.25);transition:transform .18s ease}
@@ -323,7 +328,7 @@
 <div id="sbcBackdrop" class="sbc-backdrop" aria-hidden="true"></div>
 <section id="sbcDrawer" class="sbc-drawer" role="dialog" aria-modal="true" aria-labelledby="sbcTitle" aria-hidden="true">
   <header class="sbc-head">
-    <div><span class="sbc-kicker">Personal workspace</span><h2 id="sbcTitle">Shape your sidebar</h2><p>Keep the tools you use. Quietly hide the rest.</p></div>
+    <div><span class="sbc-kicker">Personal workspace</span><h2 id="sbcTitle">Shape your sidebar</h2><p>Show, hide, or drag tools into your preferred order.</p></div>
     <button id="sbcClose" class="sbc-close" type="button" aria-label="Close">&times;</button>
   </header>
   <div class="sbc-summary">
@@ -352,30 +357,57 @@
   const visibleCount = document.getElementById('sbcVisibleCount');
   const hiddenCount = document.getElementById('sbcHiddenCount');
   const storageKey = 'sidebar-hidden:<%= user._id %>';
+  const orderKey = 'sidebar-order:<%= user._id %>';
   const items = [...sidebar.querySelectorAll('a.nav-item')];
   let hidden;
+  let savedOrder;
   try { hidden = new Set(JSON.parse(localStorage.getItem(storageKey) || '[]')); }
   catch (_) { hidden = new Set(); }
+  try { savedOrder = JSON.parse(localStorage.getItem(orderKey) || '[]'); }
+  catch (_) { savedOrder = []; }
+
+  const itemContainer = item => item.closest('.nav-flyout') || item;
+  const applyOrder = () => {
+    const rank = new Map(savedOrder.map((path, index) => [path, index]));
+    sidebar.querySelectorAll('.nav-label').forEach(label => {
+      const group = [];
+      let node = label.nextElementSibling;
+      while (node && !node.classList.contains('nav-label')) {
+        if (node.matches('a.nav-item, .nav-flyout')) group.push(node);
+        node = node.nextElementSibling;
+      }
+      const boundary = node;
+      group.sort((a, b) => {
+        const aPath = (a.matches('a') ? a : a.querySelector('a.nav-item'))?.getAttribute('href');
+        const bPath = (b.matches('a') ? b : b.querySelector('a.nav-item'))?.getAttribute('href');
+        return (rank.get(aPath) ?? Number.MAX_SAFE_INTEGER) - (rank.get(bPath) ?? Number.MAX_SAFE_INTEGER);
+      }).forEach(entry => label.parentElement.insertBefore(entry, boundary));
+    });
+    items.sort((a, b) => (rank.get(a.getAttribute('href')) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.getAttribute('href')) ?? Number.MAX_SAFE_INTEGER));
+  };
 
   const applySaved = () => {
+    applyOrder();
     items.forEach(item => {
       const isHidden = hidden.has(item.getAttribute('href'));
-      item.hidden = isHidden;
-      if (isHidden) item.style.setProperty('display', 'none', 'important');
-      else item.style.removeProperty('display');
+      const container = itemContainer(item);
+      container.hidden = isHidden;
+      if (isHidden) container.style.setProperty('display', 'none', 'important');
+      else container.style.removeProperty('display');
     });
     sidebar.querySelectorAll('.nav-label').forEach(label => {
       let sibling = label.nextElementSibling;
       let visible = false;
       while (sibling && !sibling.classList.contains('nav-label')) {
-        if (sibling.matches('a.nav-item') && !hidden.has(sibling.getAttribute('href'))) visible = true;
+        const navItem = sibling.matches('a.nav-item') ? sibling : sibling.querySelector?.('a.nav-item');
+        if (navItem && !hidden.has(navItem.getAttribute('href'))) visible = true;
         sibling = sibling.nextElementSibling;
       }
       label.style.display = visible ? '' : 'none';
     });
   };
   const groupFor = item => {
-    let sibling = item.previousElementSibling;
+    let sibling = itemContainer(item).previousElementSibling;
     while (sibling && !sibling.classList.contains('nav-label')) sibling = sibling.previousElementSibling;
     return sibling ? sibling.textContent.trim() : 'Menu';
   };
@@ -406,6 +438,8 @@
         const path = item.getAttribute('href');
         const option = document.createElement('label');
         option.className = 'sbc-option';
+        option.draggable = true;
+        option.dataset.path = path;
         option.dataset.search = `${group} ${name} ${path}`.toLowerCase();
         const monogram = document.createElement('span');
         monogram.className = 'sbc-monogram';
@@ -424,7 +458,23 @@
         input.addEventListener('change', updateCounts);
         const toggle = document.createElement('span');
         toggle.className = 'sbc-switch';
-        option.append(monogram, copy, input, toggle);
+        const orderControls = document.createElement('span');
+        orderControls.className = 'sbc-order';
+        [['↑', 'Move up', -1], ['↓', 'Move down', 1]].forEach(([text, title, direction]) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = text;
+          button.title = title;
+          button.setAttribute('aria-label', `${title} ${name}`);
+          button.addEventListener('click', event => {
+            event.preventDefault();
+            const sibling = direction < 0 ? option.previousElementSibling : option.nextElementSibling;
+            if (!sibling) return;
+            grid.insertBefore(direction < 0 ? option : sibling, direction < 0 ? sibling : option);
+          });
+          orderControls.appendChild(button);
+        });
+        option.append(monogram, copy, orderControls, input, toggle);
         grid.appendChild(option);
       });
       section.append(title, grid);
@@ -433,6 +483,31 @@
     search.value = '';
     updateCounts();
   };
+  let draggedOption = null;
+  options.addEventListener('dragstart', event => {
+    draggedOption = event.target.closest('.sbc-option');
+    if (!draggedOption) return;
+    draggedOption.classList.add('dragging');
+    event.dataTransfer.effectAllowed = 'move';
+  });
+  options.addEventListener('dragover', event => {
+    const target = event.target.closest('.sbc-option');
+    if (!draggedOption || !target || target === draggedOption || target.parentElement !== draggedOption.parentElement) return;
+    event.preventDefault();
+    options.querySelectorAll('.drag-over').forEach(item => item.classList.remove('drag-over'));
+    target.classList.add('drag-over');
+  });
+  options.addEventListener('drop', event => {
+    const target = event.target.closest('.sbc-option');
+    if (!draggedOption || !target || target.parentElement !== draggedOption.parentElement) return;
+    event.preventDefault();
+    const box = target.getBoundingClientRect();
+    target.parentElement.insertBefore(draggedOption, event.clientY < box.top + box.height / 2 ? target : target.nextSibling);
+  });
+  options.addEventListener('dragend', () => {
+    options.querySelectorAll('.dragging,.drag-over').forEach(item => item.classList.remove('dragging', 'drag-over'));
+    draggedOption = null;
+  });
   const open = () => {
     buildOptions();
     drawer.classList.add('open');
@@ -471,7 +546,9 @@
   });
   document.getElementById('sbcSave').addEventListener('click', () => {
     hidden = new Set([...options.querySelectorAll('input:not(:checked)')].map(input => input.value));
+    savedOrder = [...options.querySelectorAll('.sbc-option')].map(option => option.dataset.path);
     localStorage.setItem(storageKey, JSON.stringify([...hidden]));
+    localStorage.setItem(orderKey, JSON.stringify(savedOrder));
     applySaved();
     close();
   });
