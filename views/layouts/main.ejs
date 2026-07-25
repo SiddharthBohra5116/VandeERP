@@ -152,6 +152,10 @@
       restoreSidebarState();
 
       const customizeSidebarBtn = document.getElementById('customizeSidebarBtn');
+      const sidebarCustomizationDialog = document.getElementById('sidebarCustomizationDialog');
+      const sidebarCustomizationOptions = document.getElementById('sidebarCustomizationOptions');
+      const saveSidebarCustomizationBtn = document.getElementById('saveSidebarCustomizationBtn');
+      const showAllSidebarItemsBtn = document.getElementById('showAllSidebarItemsBtn');
       const sidebarPreferenceKey = 'sidebar-hidden:<%= user._id %>';
       const navItems = [...sidebar.querySelectorAll('a.nav-item')];
       let hiddenItems;
@@ -162,36 +166,34 @@
       }
       const renderSidebarPreferences = () => {
         navItems.forEach(item => {
-          const hidden = hiddenItems.has(item.getAttribute('href'));
-          item.classList.toggle('sidebar-item-hidden', hidden);
-          item.querySelector('.sidebar-hide-toggle').textContent = hidden ? 'Show' : 'Hide';
+          item.hidden = hiddenItems.has(item.getAttribute('href'));
         });
       };
-      navItems.forEach(item => {
-        const toggle = document.createElement('span');
-        toggle.className = 'sidebar-hide-toggle';
-        toggle.setAttribute('role', 'button');
-        toggle.setAttribute('tabindex', '0');
-        const changeVisibility = event => {
-          event.preventDefault();
-          event.stopPropagation();
-          const key = item.getAttribute('href');
-          hiddenItems.has(key) ? hiddenItems.delete(key) : hiddenItems.add(key);
-          localStorage.setItem(sidebarPreferenceKey, JSON.stringify([...hiddenItems]));
-          renderSidebarPreferences();
-        };
-        toggle.addEventListener('click', changeVisibility);
-        toggle.addEventListener('keydown', event => {
-          if (event.key === 'Enter' || event.key === ' ') changeVisibility(event);
-        });
-        item.addEventListener('click', event => {
-          if (sidebar.classList.contains('sidebar-customizing')) event.preventDefault();
-        });
-        item.appendChild(toggle);
-      });
       customizeSidebarBtn.addEventListener('click', () => {
-        const customizing = sidebar.classList.toggle('sidebar-customizing');
-        customizeSidebarBtn.querySelector('span').textContent = customizing ? 'Done Customizing' : 'Customize Sidebar';
+        sidebarCustomizationOptions.replaceChildren(...navItems.map(item => {
+          const option = document.createElement('label');
+          option.className = 'sidebar-customization-option';
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = item.getAttribute('href');
+          checkbox.checked = !hiddenItems.has(checkbox.value);
+          const label = document.createElement('span');
+          label.textContent = item.querySelector('span').textContent.trim();
+          option.append(checkbox, label);
+          return option;
+        }));
+        sidebarCustomizationDialog.showModal();
+      });
+      showAllSidebarItemsBtn.addEventListener('click', () => {
+        sidebarCustomizationOptions.querySelectorAll('input').forEach(input => { input.checked = true; });
+      });
+      saveSidebarCustomizationBtn.addEventListener('click', () => {
+        hiddenItems = new Set(
+          [...sidebarCustomizationOptions.querySelectorAll('input:not(:checked)')].map(input => input.value)
+        );
+        localStorage.setItem(sidebarPreferenceKey, JSON.stringify([...hiddenItems]));
+        renderSidebarPreferences();
+        sidebarCustomizationDialog.close();
       });
       // ponytail: preferences are per user and browser; store on User only if cross-device sync becomes necessary.
       renderSidebarPreferences();

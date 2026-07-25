@@ -256,4 +256,21 @@
     </form>
   </div>
 </aside>
+<dialog id="sidebarCustomizationDialog" class="sidebar-customization-dialog">
+  <div class="sidebar-customization-header">
+    <div>
+      <h3>Customize Sidebar</h3>
+      <p>Choose which menu items should appear in your sidebar.</p>
+    </div>
+    <form method="dialog"><button class="btn btn-ghost btn-sm" aria-label="Close sidebar customization">&times;</button></form>
+  </div>
+  <div id="sidebarCustomizationOptions" class="sidebar-customization-options"></div>
+  <div class="sidebar-customization-actions">
+    <button id="showAllSidebarItemsBtn" type="button" class="btn btn-ghost btn-sm">Show All</button>
+    <div class="d-flex gap-1">
+      <form method="dialog"><button class="btn btn-ghost btn-sm">Cancel</button></form>
+      <button id="saveSidebarCustomizationBtn" type="button" class="btn btn-primary btn-sm">Save Changes</button>
+    </div>
+  </div>
+</dialog>
 <% } %>
