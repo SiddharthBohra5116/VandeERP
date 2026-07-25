@@ -295,28 +295,19 @@
       </div>
       </form>
       <% if (priorImports && priorImports.length) { %>
-        <section style="margin-top:1rem; padding:1rem; border:1px solid rgba(239,68,68,.28); border-radius:10px; background:rgba(239,68,68,.045);">
-          <div style="display:flex; gap:.75rem; align-items:flex-start; margin-bottom:.85rem;">
-            <span aria-hidden="true" style="display:grid; place-items:center; width:34px; height:34px; flex:0 0 auto; border-radius:9px; color:var(--red); background:rgba(239,68,68,.12); font-weight:900;">!</span>
-            <div>
-              <h3 style="margin:0; font-size:.88rem;">Imported sheet recovery</h3>
-              <p class="text-muted" style="margin:.2rem 0 0; font-size:.72rem; line-height:1.45;">Choose the exact file below. Its removable leads go to the Recycle Bin; admitted students stay protected.</p>
-            </div>
-          </div>
-          <div style="display:grid; gap:.6rem;">
-            <% priorImports.forEach(item => { %>
-              <form method="POST" action="/admin/leads/import-history/undo" data-native-submit="true" data-confirm="Move all removable leads imported from <%= item.filename %> to the Recycle Bin? Admitted students will be kept." data-confirm-title="Remove previous import" data-confirm-label="Remove imported leads" style="display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:.75rem; padding:.8rem; background:var(--bg-card); border:1px solid var(--border); border-radius:9px;">
-                <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
-                <input type="hidden" name="importNote" value="<%= item.note %>">
-                <span style="min-width:0;">
-                  <strong title="<%= item.filename %>" style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.78rem;"><%= item.filename %></strong>
-                  <small class="text-muted" style="display:block; margin-top:.2rem;"><b><%= item.count %></b> active lead(s) · <%= new Date(item.importedAt).toLocaleDateString('en-IN') %><% if (item.protected) { %> · <b><%= item.protected %></b> admitted protected<% } %></small>
-                </span>
-                <button type="submit" class="btn btn-danger btn-sm">Remove this import</button>
-              </form>
-            <% }) %>
-          </div>
-        </section>
+        <form method="POST" action="/admin/leads/import-history/undo" data-native-submit="true" data-confirm="Move the removable leads from the selected import to the Recycle Bin? Admitted students will be kept." data-confirm-title="Remove previous import" data-confirm-label="Remove imported leads" style="display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.65rem; align-items:end; margin-top:1rem; padding:.85rem; border:1px solid rgba(239,68,68,.25); border-radius:9px; background:rgba(239,68,68,.04);">
+          <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+          <label style="min-width:0;">
+            <span class="form-label">Remove previous sheet import</span>
+            <select name="importNote" class="form-control" required>
+              <option value="">Choose the exact imported file</option>
+              <% priorImports.forEach(item => { %>
+                <option value="<%= item.note %>"><%= item.filename %> — <%= item.count %> active<% if (item.protected) { %>, <%= item.protected %> protected<% } %> — <%= new Date(item.importedAt).toLocaleDateString('en-IN') %></option>
+              <% }) %>
+            </select>
+          </label>
+          <button type="submit" class="btn btn-danger btn-sm">Remove import</button>
+        </form>
       <% } %>
     </div>
 
