@@ -150,53 +150,6 @@
 
       // Auto-restore state on desktop load
       restoreSidebarState();
-
-      const customizeSidebarBtn = document.getElementById('customizeSidebarBtn');
-      const sidebarCustomizationDialog = document.getElementById('sidebarCustomizationDialog');
-      const sidebarCustomizationOptions = document.getElementById('sidebarCustomizationOptions');
-      const saveSidebarCustomizationBtn = document.getElementById('saveSidebarCustomizationBtn');
-      const showAllSidebarItemsBtn = document.getElementById('showAllSidebarItemsBtn');
-      const sidebarPreferenceKey = 'sidebar-hidden:<%= user._id %>';
-      const navItems = [...sidebar.querySelectorAll('a.nav-item')];
-      let hiddenItems;
-      try {
-        hiddenItems = new Set(JSON.parse(localStorage.getItem(sidebarPreferenceKey) || '[]'));
-      } catch (_) {
-        hiddenItems = new Set();
-      }
-      const renderSidebarPreferences = () => {
-        navItems.forEach(item => {
-          item.hidden = hiddenItems.has(item.getAttribute('href'));
-        });
-      };
-      customizeSidebarBtn.addEventListener('click', () => {
-        sidebarCustomizationOptions.replaceChildren(...navItems.map(item => {
-          const option = document.createElement('label');
-          option.className = 'sidebar-customization-option';
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.value = item.getAttribute('href');
-          checkbox.checked = !hiddenItems.has(checkbox.value);
-          const label = document.createElement('span');
-          label.textContent = item.querySelector('span').textContent.trim();
-          option.append(checkbox, label);
-          return option;
-        }));
-        sidebarCustomizationDialog.showModal();
-      });
-      showAllSidebarItemsBtn.addEventListener('click', () => {
-        sidebarCustomizationOptions.querySelectorAll('input').forEach(input => { input.checked = true; });
-      });
-      saveSidebarCustomizationBtn.addEventListener('click', () => {
-        hiddenItems = new Set(
-          [...sidebarCustomizationOptions.querySelectorAll('input:not(:checked)')].map(input => input.value)
-        );
-        localStorage.setItem(sidebarPreferenceKey, JSON.stringify([...hiddenItems]));
-        renderSidebarPreferences();
-        sidebarCustomizationDialog.close();
-      });
-      // ponytail: preferences are per user and browser; store on User only if cross-device sync becomes necessary.
-      renderSidebarPreferences();
     }
 
     // 3. Live Digital Clock & Date

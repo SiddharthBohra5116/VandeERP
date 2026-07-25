@@ -256,21 +256,207 @@
     </form>
   </div>
 </aside>
-<dialog id="sidebarCustomizationDialog" class="sidebar-customization-dialog">
-  <div class="sidebar-customization-header">
-    <div>
-      <h3>Customize Sidebar</h3>
-      <p>Choose which menu items should appear in your sidebar.</p>
-    </div>
-    <form method="dialog"><button class="btn btn-ghost btn-sm" aria-label="Close sidebar customization">&times;</button></form>
+<style>
+  .sbc-backdrop{position:fixed;inset:0;z-index:9997;background:rgba(10,10,10,.58);backdrop-filter:blur(5px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .22s ease,visibility .22s ease}
+  .sbc-backdrop.open{opacity:1;visibility:visible;pointer-events:auto}
+  .sbc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:9998;display:flex;flex-direction:column;width:min(470px,100vw);color:var(--text,#161616);background:radial-gradient(circle at 100% 0,rgba(255,204,0,.16),transparent 30%),var(--bg-card,#fff);border-left:1px solid var(--gold-border,rgba(180,140,0,.3));box-shadow:-28px 0 80px rgba(0,0,0,.28);transform:translateX(105%);transition:transform .28s cubic-bezier(.22,1,.36,1)}
+  .sbc-drawer.open{transform:translateX(0)}
+  .sbc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1.5rem;border-bottom:1px solid var(--border,#e8dfc5)}
+  .sbc-kicker{display:block;margin-bottom:.25rem;color:var(--gold,#b99100);font-size:.64rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+  .sbc-head h2{margin:0;font-family:var(--font-display,inherit);font-size:1.35rem;letter-spacing:-.03em}
+  .sbc-head p{margin:.35rem 0 0;color:var(--text-sub,#666);font-size:.8rem}
+  .sbc-close{width:38px;height:38px;flex:0 0 auto;color:var(--text-sub,#666);background:var(--bg-input,#f5f1e7);border:1px solid var(--border,#e8dfc5);border-radius:50%;cursor:pointer}
+  .sbc-summary{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;padding:1rem 1.5rem 0}
+  .sbc-stat{display:flex;align-items:baseline;gap:.5rem;padding:.8rem 1rem;background:var(--bg-input,#f8f5ed);border:1px solid var(--border,#e8dfc5);border-radius:10px}
+  .sbc-stat strong{color:var(--gold,#b99100);font-family:var(--font-display,inherit);font-size:1.25rem}
+  .sbc-stat span{color:var(--text-muted,#777);font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+  .sbc-tools{padding:1rem 1.5rem}
+  .sbc-search{width:100%;padding:.72rem .85rem;color:var(--text,#161616);background:var(--bg-input,#f8f5ed);border:1px solid var(--border,#e8dfc5);border-radius:9px;outline:none}
+  .sbc-search:focus{border-color:var(--gold,#b99100);box-shadow:0 0 0 3px var(--gold-dim,rgba(180,140,0,.12))}
+  .sbc-quick{display:flex;gap:1rem;margin-top:.65rem}
+  .sbc-quick button{padding:0;color:var(--gold,#b99100);background:none;border:0;font-size:.72rem;font-weight:750;cursor:pointer}
+  .sbc-options{flex:1;padding:0 1.5rem 1rem;overflow-y:auto}
+  .sbc-group+.sbc-group{margin-top:1.15rem}
+  .sbc-group-title{margin:0 0 .5rem;color:var(--text-muted,#777);font-size:.63rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+  .sbc-grid{display:grid;gap:.55rem}
+  .sbc-option{display:flex;align-items:center;gap:.8rem;padding:.75rem .85rem;background:var(--bg-input,#f8f5ed);border:1px solid var(--border,#e8dfc5);border-radius:10px;cursor:pointer;transition:transform .14s ease,border-color .14s ease,background .14s ease}
+  .sbc-option:hover{transform:translateX(-3px);border-color:var(--border-light,#d8cba8)}
+  .sbc-option.selected{border-color:var(--gold-border,rgba(180,140,0,.35));background:var(--gold-dim,rgba(180,140,0,.1))}
+  .sbc-monogram{display:grid;place-items:center;width:36px;height:36px;flex:0 0 auto;color:var(--gold,#b99100);background:rgba(255,204,0,.1);border:1px solid var(--gold-border,rgba(180,140,0,.3));border-radius:9px;font-size:.72rem;font-weight:850}
+  .sbc-copy{min-width:0;flex:1}
+  .sbc-copy strong{display:block;font-size:.83rem}
+  .sbc-copy small{display:block;overflow:hidden;color:var(--text-muted,#777);font-size:.64rem;text-overflow:ellipsis;white-space:nowrap}
+  .sbc-option input{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none}
+  .sbc-switch{position:relative;width:40px;height:23px;flex:0 0 auto;background:var(--border-light,#d8d1bf);border-radius:999px;transition:background .18s ease}
+  .sbc-switch:after{content:'';position:absolute;top:3px;left:3px;width:17px;height:17px;background:#fff;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,.25);transition:transform .18s ease}
+  .sbc-option input:checked+.sbc-switch{background:var(--gold,#d1a900)}
+  .sbc-option input:checked+.sbc-switch:after{transform:translateX(17px)}
+  .sbc-actions{display:grid;grid-template-columns:.8fr 1.2fr;gap:.75rem;padding:1rem 1.5rem;background:var(--bg-card,#fff);border-top:1px solid var(--border,#e8dfc5);box-shadow:0 -12px 30px rgba(0,0,0,.08)}
+  .sbc-actions button{min-height:42px}
+  body.sbc-lock{overflow:hidden}
+  @media(max-width:520px){.sbc-head{padding:1.1rem}.sbc-summary,.sbc-tools,.sbc-options,.sbc-actions{padding-left:1rem;padding-right:1rem}}
+</style>
+
+<div id="sbcBackdrop" class="sbc-backdrop" aria-hidden="true"></div>
+<section id="sbcDrawer" class="sbc-drawer" role="dialog" aria-modal="true" aria-labelledby="sbcTitle" aria-hidden="true">
+  <header class="sbc-head">
+    <div><span class="sbc-kicker">Personal workspace</span><h2 id="sbcTitle">Shape your sidebar</h2><p>Keep the tools you use. Quietly hide the rest.</p></div>
+    <button id="sbcClose" class="sbc-close" type="button" aria-label="Close">&times;</button>
+  </header>
+  <div class="sbc-summary">
+    <div class="sbc-stat"><strong id="sbcVisibleCount">0</strong><span>Visible</span></div>
+    <div class="sbc-stat"><strong id="sbcHiddenCount">0</strong><span>Hidden</span></div>
   </div>
-  <div id="sidebarCustomizationOptions" class="sidebar-customization-options"></div>
-  <div class="sidebar-customization-actions">
-    <button id="showAllSidebarItemsBtn" type="button" class="btn btn-ghost btn-sm">Show All</button>
-    <div class="d-flex gap-1">
-      <form method="dialog"><button class="btn btn-ghost btn-sm">Cancel</button></form>
-      <button id="saveSidebarCustomizationBtn" type="button" class="btn btn-primary btn-sm">Save Changes</button>
-    </div>
+  <div class="sbc-tools">
+    <input id="sbcSearch" class="sbc-search" type="search" placeholder="Search menu items...">
+    <div class="sbc-quick"><button id="sbcShowAll" type="button">Show all</button><button id="sbcHideAll" type="button">Hide all</button></div>
   </div>
-</dialog>
+  <div id="sbcOptions" class="sbc-options"></div>
+  <footer class="sbc-actions">
+    <button id="sbcCancel" type="button" class="btn btn-ghost">Cancel</button>
+    <button id="sbcSave" type="button" class="btn btn-primary">Save workspace</button>
+  </footer>
+</section>
+
+<script>
+(() => {
+  const sidebar = document.querySelector('.sidebar');
+  const trigger = document.getElementById('customizeSidebarBtn');
+  const drawer = document.getElementById('sbcDrawer');
+  const backdrop = document.getElementById('sbcBackdrop');
+  const options = document.getElementById('sbcOptions');
+  const search = document.getElementById('sbcSearch');
+  const visibleCount = document.getElementById('sbcVisibleCount');
+  const hiddenCount = document.getElementById('sbcHiddenCount');
+  const storageKey = 'sidebar-hidden:<%= user._id %>';
+  const items = [...sidebar.querySelectorAll('a.nav-item')];
+  let hidden;
+  try { hidden = new Set(JSON.parse(localStorage.getItem(storageKey) || '[]')); }
+  catch (_) { hidden = new Set(); }
+
+  const applySaved = () => {
+    items.forEach(item => {
+      const isHidden = hidden.has(item.getAttribute('href'));
+      item.hidden = isHidden;
+      if (isHidden) item.style.setProperty('display', 'none', 'important');
+      else item.style.removeProperty('display');
+    });
+    sidebar.querySelectorAll('.nav-label').forEach(label => {
+      let sibling = label.nextElementSibling;
+      let visible = false;
+      while (sibling && !sibling.classList.contains('nav-label')) {
+        if (sibling.matches('a.nav-item') && !hidden.has(sibling.getAttribute('href'))) visible = true;
+        sibling = sibling.nextElementSibling;
+      }
+      label.style.display = visible ? '' : 'none';
+    });
+  };
+  const groupFor = item => {
+    let sibling = item.previousElementSibling;
+    while (sibling && !sibling.classList.contains('nav-label')) sibling = sibling.previousElementSibling;
+    return sibling ? sibling.textContent.trim() : 'Menu';
+  };
+  const updateCounts = () => {
+    const inputs = [...options.querySelectorAll('input')];
+    const shown = inputs.filter(input => input.checked).length;
+    visibleCount.textContent = shown;
+    hiddenCount.textContent = inputs.length - shown;
+    options.querySelectorAll('.sbc-option').forEach(option => option.classList.toggle('selected', option.querySelector('input').checked));
+  };
+  const buildOptions = () => {
+    const groups = new Map();
+    items.forEach(item => {
+      const group = groupFor(item);
+      if (!groups.has(group)) groups.set(group, []);
+      groups.get(group).push(item);
+    });
+    options.replaceChildren(...[...groups].map(([group, groupItems]) => {
+      const section = document.createElement('section');
+      section.className = 'sbc-group';
+      const title = document.createElement('h3');
+      title.className = 'sbc-group-title';
+      title.textContent = group;
+      const grid = document.createElement('div');
+      grid.className = 'sbc-grid';
+      groupItems.forEach(item => {
+        const name = item.querySelector('span').textContent.trim();
+        const path = item.getAttribute('href');
+        const option = document.createElement('label');
+        option.className = 'sbc-option';
+        option.dataset.search = `${group} ${name} ${path}`.toLowerCase();
+        const monogram = document.createElement('span');
+        monogram.className = 'sbc-monogram';
+        monogram.textContent = name.split(/\s+/).map(word => word[0]).join('').slice(0, 2).toUpperCase();
+        const copy = document.createElement('span');
+        copy.className = 'sbc-copy';
+        const strong = document.createElement('strong');
+        strong.textContent = name;
+        const small = document.createElement('small');
+        small.textContent = path;
+        copy.append(strong, small);
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = path;
+        input.checked = !hidden.has(path);
+        input.addEventListener('change', updateCounts);
+        const toggle = document.createElement('span');
+        toggle.className = 'sbc-switch';
+        option.append(monogram, copy, input, toggle);
+        grid.appendChild(option);
+      });
+      section.append(title, grid);
+      return section;
+    }));
+    search.value = '';
+    updateCounts();
+  };
+  const open = () => {
+    buildOptions();
+    drawer.classList.add('open');
+    backdrop.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+    backdrop.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('sbc-lock');
+    setTimeout(() => search.focus(), 180);
+  };
+  const close = () => {
+    drawer.classList.remove('open');
+    backdrop.classList.remove('open');
+    drawer.setAttribute('aria-hidden', 'true');
+    backdrop.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('sbc-lock');
+  };
+
+  trigger.addEventListener('click', open);
+  document.getElementById('sbcClose').addEventListener('click', close);
+  document.getElementById('sbcCancel').addEventListener('click', close);
+  backdrop.addEventListener('click', close);
+  document.getElementById('sbcShowAll').addEventListener('click', () => {
+    options.querySelectorAll('input').forEach(input => { input.checked = true; });
+    updateCounts();
+  });
+  document.getElementById('sbcHideAll').addEventListener('click', () => {
+    options.querySelectorAll('input').forEach(input => { input.checked = false; });
+    updateCounts();
+  });
+  search.addEventListener('input', () => {
+    const query = search.value.trim().toLowerCase();
+    options.querySelectorAll('.sbc-option').forEach(option => { option.style.display = !query || option.dataset.search.includes(query) ? '' : 'none'; });
+    options.querySelectorAll('.sbc-group').forEach(group => {
+      group.style.display = [...group.querySelectorAll('.sbc-option')].some(option => option.style.display !== 'none') ? '' : 'none';
+    });
+  });
+  document.getElementById('sbcSave').addEventListener('click', () => {
+    hidden = new Set([...options.querySelectorAll('input:not(:checked)')].map(input => input.value));
+    localStorage.setItem(storageKey, JSON.stringify([...hidden]));
+    applySaved();
+    close();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && drawer.classList.contains('open')) close();
+  });
+  // ponytail: browser-local per-user settings; move to User only when cross-device sync is required.
+  applySaved();
+})();
+</script>
 <% } %>
