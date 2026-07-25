@@ -310,6 +310,7 @@
       <div class="lead-fact-grid">
         <div class="lead-fact"><span class="lead-fact-label">Phone</span><a class="lead-fact-value mono" href="tel:<%= lead.phone %>"><%= lead.phone || 'Not added' %></a></div>
         <div class="lead-fact"><span class="lead-fact-label">Email</span><span class="lead-fact-value mono"><%= lead.email || 'Not added' %></span></div>
+        <div class="lead-fact"><span class="lead-fact-label">Default SIM</span><span class="lead-fact-value mono"><%= lead.defaultSimCode || 'Not set' %></span></div>
         <div class="lead-fact"><span class="lead-fact-label">Counsellor</span><span class="lead-fact-value"><%= assignedName %></span></div>
         <div class="lead-fact"><span class="lead-fact-label">Added on</span><span class="lead-fact-value mono"><%= new Date(lead.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) %></span></div>
         <div class="lead-fact"><span class="lead-fact-label">Next follow-up</span><span class="lead-fact-value mono" style="<%= isOverdue ? 'color:var(--red);' : '' %>"><%= lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt).toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' }) : 'Not scheduled' %><%= isOverdue ? ' - overdue' : '' %></span></div>

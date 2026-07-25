@@ -403,7 +403,7 @@ exports.getCreateLead = async (req, res) => {
 
 exports.postCreateLead = async (req, res) => {
   try {
-    const { name, phone, email, course, source, referredBy, status, followUpDate, notes } = req.body;
+    const { name, phone, email, course, source, referredBy, status, followUpDate, notes, defaultSimCode } = req.body;
     const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
     const cleanEmail = String(email || '').trim().toLowerCase();
     if (!name || cleanPhone.length !== 10) {
@@ -433,6 +433,7 @@ exports.postCreateLead = async (req, res) => {
       status: validStatus ? status : 'new',
       nextFollowUpAt: followUpDate ? new Date(followUpDate) : null,
       notes: String(notes || '').trim().slice(0, 500),
+      defaultSimCode: String(defaultSimCode || '').trim().slice(0, 50),
       assignedTo: null,
       createdBy: req.user._id
     });
@@ -475,7 +476,7 @@ exports.getEditLead = async (req, res) => {
 exports.postEditLead = async (req, res) => {
   const editUrl = `/admin/leads/${req.params.id}/edit`;
   try {
-    const { name, phone, email, course, source, referredBy, status, followUpDate, notes } = req.body;
+    const { name, phone, email, course, source, referredBy, status, followUpDate, notes, defaultSimCode } = req.body;
     const cleanName = String(name || '').trim();
     const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
     const cleanEmail = String(email || '').trim().toLowerCase();
@@ -512,6 +513,7 @@ exports.postEditLead = async (req, res) => {
     lead.status = cleanStatus;
     lead.nextFollowUpAt = followUpDate ? new Date(followUpDate) : null;
     lead.notes = String(notes || '').trim().slice(0, 500);
+    lead.defaultSimCode = String(defaultSimCode || '').trim().slice(0, 50);
     await lead.save();
 
     await LeadActivity.create({

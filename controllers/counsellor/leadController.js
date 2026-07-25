@@ -130,7 +130,7 @@ exports.getCreateLead = async (req, res) => {
  */
 exports.postCreateLead = async (req, res) => {
   try {
-    const { name, phone, email, course, source, referredBy, status, followUpDate, notes } = req.body;
+    const { name, phone, email, course, source, referredBy, status, followUpDate, notes, defaultSimCode } = req.body;
     const cleanPhone = String(phone || '').trim();
     const duplicate = await Lead.findOne({ phone: cleanPhone }).select('_id name assignedTo status');
     if (duplicate) {
@@ -160,6 +160,7 @@ exports.postCreateLead = async (req, res) => {
       status: cleanStatus,
       nextFollowUpAt: followUpDate ? new Date(followUpDate) : nextBusinessFollowUpDate(),
       notes: notes || '',
+      defaultSimCode: String(defaultSimCode || '').trim().slice(0, 50),
       assignedTo: req.user.counsellorProfileId,
       createdBy: req.user._id,
       ownershipHistory: [{
@@ -248,7 +249,7 @@ exports.getEditLead = async (req, res) => {
  */
 exports.postEditLead = async (req, res) => {
   try {
-    const { name, phone, email, course, source, referredBy, status, notes, followUpDate } = req.body;
+    const { name, phone, email, course, source, referredBy, status, notes, followUpDate, defaultSimCode } = req.body;
     const cleanPhone = String(phone || '').trim();
     const duplicate = await Lead.findOne({
       phone: cleanPhone,
@@ -272,6 +273,7 @@ exports.postEditLead = async (req, res) => {
         referredBy: source === 'Referral' ? String(referredBy || '').trim().slice(0, 100) : '',
         status: cleanStatus,
         notes: notes || '',
+        defaultSimCode: String(defaultSimCode || '').trim().slice(0, 50),
         nextFollowUpAt: followUpDate ? new Date(followUpDate) : null
       }
     );

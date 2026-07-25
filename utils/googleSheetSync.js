@@ -16,7 +16,8 @@ const aliases = {
   status: ['status', 'lead_status', 'stage'],
   notes: ['notes', 'note', 'message', 'remarks'],
   counsellor: ['counsellor', 'assigned_to', 'counsellor_email'],
-  followUp: ['follow_up_date', 'next_follow_up', 'next_follow_up_date']
+  followUp: ['follow_up_date', 'next_follow_up', 'next_follow_up_date'],
+  defaultSimCode: ['sim_code', 'default_sim_code', 'sim']
 };
 
 const valueFor = (row, keys) => keys.map(key => row[key]).find(value => value !== undefined);
@@ -49,6 +50,7 @@ async function syncSheetRow(rawValues, actor = null) {
   const statusValue = valueFor(row, aliases.status);
   const status = statusValue && await isValidLeadStatus(statusValue) ? statusValue : (lead?.status || 'new');
   const followUpValue = valueFor(row, aliases.followUp);
+  const defaultSimCode = valueFor(row, aliases.defaultSimCode);
   const followUp = followUpValue ? new Date(followUpValue) : null;
 
   if (!lead) {
@@ -62,6 +64,7 @@ async function syncSheetRow(rawValues, actor = null) {
       notes: valueFor(row, aliases.notes) || '',
       assignedTo: assignedCounsellor?._id || null,
       nextFollowUpAt: followUp && !Number.isNaN(followUp.getTime()) ? followUp : null,
+      defaultSimCode: String(defaultSimCode || '').trim().slice(0, 50),
       leadType: 'automation',
       createdBy: actor?._id || null,
       ownershipHistory: assignedCounsellor ? [{
@@ -92,6 +95,7 @@ async function syncSheetRow(rawValues, actor = null) {
   if (valueFor(row, aliases.notes) !== undefined) changes.notes = valueFor(row, aliases.notes);
   if (counsellorValue !== undefined) changes.assignedTo = assignedCounsellor?._id || null;
   if (followUpValue !== undefined) changes.nextFollowUpAt = followUp && !Number.isNaN(followUp.getTime()) ? followUp : null;
+  if (defaultSimCode !== undefined) changes.defaultSimCode = String(defaultSimCode).trim().slice(0, 50);
 
   const changedFields = Object.keys(changes).filter(key => String(lead[key] ?? '') !== String(changes[key] ?? ''));
   if (changedFields.length) {

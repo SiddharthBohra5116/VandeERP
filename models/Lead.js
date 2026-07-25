@@ -98,6 +98,13 @@ const leadSchema = new mongoose.Schema({
     trim: true
   },
 
+  defaultSimCode: {
+    type: String,
+    trim: true,
+    maxlength: 50,
+    default: ''
+  },
+
   email: {
     type: String,
     trim: true,
