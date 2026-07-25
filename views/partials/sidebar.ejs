@@ -256,21 +256,31 @@
     </form>
   </div>
 </aside>
-<dialog id="sidebarCustomizationDialog" class="sidebar-customization-dialog">
+<div id="sidebarCustomizationBackdrop" class="sidebar-customization-backdrop"></div>
+<aside id="sidebarCustomizationDrawer" class="sidebar-customization-drawer" aria-hidden="true">
   <div class="sidebar-customization-header">
     <div>
-      <h3>Customize Sidebar</h3>
-      <p>Choose which menu items should appear in your sidebar.</p>
+      <span class="sidebar-customization-kicker">Your workspace</span>
+      <h3>Shape your sidebar</h3>
+      <p>Keep everyday tools close. Hide everything else.</p>
     </div>
-    <form method="dialog"><button class="btn btn-ghost btn-sm" aria-label="Close sidebar customization">&times;</button></form>
+    <button id="closeSidebarCustomizationBtn" type="button" class="sidebar-drawer-close" aria-label="Close sidebar customization">&times;</button>
+  </div>
+  <div class="sidebar-customization-summary">
+    <div><strong id="visibleSidebarItemCount">0</strong><span>Visible</span></div>
+    <div><strong id="hiddenSidebarItemCount">0</strong><span>Hidden</span></div>
+  </div>
+  <div class="sidebar-customization-tools">
+    <input id="sidebarCustomizationSearch" type="search" class="form-control" placeholder="Search menu items...">
+    <div>
+      <button id="showAllSidebarItemsBtn" type="button">Show all</button>
+      <button id="hideAllSidebarItemsBtn" type="button">Hide all</button>
+    </div>
   </div>
   <div id="sidebarCustomizationOptions" class="sidebar-customization-options"></div>
   <div class="sidebar-customization-actions">
-    <button id="showAllSidebarItemsBtn" type="button" class="btn btn-ghost btn-sm">Show All</button>
-    <div class="d-flex gap-1">
-      <form method="dialog"><button class="btn btn-ghost btn-sm">Cancel</button></form>
-      <button id="saveSidebarCustomizationBtn" type="button" class="btn btn-primary btn-sm">Save Changes</button>
-    </div>
+    <button id="cancelSidebarCustomizationBtn" type="button" class="btn btn-ghost">Cancel</button>
+    <button id="saveSidebarCustomizationBtn" type="button" class="btn btn-primary">Save workspace</button>
   </div>
-</dialog>
+</aside>
 <% } %>
