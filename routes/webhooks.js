@@ -3,6 +3,7 @@ const router = express.Router();
 
 const { createAutomatedLead } = require('../utils/leadAutomation');
 const logger = require('../utils/logger');
+const { syncSheetRow } = require('../utils/googleSheetSync');
 
 function verifyLeadWebhook(req, res, next) {
   const expected = process.env.LEAD_WEBHOOK_SECRET;
@@ -54,6 +55,27 @@ router.post('/leads', verifyLeadWebhook, async (req, res) => {
       ok: false,
       error: err.message
     });
+  }
+});
+
+router.post('/google-sheets', verifyLeadWebhook, async (req, res) => {
+  try {
+    const rows = Array.isArray(req.body.rows) ? req.body.rows.slice(0, 100) : [];
+    if (!rows.length) return res.status(400).json({ ok: false, error: 'No rows supplied.' });
+
+    const results = [];
+    for (const row of rows) {
+      try {
+        const result = await syncSheetRow(row.values);
+        results.push({ rowNumber: row.rowNumber, ok: true, leadId: result.lead._id, created: result.created });
+      } catch (err) {
+        results.push({ rowNumber: row.rowNumber, ok: false, error: err.message });
+      }
+    }
+    return res.json({ ok: results.every(result => result.ok), results });
+  } catch (err) {
+    logger.error('Google Sheets sync failed', { err: err.message });
+    return res.status(400).json({ ok: false, error: err.message });
   }
 });
 
