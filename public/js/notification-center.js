@@ -427,24 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // 3. Stale Leads (counsellor)
-    const leadsItem = document.querySelector('a[href="/counsellor/leads"]');
-    if (leadsItem) {
-      let b = leadsItem.querySelector('.badge');
-      if (badges.staleLeads > 0) {
-        if (!b) {
-          b = document.createElement('span');
-          b.className = 'badge badge-gold';
-          b.style.cssText = 'margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 5px;';
-          leadsItem.appendChild(b);
-        }
-        b.textContent = badges.staleLeads;
-      } else if (b) {
-        b.remove();
-      }
-    }
-
-    // 4. Ungraded Assignments (teacher)
+    // 3. Ungraded Assignments (teacher)
     const assignmentsItem = document.querySelector('a[href="/teacher/assignments"]');
     if (assignmentsItem) {
       let b = assignmentsItem.querySelector('.badge');
@@ -461,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // 5. Unread Messages (Inbox)
+    // 4. Unread Messages (Inbox)
     const inboxItem = document.querySelector('a[href="/auth/inbox"]');
     if (inboxItem) {
       let b = inboxItem.querySelector('.badge');
