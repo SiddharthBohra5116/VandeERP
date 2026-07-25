@@ -102,7 +102,7 @@
                       <a href="/admin/leads/<%= lead._id %>" style="font-weight:600; color:var(--text);"><%= lead.name %></a>
                       <div class="td-muted text-sm"><%= lead.phone %> &middot; <%= lead.email || '—' %></div>
                     </td>
-                    <td><span class="badge badge-orange"><%= lead.course %></span></td>
+                    <td><span class="badge badge-orange"><%= lead.interestedCourse?.name || 'Undecided' %></span></td>
                     <td><%= lead.source %></td>
                     <td>
                       <% 
