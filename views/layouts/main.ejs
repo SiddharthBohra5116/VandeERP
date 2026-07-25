@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" href="/images/favicon.png?v=2">
   <!-- NProgress Loader -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.css">
-  <link rel="stylesheet" href="/css/main.css?v=sidebar-drawer-1">
+  <link rel="stylesheet" href="/css/main.css">
   <script src="/js/app-feedback.js" defer></script>
   <meta name="csrf-token" content="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
   <script>
@@ -152,17 +152,10 @@
       restoreSidebarState();
 
       const customizeSidebarBtn = document.getElementById('customizeSidebarBtn');
-      const sidebarCustomizationDrawer = document.getElementById('sidebarCustomizationDrawer');
-      const sidebarCustomizationBackdrop = document.getElementById('sidebarCustomizationBackdrop');
+      const sidebarCustomizationDialog = document.getElementById('sidebarCustomizationDialog');
       const sidebarCustomizationOptions = document.getElementById('sidebarCustomizationOptions');
       const saveSidebarCustomizationBtn = document.getElementById('saveSidebarCustomizationBtn');
-      const cancelSidebarCustomizationBtn = document.getElementById('cancelSidebarCustomizationBtn');
-      const closeSidebarCustomizationBtn = document.getElementById('closeSidebarCustomizationBtn');
       const showAllSidebarItemsBtn = document.getElementById('showAllSidebarItemsBtn');
-      const hideAllSidebarItemsBtn = document.getElementById('hideAllSidebarItemsBtn');
-      const sidebarCustomizationSearch = document.getElementById('sidebarCustomizationSearch');
-      const visibleSidebarItemCount = document.getElementById('visibleSidebarItemCount');
-      const hiddenSidebarItemCount = document.getElementById('hiddenSidebarItemCount');
       const sidebarPreferenceKey = 'sidebar-hidden:<%= user._id %>';
       const navItems = [...sidebar.querySelectorAll('a.nav-item')];
       let hiddenItems;
@@ -176,93 +169,23 @@
           item.hidden = hiddenItems.has(item.getAttribute('href'));
         });
       };
-      const closeSidebarCustomization = () => {
-        sidebarCustomizationDrawer.classList.remove('is-open');
-        sidebarCustomizationBackdrop.classList.remove('is-open');
-        sidebarCustomizationDrawer.setAttribute('aria-hidden', 'true');
-        document.body.classList.remove('sidebar-drawer-open');
-      };
-      const updateSidebarCustomizationCounts = () => {
-        const inputs = [...sidebarCustomizationOptions.querySelectorAll('input')];
-        const visible = inputs.filter(input => input.checked).length;
-        visibleSidebarItemCount.textContent = visible;
-        hiddenSidebarItemCount.textContent = inputs.length - visible;
-      };
-      const sidebarItemGroup = item => {
-        let sibling = item.previousElementSibling;
-        while (sibling && !sibling.classList.contains('nav-label')) sibling = sibling.previousElementSibling;
-        return sibling ? sibling.textContent.trim() : 'Menu';
-      };
-      const buildSidebarCustomizationOptions = () => {
-        const groups = new Map();
-        navItems.forEach(item => {
-          const group = sidebarItemGroup(item);
-          if (!groups.has(group)) groups.set(group, []);
-          groups.get(group).push(item);
-        });
-        sidebarCustomizationOptions.replaceChildren(...[...groups].map(([group, items]) => {
-          const section = document.createElement('section');
-          section.className = 'sidebar-option-group';
-          const heading = document.createElement('h4');
-          heading.className = 'sidebar-option-group-title';
-          heading.textContent = group;
-          const grid = document.createElement('div');
-          grid.className = 'sidebar-option-grid';
-          items.forEach(item => {
-            const option = document.createElement('label');
-            option.className = 'sidebar-customization-option';
-            option.dataset.search = `${group} ${item.textContent}`.toLowerCase();
-            const icon = document.createElement('span');
-            icon.className = 'sidebar-customization-option-icon';
-            const sourceIcon = item.querySelector('svg');
-            if (sourceIcon) icon.appendChild(sourceIcon.cloneNode(true));
-            const copy = document.createElement('span');
-            copy.className = 'sidebar-customization-option-copy';
-            const name = document.createElement('strong');
-            name.textContent = item.querySelector('span').textContent.trim();
-            const path = document.createElement('small');
-            path.textContent = item.getAttribute('href');
-            copy.append(name, path);
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = item.getAttribute('href');
-            checkbox.checked = !hiddenItems.has(checkbox.value);
-            checkbox.addEventListener('change', updateSidebarCustomizationCounts);
-            const toggle = document.createElement('span');
-            toggle.className = 'sidebar-option-switch';
-            option.append(icon, copy, checkbox, toggle);
-            grid.appendChild(option);
-          });
-          section.append(heading, grid);
-          return section;
-        }));
-        sidebarCustomizationSearch.value = '';
-        updateSidebarCustomizationCounts();
-      };
       customizeSidebarBtn.addEventListener('click', () => {
-        buildSidebarCustomizationOptions();
-        sidebarCustomizationDrawer.classList.add('is-open');
-        sidebarCustomizationBackdrop.classList.add('is-open');
-        sidebarCustomizationDrawer.setAttribute('aria-hidden', 'false');
-        document.body.classList.add('sidebar-drawer-open');
-        setTimeout(() => sidebarCustomizationSearch.focus(), 180);
+        sidebarCustomizationOptions.replaceChildren(...navItems.map(item => {
+          const option = document.createElement('label');
+          option.className = 'sidebar-customization-option';
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = item.getAttribute('href');
+          checkbox.checked = !hiddenItems.has(checkbox.value);
+          const label = document.createElement('span');
+          label.textContent = item.querySelector('span').textContent.trim();
+          option.append(checkbox, label);
+          return option;
+        }));
+        sidebarCustomizationDialog.showModal();
       });
       showAllSidebarItemsBtn.addEventListener('click', () => {
         sidebarCustomizationOptions.querySelectorAll('input').forEach(input => { input.checked = true; });
-        updateSidebarCustomizationCounts();
-      });
-      hideAllSidebarItemsBtn.addEventListener('click', () => {
-        sidebarCustomizationOptions.querySelectorAll('input').forEach(input => { input.checked = false; });
-        updateSidebarCustomizationCounts();
-      });
-      sidebarCustomizationSearch.addEventListener('input', () => {
-        const query = sidebarCustomizationSearch.value.trim().toLowerCase();
-        sidebarCustomizationOptions.querySelectorAll('.sidebar-customization-option').forEach(option => {
-          option.style.display = !query || option.dataset.search.includes(query) ? '' : 'none';
-        });
-        sidebarCustomizationOptions.querySelectorAll('.sidebar-option-group').forEach(group => {
-          group.style.display = [...group.querySelectorAll('.sidebar-customization-option')].some(option => option.style.display !== 'none') ? '' : 'none';
-        });
       });
       saveSidebarCustomizationBtn.addEventListener('click', () => {
         hiddenItems = new Set(
@@ -270,13 +193,7 @@
         );
         localStorage.setItem(sidebarPreferenceKey, JSON.stringify([...hiddenItems]));
         renderSidebarPreferences();
-        closeSidebarCustomization();
-      });
-      [cancelSidebarCustomizationBtn, closeSidebarCustomizationBtn, sidebarCustomizationBackdrop].forEach(element => {
-        element.addEventListener('click', closeSidebarCustomization);
-      });
-      document.addEventListener('keydown', event => {
-        if (event.key === 'Escape' && sidebarCustomizationDrawer.classList.contains('is-open')) closeSidebarCustomization();
+        sidebarCustomizationDialog.close();
       });
       // ponytail: preferences are per user and browser; store on User only if cross-device sync becomes necessary.
       renderSidebarPreferences();
