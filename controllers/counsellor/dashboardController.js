@@ -19,6 +19,7 @@ exports.getDashboard = async (req, res) => {
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
 
     // 10+ sequential queries refactored into parallel lookups and aggregations where appropriate
     const [
@@ -37,7 +38,9 @@ exports.getDashboard = async (req, res) => {
       messages,
       activeAnnouncements
     ] = await Promise.all([
-      Lead.find({ assignedTo: counsellorId }).populate('interestedCourse', 'name').sort({ createdAt: -1 }).limit(10),
+      Lead.find({ assignedTo: counsellorId, createdAt: { $gte: threeDaysAgo } })
+        .populate('interestedCourse', 'name')
+        .sort({ createdAt: -1 }),
       Lead.find({
         assignedTo: counsellorId,
         nextFollowUpAt: { $lt: tomorrow },
