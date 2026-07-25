@@ -37,22 +37,22 @@ exports.getDashboard = async (req, res) => {
       messages,
       activeAnnouncements
     ] = await Promise.all([
-      Lead.find({ assignedTo: counsellorId }).sort({ createdAt: -1 }).limit(10),
+      Lead.find({ assignedTo: counsellorId }).populate('interestedCourse', 'name').sort({ createdAt: -1 }).limit(10),
       Lead.find({
         assignedTo: counsellorId,
         nextFollowUpAt: { $lt: tomorrow },
         status: { $nin: ['admission_completed', 'lost'] }
-      }).sort({ nextFollowUpAt: 1 }),
+      }).populate('interestedCourse', 'name').sort({ nextFollowUpAt: 1 }),
       Lead.find({
         assignedTo: counsellorId,
         nextFollowUpAt: { $lt: today },
         status: { $nin: ['admission_completed', 'lost'] }
-      }).sort({ nextFollowUpAt: 1 }),
+      }).populate('interestedCourse', 'name').sort({ nextFollowUpAt: 1 }),
       Lead.find({
         assignedTo: counsellorId,
         nextFollowUpAt: { $gte: today, $lt: tomorrow },
         status: { $nin: ['admission_completed', 'lost'] }
-      }).sort({ nextFollowUpAt: 1 }),
+      }).populate('interestedCourse', 'name').sort({ nextFollowUpAt: 1 }),
       Student.find({ counsellor: counsellorId }).populate('user'),
       Lead.aggregate([
         { $match: { assignedTo: counsellorId } },
