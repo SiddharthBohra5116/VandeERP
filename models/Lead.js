@@ -237,6 +237,18 @@ const leadSchema = new mongoose.Schema({
     default: null
   },
 
+  importBatchId: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+
+  importFileName: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+
   convertedStudent: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Student',
@@ -269,5 +281,6 @@ leadSchema.index({ referredBy: 1 });
 leadSchema.index({ phone: 1 });
 leadSchema.index({ category: 1 });
 leadSchema.index({ convertedStudent: 1 });
+leadSchema.index({ importBatchId: 1 });
 
 module.exports = mongoose.model('Lead', leadSchema);

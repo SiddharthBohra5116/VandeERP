@@ -302,6 +302,37 @@ exports.getLeads = async (req, res) => {
       }));
 
     const courses = await Course.find({ isActive: true }).select('name code');
+    const importGroups = await LeadActivity.aggregate([
+      { $match: { title: 'Lead imported from CSV' } },
+      { $lookup: { from: Lead.collection.name, localField: 'lead', foreignField: '_id', as: 'lead' } },
+      { $unwind: '$lead' },
+      { $match: { 'lead.archivedAt': null } },
+      {
+        $group: {
+          _id: '$note',
+          count: { $sum: 1 },
+          protected: {
+            $sum: {
+              $cond: [
+                { $or: [{ $ne: ['$lead.convertedStudent', null] }, { $eq: ['$lead.status', 'admission_completed'] }] },
+                1,
+                0
+              ]
+            }
+          },
+          importedAt: { $max: '$createdAt' }
+        }
+      },
+      { $sort: { importedAt: -1 } },
+      { $limit: 20 }
+    ]);
+    const priorImports = importGroups.map(group => ({
+      note: group._id,
+      filename: String(group._id || '').match(/^Imported by (?:admin|counsellor) from (.+)\.$/)?.[1] || 'Imported sheet',
+      count: group.count,
+      protected: group.protected,
+      importedAt: group.importedAt
+    }));
 
     const allLeadsAnalytics = await Lead.find({})
       .populate('interestedCourse', 'name code')
@@ -332,6 +363,7 @@ exports.getLeads = async (req, res) => {
       leadStatuses,
       sourceStats: sourceStatsMap,
       referrals,
+      priorImports,
       pagination: {
         page,
         limit,
@@ -420,6 +452,7 @@ exports.postImportLeads = async (req, res) => {
   const isCounsellorImport = req.user.role === 'counsellor';
   const redirectBase = isCounsellorImport ? '/counsellor/leads' : '/admin/leads';
   const importJobId = String(req.body.importJobId || '').trim();
+  const importBatchId = crypto.randomUUID();
   let defaultCourse = null;
   const failImport = async (message) => {
     setImportProgress(importJobId, {
@@ -794,6 +827,8 @@ exports.postImportLeads = async (req, res) => {
           assignedTo: assignedCounsellor ? assignedCounsellor._id : null,
           nextFollowUpAt: nextFollowUpDate,
           createdBy: req.user._id,
+          importBatchId,
+          importFileName: String(req.file.originalname || '').slice(0, 255),
           ownershipHistory: assignedCounsellor ? [{
             counsellor: assignedCounsellor._id,
             assignedBy: req.user._id,
@@ -847,10 +882,67 @@ exports.postImportLeads = async (req, res) => {
       failed,
       done: true
     });
-    res.redirect(`${redirectBase}?imported=${created}&skipped=${skipped}&failed=${failed}`);
+    const undoParams = !isCounsellorImport && created
+      ? `&importBatchId=${encodeURIComponent(importBatchId)}&importFileName=${encodeURIComponent(req.file.originalname || 'imported file')}`
+      : '';
+    res.redirect(`${redirectBase}?imported=${created}&skipped=${skipped}&failed=${failed}${undoParams}`);
   } catch (err) {
     logger.error('Lead CSV Import Error', { err: err.message, stack: err.stack });
     return failImport(err.message);
+  }
+};
+
+exports.postUndoLeadImport = async (req, res) => {
+  try {
+    const importBatchId = String(req.params.batchId || '').trim();
+    if (!/^[0-9a-f-]{36}$/i.test(importBatchId)) {
+      return res.redirect('/admin/leads?error=Invalid+import+batch');
+    }
+
+    const imported = await Lead.find({ importBatchId }).select('_id convertedStudent status');
+    const deletableIds = imported
+      .filter(lead => !lead.convertedStudent && lead.status !== 'admission_completed')
+      .map(lead => lead._id);
+
+    if (deletableIds.length) {
+      await Lead.updateMany(
+        { _id: { $in: deletableIds } },
+        { $set: { archivedAt: new Date() } }
+      );
+    }
+
+    return res.redirect(`/admin/leads?importUndone=${deletableIds.length}&protected=${imported.length - deletableIds.length}`);
+  } catch (err) {
+    logger.error('Undo Lead Import Error', { err: err.message });
+    return res.redirect('/admin/leads?error=Unable+to+undo+this+import');
+  }
+};
+
+exports.postUndoLegacyLeadImport = async (req, res) => {
+  try {
+    const note = String(req.body.importNote || '').trim();
+    if (!/^Imported by (?:admin|counsellor) from .+\.$/.test(note) || note.length > 500) {
+      return res.redirect('/admin/leads?error=Invalid+historical+import');
+    }
+
+    const activities = await LeadActivity.find({ title: 'Lead imported from CSV', note }).select('lead');
+    const leadIds = [...new Set(activities.map(activity => String(activity.lead)).filter(Boolean))];
+    const imported = await Lead.find({ _id: { $in: leadIds } }).select('_id convertedStudent status');
+    const deletableIds = imported
+      .filter(lead => !lead.convertedStudent && lead.status !== 'admission_completed')
+      .map(lead => lead._id);
+
+    if (deletableIds.length) {
+      await Lead.updateMany(
+        { _id: { $in: deletableIds } },
+        { $set: { archivedAt: new Date() } }
+      );
+    }
+
+    return res.redirect(`/admin/leads?importUndone=${deletableIds.length}&protected=${imported.length - deletableIds.length}`);
+  } catch (err) {
+    logger.error('Undo Historical Lead Import Error', { err: err.message });
+    return res.redirect('/admin/leads?error=Unable+to+remove+that+historical+import');
   }
 };
 

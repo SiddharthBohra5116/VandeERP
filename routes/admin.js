@@ -372,6 +372,8 @@ router.post(
   },
   leadCtrl.postImportLeads
 );
+router.post('/leads/import/:batchId/undo', ...guard, csrfProtection, leadCtrl.postUndoLeadImport);
+router.post('/leads/import-history/undo', ...guard, csrfProtection, leadCtrl.postUndoLegacyLeadImport);
 
 router.post(
   '/leads/statuses',

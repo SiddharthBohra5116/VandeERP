@@ -77,10 +77,20 @@
         <div class="card-header" style="margin-bottom:1.25rem;">
           <div class="card-title">Assigned Lead Pipeline</div>
         </div>
+        <form method="GET" action="/admin/counsellors/<%= counsellor._id %>" style="display:grid; grid-template-columns:minmax(180px,1fr) minmax(150px,220px) auto; gap:.65rem; margin-bottom:1rem;">
+          <input class="form-control" type="search" name="search" value="<%= filter.search %>" placeholder="Search name, phone, or email">
+          <select class="form-control" name="status">
+            <option value="">All statuses</option>
+            <% leadStatuses.forEach(option => { %>
+              <option value="<%= option.key %>" <%= filter.status === option.key ? 'selected' : '' %>><%= option.label %></option>
+            <% }) %>
+          </select>
+          <button class="btn btn-primary btn-sm" type="submit">Find leads</button>
+        </form>
 
         <% if (leads.length === 0) { %>
           <div class="empty-state">
-            <p>No prospects assigned to this counsellor yet.</p>
+            <p>No leads match these filters.</p>
           </div>
         <% } else { %>
           <div class="table-wrap">
@@ -135,6 +145,15 @@
               </tbody>
             </table>
           </div>
+          <% if (pagination.pages > 1) { %>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-top:1rem;">
+              <span class="text-muted text-sm">Showing <%= ((pagination.page - 1) * pagination.limit) + 1 %>–<%= Math.min(pagination.page * pagination.limit, pagination.total) %> of <%= pagination.total %></span>
+              <div style="display:flex; gap:.5rem;">
+                <% if (pagination.page > 1) { %><a class="btn btn-ghost btn-sm" href="/admin/counsellors/<%= counsellor._id %>?search=<%= encodeURIComponent(filter.search) %>&status=<%= encodeURIComponent(filter.status) %>&page=<%= pagination.page - 1 %>">&larr; Previous</a><% } %>
+                <% if (pagination.page < pagination.pages) { %><a class="btn btn-ghost btn-sm" href="/admin/counsellors/<%= counsellor._id %>?search=<%= encodeURIComponent(filter.search) %>&status=<%= encodeURIComponent(filter.status) %>&page=<%= pagination.page + 1 %>">Next &rarr;</a><% } %>
+              </div>
+            </div>
+          <% } %>
         <% } %>
       </div>
     </div>

@@ -196,6 +196,18 @@
   <div class="alert alert-toast alert-success" style="margin-bottom: 20px;" role="status">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
     <span>Import summary: imported <b><%= filter.imported || 0 %></b> new leads, skipped <b><%= filter.skipped || 0 %></b> duplicates, failed <b><%= filter.failed || 0 %></b> records.</span>
+    <% if (filter.importBatchId && Number(filter.imported || 0) > 0) { %>
+      <form method="POST" action="/admin/leads/import/<%= filter.importBatchId %>/undo" data-native-submit="true" data-confirm="Delete every lead created by <%= filter.importFileName || 'this file' %>? Admitted students will be kept." data-confirm-title="Undo sheet import" data-confirm-label="Delete imported leads" style="margin-left:auto;">
+        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+        <button type="submit" class="btn btn-danger btn-sm">Undo this import</button>
+      </form>
+    <% } %>
+  </div>
+<% } %>
+
+<% if (typeof filter !== 'undefined' && filter.importUndone !== undefined) { %>
+  <div class="alert alert-toast alert-success" style="margin-bottom:20px;" role="status">
+    <span>Removed <b><%= filter.importUndone %></b> lead(s) from that sheet import.<% if (Number(filter.protected || 0)) { %> Kept <b><%= filter.protected %></b> admitted lead(s).<% } %></span>
   </div>
 <% } %>
 
@@ -282,6 +294,24 @@
         <div class="lead-import-progress-detail" id="leadImportDetail">Choose a file to see the record count.</div>
       </div>
       </form>
+      <% if (priorImports && priorImports.length) { %>
+        <details style="border-top:1px solid var(--border); padding-top:.85rem;">
+          <summary style="cursor:pointer; font-size:.78rem; font-weight:800;">Remove a previous sheet import</summary>
+          <div style="display:grid; gap:.55rem; margin-top:.75rem;">
+            <% priorImports.forEach(item => { %>
+              <form method="POST" action="/admin/leads/import-history/undo" data-native-submit="true" data-confirm="Move all removable leads imported from <%= item.filename %> to the Recycle Bin? Admitted students will be kept." data-confirm-title="Remove previous import" data-confirm-label="Remove imported leads" style="display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.65rem; border:1px solid var(--border); border-radius:8px;">
+                <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+                <input type="hidden" name="importNote" value="<%= item.note %>">
+                <span style="min-width:0;">
+                  <strong style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><%= item.filename %></strong>
+                  <small class="text-muted"><%= item.count %> active lead(s)<% if (item.protected) { %> · <%= item.protected %> admitted protected<% } %> · <%= new Date(item.importedAt).toLocaleDateString('en-IN') %></small>
+                </span>
+                <button type="submit" class="btn btn-danger btn-xs">Remove</button>
+              </form>
+            <% }) %>
+          </div>
+        </details>
+      <% } %>
     </div>
 
     <div class="lead-tool-panel">

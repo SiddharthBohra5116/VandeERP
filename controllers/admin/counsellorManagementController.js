@@ -5,6 +5,7 @@ const LeadActivity = require('../../models/LeadActivity');
 const Message = require('../../models/Message');
 
 const { escapeRegex, phoneSearchPattern } = require('../../utils/sanitize');
+const { getLeadStatuses } = require('../../utils/leadStatusOptions');
 const logger = require('../../utils/logger');
 
 
@@ -93,51 +94,60 @@ exports.getCounsellorProfile = async (req, res) => {
       user: counsellorUser._id
     });
 
-    const [leads, messages, counsellors] = await Promise.all([
-      Lead.find({ assignedTo: counsellorProfile ? counsellorProfile._id : null })
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = 25;
+    const search = String(req.query.search || '').trim();
+    const status = String(req.query.status || '').trim();
+    const baseFilter = { assignedTo: counsellorProfile ? counsellorProfile._id : null };
+    const leadFilter = { ...baseFilter };
+    if (status) leadFilter.status = status;
+    if (search) {
+      const escaped = escapeRegex(search);
+      leadFilter.$or = [
+        { name: { $regex: escaped, $options: 'i' } },
+        { phone: { $regex: phoneSearchPattern(search), $options: 'i' } },
+        { email: { $regex: escaped, $options: 'i' } }
+      ];
+    }
+
+    const [leads, filteredTotal, messages, counsellorProfiles, leadStatuses, leadIds, totalLeads, convertedLeads, activeLeads, lostLeads] = await Promise.all([
+      Lead.find(leadFilter)
         .populate('interestedCourse', 'name code')
         .populate('convertedStudent')
-        .sort({ createdAt: -1 }),
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+
+      Lead.countDocuments(leadFilter),
 
       Message.find({ recipient: counsellorUser._id })
         .populate('sender', 'name role')
-        .sort({ createdAt: -1 }),
+        .sort({ createdAt: -1 })
+        .limit(50),
 
-      User.find({
-        role: 'counsellor',
-        status: 'active'
-      }).select('name')
+      Counsellor.find().populate({ path: 'user', match: { status: 'active' }, select: 'name' }),
+      getLeadStatuses(),
+      Lead.distinct('_id', baseFilter),
+      Lead.countDocuments(baseFilter),
+      Lead.countDocuments({ ...baseFilter, status: 'admission_completed' }),
+      Lead.countDocuments({ ...baseFilter, status: { $nin: ['admission_completed', 'lost'] } }),
+      Lead.countDocuments({ ...baseFilter, status: 'lost' })
     ]);
 
-    const leadIds = leads.map(lead => lead._id);
+    const counsellors = counsellorProfiles
+      .filter(profile => profile.user)
+      .map(profile => ({ _id: profile._id, name: profile.user.name }));
 
-    const activities = await LeadActivity.find({
-      lead: { $in: leadIds }
-    });
-
-    const totalLeads = leads.length;
-
-    const convertedLeads = leads.filter(
-      lead => lead.status === 'admission_completed'
-    ).length;
-
-    const activeLeads = leads.filter(
-      lead => !['admission_completed', 'lost'].includes(lead.status)
-    ).length;
-
-    const lostLeads = leads.filter(
-      lead => lead.status === 'lost'
-    ).length;
-
-    const followUps = activities.filter(activity =>
-      [
+    const followUps = await LeadActivity.countDocuments({
+      lead: { $in: leadIds },
+      type: { $in: [
         'follow_up_scheduled',
         'follow_up_completed',
         'call',
         'whatsapp',
         'note'
-      ].includes(activity.type)
-    ).length;
+      ] }
+    });
 
     const conversionRate = totalLeads > 0
       ? Math.round((convertedLeads / totalLeads) * 100)
@@ -156,6 +166,14 @@ exports.getCounsellorProfile = async (req, res) => {
       leads,
       messages,
       counsellors,
+      leadStatuses,
+      filter: { search, status },
+      pagination: {
+        page,
+        limit,
+        total: filteredTotal,
+        pages: Math.max(Math.ceil(filteredTotal / limit), 1)
+      },
       stats: {
         totalLeads,
         convertedLeads,
