@@ -5,6 +5,12 @@
   page = 'fees';
 %>
 
+<div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
+  <a href="/admin/fees/<%= fee.student._id %>/invoice.pdf" target="_blank" class="btn btn-primary btn-sm" aria-label="Generate invoice PDF for <%= fee.student.name %>">
+    <span aria-hidden="true">▣</span> Generate Invoice
+  </a>
+</div>
+
 <div class="profile-header">
   <div class="avatar-lg">
     <%= fee.student.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2) %>

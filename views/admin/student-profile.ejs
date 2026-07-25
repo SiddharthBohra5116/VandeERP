@@ -368,6 +368,7 @@
                             <div class="card-header" style="margin-bottom:1.25rem;">
                               <div class="card-title">Fee Ledger Summary</div>
                               <a href="/admin/fees/<%= student._id %>" class="btn btn-ghost btn-xs"><%= fee ? 'Open Full Invoice' : 'Set Up Invoice' %></a>
+                              <% if (fee) { %><a href="/admin/fees/<%= student._id %>/invoice.pdf" target="_blank" class="btn btn-primary btn-xs" aria-label="Generate invoice PDF">▣ Invoice PDF</a><% } %>
                             </div>
 
                             <% if (!fee) { %>

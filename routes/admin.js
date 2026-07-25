@@ -323,6 +323,7 @@ router.post(
 
 router.get('/fees', ...guard, feeCtrl.getFees);
 router.post('/fees/import', ...guard, csvUpload('feeCsv', '/admin/fees'), csrfProtection, bulkImportCtrl.postImportFees);
+router.get('/fees/:studentId/invoice.pdf', ...guard, feeCtrl.getFeeInvoice);
 
 router.get(
   '/fees/:studentId',

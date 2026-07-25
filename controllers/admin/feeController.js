@@ -6,6 +6,7 @@ const { escapeRegex } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
 const buildFeeSchedule = require('../../utils/feeSchedule');
 const getFeeStatus = require('../../utils/feeStatus');
+const { createFeeInvoice, invoiceNumber } = require('../../utils/feeInvoicePdf');
 
 
 // GET /admin/fees
@@ -212,6 +213,32 @@ exports.getStudentFee = async (req, res) => {
       user: req.user,
       layout: 'main'
     });
+  }
+};
+
+exports.getFeeInvoice = async (req, res, next) => {
+  try {
+    const fee = await Fee.findOne({ student: req.params.studentId })
+      .populate({
+        path: 'student',
+        populate: [
+          { path: 'user', select: 'name phone email' },
+          { path: 'course', select: 'name' }
+        ]
+      })
+      .populate('course', 'name');
+    if (!fee || !fee.student) return res.redirect(`/admin/fees/${req.params.studentId}`);
+
+    const studentSlug = String(fee.student.user?.name || 'student').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'student';
+    const filename = `${invoiceNumber(fee)}-${studentSlug}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    const pdf = createFeeInvoice(fee);
+    pdf.on('error', next);
+    pdf.pipe(res);
+    pdf.end();
+  } catch (err) {
+    next(err);
   }
 };
 
