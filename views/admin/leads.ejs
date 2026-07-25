@@ -163,6 +163,7 @@
     outline: none;
     box-shadow: 0 0 0 2px var(--gold-dim) !important;
   }
+  .lead-select-badge option { background:var(--bg-card); color:var(--text); }
   
   @media (max-width:1180px) {
     .lead-tools-shell { grid-template-columns:1fr; }
@@ -453,10 +454,19 @@
       <p>No leads found in the system.</p>
     </div>
   <% } else { %>
-    <form id="bulkDeleteForm" method="POST" action="/admin/leads/delete" data-native-submit="true" data-confirm="Delete the selected leads and their activity history? Admitted leads will be kept." data-confirm-title="Delete selected leads" data-confirm-label="Delete leads" style="display:flex; justify-content:flex-end; padding:0 0 0.75rem;">
-      <input type="hidden" name="returnTo" value="<%= currentListUrl %>">
-      <button type="submit" class="btn btn-danger btn-sm" id="bulkDeleteButton" disabled>Delete selected</button>
-    </form>
+    <div style="display:flex; justify-content:flex-end; gap:.5rem; padding:0 0 .75rem;">
+      <form id="bulkAssignForm" method="POST" action="/admin/leads/assign" style="display:flex; gap:.5rem;">
+        <select name="counsellorId" class="form-control" required aria-label="Counsellor for selected leads">
+          <option value="">Assign selected to...</option>
+          <% counsellors.forEach(c => { %><option value="<%= c._id %>"><%= c.name %></option><% }) %>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm" id="bulkAssignButton" disabled>Assign selected</button>
+      </form>
+      <form id="bulkDeleteForm" method="POST" action="/admin/leads/delete" data-native-submit="true" data-confirm="Delete the selected leads and their activity history? Admitted leads will be kept." data-confirm-title="Delete selected leads" data-confirm-label="Delete leads">
+        <input type="hidden" name="returnTo" value="<%= currentListUrl %>">
+        <button type="submit" class="btn btn-danger btn-sm" id="bulkDeleteButton" disabled>Delete selected</button>
+      </form>
+    </div>
     <div class="table-wrap">
       <table>
         <thead>
@@ -533,7 +543,7 @@
               </td>
               <td>
                 <form action="/admin/leads/<%= l._id %>/assign" method="POST" style="margin:0; display:flex; gap:0.5rem; align-items:center;">
-                  <select name="counsellorId" class="lead-select-badge" onchange="this.form.submit()">
+                  <select name="counsellorId" class="lead-select-badge">
                     <option value="">Unassigned</option>
                     <% counsellors.forEach(c => { %>
                       <option value="<%= c._id %>" <%= (l.assignedTo && l.assignedTo._id.toString() === c._id.toString()) ? 'selected' : '' %>><%= c.name %></option>
@@ -555,6 +565,7 @@
                 <% } %>
               </td>
               <td>
+                <a href="/admin/leads/<%= l._id %>/edit" class="btn btn-ghost btn-xs" style="margin-right:0.35rem;">Edit</a>
                 <% if (l.status !== 'admission_completed' && l.status !== 'lost') { %>
                   <a href="/admin/leads/<%= l._id %>/convert" class="btn btn-success btn-xs" style="border-radius: 20px; font-weight: 700;">
                     Convert to Student
@@ -705,11 +716,14 @@
   function initLeadDeletion() {
     const selectAll = document.getElementById('selectAllLeads');
     const button = document.getElementById('bulkDeleteButton');
+    const assignButton = document.getElementById('bulkAssignButton');
+    const assignForm = document.getElementById('bulkAssignForm');
     const checkboxes = [...document.querySelectorAll('.lead-delete-checkbox')];
     if (!selectAll || !button || selectAll.dataset.ready) return;
     const refresh = () => {
       const selected = checkboxes.filter(box => box.checked).length;
       button.disabled = selected === 0;
+      if (assignButton) assignButton.disabled = selected === 0;
       button.textContent = selected ? `Delete selected (${selected})` : 'Delete selected';
       selectAll.checked = selected > 0 && selected === checkboxes.length;
       selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
@@ -717,12 +731,52 @@
     selectAll.addEventListener('change', () => { checkboxes.forEach(box => { box.checked = selectAll.checked; }); refresh(); });
     checkboxes.forEach(box => box.addEventListener('change', refresh));
     selectAll.dataset.ready = '1';
+    if (assignForm) assignForm.addEventListener('submit', () => {
+      assignForm.querySelectorAll('input[name="leadIds"]').forEach(input => input.remove());
+      checkboxes.filter(box => box.checked).forEach(box => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'leadIds';
+        input.value = box.value;
+        assignForm.appendChild(input);
+      });
+    });
     refresh();
   }
 
   initLeadDeletion();
   document.addEventListener('resultsUpdated', initLeadDeletion);
   document.addEventListener('softnav:load', initLeadDeletion);
+
+  function initLeadAssignment() {
+    document.querySelectorAll('form[action$="/assign"] .lead-select-badge').forEach(select => {
+      if (select.dataset.ready) return;
+      select.addEventListener('change', async () => {
+        const oldValue = select.dataset.value || '';
+        select.disabled = true;
+        try {
+          const response = await fetch(select.form.action, {
+            method: 'POST',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ counsellorId: select.value })
+          });
+          if (!response.ok) throw new Error('Assignment failed');
+          select.dataset.value = select.value;
+        } catch (error) {
+          select.value = oldValue;
+          alert(error.message);
+        } finally {
+          select.disabled = false;
+        }
+      });
+      select.dataset.value = select.value;
+      select.dataset.ready = '1';
+    });
+  }
+
+  initLeadAssignment();
+  document.addEventListener('resultsUpdated', initLeadAssignment);
+  document.addEventListener('softnav:load', initLeadAssignment);
 
   function initDragAndDrop() {
     const uploadZone = document.getElementById('uploadZone');

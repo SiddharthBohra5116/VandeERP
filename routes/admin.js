@@ -352,6 +352,8 @@ router.post(
 router.get('/leads', ...guard, leadCtrl.getLeads);
 router.get('/leads/create', ...guard, leadCtrl.getCreateLead);
 router.post('/leads/create', ...guard, leadCtrl.postCreateLead);
+router.get('/leads/:id/edit', ...guard, leadCtrl.getEditLead);
+router.post('/leads/:id/edit', ...guard, leadCtrl.postEditLead);
 router.get('/leads/import/progress/:jobId', ...guard, leadCtrl.getImportProgress);
 
 router.post(
@@ -392,6 +394,8 @@ router.post(
   ...guard,
   leadCtrl.postDeleteLeads
 );
+
+router.post('/leads/assign', ...guard, leadCtrl.postAssignLeads);
 
 router.get(
   '/leads/:id',

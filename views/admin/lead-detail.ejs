@@ -273,6 +273,7 @@
 
 <div class="lead-page-actions">
   <a href="/admin/leads" class="btn btn-ghost btn-sm">&larr; Back to Pipeline</a>
+  <a href="/admin/leads/<%= lead._id %>/edit" class="btn btn-ghost btn-sm">Edit Lead</a>
   <% if (lead.status !== 'admission_completed') { %>
     <a href="/admin/leads/<%= lead._id %>/convert" class="btn btn-success btn-sm">Admit as Student</a>
   <% } else if (lead.convertedStudent) { %>

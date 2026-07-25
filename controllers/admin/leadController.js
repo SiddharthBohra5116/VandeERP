@@ -448,6 +448,92 @@ exports.postCreateLead = async (req, res) => {
   }
 };
 
+exports.getEditLead = async (req, res) => {
+  try {
+    const [lead, leadStatuses, courses] = await Promise.all([
+      Lead.findById(req.params.id).populate('interestedCourse'),
+      getLeadStatuses(),
+      Course.find({ isActive: true }).select('name code').sort({ name: 1 })
+    ]);
+    if (!lead) return res.redirect('/admin/leads');
+
+    return res.render('counsellor/lead-form', {
+      title: 'Edit Lead',
+      user: req.user,
+      lead,
+      target: lead,
+      leadStatuses,
+      courses,
+      error: req.query.error
+    });
+  } catch (err) {
+    logger.error('Admin Edit Lead Page Error', { err: err.message });
+    return res.status(500).render('500', { title: 'Error', user: req.user });
+  }
+};
+
+exports.postEditLead = async (req, res) => {
+  const editUrl = `/admin/leads/${req.params.id}/edit`;
+  try {
+    const { name, phone, email, course, source, referredBy, status, followUpDate, notes } = req.body;
+    const cleanName = String(name || '').trim();
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+    const cleanEmail = String(email || '').trim().toLowerCase();
+
+    if (!cleanName || cleanPhone.length !== 10) {
+      throw new Error('Name and a valid 10-digit phone number are required.');
+    }
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      throw new Error('Enter a valid email address or leave it blank.');
+    }
+    if (source === 'Referral' && !String(referredBy || '').trim()) {
+      throw new Error('Referrer name is required for referral leads.');
+    }
+
+    const [lead, duplicate, courseDoc, statuses] = await Promise.all([
+      Lead.findById(req.params.id),
+      Lead.findOne({ phone: cleanPhone, _id: { $ne: req.params.id } }).select('name'),
+      resolveCourse(course),
+      getLeadStatuses()
+    ]);
+    if (!lead) return res.redirect('/admin/leads');
+    if (duplicate) {
+      throw new Error(`Another lead with this phone number already exists for ${duplicate.name}.`);
+    }
+
+    const oldStatus = lead.status;
+    const cleanStatus = statuses.some(option => option.key === status) ? status : 'new';
+    lead.name = cleanName;
+    lead.phone = cleanPhone;
+    lead.email = cleanEmail;
+    lead.interestedCourse = courseDoc?._id || null;
+    lead.source = LEAD_SOURCES.includes(source) ? source : 'Manual';
+    lead.referredBy = source === 'Referral' ? String(referredBy || '').trim().slice(0, 100) : '';
+    lead.status = cleanStatus;
+    lead.nextFollowUpAt = followUpDate ? new Date(followUpDate) : null;
+    lead.notes = String(notes || '').trim().slice(0, 500);
+    await lead.save();
+
+    await LeadActivity.create({
+      lead: lead._id,
+      type: 'note',
+      title: 'Lead details updated',
+      note: 'Admin corrected the lead details.',
+      counsellor: req.user._id,
+      doneBy: req.user._id,
+      oldStatus,
+      newStatus: cleanStatus,
+      followUp: { scheduledFor: lead.nextFollowUpAt },
+      metadata: { name: cleanName, phone: cleanPhone, email: cleanEmail, source: lead.source }
+    });
+
+    return res.redirect(`/admin/leads/${lead._id}?updated=1`);
+  } catch (err) {
+    logger.error('Admin Edit Lead Error', { err: err.message, leadId: req.params.id });
+    return res.redirect(`${editUrl}?error=${encodeURIComponent(err.message)}`);
+  }
+};
+
 exports.postImportLeads = async (req, res) => {
   const isCounsellorImport = req.user.role === 'counsellor';
   const redirectBase = isCounsellorImport ? '/counsellor/leads' : '/admin/leads';
@@ -1132,6 +1218,9 @@ exports.postAssignLead = async (req, res) => {
       counsellorId: assignedTo
     });
 
+    if (req.accepts(['json', 'html']) === 'json') {
+      return res.json({ ok: true });
+    }
     res.redirect(req.header('Referer') || '/admin/leads');
 
   } catch (err) {
@@ -1144,6 +1233,50 @@ exports.postAssignLead = async (req, res) => {
     const cleanUrl = redirectUrl.split('?')[0];
 
     res.redirect(`${cleanUrl}?error=${encodeURIComponent(err.message)}`);
+  }
+};
+
+exports.postAssignLeads = async (req, res) => {
+  try {
+    const submitted = Array.isArray(req.body.leadIds) ? req.body.leadIds : [req.body.leadIds];
+    const leadIds = [...new Set(submitted.filter(id => /^[0-9a-fA-F]{24}$/.test(String(id || ''))))].slice(0, 500);
+    const counsellorId = String(req.body.counsellorId || '');
+    if (!leadIds.length) throw new Error('Select at least one lead.');
+    if (!/^[0-9a-fA-F]{24}$/.test(counsellorId) || !await Counsellor.exists({ _id: counsellorId })) {
+      throw new Error('Select a valid counsellor.');
+    }
+
+    const leads = await Lead.find({ _id: { $in: leadIds } }).select('_id name assignedTo');
+    await Lead.updateMany(
+      { _id: { $in: leads.map(lead => lead._id) } },
+      {
+        $set: { assignedTo: counsellorId },
+        $push: { ownershipHistory: { counsellor: counsellorId, assignedBy: req.user._id, note: 'Lead assigned in bulk by admin' } }
+      }
+    );
+    if (leads.length) {
+      await LeadActivity.insertMany(leads.map(lead => ({
+        lead: lead._id,
+        type: lead.assignedTo ? 'reassigned' : 'assigned',
+        title: lead.assignedTo ? 'Lead Reassigned' : 'Lead Assigned',
+        note: 'Lead assigned in bulk by admin.',
+        counsellor: counsellorId,
+        doneBy: req.user._id
+      })));
+    }
+
+    const counsellor = await Counsellor.findById(counsellorId).populate('user', '_id status');
+    if (counsellor?.user?.status === 'active' && leads.length) {
+      await Message.create({
+        sender: req.user._id,
+        recipient: counsellor.user._id,
+        content: `${leads.length} leads were assigned to you by admin.`
+      });
+    }
+    return res.redirect(req.header('Referer') || '/admin/leads');
+  } catch (err) {
+    const redirectUrl = (req.header('Referer') || '/admin/leads').split('?')[0];
+    return res.redirect(`${redirectUrl}?error=${encodeURIComponent(err.message)}`);
   }
 };
 

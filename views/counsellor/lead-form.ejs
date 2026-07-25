@@ -159,6 +159,11 @@
 </div>
 
 <div style="max-width:768px; margin: 0 auto;">
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="card" style="border-color:var(--red); color:var(--red); margin-bottom:1rem; padding:0.85rem 1rem;">
+      <%= error %>
+    </div>
+  <% } %>
   <div class="card premium-form-card">
 
     <!-- Sparkle Decortor SVG -->
