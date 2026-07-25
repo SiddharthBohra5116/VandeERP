@@ -282,6 +282,11 @@
       <div class="stat-value"><%= overviewStats.convRate.value %></div>
       <div class="stat-sub text-green"><%= overviewStats.convRate.trend %></div>
     </div>
+    <a href="/admin/leads?status=admission_completed" class="stat-card" style="border-top-color: var(--green);">
+      <div class="stat-label">Converted</div>
+      <div class="stat-value"><%= overviewStats.converted.value %></div>
+      <div class="stat-sub text-green"><%= overviewStats.converted.trend %></div>
+    </a>
   </div>
 
   <!-- Key Insight Box -->

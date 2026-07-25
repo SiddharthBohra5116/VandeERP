@@ -180,9 +180,20 @@ exports.getReports = async (req, res) => {
 
     // Leads & Conversion Rate
     const leadFilter = {};
-    if (course !== 'all') leadFilter.course = course;
+    if (course !== 'all') leadFilter.interestedCourse = course;
     leadFilter.createdAt = { $gte: startOfPeriod, $lte: endOfPeriod };
-    const leads = await Lead.find(leadFilter);
+    const convertedFilter = {
+      status: 'admission_completed',
+      $or: [
+        { convertedAt: { $gte: startOfPeriod, $lte: endOfPeriod } },
+        { convertedAt: null, updatedAt: { $gte: startOfPeriod, $lte: endOfPeriod } }
+      ]
+    };
+    if (course !== 'all') convertedFilter.interestedCourse = course;
+    const [leads, convertedInPeriod] = await Promise.all([
+      Lead.find(leadFilter),
+      Lead.countDocuments(convertedFilter)
+    ]);
     const openStatuses = await getOpenLeadStatusKeys();
     const openLeadsCount = leads.filter(l => openStatuses.includes(l.status)).length;
     const convertedCount = leads.filter(l => l.status === 'admission_completed').length;
@@ -220,6 +231,11 @@ exports.getReports = async (req, res) => {
         value: `${cRate}%`,
         trend: `Converted ${convertedCount} leads`,
         isPositive: cRate >= 35
+      },
+      converted: {
+        value: convertedInPeriod,
+        trend: 'Converted in selected date range',
+        isPositive: true
       },
       keyInsight: `Collection efficiency is ${totalBilled > 0 ? Math.round((totalCollected / totalBilled) * 100) : 0}% under the selected filters. Open leads volume stands at ${openLeadsCount} with a conversion rate of ${cRate}%. Average attendance is ${avgAtt}%.`
     };

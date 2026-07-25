@@ -52,14 +52,21 @@
 </details>
 
 <!-- Search & Filter Form -->
+<div class="stats-grid" style="margin-bottom:1.25rem;">
+  <a href="/admin/fees?paymentStatus=completed" class="stat-card green"><div class="stat-label">Completed</div><div class="stat-value"><%= feeStats.completed %></div><div class="stat-sub">Fully settled</div></a>
+  <a href="/admin/fees?paymentStatus=partially_paid" class="stat-card gold"><div class="stat-label">Partial</div><div class="stat-value"><%= feeStats.partially_paid %></div><div class="stat-sub">Payment in progress</div></a>
+  <a href="/admin/fees?paymentStatus=overdue" class="stat-card red"><div class="stat-label">Overdue</div><div class="stat-value"><%= feeStats.overdue %></div><div class="stat-sub">Needs follow-up</div></a>
+  <a href="/admin/fees?paymentStatus=unpaid" class="stat-card orange"><div class="stat-label">Pending</div><div class="stat-value"><%= feeStats.unpaid %></div><div class="stat-sub">No payment yet</div></a>
+</div>
+
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
   <form method="GET" action="/admin/fees" class="filter-bar" style="margin: 0; display: flex; gap: 0.75rem; flex-wrap: wrap;">
     <input type="text" name="search" class="form-control" placeholder="Search by student name..." value="<%= (typeof filter !== 'undefined' && filter.search) ? filter.search : '' %>" style="flex: 2; padding: 0.45rem 0.75rem;" onchange="this.form.submit()">
     
     <select name="paymentStatus" class="form-control" style="flex: 1;" onchange="this.form.submit()">
       <option value="">All Payment Statuses</option>
-      <option value="fully paid" <%= filter.paymentStatus === 'fully paid' ? 'selected' : '' %>>Fully Paid</option>
-      <option value="partially paid" <%= filter.paymentStatus === 'partially paid' ? 'selected' : '' %>>Partially Paid</option>
+      <option value="completed" <%= filter.paymentStatus === 'completed' ? 'selected' : '' %>>Completed</option>
+      <option value="partially_paid" <%= filter.paymentStatus === 'partially_paid' ? 'selected' : '' %>>Partially Paid</option>
       <option value="overdue" <%= filter.paymentStatus === 'overdue' ? 'selected' : '' %>>Overdue</option>
       <option value="unpaid" <%= filter.paymentStatus === 'unpaid' ? 'selected' : '' %>>Unpaid (No Payment)</option>
       <option value="no invoice" <%= filter.paymentStatus === 'no invoice' ? 'selected' : '' %>>No Invoice</option>
@@ -94,6 +101,7 @@
             <th>Paid</th>
             <th>Due</th>
             <th>Collection %</th>
+            <th>Status</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -143,6 +151,7 @@
                   </div>
                 </div>
               </td>
+              <td><span class="badge <%= f.paymentStatus === 'completed' ? 'badge-green' : f.paymentStatus === 'overdue' ? 'badge-red' : f.paymentStatus === 'partially_paid' ? 'badge-gold' : 'badge-orange' %>"><%= f.paymentStatus === 'completed' ? 'Completed' : f.paymentStatus === 'partially_paid' ? 'Partial' : f.paymentStatus === 'overdue' ? 'Overdue' : 'Pending' %></span></td>
               <td>
                 <% if (student) { %>
                   <a href="/admin/fees/<%= student._id %>" class="btn btn-ghost btn-xs">Ledger / Add Payment</a>

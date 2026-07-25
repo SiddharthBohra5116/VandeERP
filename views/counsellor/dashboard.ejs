@@ -10,20 +10,20 @@
 
 <!-- Stats Grid -->
 <div class="stats-grid">
-  <a href="/counsellor/leads" class="stat-card gold">
-    <div class="stat-label">Total Leads</div>
-    <div class="stat-value"><%= stats.total %></div>
-    <div class="stat-sub">All time queries</div>
+  <a href="/counsellor/leads?status=high_potential" class="stat-card gold">
+    <div class="stat-label">High Potential</div>
+    <div class="stat-value"><%= stats.byStatus.high_potential || 0 %></div>
+    <div class="stat-sub">Priority opportunities</div>
   </a>
   <a href="/counsellor/leads?status=new" class="stat-card orange">
-    <div class="stat-label">New Today</div>
-    <div class="stat-value"><%= stats.newToday %></div>
-    <div class="stat-sub">Needs follow-up</div>
+    <div class="stat-label">New</div>
+    <div class="stat-value"><%= stats.byStatus.new || 0 %></div>
+    <div class="stat-sub"><%= stats.newToday %> added today</div>
   </a>
-  <a href="/counsellor/leads/followups" class="stat-card blue">
-    <div class="stat-label">Follow-ups Due</div>
-    <div class="stat-value"><%= stats.followupsDue %></div>
-    <div class="stat-sub">Today & overdue</div>
+  <a href="/counsellor/leads?status=in_the_loop" class="stat-card blue">
+    <div class="stat-label">In the Loop</div>
+    <div class="stat-value"><%= stats.byStatus.in_the_loop || 0 %></div>
+    <div class="stat-sub">Active conversations</div>
   </a>
   <a href="/counsellor/admissions" class="stat-card green">
     <div class="stat-label">Converted</div>

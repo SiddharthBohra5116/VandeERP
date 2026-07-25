@@ -5,6 +5,7 @@ const Message = require('../../models/Message');
 const { escapeRegex } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
 const buildFeeSchedule = require('../../utils/feeSchedule');
+const getFeeStatus = require('../../utils/feeStatus');
 
 
 // GET /admin/fees
@@ -83,35 +84,15 @@ exports.getFees = async (req, res) => {
         obj.batch = (obj.batch && obj.batch.name) ? obj.batch.name : '—';
       }
 
-      const netAmount =
-        fee.totalAmount - (fee.discount || 0);
-
-      const dueAmount =
-        Math.max(0, netAmount - fee.paidAmount);
-
-      let status = 'no invoice';
-
-      if (fee.totalAmount > 0) {
-        if (dueAmount === 0) {
-          status = 'fully paid';
-        } else if (fee.paidAmount > 0) {
-          status = 'partially paid';
-        } else {
-          status = 'unpaid';
-        }
-      }
-
-      const isOverdue =
-        dueAmount > 0 &&
-        fee.dueDate &&
-        new Date(fee.dueDate) < now;
-
-      obj.dueAmount = dueAmount;
-      obj.isOverdue = isOverdue;
-      obj.paymentStatus = isOverdue ? 'overdue' : status;
+      Object.assign(obj, getFeeStatus(fee, now));
 
       return obj;
     });
+
+    const feeStats = fees.reduce((stats, fee) => {
+      stats[fee.paymentStatus] = (stats[fee.paymentStatus] || 0) + 1;
+      return stats;
+    }, { completed: 0, partially_paid: 0, overdue: 0, unpaid: 0 });
 
     if (paymentStatus) {
       fees = fees.filter(fee => fee.paymentStatus === paymentStatus);
@@ -134,6 +115,7 @@ exports.getFees = async (req, res) => {
       title: 'Fee Management',
       user: req.user,
       fees,
+      feeStats,
       filter: req.query
     });
 

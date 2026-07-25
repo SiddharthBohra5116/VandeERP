@@ -493,7 +493,7 @@ exports.getInbox = async (req, res) => {
     // Determine default contact list based on user role
     let defaultContacts = [];
     if (req.user.role === 'admin') {
-      defaultContacts = await User.find({ _id: { $ne: req.user._id } })
+      defaultContacts = await User.find({ _id: { $ne: req.user._id }, status: 'active', archivedAt: null })
         .select('name role profilePic')
         .sort({ name: 1 });
     } else if (req.user.role === 'teacher') {
@@ -511,6 +511,8 @@ exports.getInbox = async (req, res) => {
 
       defaultContacts = await User.find({
         _id: { $ne: req.user._id },
+        status: 'active',
+        archivedAt: null,
         $or: [
           { role: 'admin' },
           { role: 'teacher' },
@@ -533,6 +535,8 @@ exports.getInbox = async (req, res) => {
 
       defaultContacts = await User.find({
         _id: { $ne: req.user._id },
+        status: 'active',
+        archivedAt: null,
         $or: [
           { role: 'admin' },
           { role: 'counsellor' },
@@ -561,6 +565,8 @@ exports.getInbox = async (req, res) => {
       }
       defaultContacts = await User.find({
         _id: { $ne: req.user._id },
+        status: 'active',
+        archivedAt: null,
         $or: condition
       })
         .select('name role profilePic')
@@ -572,7 +578,7 @@ exports.getInbox = async (req, res) => {
     defaultContacts.forEach(c => contactMap.set(c._id.toString(), c));
 
     if (participantIds.size > 0) {
-      const extraUsers = await User.find({ _id: { $in: Array.from(participantIds) } })
+      const extraUsers = await User.find({ _id: { $in: Array.from(participantIds) }, status: 'active', archivedAt: null })
         .select('name role profilePic');
       extraUsers.forEach(u => {
         if (!contactMap.has(u._id.toString()) && u._id.toString() !== req.user._id.toString()) {
@@ -617,7 +623,7 @@ exports.getInbox = async (req, res) => {
     const selectedId = req.query.chat || (contacts.length > 0 ? contacts[0]._id.toString() : null);
 
     if (selectedId) {
-      selectedContact = await User.findById(selectedId).select('name role profilePic phone email status');
+      selectedContact = await User.findOne({ _id: selectedId, status: 'active', archivedAt: null }).select('name role profilePic phone email status');
       if (selectedContact) {
         const Teacher = require('../models/Teacher');
         const Counsellor = require('../models/Counsellor');

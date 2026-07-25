@@ -12,10 +12,34 @@
     <h2 id="dashboardGreeting" class="dashboard-greeting" style="margin:0;">Welcome back!</h2>
   </div>
   <div class="d-flex gap-1" style="flex-wrap:wrap;">
+    <a href="/admin/leads/create" class="btn btn-primary btn-sm">+ Manual lead</a>
     <a href="/admin/users/create?role=student" class="btn btn-primary btn-sm">Add student</a>
     <a href="/admin/fees" class="btn btn-ghost btn-sm">Record payment</a>
     <a href="/admin/schedules" class="btn btn-ghost btn-sm">Plan classes</a>
   </div>
+</div>
+
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Lead Pipeline</div>
+      <p class="td-muted text-sm">Open the exact working queue without rebuilding filters.</p>
+    </div>
+    <a href="/admin/leads/create" class="btn btn-primary btn-sm">+ Add lead manually</a>
+  </div>
+  <div class="stats-grid" style="padding:1.25rem; margin-bottom:0;">
+    <a href="/admin/leads?status=high_potential" class="stat-card gold"><div class="stat-label">High Potential</div><div class="stat-value"><%= stats.highPotentialLeads %></div><div class="stat-sub">Priority opportunities</div></a>
+    <a href="/admin/leads?status=new" class="stat-card orange"><div class="stat-label">New</div><div class="stat-value"><%= stats.newLeads %></div><div class="stat-sub">Not contacted yet</div></a>
+    <a href="/admin/leads?status=in_the_loop" class="stat-card blue"><div class="stat-label">In the Loop</div><div class="stat-value"><%= stats.loopLeads %></div><div class="stat-sub">Active follow-up queue</div></a>
+    <a href="/admin/leads?status=admission_completed" class="stat-card green"><div class="stat-label">Converted</div><div class="stat-value"><%= stats.convertedLeads %></div><div class="stat-sub">Admission completed</div></a>
+  </div>
+</div>
+
+<div class="stats-grid" style="margin-bottom:1.5rem;">
+  <a href="/admin/students?status=complete" class="stat-card green"><div class="stat-label">Completed Students</div><div class="stat-value"><%= stats.completedStudents %></div><div class="stat-sub">Finished course records</div></a>
+  <a href="/admin/fees?paymentStatus=completed" class="stat-card green"><div class="stat-label">Completed Ledgers</div><div class="stat-value"><%= stats.feeStats.completed %></div><div class="stat-sub">No balance remaining</div></a>
+  <a href="/admin/fees?paymentStatus=overdue" class="stat-card red"><div class="stat-label">Overdue Ledgers</div><div class="stat-value"><%= stats.feeStats.overdue %></div><div class="stat-sub">Action required</div></a>
+  <a href="/admin/fees?paymentStatus=partially_paid" class="stat-card gold"><div class="stat-label">Partial Ledgers</div><div class="stat-value"><%= stats.feeStats.partial %></div><div class="stat-sub">Payment in progress</div></a>
 </div>
 
 <!-- Stats Grid -->

@@ -10,6 +10,7 @@ const LeaveRequest = require('../../models/LeaveRequest');
 const { todayIST } = require('../../utils/dateHelper');
 const { calculateStudentsAttendance } = require('../../utils/attendanceHelper');
 const logger = require('../../utils/logger');
+const getFeeStatus = require('../../utils/feeStatus');
 
 exports.getDashboard = async (req, res) => {
   try {
@@ -44,6 +45,16 @@ exports.getDashboard = async (req, res) => {
       });
     });
 
+    const now = new Date();
+    const feeStats = fees.reduce((stats, fee) => {
+      const status = getFeeStatus(fee, now).paymentStatus;
+      if (status === 'completed') stats.completed += 1;
+      else if (status === 'overdue') stats.overdue += 1;
+      else if (status === 'partially_paid') stats.partial += 1;
+      else stats.pending += 1;
+      return stats;
+    }, { completed: 0, overdue: 0, partial: 0, pending: 0 });
+
     // Today schedules
     const todaySchedules = await Schedule
       .find({ date: todayStr })
@@ -59,6 +70,13 @@ exports.getDashboard = async (req, res) => {
     const readyLeadsCount = await Lead.countDocuments({
       status: 'joining_interested'
     });
+    const [highPotentialLeads, newLeads, loopLeads, convertedLeads, completedStudents] = await Promise.all([
+      Lead.countDocuments({ status: 'high_potential' }),
+      Lead.countDocuments({ status: 'new' }),
+      Lead.countDocuments({ status: 'in_the_loop' }),
+      Lead.countDocuments({ status: 'admission_completed' }),
+      User.countDocuments({ role: 'student', status: 'complete', archivedAt: null })
+    ]);
 
     // At-risk students
     const studentProfiles = await Student
@@ -167,7 +185,13 @@ exports.getDashboard = async (req, res) => {
         readyLeadsCount,
         atRiskCount,
         pendingLeavesCount,
-        ungradedSubmissionsCount
+        ungradedSubmissionsCount,
+        highPotentialLeads,
+        newLeads,
+        loopLeads,
+        convertedLeads,
+        completedStudents,
+        feeStats
       },
       recentStudents,
       recentLeads,
