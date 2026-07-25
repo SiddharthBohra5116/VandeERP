@@ -150,6 +150,51 @@
 
       // Auto-restore state on desktop load
       restoreSidebarState();
+
+      const customizeSidebarBtn = document.getElementById('customizeSidebarBtn');
+      const sidebarPreferenceKey = 'sidebar-hidden:<%= user._id %>';
+      const navItems = [...sidebar.querySelectorAll('a.nav-item')];
+      let hiddenItems;
+      try {
+        hiddenItems = new Set(JSON.parse(localStorage.getItem(sidebarPreferenceKey) || '[]'));
+      } catch (_) {
+        hiddenItems = new Set();
+      }
+      const renderSidebarPreferences = () => {
+        navItems.forEach(item => {
+          const hidden = hiddenItems.has(item.getAttribute('href'));
+          item.classList.toggle('sidebar-item-hidden', hidden);
+          item.querySelector('.sidebar-hide-toggle').textContent = hidden ? 'Show' : 'Hide';
+        });
+      };
+      navItems.forEach(item => {
+        const toggle = document.createElement('span');
+        toggle.className = 'sidebar-hide-toggle';
+        toggle.setAttribute('role', 'button');
+        toggle.setAttribute('tabindex', '0');
+        const changeVisibility = event => {
+          event.preventDefault();
+          event.stopPropagation();
+          const key = item.getAttribute('href');
+          hiddenItems.has(key) ? hiddenItems.delete(key) : hiddenItems.add(key);
+          localStorage.setItem(sidebarPreferenceKey, JSON.stringify([...hiddenItems]));
+          renderSidebarPreferences();
+        };
+        toggle.addEventListener('click', changeVisibility);
+        toggle.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') changeVisibility(event);
+        });
+        item.addEventListener('click', event => {
+          if (sidebar.classList.contains('sidebar-customizing')) event.preventDefault();
+        });
+        item.appendChild(toggle);
+      });
+      customizeSidebarBtn.addEventListener('click', () => {
+        const customizing = sidebar.classList.toggle('sidebar-customizing');
+        customizeSidebarBtn.querySelector('span').textContent = customizing ? 'Done Customizing' : 'Customize Sidebar';
+      });
+      // ponytail: preferences are per user and browser; store on User only if cross-device sync becomes necessary.
+      renderSidebarPreferences();
     }
 
     // 3. Live Digital Clock & Date
