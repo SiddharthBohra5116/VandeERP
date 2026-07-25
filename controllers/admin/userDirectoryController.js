@@ -341,7 +341,7 @@ exports.postCreateUser = async (req, res) => {
     const newUser = await User.create(userPayload);
 
     if (newUser.role === 'student') {
-      const courseRoster = await getCourseRoster(data.course);
+      const courseRoster = res.locals.modules?.batches === false ? null : await getCourseRoster(data.course);
       const studentProfile = await Student.create({
         user: newUser._id,
         counsellor: data.counsellor || null,
@@ -388,7 +388,7 @@ exports.postCreateUser = async (req, res) => {
         const feeLedger = new Fee({
           student: studentProfile._id,
           course: data.course,
-          batch: data.batch || null,
+          batch: res.locals.modules?.batches === false ? null : (data.batch || null),
           totalAmount,
           paidAmount,
           courseDurationMonths: courseDoc?.durationMonths || 3,
@@ -592,12 +592,12 @@ exports.postEditUser = async (req, res) => {
     await targetUser.save();
 
     if (targetUser.role === 'student') {
-      const courseRoster = await getCourseRoster(data.course);
+      const courseRoster = res.locals.modules?.batches === false ? null : await getCourseRoster(data.course);
       const studentUpdate = {
         counsellor: data.counsellor || null,
         teacher: data.teacher || null,
         course: data.course || null,
-        batch: courseRoster?._id || null,
+        ...(res.locals.modules?.batches === false ? {} : { batch: courseRoster?._id || null }),
         family: {
           father: {
             name: data.fatherName || '',

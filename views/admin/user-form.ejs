@@ -9,6 +9,7 @@
   const academyId = studentData?.rollNumber || teacherData?.rollNumber || counsellorData?.rollNumber || '';
   const inputDate = value => value ? new Date(value).toISOString().split('T')[0] : '';
   const placeholderEmail = isEdit && /@(pending\.local|staff\.invalid)$/i.test(target.email || '');
+  const moduleFlags = typeof modules === 'object' ? modules : { students:true, teachers:true, batches:true, attendance:true, kyc:true };
   title = isEdit ? `Edit ${roleLabel}` : `Add ${roleLabel}`;
   subtitle = isEdit ? `Modify profile details for ${target.name}` : `Create new credentials for academy ${roleLabel ? roleLabel.toLowerCase() + 's' : 'students or staff'}`;
   page = activeRole === 'student' ? 'students' : activeRole === 'teacher' ? 'teachers' : activeRole === 'counsellor' ? 'counsellors' : 'users';
@@ -45,8 +46,8 @@
         <label class="form-label" for="role">User Role</label>
         <select id="role" name="role" class="form-control" required <%= isEdit ? 'disabled' : '' %>>
           <option value="" disabled <%= !activeRole ? 'selected' : '' %>>Select Role</option>
-          <option value="student" <%= activeRole === 'student' ? 'selected' : '' %>>Student</option>
-          <option value="teacher" <%= activeRole === 'teacher' ? 'selected' : '' %>>Teacher</option>
+          <% if (moduleFlags.students || activeRole === 'student') { %><option value="student" <%= activeRole === 'student' ? 'selected' : '' %>>Student</option><% } %>
+          <% if (moduleFlags.teachers || activeRole === 'teacher') { %><option value="teacher" <%= activeRole === 'teacher' ? 'selected' : '' %>>Teacher</option><% } %>
           <option value="counsellor" <%= activeRole === 'counsellor' ? 'selected' : '' %>>Counsellor</option>
           <option value="admin" <%= activeRole === 'admin' ? 'selected' : '' %>>Admin</option>
         </select>

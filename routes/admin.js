@@ -34,6 +34,7 @@ const batchCtrl = require('../controllers/admin/batchController');
 const courseCtrl = require('../controllers/admin/courseController');
 const announcementCtrl = require('../controllers/admin/announcementController');
 const bulkImportCtrl = require('../controllers/admin/bulkImportController');
+const moduleSettingsCtrl = require('../controllers/admin/moduleSettingsController');
 
 // Validators
 const {
@@ -55,6 +56,8 @@ const csvUpload = (field, redirect) => (req, res, next) => upload.single(field)(
 // ===================================
 
 router.get('/dashboard', ...guard, dashboardCtrl.getDashboard);
+router.get('/modules', ...guard, moduleSettingsCtrl.getModuleSettings);
+router.post('/modules', ...guard, moduleSettingsCtrl.postModuleSettings);
 
 
 // ===================================

@@ -1015,6 +1015,7 @@
                         <!-- Right Side: Quick Contacts & Connections -->
                         <div>
                           <!-- Identity Verification -->
+                          <% if (typeof modules === 'undefined' || modules.kyc !== false) { %>
                           <div class="card" style="margin-bottom: 1rem;">
                             <div class="card-title"
                               style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
@@ -1047,6 +1048,7 @@
                                       <% } %>
                             </div>
                           </div>
+                          <% } %>
 
                           <div class="card" style="margin-bottom: 1rem;">
                             <div class="card-title" style="margin-bottom:1rem;">Contact Card</div>

@@ -125,11 +125,13 @@
   <% } %>
 
   <section class="student-metric-grid">
+    <% if (typeof modules === 'undefined' || modules.attendance !== false) { %>
     <a href="/student/attendance" class="student-metric-card">
       <span>Attendance</span>
       <strong><%= (attendancePct !== null && attendancePct !== undefined) ? attendancePct + '%' : '-' %></strong>
       <small><%= presentCount %> of <%= totalClasses %> sessions attended</small>
     </a>
+    <% } %>
     <a href="/student/assignments" class="student-metric-card">
       <span>Homework</span>
       <strong><%= assignmentSummary.pending %></strong>
@@ -140,11 +142,13 @@
       <strong>Rs. <%= netDue.toLocaleString('en-IN') %></strong>
       <small><%= netDue > 0 && fee && fee.dueDate ? `Due ${new Date(fee.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'No outstanding invoice' %></small>
     </a>
+    <% if (typeof modules === 'undefined' || modules.kyc !== false) { %>
     <a href="/auth/profile#document-verification" class="student-metric-card">
       <span>Verification</span>
       <strong><%= user.idVerified ? 'Done' : user.idProof ? 'Review' : 'Missing' %></strong>
       <small><%= user.idVerified ? 'ID approved' : user.idProof ? 'Waiting for approval' : 'Upload ID proof' %></small>
     </a>
+    <% } %>
   </section>
 
   <% if (fee && fee.installments && fee.installments.length > 0) { %>

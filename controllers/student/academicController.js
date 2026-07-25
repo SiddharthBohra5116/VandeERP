@@ -97,7 +97,7 @@ exports.getCurriculum = async (req, res) => {
     }
 
     const isKycIncomplete = !studentProfile.family?.father?.name || !studentProfile.family?.guardian?.phone || !studentProfile.documents?.idProof;
-    if (isKycIncomplete) {
+    if (res.locals.modules?.kyc !== false && isKycIncomplete) {
       return res.status(403).render('403', {
         title: 'Access Restricted',
         user: req.user,

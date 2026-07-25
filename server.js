@@ -215,6 +215,8 @@ app.use((req, res, next) => {
 
 // Import & register dynamic notifications pre-processor
 const { populateNotifications, calculateNotifications, calculateSidebarBadges } = require('./middleware/notificationMiddleware');
+const { moduleSettings } = require('./middleware/moduleSettings');
+app.use(moduleSettings);
 app.use(populateNotifications);
 
 // Import protect middleware for root checks

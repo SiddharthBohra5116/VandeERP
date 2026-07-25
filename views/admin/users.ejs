@@ -10,7 +10,11 @@
   const attentionCount = hasRole && activeRole === 'student'
     ? users.filter(item => !item.idVerified || Number(item.attendancePct) < 75).length
     : users.filter(item => (item.status || 'active') !== 'active').length;
-  const activeFilterCount = ['status', 'kyc', 'incomplete', 'attendance'].filter(key => filter[key] !== undefined && filter[key] !== '').length;
+  const moduleFlags = typeof modules === 'object' ? modules : { students:true, teachers:true, batches:true, attendance:true, kyc:true };
+  const activeFilterCount = ['status', 'incomplete']
+    .concat(moduleFlags.kyc ? ['kyc'] : [])
+    .concat(moduleFlags.attendance ? ['attendance'] : [])
+    .filter(key => filter[key] !== undefined && filter[key] !== '').length;
 %>
 
 <style>
@@ -116,9 +120,9 @@
       <div class="people-filter-panel">
         <div class="people-filter-grid">
           <div class="form-group"><label for="studentStatus">Status</label><select id="studentStatus" name="status" class="form-control"><option value="">Any status</option><option value="active" <%= filter.status === 'active' ? 'selected' : '' %>>Active</option><option value="inactive" <%= filter.status === 'inactive' ? 'selected' : '' %>>Archived</option><option value="drop" <%= filter.status === 'drop' ? 'selected' : '' %>>Dropped</option><option value="complete" <%= filter.status === 'complete' ? 'selected' : '' %>>Completed</option></select></div>
-          <div class="form-group"><label for="kycFilter">KYC</label><select id="kycFilter" name="kyc" class="form-control"><option value="">Any KYC state</option><option value="complete" <%= filter.kyc === 'complete' ? 'selected' : '' %>>Verified</option><option value="pending" <%= filter.kyc === 'pending' ? 'selected' : '' %>>Pending</option></select></div>
+          <% if (moduleFlags.kyc) { %><div class="form-group"><label for="kycFilter">KYC</label><select id="kycFilter" name="kyc" class="form-control"><option value="">Any KYC state</option><option value="complete" <%= filter.kyc === 'complete' ? 'selected' : '' %>>Verified</option><option value="pending" <%= filter.kyc === 'pending' ? 'selected' : '' %>>Pending</option></select></div><% } %>
           <div class="form-group"><label for="assignmentFilter">Profile setup</label><select id="assignmentFilter" name="incomplete" class="form-control"><option value="">Any profile state</option><option value="1" <%= filter.incomplete === '1' ? 'selected' : '' %>>Pending profiles</option><option value="0" <%= filter.incomplete === '0' ? 'selected' : '' %>>Complete profiles</option></select></div>
-          <div class="form-group"><label for="attendanceTier">Attendance</label><select id="attendanceTier" name="attendance" class="form-control"><option value="">Any attendance</option><option value="low" <%= filter.attendance === 'low' ? 'selected' : '' %>>Below 75%</option><option value="medium" <%= filter.attendance === 'medium' ? 'selected' : '' %>>75% to 85%</option><option value="high" <%= filter.attendance === 'high' ? 'selected' : '' %>>Above 85%</option><option value="not_marked_today" <%= filter.attendance === 'not_marked_today' ? 'selected' : '' %>>Unmarked today</option></select></div>
+          <% if (moduleFlags.attendance) { %><div class="form-group"><label for="attendanceTier">Attendance</label><select id="attendanceTier" name="attendance" class="form-control"><option value="">Any attendance</option><option value="low" <%= filter.attendance === 'low' ? 'selected' : '' %>>Below 75%</option><option value="medium" <%= filter.attendance === 'medium' ? 'selected' : '' %>>75% to 85%</option><option value="high" <%= filter.attendance === 'high' ? 'selected' : '' %>>Above 85%</option><option value="not_marked_today" <%= filter.attendance === 'not_marked_today' ? 'selected' : '' %>>Unmarked today</option></select></div><% } %>
         </div>
         <div class="people-filter-actions"><a href="/admin/students" class="btn btn-ghost btn-sm">Reset</a><button type="submit" class="btn btn-primary btn-sm">Apply filters</button></div>
       </div>
@@ -136,7 +140,7 @@
     <form id="bulkArchiveForm" action="/admin/users/bulk-archive" method="POST" data-native-submit="true" data-confirm="Archive the selected accounts? They will be unable to sign in, but their history will remain." data-confirm-title="Archive selected accounts" data-confirm-label="Archive accounts">
       <input type="hidden" name="returnTo" value="<%= directoryUrl %>">
     </form>
-    <% if (activeRole === 'student') { %>
+    <% if (activeRole === 'student' && moduleFlags.kyc) { %>
       <form id="bulkKycForm" action="/admin/students/bulk-verify-id" method="POST"></form>
     <% } %>
     <div class="people-bulk-bar">
@@ -160,7 +164,7 @@
           </div>
         </details>
       </div>
-      <div class="d-flex gap-1"><button type="button" class="btn btn-ghost btn-sm" id="selectAllAccounts">Select all</button><% if (activeRole === 'student') { %><button type="button" class="btn btn-ghost btn-sm" onclick="toggleAllKycChecks(this)">Select KYC ready</button><button type="submit" form="bulkKycForm" class="btn btn-primary btn-sm" id="bulkKycButton" disabled>Verify KYC</button><% } %><button type="submit" form="bulkArchiveForm" class="btn btn-danger btn-sm" id="bulkArchiveButton" disabled>Archive</button></div>
+      <div class="d-flex gap-1"><button type="button" class="btn btn-ghost btn-sm" id="selectAllAccounts">Select all</button><% if (activeRole === 'student' && moduleFlags.kyc) { %><button type="button" class="btn btn-ghost btn-sm" onclick="toggleAllKycChecks(this)">Select KYC ready</button><button type="submit" form="bulkKycForm" class="btn btn-primary btn-sm" id="bulkKycButton" disabled>Verify KYC</button><% } %><button type="submit" form="bulkArchiveForm" class="btn btn-danger btn-sm" id="bulkArchiveButton" disabled>Archive</button></div>
     </div>
     <div class="people-table-wrap">
       <table class="people-table" id="peopleTable">
@@ -174,11 +178,11 @@
           <th data-column="course">Course</th>
           <th data-column="leadSource">Lead Source</th>
           <th data-column="referredBy">Referred By</th>
-          <th data-column="batch">Batch</th>
+          <% if (moduleFlags.batches) { %><th data-column="batch">Batch</th><% } %>
           <th data-column="teacher">Teacher</th>
           <th data-column="counsellor">Counsellor</th>
-          <th data-column="attendance">Attendance</th>
-          <th data-column="kyc">KYC</th>
+          <% if (moduleFlags.attendance) { %><th data-column="attendance">Attendance</th><% } %>
+          <% if (moduleFlags.kyc) { %><th data-column="kyc">KYC</th><% } %>
           <th data-column="feeTotal">Total Fee</th>
           <th data-column="feePaid">Fee Paid</th>
           <th data-column="feeDue">Fee Due</th>
@@ -209,7 +213,7 @@
           const date = value => value ? new Date(value).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—';
         %>
         <tr data-row-href="<%= profileHref %>" tabindex="0" aria-label="Open <%= u.name %> profile">
-          <td data-column="select"><% if (u.role !== 'admin') { %><input type="checkbox" class="people-select account-archive-check" name="userIds" value="<%= u._id %>" form="bulkArchiveForm" aria-label="Select <%= u.name %> for archiving"><% } %><% if (activeRole === 'student' && student && u.idProof && !u.idVerified) { %><input class="people-select kyc-check" type="checkbox" form="bulkKycForm" name="studentIds" value="<%= student._id %>" aria-label="Select <%= u.name %> for KYC verification"><% } %></td>
+          <td data-column="select"><% if (u.role !== 'admin') { %><input type="checkbox" class="people-select account-archive-check" name="userIds" value="<%= u._id %>" form="bulkArchiveForm" aria-label="Select <%= u.name %> for archiving"><% } %><% if (moduleFlags.kyc && activeRole === 'student' && student && u.idProof && !u.idVerified) { %><input class="people-select kyc-check" type="checkbox" form="bulkKycForm" name="studentIds" value="<%= student._id %>" aria-label="Select <%= u.name %> for KYC verification"><% } %></td>
           <td data-column="name" class="cell-name"><%= u.name %></td>
           <td data-column="email"><%= u.email || '—' %></td>
           <td data-column="phone"><%= u.phone || '—' %></td>
@@ -218,11 +222,11 @@
           <td data-column="course"><%= student?.course?.name || (u.teacherProfile?.courses?.length ? u.teacherProfile.courses.map(course => course.name || course).join(', ') : '—') %></td>
           <td data-column="leadSource"><%= u.leadSource || '—' %></td>
           <td data-column="referredBy"><%= u.referredBy || '—' %></td>
-          <td data-column="batch"><%= student?.batch?.name || '—' %></td>
+          <% if (moduleFlags.batches) { %><td data-column="batch"><%= student?.batch?.name || '—' %></td><% } %>
           <td data-column="teacher"><%= student?.teacher?.user?.name || '—' %></td>
           <td data-column="counsellor"><%= student?.counsellor?.user?.name || '—' %></td>
-          <td data-column="attendance"><%= u.role === 'student' ? pct + '%' : '—' %></td>
-          <td data-column="kyc"><%= u.role === 'student' ? (u.idVerified ? 'Verified' : hasKycDocs ? 'Ready' : 'Pending') : '—' %></td>
+          <% if (moduleFlags.attendance) { %><td data-column="attendance"><%= u.role === 'student' ? pct + '%' : '—' %></td><% } %>
+          <% if (moduleFlags.kyc) { %><td data-column="kyc"><%= u.role === 'student' ? (u.idVerified ? 'Verified' : hasKycDocs ? 'Ready' : 'Pending') : '—' %></td><% } %>
           <td data-column="feeTotal"><%= u.role === 'student' ? '₹' + money(u.feeTotal) : '—' %></td>
           <td data-column="feePaid"><%= u.role === 'student' ? '₹' + money(u.feePaid) : '—' %></td>
           <td data-column="feeDue"><%= u.role === 'student' ? '₹' + money(Math.max(0, Number(u.feeTotal || 0) - Number(u.feePaid || 0))) : '—' %></td>
