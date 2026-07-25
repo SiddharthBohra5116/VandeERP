@@ -229,6 +229,35 @@
           value="<%= isEdit ? (lead.referredBy || '') : '' %>">
       </div>
 
+      <% if (typeof customFieldDefinitions !== 'undefined' && customFieldDefinitions.length) { %>
+        <div class="form-section-title" style="margin-top: 2rem;">Additional Details</div>
+        <div class="form-row-2">
+          <% customFieldDefinitions.forEach(field => {
+            const saved = isEdit && lead.customFields
+              ? (typeof lead.customFields.get === 'function' ? lead.customFields.get(field.key) : lead.customFields[field.key])
+              : '';
+          %>
+            <div class="form-group">
+              <label class="premium-label" for="custom_<%= field.key %>"><%= field.label %><%= field.required ? ' *' : '' %></label>
+              <% if (field.type === 'select') { %>
+                <select id="custom_<%= field.key %>" name="customFields[<%= field.key %>]" class="premium-input" <%= field.required ? 'required' : '' %>>
+                  <option value="">Select</option>
+                  <% field.options.forEach(option => { %><option value="<%= option %>" <%= saved === option ? 'selected' : '' %>><%= option %></option><% }) %>
+                </select>
+              <% } else if (field.type === 'checkbox') { %>
+                <label style="display:flex; align-items:center; gap:.6rem; min-height:48px;">
+                  <input id="custom_<%= field.key %>" type="checkbox" name="customFields[<%= field.key %>]" value="true" <%= saved === true ? 'checked' : '' %> <%= field.required ? 'required' : '' %>>
+                  <span>Yes</span>
+                </label>
+              <% } else { %>
+                <input id="custom_<%= field.key %>" type="<%= field.type %>" name="customFields[<%= field.key %>]" class="premium-input"
+                  value="<%= saved === undefined || saved === null ? '' : saved %>" <%= field.required ? 'required' : '' %>>
+              <% } %>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+
       <!-- SECTION 3: Follow-up & Notes -->
       <div class="form-section-title" style="margin-top: 2rem;">Follow-up & Notes</div>
 
@@ -279,5 +308,6 @@
     };
     source.addEventListener('change', syncReferral);
     syncReferral();
+
   })();
 </script>

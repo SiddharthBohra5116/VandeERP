@@ -490,6 +490,14 @@
           <span class="text-muted text-sm">Added On</span>
           <span class="mono text-sm"><%= new Date(lead.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) %></span>
         </div>
+        <% (customFieldDefinitions || []).forEach(field => {
+          const value = lead.customFields && (typeof lead.customFields.get === 'function' ? lead.customFields.get(field.key) : lead.customFields[field.key]);
+        %>
+          <div style="display:flex; justify-content:space-between;">
+            <span class="text-muted text-sm"><%= field.label %></span>
+            <span class="text-sm"><%= field.type === 'checkbox' ? (value ? 'Yes' : 'No') : (value || 'Not added') %></span>
+          </div>
+        <% }) %>
       </div>
 
       <% if (lead.notes) { %>

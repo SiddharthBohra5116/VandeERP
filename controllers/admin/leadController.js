@@ -4,6 +4,7 @@ const Course = require('../../models/Course');
 const Batch = require('../../models/Batch');
 const Lead = require('../../models/Lead');
 const LeadStatus = require('../../models/LeadStatus');
+const LeadCustomField = require('../../models/LeadCustomField');
 const LeadActivity = require('../../models/LeadActivity');
 const Fee = require('../../models/Fee');
 const Message = require('../../models/Message');
@@ -25,6 +26,7 @@ const {
 } = require('../../utils/leadStatusOptions');
 const logger = require('../../utils/logger');
 const buildFeeSchedule = require('../../utils/feeSchedule');
+const { getLeadCustomFields, normalizeLeadCustomValues, slugifyFieldKey } = require('../../utils/leadCustomFields');
 
 // ponytail: in-memory progress is enough for one app instance; use Redis if imports run across multiple instances.
 const importProgress = new Map();
@@ -279,7 +281,7 @@ exports.getLeads = async (req, res) => {
       ];
     }
 
-    const [leads, totalLeads, leadStatuses] = await Promise.all([
+    const [leads, totalLeads, leadStatuses, customFieldDefinitions] = await Promise.all([
       Lead.find(filter)
         .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name email phone' } })
         .populate('interestedCourse', 'name code')
@@ -287,7 +289,8 @@ exports.getLeads = async (req, res) => {
         .skip(skip)
         .limit(limit),
       Lead.countDocuments(filter),
-      getLeadStatuses()
+      getLeadStatuses(),
+      getLeadCustomFields()
     ]);
 
     const Counsellor = require('../../models/Counsellor');
@@ -361,6 +364,7 @@ exports.getLeads = async (req, res) => {
       counsellors,
       courses,
       leadStatuses,
+      customFieldDefinitions,
       sourceStats: sourceStatsMap,
       referrals,
       priorImports,
@@ -388,16 +392,18 @@ exports.getLeads = async (req, res) => {
 };
 
 exports.getCreateLead = async (req, res) => {
-  const [leadStatuses, courses] = await Promise.all([
+  const [leadStatuses, courses, customFieldDefinitions] = await Promise.all([
     getLeadStatuses(),
-    Course.find({ isActive: true }).select('name code').sort({ name: 1 })
+    Course.find({ isActive: true }).select('name code').sort({ name: 1 }),
+    getLeadCustomFields()
   ]);
   res.render('counsellor/lead-form', {
     title: 'New Lead',
     user: req.user,
     target: null,
     leadStatuses,
-    courses
+    courses,
+    customFieldDefinitions
   });
 };
 
@@ -421,7 +427,11 @@ exports.postCreateLead = async (req, res) => {
       throw new Error(`A lead with this phone number already exists for ${duplicate.name}.`);
     }
 
-    const [courseDoc, statuses] = await Promise.all([resolveCourse(course), getLeadStatuses()]);
+    const [courseDoc, statuses, customFieldDefinitions] = await Promise.all([
+      resolveCourse(course),
+      getLeadStatuses(),
+      getLeadCustomFields()
+    ]);
     const validStatus = statuses.some(option => option.key === status);
     await Lead.create({
       name: String(name).trim(),
@@ -434,27 +444,30 @@ exports.postCreateLead = async (req, res) => {
       nextFollowUpAt: followUpDate ? new Date(followUpDate) : null,
       notes: String(notes || '').trim().slice(0, 500),
       defaultSimCode: String(defaultSimCode || '').trim().slice(0, 50),
+      customFields: normalizeLeadCustomValues(req.body.customFields, customFieldDefinitions),
       assignedTo: null,
       createdBy: req.user._id
     });
     return res.redirect('/admin/leads?created=1');
   } catch (err) {
-    const [leadStatuses, courses] = await Promise.all([
+    const [leadStatuses, courses, customFieldDefinitions] = await Promise.all([
       getLeadStatuses(),
-      Course.find({ isActive: true }).select('name code').sort({ name: 1 })
+      Course.find({ isActive: true }).select('name code').sort({ name: 1 }),
+      getLeadCustomFields()
     ]);
     return res.status(400).render('counsellor/lead-form', {
-      title: 'New Lead', user: req.user, target: null, error: err.message, leadStatuses, courses
+      title: 'New Lead', user: req.user, target: null, error: err.message, leadStatuses, courses, customFieldDefinitions
     });
   }
 };
 
 exports.getEditLead = async (req, res) => {
   try {
-    const [lead, leadStatuses, courses] = await Promise.all([
+    const [lead, leadStatuses, courses, customFieldDefinitions] = await Promise.all([
       Lead.findById(req.params.id).populate('interestedCourse'),
       getLeadStatuses(),
-      Course.find({ isActive: true }).select('name code').sort({ name: 1 })
+      Course.find({ isActive: true }).select('name code').sort({ name: 1 }),
+      getLeadCustomFields()
     ]);
     if (!lead) return res.redirect('/admin/leads');
 
@@ -465,6 +478,7 @@ exports.getEditLead = async (req, res) => {
       target: lead,
       leadStatuses,
       courses,
+      customFieldDefinitions,
       error: req.query.error
     });
   } catch (err) {
@@ -491,11 +505,12 @@ exports.postEditLead = async (req, res) => {
       throw new Error('Referrer name is required for referral leads.');
     }
 
-    const [lead, duplicate, courseDoc, statuses] = await Promise.all([
+    const [lead, duplicate, courseDoc, statuses, customFieldDefinitions] = await Promise.all([
       Lead.findById(req.params.id),
       Lead.findOne({ phone: cleanPhone, _id: { $ne: req.params.id } }).select('name'),
       resolveCourse(course),
-      getLeadStatuses()
+      getLeadStatuses(),
+      getLeadCustomFields()
     ]);
     if (!lead) return res.redirect('/admin/leads');
     if (duplicate) {
@@ -514,6 +529,7 @@ exports.postEditLead = async (req, res) => {
     lead.nextFollowUpAt = followUpDate ? new Date(followUpDate) : null;
     lead.notes = String(notes || '').trim().slice(0, 500);
     lead.defaultSimCode = String(defaultSimCode || '').trim().slice(0, 50);
+    lead.customFields = normalizeLeadCustomValues(req.body.customFields, customFieldDefinitions, lead.customFields);
     await lead.save();
 
     await LeadActivity.create({
@@ -1074,6 +1090,35 @@ exports.postDeleteStatus = async (req, res) => {
   }
 };
 
+exports.postCreateCustomField = async (req, res) => {
+  try {
+    const label = String(req.body.label || '').trim();
+    const type = String(req.body.type || '');
+    const key = slugifyFieldKey(label);
+    const options = String(req.body.options || '').split(',').map(option => option.trim()).filter(Boolean);
+    if (!label || !key) throw new Error('Field label is required.');
+    if (!LeadCustomField.FIELD_TYPES.includes(type)) throw new Error('Invalid field type.');
+    if (type === 'select' && options.length < 2) throw new Error('Dropdown fields need at least two comma-separated options.');
+
+    await LeadCustomField.create({
+      label,
+      key,
+      type,
+      options: type === 'select' ? [...new Set(options)].slice(0, 30) : [],
+      required: req.body.required === 'on'
+    });
+    res.redirect('/admin/leads?fieldCreated=1');
+  } catch (err) {
+    const message = err.code === 11000 ? 'A custom field with that name already exists.' : err.message;
+    res.redirect(`/admin/leads?error=${encodeURIComponent(message)}`);
+  }
+};
+
+exports.postDeleteCustomField = async (req, res) => {
+  await LeadCustomField.findByIdAndUpdate(req.params.id, { isActive: false });
+  res.redirect('/admin/leads?fieldDeleted=1');
+};
+
 exports.postDeleteLeads = async (req, res) => {
   try {
     const returnTo = /^\/admin\/leads(?:\?|$)/.test(String(req.body.returnTo || '')) ? req.body.returnTo : '/admin/leads';
@@ -1135,7 +1180,10 @@ exports.getLeadDetail = async (req, res) => {
         phone: p.user.phone
       }));
 
-    const leadStatuses = await getLeadStatuses();
+    const [leadStatuses, customFieldDefinitions] = await Promise.all([
+      getLeadStatuses(),
+      getLeadCustomFields()
+    ]);
 
     res.render('admin/lead-detail', {
       title: lead.name,
@@ -1144,6 +1192,7 @@ exports.getLeadDetail = async (req, res) => {
       leadActivities,
       counsellors,
       leadStatuses,
+      customFieldDefinitions,
       error: req.query.error
     });
 

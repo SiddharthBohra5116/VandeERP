@@ -52,7 +52,7 @@
   .lead-tools-toggle-icon { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; border:1px solid currentColor; font-size:.75rem; line-height:1; }
   .lead-tools-shell-wrap { overflow:hidden; transition:max-height .28s ease, opacity .2s ease, margin-bottom .2s ease; }
   .lead-tools-shell-wrap.is-hidden { max-height:0 !important; opacity:0; margin-bottom:0; pointer-events:none; }
-  .lead-tools-shell { display:grid; grid-template-columns:minmax(300px,.9fr) minmax(420px,1.35fr); gap:1.25rem; margin-bottom:1.25rem; }
+  .lead-tools-shell { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:1.25rem; margin-bottom:1.25rem; }
   .lead-tool-panel { position:relative; border:1px solid var(--border); border-radius:12px; background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005)); backdrop-filter: blur(12px); box-shadow:var(--shadow-md); overflow:hidden; transition: border-color .22s ease, box-shadow .22s ease; }
   .lead-tool-panel:hover { border-color: rgba(255,204,0,0.2); box-shadow: var(--shadow-lg), 0 0 16px rgba(255,204,0,0.02); }
   .lead-tool-panel::before { content:''; position:absolute; inset:0 0 auto 0; height:3px; background:linear-gradient(90deg, var(--gold), transparent 70%); opacity:.65; }
@@ -368,6 +368,45 @@
           </span>
         <% }) %>
       </div>
+      </div>
+    </div>
+
+    <div class="lead-tool-panel">
+      <div class="lead-tool-panel-body">
+        <div>
+          <h2 class="lead-tool-title">Custom Lead Fields</h2>
+          <div class="lead-tool-kicker">Add fields that appear on both admin and counsellor lead forms.</div>
+        </div>
+        <form method="POST" action="/admin/leads/custom-fields" style="display:grid; gap:.75rem;" data-no-soft-nav="true">
+          <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+          <input name="label" class="form-control" maxlength="60" placeholder="Field label, e.g. Preferred language" required>
+          <select name="type" class="form-control" onchange="const options=this.form.elements.options; options.hidden=this.value!=='select'; options.required=this.value==='select'">
+            <option value="text">Text</option>
+            <option value="number">Number</option>
+            <option value="date">Date</option>
+            <option value="select">Dropdown</option>
+            <option value="checkbox">Checkbox</option>
+          </select>
+          <input name="options" class="form-control" placeholder="Dropdown options, comma separated" hidden>
+          <label class="switch-container">
+            <input type="checkbox" name="required" class="switch-input">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span class="switch-label">Required</span>
+          </label>
+          <button type="submit" class="btn btn-primary btn-sm">Add Field</button>
+        </form>
+        <div class="lead-status-chip-list">
+          <% (customFieldDefinitions || []).forEach(field => { %>
+            <span class="lead-status-chip">
+              <%= field.label %> <small>(<%= field.type %>)</small>
+              <form method="POST" action="/admin/leads/custom-fields/<%= field._id %>/delete" data-no-soft-nav="true" data-confirm="Remove this field from future lead forms? Saved lead values will be kept.">
+                <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+                <button type="submit" class="lead-status-chip-delete" aria-label="Remove <%= field.label %>">&times;</button>
+              </form>
+            </span>
+          <% }) %>
+          <% if (!(customFieldDefinitions || []).length) { %><span class="td-muted text-sm">No custom fields yet.</span><% } %>
+        </div>
       </div>
     </div>
   </section>

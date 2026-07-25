@@ -123,6 +123,12 @@ const leadSchema = new mongoose.Schema({
     default: ''
   },
 
+  customFields: {
+    type: Map,
+    of: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+
   source: {
     type: String,
     enum: LEAD_SOURCES,

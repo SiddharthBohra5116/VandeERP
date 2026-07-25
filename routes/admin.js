@@ -389,6 +389,9 @@ router.post(
   leadCtrl.postDeleteStatus
 );
 
+router.post('/leads/custom-fields', ...guard, leadCtrl.postCreateCustomField);
+router.post('/leads/custom-fields/:id/delete', ...guard, leadCtrl.postDeleteCustomField);
+
 router.post(
   '/leads/delete',
   ...guard,
