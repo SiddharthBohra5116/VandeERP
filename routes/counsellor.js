@@ -10,6 +10,7 @@ const Lead = require('../models/Lead');
 const Message = require('../models/Message');
 const Student = require('../models/Student');
 const { getClosedLeadStatusKeys } = require('../utils/leadStatusOptions');
+const { claimLead, visibleToCounsellor } = require('../utils/leadOwnership');
 
 const populateCounsellorSidebar = async (req, res, next) => {
   if (req.user && req.user.role === 'counsellor') {
@@ -21,9 +22,9 @@ const populateCounsellorSidebar = async (req, res, next) => {
 
       const closedStatuses = await getClosedLeadStatusKeys();
       const [leadCount, followupCount, studentCount] = await Promise.all([
-        Lead.countDocuments({ assignedTo: req.user.counsellorProfileId }),
+        Lead.countDocuments(visibleToCounsellor(req.user.counsellorProfileId)),
         Lead.countDocuments({
-          assignedTo: req.user.counsellorProfileId,
+          ...visibleToCounsellor(req.user.counsellorProfileId),
           nextFollowUpAt: { $lt: tomorrow },
           status: { $nin: closedStatuses }
         }),
@@ -67,12 +68,12 @@ router.get('/admissions/:id/fee', ...guard, ctrl.getStudentFee);
 router.get('/leads/:id', ...guard, ctrl.getLeadDetail);
 router.get('/leads/:id/edit', ...guard, ctrl.getEditLead);
 router.get('/leads/:id/convert', ...guard, ctrl.getConvertLead);
-router.post('/leads/:id/convert', ...guard, ctrl.postConvertLead);
-router.post('/leads/:id/edit', ...guard, leadValidator, ctrl.postEditLead);
-router.post('/leads/:id/followup', ...guard, ctrl.postAddFollowUp);
-router.post('/leads/:id/followup/:index/edit', ...guard, ctrl.postEditFollowUp);
-router.post('/leads/:id/lost', ...guard, ctrl.postMarkLost);
-router.post('/leads/:id/ready', ...guard, ctrl.postMarkReady);
+router.post('/leads/:id/convert', ...guard, claimLead, ctrl.postConvertLead);
+router.post('/leads/:id/edit', ...guard, leadValidator, claimLead, ctrl.postEditLead);
+router.post('/leads/:id/followup', ...guard, claimLead, ctrl.postAddFollowUp);
+router.post('/leads/:id/followup/:index/edit', ...guard, claimLead, ctrl.postEditFollowUp);
+router.post('/leads/:id/lost', ...guard, claimLead, ctrl.postMarkLost);
+router.post('/leads/:id/ready', ...guard, claimLead, ctrl.postMarkReady);
 
 // Messaging
 router.post('/messages/send', ...guard, ctrl.postSendMessage);

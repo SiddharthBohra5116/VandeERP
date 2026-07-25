@@ -7,6 +7,7 @@ const LeadActivity = require('../../models/LeadActivity');
 const Course = require('../../models/Course');
 const logger = require('../../utils/logger');
 const buildFeeSchedule = require('../../utils/feeSchedule');
+const { visibleToCounsellor } = require('../../utils/leadOwnership');
 const { escapeRegex } = require('../../utils/sanitize');
 
 function buildTeacherOptions(teacherProfiles) {
@@ -249,7 +250,7 @@ exports.getStudentFee = async (req, res) => {
 exports.getConvertLead = async (req, res) => {
   logger.info('GET convert lead form request', { leadId: req.params.id });
   try {
-    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId }).populate('interestedCourse');
+    const lead = await Lead.findOne({ _id: req.params.id, ...visibleToCounsellor(req.user.counsellorProfileId) }).populate('interestedCourse');
     if (!lead) {
       logger.warn('Counsellor unauthorized lead convert request', { leadId: req.params.id });
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });

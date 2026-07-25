@@ -6,6 +6,7 @@ const logger = require('../../utils/logger');
 
 const Student = require('../../models/Student');
 const Announcement = require('../../models/Announcement');
+const { visibleToCounsellor } = require('../../utils/leadOwnership');
 
 /**
  * GET /counsellor/dashboard
@@ -14,6 +15,7 @@ const Announcement = require('../../models/Announcement');
 exports.getDashboard = async (req, res) => {
   try {
     const counsellorId = req.user.counsellorProfileId;
+    const visibleLeads = visibleToCounsellor(counsellorId);
     const userId = req.user._id;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -38,40 +40,40 @@ exports.getDashboard = async (req, res) => {
       messages,
       activeAnnouncements
     ] = await Promise.all([
-      Lead.find({ assignedTo: counsellorId, createdAt: { $gte: threeDaysAgo } })
+      Lead.find({ ...visibleLeads, createdAt: { $gte: threeDaysAgo } })
         .populate('interestedCourse', 'name')
         .sort({ createdAt: -1 }),
       Lead.find({
-        assignedTo: counsellorId,
+        ...visibleLeads,
         nextFollowUpAt: { $lt: tomorrow },
         status: { $nin: ['admission_completed', 'lost'] }
       }).populate('interestedCourse', 'name').sort({ nextFollowUpAt: 1 }),
       Lead.find({
-        assignedTo: counsellorId,
+        ...visibleLeads,
         nextFollowUpAt: { $lt: today },
         status: { $nin: ['admission_completed', 'lost'] }
       }).populate('interestedCourse', 'name').sort({ nextFollowUpAt: 1 }),
       Lead.find({
-        assignedTo: counsellorId,
+        ...visibleLeads,
         nextFollowUpAt: { $gte: today, $lt: tomorrow },
         status: { $nin: ['admission_completed', 'lost'] }
       }).populate('interestedCourse', 'name').sort({ nextFollowUpAt: 1 }),
       Student.find({ counsellor: counsellorId }).populate('user'),
       Lead.aggregate([
-        { $match: { assignedTo: counsellorId } },
+        { $match: visibleLeads },
         { $group: { _id: '$status', count: { $sum: 1 } } }
       ]),
       Lead.aggregate([
-        { $match: { assignedTo: counsellorId } },
+        { $match: visibleLeads },
         { $group: { _id: '$source', count: { $sum: 1 } } }
       ]),
-      Lead.countDocuments({ assignedTo: counsellorId }),
+      Lead.countDocuments(visibleLeads),
       Lead.countDocuments({
-        assignedTo: counsellorId,
+        ...visibleLeads,
         createdAt: { $gte: today, $lt: tomorrow }
       }),
-      Lead.countDocuments({ assignedTo: counsellorId, status: 'admission_completed' }),
-      Lead.countDocuments({ assignedTo: counsellorId, status: 'lost' }),
+      Lead.countDocuments({ ...visibleLeads, status: 'admission_completed' }),
+      Lead.countDocuments({ ...visibleLeads, status: 'lost' }),
       User.findOne({ role: 'admin' }),
       Message.find({ recipient: userId })
         .populate('sender', 'name role')
@@ -111,7 +113,7 @@ exports.getDashboard = async (req, res) => {
     // To be accurate, we do a full query for all leads, or reuse what is needed. We already count total.
     // Let's load the full minimal list of leads if we want to run computeSourceStats on all leads.
     // Or we can do a projection to save memory.
-    const allLeadsForAnalytics = await Lead.find({ assignedTo: counsellorId }).select('status source interestedCourse createdAt followUpHistory');
+    const allLeadsForAnalytics = await Lead.find(visibleLeads).select('status source interestedCourse createdAt followUpHistory');
     const sourceStatsMap = computeSourceStats(allLeadsForAnalytics);
 
     const byStatus = { new: 0, contacted: 0, mentorship_scheduled: 0, mentorship_attended: 0, follow_up: 0, joining_interested: 0, admission_completed: 0, lost: 0 };

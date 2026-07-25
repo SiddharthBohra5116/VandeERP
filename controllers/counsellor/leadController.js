@@ -16,6 +16,7 @@ const {
   getLeadStatuses,
   isValidLeadStatus
 } = require('../../utils/leadStatusOptions');
+const { visibleToCounsellor } = require('../../utils/leadOwnership');
 
 function getLeadActivityType(status, channel) {
   if (channel === 'Call') return 'call';
@@ -37,16 +38,17 @@ exports.getLeads = async (req, res) => {
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 10), 100);
     const skip = (page - 1) * limit;
-    const filter = { assignedTo: req.user.counsellorProfileId };
+    const visibility = visibleToCounsellor(req.user.counsellorProfileId);
+    const filter = { $and: [visibility] };
     if (status) filter.status = status;
     if (source) filter.source = source;
     if (search) {
       const escaped = escapeRegex(search);
       const phonePattern = phoneSearchPattern(search);
-      filter.$or = [
+      filter.$and.push({ $or: [
         { name: { $regex: escaped, $options: 'i' } },
         { phone: { $regex: phonePattern, $options: 'i' } },
-      ];
+      ] });
     }
     if (course) {
       if (course === 'Undecided') {
@@ -59,7 +61,7 @@ exports.getLeads = async (req, res) => {
         }
       }
     }
-    const baseFilter = { assignedTo: req.user.counsellorProfileId };
+    const baseFilter = visibility;
     const closedStatuses = await getClosedLeadStatusKeys();
     const [leads, totalLeads, activeCount, followupDueCount, convertedCount, leadStatuses, courses] = await Promise.all([
       Lead.find(filter)
@@ -198,7 +200,7 @@ exports.postCreateLead = async (req, res) => {
  */
 exports.getLeadDetail = async (req, res) => {
   try {
-    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId })
+    const lead = await Lead.findOne({ _id: req.params.id, ...visibleToCounsellor(req.user.counsellorProfileId) })
       .populate('interestedCourse')
       .populate('followUpHistory.doneBy', 'name role')
       .populate('convertedStudent', 'name');
@@ -224,7 +226,7 @@ exports.getLeadDetail = async (req, res) => {
  */
 exports.getEditLead = async (req, res) => {
   try {
-    const lead = await Lead.findOne({ _id: req.params.id, assignedTo: req.user.counsellorProfileId }).populate('interestedCourse');
+    const lead = await Lead.findOne({ _id: req.params.id, ...visibleToCounsellor(req.user.counsellorProfileId) }).populate('interestedCourse');
     if (!lead) {
       logger.warn('Counsellor unauthorized edit page request', { leadId: req.params.id });
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });
@@ -522,7 +524,7 @@ exports.postWalkIn = async (req, res) => {
 exports.getFollowUps = async (req, res) => {
   try {
     const leads = await Lead.find({
-      assignedTo: req.user.counsellorProfileId,
+      ...visibleToCounsellor(req.user.counsellorProfileId),
       nextFollowUpAt: { $lte: new Date() },
       status: { $nin: await getClosedLeadStatusKeys() },
     }).populate('interestedCourse').sort({ nextFollowUpAt: 1 });
