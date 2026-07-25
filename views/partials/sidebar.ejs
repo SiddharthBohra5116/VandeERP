@@ -64,10 +64,20 @@
           <span class="badge badge-gold" style="margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 5px;"><%= sidebarBadges.feesOverdue %></span>
         <% } %>
       </a>
-      <a href="/admin/leads" class="nav-item <%= page === 'leads' || page === 'leads-new' ? 'active' : '' %>">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-        <span>Lead Pipeline</span>
-      </a>
+      <div class="nav-flyout">
+        <a href="/admin/leads" class="nav-item <%= page === 'leads' || page === 'leads-new' ? 'active' : '' %>">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4h-7a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          <span>Lead Pipeline</span>
+          <span class="nav-flyout-arrow">›</span>
+        </a>
+        <div class="nav-flyout-menu" aria-label="Lead pipeline filters">
+          <a href="/admin/leads?status=high_potential">High Potential</a>
+          <a href="/admin/leads?status=new">New</a>
+          <a href="/admin/leads?status=in_the_loop">In the Loop</a>
+          <a href="/admin/leads?status=admission_completed">Converted</a>
+          <a href="/admin/leads">All Leads</a>
+        </div>
+      </div>
       <a href="/admin/leads/create" class="nav-item <%= page === 'leads-new' ? 'active' : '' %>">
         <span>+ Manual Add Lead</span>
       </a>
@@ -263,6 +273,13 @@
   </div>
 </aside>
 <style>
+  .nav-flyout{position:relative}
+  .nav-flyout-arrow{margin-left:auto;font-size:1rem}
+  .nav-flyout-menu{display:none;position:absolute;z-index:100;left:100%;top:0;min-width:180px;padding:.4rem;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.22)}
+  .nav-flyout:hover .nav-flyout-menu,.nav-flyout:focus-within .nav-flyout-menu{display:grid}
+  .nav-flyout-menu a{padding:.6rem .75rem;color:var(--text-sub);border-radius:6px;font-size:.78rem;font-weight:650;white-space:nowrap}
+  .nav-flyout-menu a:hover,.nav-flyout-menu a:focus{color:var(--gold);background:var(--gold-dim);outline:none}
+  @media(max-width:768px){.nav-flyout-menu{position:static;margin:.25rem 0 .4rem 1.5rem;box-shadow:none}}
   .sbc-backdrop{position:fixed;inset:0;z-index:9997;background:rgba(10,10,10,.58);backdrop-filter:blur(5px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .22s ease,visibility .22s ease}
   .sbc-backdrop.open{opacity:1;visibility:visible;pointer-events:auto}
   .sbc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:9998;display:flex;flex-direction:column;width:min(470px,100vw);color:var(--text,#161616);background:radial-gradient(circle at 100% 0,rgba(255,204,0,.16),transparent 30%),var(--bg-card,#fff);border-left:1px solid var(--gold-border,rgba(180,140,0,.3));box-shadow:-28px 0 80px rgba(0,0,0,.28);transform:translateX(105%);transition:transform .28s cubic-bezier(.22,1,.36,1)}
