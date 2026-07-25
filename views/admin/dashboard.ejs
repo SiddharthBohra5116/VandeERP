@@ -111,6 +111,81 @@
 </div>
 <% } %>
 
+<!-- Recent Leads -->
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Recent Leads</div>
+      <div class="card-sub">Created in the last 72 hours, newest first &middot; 10 shown at a time</div>
+    </div>
+    <a href="/admin/leads" class="btn btn-ghost btn-sm">All Leads</a>
+  </div>
+
+  <% if (recentLeads.length === 0) { %>
+    <div class="empty-state"><p>No leads were added in the last 72 hours.</p></div>
+  <% } else { %>
+    <div id="adminRecentLeadFilters" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.75rem; margin-bottom:1rem;">
+      <input id="adminRecentLeadSearch" type="search" class="form-control" placeholder="Search name or phone">
+      <select id="adminRecentLeadCourse" class="form-control">
+        <option value="">All courses</option>
+        <% [...new Set(recentLeads.map(lead => lead.interestedCourse?.name || 'Undecided'))].sort().forEach(course => { %>
+          <option value="<%= course.toLowerCase() %>"><%= course %></option>
+        <% }); %>
+      </select>
+      <select id="adminRecentLeadSource" class="form-control">
+        <option value="">All sources</option>
+        <% [...new Set(recentLeads.map(lead => lead.source || 'Unknown'))].sort().forEach(source => { %>
+          <option value="<%= source.toLowerCase() %>"><%= source %></option>
+        <% }); %>
+      </select>
+      <select id="adminRecentLeadStatus" class="form-control">
+        <option value="">All statuses</option>
+        <% [...new Set(recentLeads.map(lead => lead.status))].sort().forEach(status => { %>
+          <option value="<%= status.toLowerCase() %>"><%= status.replace(/_/g, ' ') %></option>
+        <% }); %>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Course</th>
+            <th>Source</th>
+            <th>Status</th>
+            <th>Counsellor</th>
+            <th>Added</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="adminRecentLeadRows">
+          <% recentLeads.forEach(lead => { %>
+            <tr data-search="<%= `${lead.name} ${lead.phone}`.toLowerCase() %>"
+                data-course="<%= (lead.interestedCourse?.name || 'Undecided').toLowerCase() %>"
+                data-source="<%= (lead.source || 'Unknown').toLowerCase() %>"
+                data-status="<%= lead.status.toLowerCase() %>">
+              <td class="td-name"><%= lead.name %></td>
+              <td class="mono text-sm"><%= lead.phone %></td>
+              <td><span class="badge badge-orange"><%= lead.interestedCourse?.name || 'Undecided' %></span></td>
+              <td><%= lead.source || 'Unknown' %></td>
+              <td><span class="badge badge-grey"><%= lead.status.replace(/_/g, ' ') %></span></td>
+              <td><%= lead.assignedTo?.user?.name || 'Unassigned' %></td>
+              <td class="mono text-sm"><%= new Date(lead.createdAt).toLocaleDateString('en-IN', {day:'numeric', month:'short'}) %></td>
+              <td><a href="/admin/leads/<%= lead._id %>" class="btn btn-ghost btn-xs">View</a></td>
+            </tr>
+          <% }); %>
+          <tr id="adminRecentLeadEmpty" style="display:none;"><td colspan="8" class="td-muted" style="text-align:center;">No recent leads match these filters.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex; justify-content:center; margin-top:1rem;">
+      <button id="adminRecentLeadLoadMore" type="button" class="btn btn-ghost btn-sm" style="display:none;">Load More</button>
+    </div>
+  <% } %>
+</div>
+
 <div class="grid-2">
   <!-- Recent Students -->
   <div class="card">
@@ -194,5 +269,52 @@
     <% } %>
   </div>
 </div>
+
+<script>
+  function initAdminRecentLeads() {
+    const filters = document.getElementById('adminRecentLeadFilters');
+    if (!filters || filters.dataset.ready) return;
+    const rows = [...document.querySelectorAll('#adminRecentLeadRows tr[data-search]')];
+    const empty = document.getElementById('adminRecentLeadEmpty');
+    const loadMore = document.getElementById('adminRecentLeadLoadMore');
+    let limit = 10;
+    const apply = () => {
+      const search = document.getElementById('adminRecentLeadSearch').value.trim().toLowerCase();
+      const course = document.getElementById('adminRecentLeadCourse').value;
+      const source = document.getElementById('adminRecentLeadSource').value;
+      const status = document.getElementById('adminRecentLeadStatus').value;
+      const matches = rows.filter(row => (
+        (!search || row.dataset.search.includes(search))
+        && (!course || row.dataset.course === course)
+        && (!source || row.dataset.source === source)
+        && (!status || row.dataset.status === status)
+      ));
+      rows.forEach(row => { row.style.display = 'none'; });
+      matches.slice(0, limit).forEach(row => { row.style.display = ''; });
+      empty.style.display = matches.length ? 'none' : '';
+      loadMore.style.display = matches.length > limit ? '' : 'none';
+    };
+    const resetAndApply = () => {
+      limit = 10;
+      apply();
+    };
+    loadMore.addEventListener('click', () => {
+      limit += 10;
+      apply();
+    });
+    filters.addEventListener('input', resetAndApply);
+    filters.addEventListener('change', resetAndApply);
+    // ponytail: client-side paging fits a 72-hour dashboard window; move to an endpoint if import volume makes it heavy.
+    apply();
+    filters.dataset.ready = 'true';
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAdminRecentLeads);
+  } else {
+    initAdminRecentLeads();
+  }
+  document.addEventListener('softnav:load', initAdminRecentLeads);
+</script>
 
 <%- include('../partials/admin-password-reset-modal', { passwordResetRedirect: '/admin/dashboard' }) %>

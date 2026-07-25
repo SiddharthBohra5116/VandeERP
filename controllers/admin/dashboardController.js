@@ -14,6 +14,7 @@ const logger = require('../../utils/logger');
 exports.getDashboard = async (req, res) => {
   try {
     const todayStr = todayIST();
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
 
     const isToday = (dateValue) => {
       if (!dateValue) return false;
@@ -146,6 +147,11 @@ exports.getDashboard = async (req, res) => {
       .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name' } })
       .populate('interestedCourse', 'name code');
 
+    const recentLeads = await Lead.find({ createdAt: { $gte: threeDaysAgo } })
+      .populate('interestedCourse', 'name')
+      .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name' } })
+      .sort({ createdAt: -1 });
+
     const resetRequests = await User.find({ resetRequested: true })
       .select('name email phone role updatedAt')
       .sort({ updatedAt: -1 })
@@ -164,6 +170,7 @@ exports.getDashboard = async (req, res) => {
         ungradedSubmissionsCount
       },
       recentStudents,
+      recentLeads,
       hotLeads,
       resetRequests
     });
