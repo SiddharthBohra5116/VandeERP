@@ -75,12 +75,17 @@
   #counsellorLeadTable [data-lead-column="email"] { min-width:230px; }
   #counsellorLeadTable [data-lead-column="course"] { min-width:170px; }
   #counsellorLeadTable [data-lead-column="status"] { min-width:190px; }
-  #counsellorLeadTable [data-lead-column="followUp"] { min-width:155px; }
+  #counsellorLeadTable [data-lead-column="followUp"] { min-width:180px; }
   #counsellorLeadTable [data-lead-column="actions"] { position:sticky; right:0; z-index:3; min-width:120px; background:var(--bg-card); border-left:1px solid var(--border); }
   #counsellorLeadTable th[data-lead-column="name"], #counsellorLeadTable th[data-lead-column="actions"] { z-index:5; background:var(--bg-hover); }
   #counsellorLeadTable tbody tr:hover [data-lead-column="name"], #counsellorLeadTable tbody tr:hover [data-lead-column="actions"] { background:var(--bg-hover); }
-  .lead-select-badge { min-width:170px; min-height:34px; padding:.35rem .55rem; border:1px solid var(--gold-border); border-radius:8px; background:var(--bg-input); color:var(--text); font-weight:700; }
-  .lead-inline-date { width:145px; min-height:34px; padding:.35rem .5rem; border:1px solid var(--gold-border); border-radius:8px; background:var(--bg-input); color:var(--text); font:700 .72rem var(--mono); }
+  #counsellorLeadTable td { vertical-align:middle; }
+  #counsellorLeadTable td[data-lead-column="status"] form,
+  #counsellorLeadTable td[data-lead-column="followUp"] form { display:flex; align-items:center; min-height:40px; }
+  #counsellorLeadTable td[data-lead-column="followUp"] .date-input-wrap { width:170px; flex:0 0 170px; }
+  .lead-select-badge, .lead-inline-date { box-sizing:border-box; height:40px; margin:0; border:1px solid var(--gold-border); border-radius:8px; background:var(--bg-input); color:var(--text); }
+  .lead-select-badge { width:180px; padding:.35rem .55rem; font-weight:700; }
+  .lead-inline-date { width:100%; padding:.35rem 2.5rem .35rem .65rem; font:700 .72rem var(--mono); }
 
   @media (max-width: 1024px) {
     .people-directory-head { display: none; }
