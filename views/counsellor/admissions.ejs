@@ -85,7 +85,7 @@
                   <strong><%= student.name %></strong>
                 </div>
               </td>
-              <td class="td-mono"><%= student.phone || '—' %></td>
+              <td class="td-mono"><%= formatPhone(student.phone) %></td>
               <% if (coursesEnabled) { %><td><span class="badge badge-orange"><%= student.course %></span></td><% } %>
               <% if (batchesEnabled) { %><td class="td-muted"><%= student.batch || '—' %></td><% } %>
               <td class="td-muted"><%= lead ? lead.source : '—' %></td>

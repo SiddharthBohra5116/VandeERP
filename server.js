@@ -27,6 +27,7 @@ if (!fs.existsSync(privateUploadsDir)) {
 
 const app    = express();
 const server = http.createServer(app);
+app.locals.formatPhone = require('./utils/phoneFormat');
 
 // ── Socket.IO setup ───────────────────────────────────────────────────────
 const { Server } = require('socket.io');

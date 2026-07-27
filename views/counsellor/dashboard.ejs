@@ -202,7 +202,7 @@
               <div style="flex: 1; min-width: 0; margin-right: 8px;">
                 <div style="font-size:12px; font-weight:600; color:var(--text); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"><%= lead.name %></div>
                 <div style="font-size:10px; color:var(--text-sub); margin-top:2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                  📞 <%= lead.phone %> &nbsp;·&nbsp; <span style="color:var(--red); font-weight:600;"><%= new Date(lead.nextFollowUpAt).toLocaleDateString('en-IN') %></span>
+                  📞 <%= formatPhone(lead.phone) %> &nbsp;·&nbsp; <span style="color:var(--red); font-weight:600;"><%= new Date(lead.nextFollowUpAt).toLocaleDateString('en-IN') %></span>
                 </div>
               </div>
               <a href="/counsellor/leads/<%= lead._id %>" class="btn btn-ghost btn-xs" style="flex-shrink: 0;">Open</a>
@@ -225,7 +225,7 @@
               <div style="flex: 1; min-width: 0; margin-right: 8px;">
                 <div style="font-size:12px; font-weight:600; color:var(--text); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"><%= lead.name %></div>
                 <div style="font-size:10px; color:var(--text-sub); margin-top:2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                  📞 <%= lead.phone %> &nbsp;·&nbsp; <span style="color:var(--gold); font-weight:600;"><%= lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : 'Today' %></span>
+                  📞 <%= formatPhone(lead.phone) %> &nbsp;·&nbsp; <span style="color:var(--gold); font-weight:600;"><%= lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : 'Today' %></span>
                 </div>
               </div>
               <a href="/counsellor/leads/<%= lead._id %>" class="btn btn-ghost btn-xs" style="flex-shrink: 0;">Open</a>
@@ -248,7 +248,7 @@
               <div style="flex: 1; min-width: 0; margin-right: 8px;">
                 <div style="font-size:12px; font-weight:600; color:var(--text); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"><%= fee.student ? fee.student.name : 'Student' %></div>
                 <div style="font-size:10px; color:var(--text-sub); margin-top:2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                  📞 <%= fee.student ? fee.student.phone : '' %> &nbsp;·&nbsp; Due: <span style="color:var(--orange); font-weight:600;">₹<%= Math.max(0, fee.totalAmount - (fee.discount || 0) - fee.paidAmount) %></span>
+                  📞 <%= fee.student ? formatPhone(fee.student.phone) : '' %> &nbsp;·&nbsp; Due: <span style="color:var(--orange); font-weight:600;">₹<%= Math.max(0, fee.totalAmount - (fee.discount || 0) - fee.paidAmount) %></span>
                 </div>
               </div>
               <span class="badge badge-orange" style="font-size: 9px; flex-shrink: 0;">Remind</span>
@@ -340,7 +340,7 @@
                 data-source="<%= (lead.source || 'Unknown').toLowerCase() %>"
                 data-status="<%= lead.status.toLowerCase() %>">
               <td><strong><%= lead.name %></strong></td>
-              <td class="td-mono"><%= lead.phone %></td>
+              <td class="td-mono"><%= formatPhone(lead.phone) %></td>
               <td><span class="badge badge-orange"><%= lead.interestedCourse ? lead.interestedCourse.name : 'Undecided' %></span></td>
               <td class="td-muted"><%= lead.source %></td>
               <td>

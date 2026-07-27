@@ -70,6 +70,8 @@ router.get('/leads/:id/edit', ...guard, ctrl.getEditLead);
 router.get('/leads/:id/convert', ...guard, ctrl.getConvertLead);
 router.post('/leads/:id/convert', ...guard, claimLead, ctrl.postConvertLead);
 router.post('/leads/:id/edit', ...guard, leadValidator, claimLead, ctrl.postEditLead);
+router.post('/leads/:id/status', ...guard, claimLead, leadImportCtrl.postUpdateLeadStatus);
+router.post('/leads/:id/follow-up', ...guard, claimLead, leadImportCtrl.postUpdateLeadFollowUp);
 router.post('/leads/:id/followup', ...guard, claimLead, ctrl.postAddFollowUp);
 router.post('/leads/:id/followup/:index/edit', ...guard, claimLead, ctrl.postEditFollowUp);
 router.post('/leads/:id/lost', ...guard, claimLead, ctrl.postMarkLost);

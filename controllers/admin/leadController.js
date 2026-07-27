@@ -27,6 +27,7 @@ const {
 const logger = require('../../utils/logger');
 const buildFeeSchedule = require('../../utils/feeSchedule');
 const { getLeadCustomFields, normalizeLeadCustomValues, slugifyFieldKey } = require('../../utils/leadCustomFields');
+const { visibleToCounsellor } = require('../../utils/leadOwnership');
 
 // ponytail: in-memory progress is enough for one app instance; use Redis if imports run across multiple instances.
 const importProgress = new Map();
@@ -574,11 +575,15 @@ exports.postEditLead = async (req, res) => {
 };
 
 exports.postUpdateLeadStatus = async (req, res) => {
-  const returnTo = /^\/admin\/leads(?:\/[0-9a-f]{24})?(?:\?|$)/i.test(String(req.body.returnTo || ''))
+  const leadBase = req.user.role === 'counsellor' ? '/counsellor/leads' : '/admin/leads';
+  const returnPattern = new RegExp(`^${leadBase.replace(/\//g, '\\/')}(?:\\/[0-9a-f]{24})?(?:\\?|$)`, 'i');
+  const returnTo = returnPattern.test(String(req.body.returnTo || ''))
     ? req.body.returnTo
-    : `/admin/leads/${req.params.id}`;
+    : `${leadBase}/${req.params.id}`;
   try {
-    const [lead, statuses] = await Promise.all([Lead.findById(req.params.id), getLeadStatuses()]);
+    const leadQuery = { _id: req.params.id };
+    if (req.user.role === 'counsellor') Object.assign(leadQuery, visibleToCounsellor(req.user.counsellorProfileId));
+    const [lead, statuses] = await Promise.all([Lead.findOne(leadQuery), getLeadStatuses()]);
     const status = String(req.body.status || '').trim();
     if (!lead || !statuses.some(option => option.key === status)) throw new Error('Invalid lead status.');
     if (status === 'admission_completed' && !lead.convertedStudent) throw new Error('Use Admit as Student to complete admission.');
@@ -603,13 +608,17 @@ exports.postUpdateLeadStatus = async (req, res) => {
 };
 
 exports.postUpdateLeadFollowUp = async (req, res) => {
-  const returnTo = /^\/admin\/leads(?:\/[0-9a-f]{24})?(?:\?|$)/i.test(String(req.body.returnTo || ''))
+  const leadBase = req.user.role === 'counsellor' ? '/counsellor/leads' : '/admin/leads';
+  const returnPattern = new RegExp(`^${leadBase.replace(/\//g, '\\/')}(?:\\/[0-9a-f]{24})?(?:\\?|$)`, 'i');
+  const returnTo = returnPattern.test(String(req.body.returnTo || ''))
     ? req.body.returnTo
-    : `/admin/leads/${req.params.id}`;
+    : `${leadBase}/${req.params.id}`;
   try {
     const value = String(req.body.followUpDate || '').trim();
     if (value && !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error('Invalid follow-up date.');
-    const lead = await Lead.findById(req.params.id);
+    const leadQuery = { _id: req.params.id };
+    if (req.user.role === 'counsellor') Object.assign(leadQuery, visibleToCounsellor(req.user.counsellorProfileId));
+    const lead = await Lead.findOne(leadQuery);
     if (!lead) throw new Error('Lead not found.');
 
     lead.nextFollowUpAt = value ? new Date(`${value}T12:00:00`) : null;

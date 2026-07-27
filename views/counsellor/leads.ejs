@@ -28,6 +28,7 @@
     map[status.key] = Boolean(status.isClosed);
     return map;
   }, {});
+  const currentListUrl = `/counsellor/leads?${new URLSearchParams(filters || {}).toString()}`;
 %>
 
 <style>
@@ -60,6 +61,26 @@
 
   .person-signals { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
   .person-actions { display: flex; justify-content: flex-end; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+  .lead-column-picker { position:relative; margin-bottom:.75rem; }
+  .lead-column-picker > summary { list-style:none; cursor:pointer; }
+  .lead-column-picker > summary::-webkit-details-marker { display:none; }
+  .lead-column-panel { position:absolute; z-index:40; left:0; top:calc(100% + .5rem); width:330px; padding:1rem; border:1px solid var(--border); border-radius:10px; background:var(--bg-card); box-shadow:var(--shadow-lg); }
+  .lead-column-presets { display:flex; gap:.35rem; margin:.75rem 0; }
+  .lead-column-grid { display:grid; gap:.25rem; }
+  .lead-column-option { display:flex; align-items:center; gap:.55rem; min-height:34px; color:var(--text-sub); font-size:.78rem; }
+  #counsellorLeadTable { width:100%; min-width:max-content; }
+  #counsellorLeadTable [data-lead-column][hidden] { display:none !important; }
+  #counsellorLeadTable [data-lead-column="name"] { position:sticky; left:0; z-index:3; min-width:200px; background:var(--bg-card); border-right:1px solid var(--border); }
+  #counsellorLeadTable [data-lead-column="phone"] { min-width:155px; white-space:nowrap; font-family:var(--mono); }
+  #counsellorLeadTable [data-lead-column="email"] { min-width:230px; }
+  #counsellorLeadTable [data-lead-column="course"] { min-width:170px; }
+  #counsellorLeadTable [data-lead-column="status"] { min-width:190px; }
+  #counsellorLeadTable [data-lead-column="followUp"] { min-width:155px; }
+  #counsellorLeadTable [data-lead-column="actions"] { position:sticky; right:0; z-index:3; min-width:120px; background:var(--bg-card); border-left:1px solid var(--border); }
+  #counsellorLeadTable th[data-lead-column="name"], #counsellorLeadTable th[data-lead-column="actions"] { z-index:5; background:var(--bg-hover); }
+  #counsellorLeadTable tbody tr:hover [data-lead-column="name"], #counsellorLeadTable tbody tr:hover [data-lead-column="actions"] { background:var(--bg-hover); }
+  .lead-select-badge { min-width:170px; min-height:34px; padding:.35rem .55rem; border:1px solid var(--gold-border); border-radius:8px; background:var(--bg-input); color:var(--text); font-weight:700; }
+  .lead-inline-date { width:145px; min-height:34px; padding:.35rem .5rem; border:1px solid var(--gold-border); border-radius:8px; background:var(--bg-input); color:var(--text); font:700 .72rem var(--mono); }
 
   @media (max-width: 1024px) {
     .people-directory-head { display: none; }
@@ -170,65 +191,37 @@
       <p>No leads found matching your filters.</p>
     </div>
   <% } else { %>
-    <div class="people-directory">
-      <div class="people-directory-head">
-        <span>Lead & Contact</span>
-        <span>Course & Source</span>
-        <span>Signals & Status</span>
-        <span style="text-align: right;">Actions</span>
+    <details class="lead-column-picker" id="counsellorLeadColumnPicker">
+      <summary class="btn btn-ghost btn-sm">Columns (<span id="counsellorLeadVisibleCount">7</span>)</summary>
+      <div class="lead-column-panel">
+        <strong>Choose visible columns</strong>
+        <div class="form-hint">Name and Actions always remain visible.</div>
+        <div class="lead-column-presets"><button type="button" class="btn btn-ghost btn-xs" data-counsellor-column-preset="essential">Essential</button><button type="button" class="btn btn-ghost btn-xs" data-counsellor-column-preset="all">Show all</button></div>
+        <div class="lead-column-grid" id="counsellorLeadColumnGrid"></div>
       </div>
-      <% leads.forEach((lead, i) => { %>
+    </details>
+    <div class="table-wrap">
+      <table id="counsellorLeadTable">
+        <thead><tr><th data-lead-column="name">Name</th><th data-lead-column="phone">Phone</th><th data-lead-column="email">Email</th><th data-lead-column="course">Course</th><th data-lead-column="source">Source</th><th data-lead-column="status">Status</th><th data-lead-column="followUp">Next Follow-up</th><th data-lead-column="actions">Actions</th></tr></thead>
+        <tbody>
+      <% leads.forEach(lead => { %>
         <%
-          const statusBadge = statusBadgeMap[lead.status] || 'badge-grey';
-
-          const initials = lead.name.split(/\s+/).map(n => n[0]).join('').toUpperCase().slice(0, 2);
           const isClosedLead = Boolean(statusClosedMap[lead.status]);
           const isOverdue = lead.nextFollowUpAt && new Date(lead.nextFollowUpAt) < new Date() && !isClosedLead;
         %>
-        <article class="person-directory-row" data-row-href="/counsellor/leads/<%= lead._id %>" tabindex="0" aria-label="Open <%= lead.name %> details">
-          
-          <!-- Column 1: Identity & contact -->
-          <div class="person-identity">
-            <div class="person-avatar">
-              <%= initials || 'L' %>
-            </div>
-            <div>
-              <div class="person-name"><%= lead.name %></div>
-              <div class="person-contact">📞 <%= lead.phone %> <% if (lead.email) { %> &middot; <%= lead.email %><% } %></div>
-              <div class="person-meta">Added: <%= new Date(lead.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %></div>
-            </div>
-          </div>
-
-          <!-- Column 2: Course Context -->
-          <div class="person-context">
-            <strong><%= lead.interestedCourse ? lead.interestedCourse.name : 'Undecided' %></strong>
-            <span>Source: <%= lead.source %></span>
-          </div>
-
-          <!-- Column 3: Signals & Badges -->
-          <div class="person-signals">
-            <span class="badge <%= statusBadge %>" style="text-transform: uppercase;"><%= statusLabelMap[lead.status] || lead.status.replace(/_/g, ' ') %></span>
-            <% if (lead.status === 'admission_completed') { %>
-              <span class="badge badge-green">Enrolled</span>
-            <% } else if (lead.status === 'lost') { %>
-              <span class="badge badge-red">Lost</span>
-            <% } else if (lead.nextFollowUpAt) { %>
-              <span class="badge <%= isOverdue ? 'badge-red' : 'badge-gold' %>" <%= isOverdue ? 'style="font-weight: 700;"' : '' %>>
-                <%= isOverdue ? '⚠️ Overdue: ' : 'Follow-up: ' %><%= new Date(lead.nextFollowUpAt).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) %>
-              </span>
-            <% } else { %>
-              <span class="badge badge-grey">No Follow-up Scheduled</span>
-            <% } %>
-          </div>
-
-          <!-- Column 4: Action Controls -->
-          <div class="person-actions">
-            <a href="/counsellor/leads/<%= lead._id %>" class="btn btn-ghost btn-xs">View</a>
-            <a href="/counsellor/leads/<%= lead._id %>/edit" class="btn btn-ghost btn-xs">Edit</a>
-          </div>
-
-        </article>
+        <tr data-row-href="/counsellor/leads/<%= lead._id %>" tabindex="0">
+          <td data-lead-column="name" class="td-name"><a href="/counsellor/leads/<%= lead._id %>"><%= lead.name %></a></td>
+          <td data-lead-column="phone"><%= formatPhone(lead.phone) %></td>
+          <td data-lead-column="email"><%= lead.email || '—' %></td>
+          <td data-lead-column="course"><%= lead.interestedCourse ? lead.interestedCourse.name : 'Undecided' %></td>
+          <td data-lead-column="source"><%= lead.source || '—' %></td>
+          <td data-lead-column="status"><form action="/counsellor/leads/<%= lead._id %>/status" method="POST" style="margin:0;"><input type="hidden" name="returnTo" value="<%= currentListUrl %>"><select name="status" class="lead-select-badge" onchange="this.form.submit()" aria-label="Status for <%= lead.name %>"><% statusOptions.forEach(option => { if (option.key !== 'admission_completed' || lead.convertedStudent || lead.status === 'admission_completed') { %><option value="<%= option.key %>" <%= lead.status === option.key ? 'selected' : '' %>><%= option.label %></option><% } }) %></select></form></td>
+          <td data-lead-column="followUp"><form action="/counsellor/leads/<%= lead._id %>/follow-up" method="POST" style="margin:0;"><input type="hidden" name="returnTo" value="<%= currentListUrl %>"><input type="date" name="followUpDate" class="lead-inline-date <%= isOverdue ? 'text-red' : '' %>" value="<%= lead.nextFollowUpAt ? new Date(lead.nextFollowUpAt).toISOString().slice(0,10) : '' %>" onchange="this.form.submit()" aria-label="Next follow-up for <%= lead.name %>"></form></td>
+          <td data-lead-column="actions"><div class="person-actions"><a href="/counsellor/leads/<%= lead._id %>" class="btn btn-ghost btn-xs">View</a><a href="/counsellor/leads/<%= lead._id %>/edit" class="btn btn-ghost btn-xs">Edit</a></div></td>
+        </tr>
       <% }); %>
+        </tbody>
+      </table>
     </div>
 
     <!-- Pagination -->
@@ -257,6 +250,46 @@
 
 <script src="/js/instant-filter.js"></script>
 <script>
+  function initCounsellorLeadColumns() {
+    const table = document.getElementById('counsellorLeadTable');
+    const grid = document.getElementById('counsellorLeadColumnGrid');
+    const count = document.getElementById('counsellorLeadVisibleCount');
+    if (!table || !grid || grid.dataset.ready) return;
+    const columns = [...table.querySelectorAll('thead [data-lead-column]')].map(cell => ({ key: cell.dataset.leadColumn, label: cell.textContent.trim() }));
+    const locked = new Set(['name', 'actions']);
+    const presets = { essential: ['name', 'phone', 'course', 'status', 'followUp', 'actions'], all: columns.map(column => column.key) };
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem('vande.counsellorLeadColumns.v1')); } catch (_) { saved = null; }
+    let visible = new Set(Array.isArray(saved) ? saved : presets.essential);
+    locked.forEach(key => visible.add(key));
+    const apply = () => {
+      columns.forEach(column => {
+        table.querySelectorAll(`[data-lead-column="${column.key}"]`).forEach(cell => { cell.hidden = !visible.has(column.key); });
+        const input = grid.querySelector(`[data-column-key="${column.key}"]`);
+        if (input) input.checked = visible.has(column.key);
+      });
+      count.textContent = visible.size;
+      localStorage.setItem('vande.counsellorLeadColumns.v1', JSON.stringify([...visible]));
+    };
+    columns.forEach(column => {
+      const label = document.createElement('label');
+      label.className = 'lead-column-option';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.dataset.columnKey = column.key;
+      input.disabled = locked.has(column.key);
+      input.addEventListener('change', () => { input.checked ? visible.add(column.key) : visible.delete(column.key); apply(); });
+      label.append(input, document.createTextNode(column.label));
+      grid.appendChild(label);
+    });
+    document.querySelectorAll('[data-counsellor-column-preset]').forEach(button => button.addEventListener('click', () => {
+      visible = new Set(presets[button.dataset.counsellorColumnPreset]);
+      apply();
+    }));
+    grid.dataset.ready = '1';
+    apply();
+  }
+
   function initLeadRowClicks() {
     document.querySelectorAll('[data-row-href]').forEach(row => {
       if (row.dataset.rowReady) return;
@@ -275,11 +308,12 @@
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initLeadRowClicks);
+    document.addEventListener('DOMContentLoaded', () => { initCounsellorLeadColumns(); initLeadRowClicks(); });
   } else {
+    initCounsellorLeadColumns();
     initLeadRowClicks();
   }
 
-  document.addEventListener('softnav:load', initLeadRowClicks);
-  document.addEventListener('resultsUpdated', initLeadRowClicks);
+  document.addEventListener('softnav:load', () => { initCounsellorLeadColumns(); initLeadRowClicks(); });
+  document.addEventListener('resultsUpdated', () => { initCounsellorLeadColumns(); initLeadRowClicks(); });
 </script>

@@ -32,7 +32,7 @@
         <tr data-row-href="/counsellor/leads/<%= lead._id %>">
           <td><strong><%= lead.name %></strong></td>
           <td class="td-mono">
-            <a href="tel:<%= lead.phone %>" style="color:var(--gold); font-weight:600;"><%= lead.phone %></a>
+            <a href="tel:<%= lead.phone %>" style="color:var(--gold); font-weight:600;"><%= formatPhone(lead.phone) %></a>
           </td>
           <td><span class="badge badge-orange"><%= lead.interestedCourse ? lead.interestedCourse.name : 'Undecided' %></span></td>
           <td><span class="badge <%= statusBadge %>"><%= lead.status %></span></td>

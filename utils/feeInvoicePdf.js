@@ -1,11 +1,7 @@
 const PDFDocument = require('pdfkit');
+const formatIndianPhone = require('./phoneFormat');
 
 const money = value => `Rs. ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-const formatIndianPhone = value => {
-  const digits = String(value || '').replace(/\D/g, '');
-  const local = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits.length === 11 && digits.startsWith('0') ? digits.slice(1) : digits;
-  return local.length === 10 ? `+91 ${local.slice(0, 5)} ${local.slice(5)}` : (value || 'Not provided');
-};
 
 function createFeeInvoice(fee) {
   const doc = new PDFDocument({ size: 'A4', margin: 48, info: { Title: 'Fee Invoice' } });
@@ -62,4 +58,4 @@ function createFeeInvoice(fee) {
   return doc;
 }
 
-module.exports = { createFeeInvoice, formatIndianPhone, money };
+module.exports = { createFeeInvoice, money };

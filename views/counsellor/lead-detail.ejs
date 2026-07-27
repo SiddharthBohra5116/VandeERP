@@ -453,7 +453,7 @@
         <div style="display:flex; justify-content:space-between;">
           <span class="text-muted text-sm">Phone</span>
           <a href="tel:<%= lead.phone %>" style="font-family:var(--mono); font-size:13px; color:var(--gold); font-weight:600;">
-            <%= lead.phone %>
+            <%= formatPhone(lead.phone) %>
           </a>
         </div>
         <div style="display:flex; justify-content:space-between;">
