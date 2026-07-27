@@ -138,6 +138,8 @@ exports.getReports = async (req, res) => {
 
     // Collections & Outstandings calculations
     const fees = feesEnabled ? await Fee.find({ student: { $in: studentIds } }) : [];
+    const activeStudentIds = new Set(activeStudents.map(student => String(student._id)));
+    const overviewFees = fees.filter(fee => activeStudentIds.has(String(fee.student)));
 
 
     let currentPeriodCollection = 0;
@@ -148,7 +150,7 @@ exports.getReports = async (req, res) => {
     // Payment methods map
     const paymentMethods = { UPI: 0, 'Bank Transfer': 0, Cash: 0, Other: 0 };
 
-    fees.forEach(f => {
+    overviewFees.forEach(f => {
       // Calculate amount billed within range
       let billedInRange = 0;
       if (f.installments && f.installments.length > 0) {
@@ -185,11 +187,11 @@ exports.getReports = async (req, res) => {
       });
     });
 
-    const outstandingAmount = fees.reduce(
+    const outstandingAmount = overviewFees.reduce(
       (sum, fee) => sum + Math.max(0, fee.totalAmount - (fee.discount || 0) - fee.paidAmount),
       0
     );
-    const totalLedgerBilled = fees.reduce(
+    const totalLedgerBilled = overviewFees.reduce(
       (sum, fee) => sum + Math.max(0, fee.totalAmount - (fee.discount || 0)),
       0
     );
@@ -207,7 +209,7 @@ exports.getReports = async (req, res) => {
     }
 
     // Attendance
-    const attFilter = { student: { $in: studentIds } };
+    const attFilter = { student: { $in: [...activeStudentIds] } };
     attFilter.date = { $gte: startDate, $lte: endDate };
     const attendanceRecords = attendanceEnabled && studentsEnabled ? await Attendance.find(attFilter) : [];
     let avgAtt = 0;
@@ -299,7 +301,7 @@ exports.getReports = async (req, res) => {
       let billedInMonth = 0;
       let collectedInMonth = 0;
 
-      fees.forEach(f => {
+      overviewFees.forEach(f => {
         if (f.installments && f.installments.length > 0) {
           f.installments.forEach(inst => {
             if (inst.dueDate && inst.dueDate.toISOString().slice(0, 7) === yearMonth) {
@@ -371,7 +373,7 @@ exports.getReports = async (req, res) => {
     }, {});
 
     // 6. Student distribution per batch
-    const studentBatchDistribution = dbStudents.reduce((acc, s) => {
+    const studentBatchDistribution = activeStudents.reduce((acc, s) => {
       if (s.batch) {
         acc[s.batch.name] = (acc[s.batch.name] || 0) + 1;
       }
@@ -390,7 +392,7 @@ exports.getReports = async (req, res) => {
       cumulativeBillingMonths.push(mStr);
 
       let billedInMonth = 0;
-      fees.forEach(f => {
+      overviewFees.forEach(f => {
         if (f.installments && f.installments.length > 0) {
           f.installments.forEach(inst => {
             if (inst.dueDate && inst.dueDate.toISOString().slice(0, 7) === yearMonth) {

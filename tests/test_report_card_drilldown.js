@@ -15,9 +15,12 @@ assert.match(report, /\/admin\/leads\?age=stale/);
 assert.match(leads, /pipeline === 'open'/);
 assert.match(leads, /dateField === 'converted'/);
 assert.match(fees, /\['current', '1_30', '31_60', '61_90', '91_plus'\]\.includes\(aging\)/);
-assert.match(reports, /fees\.reduce\([\s\S]*totalAmount - \(fee\.discount \|\| 0\) - fee\.paidAmount/);
+assert.match(reports, /overviewFees\.reduce\([\s\S]*totalAmount - \(fee\.discount \|\| 0\) - fee\.paidAmount/);
 assert.match(reports, /\.filter\(row => monthInPeriod\(row\.month\)\)/);
 assert.match(reports, /s\.user\.role === 'student'[\s\S]*s\.user\.status === 'active'[\s\S]*s\.user\.isActive !== false[\s\S]*!s\.user\.archivedAt/);
 assert.match(students, /status === 'active'\) userFilter\.isActive = \{ \$ne: false \}/);
+assert.match(reports, /const overviewFees = fees\.filter\(fee => activeStudentIds\.has\(String\(fee\.student\)\)\)/);
+assert.match(report, /Collected in period/);
+assert.match(report, /Current outstanding/);
 
 console.log('Report card drill-down checks passed.');
