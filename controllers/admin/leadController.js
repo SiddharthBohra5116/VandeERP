@@ -403,7 +403,9 @@ exports.getCreateLead = async (req, res) => {
     target: null,
     leadStatuses,
     courses,
-    customFieldDefinitions
+    customFieldDefinitions,
+    error: req.query.error,
+    fieldCreated: req.query.fieldCreated === '1'
   });
 };
 
@@ -1091,6 +1093,8 @@ exports.postDeleteStatus = async (req, res) => {
 };
 
 exports.postCreateCustomField = async (req, res) => {
+  const returnTo = req.body.returnTo === '/admin/leads/create' ? req.body.returnTo : '/admin/leads';
+  const withResult = params => `${returnTo}${returnTo.includes('?') ? '&' : '?'}${params}`;
   try {
     const label = String(req.body.label || '').trim();
     const type = String(req.body.type || '');
@@ -1107,10 +1111,10 @@ exports.postCreateCustomField = async (req, res) => {
       options: type === 'select' ? [...new Set(options)].slice(0, 30) : [],
       required: req.body.required === 'on'
     });
-    res.redirect('/admin/leads?fieldCreated=1');
+    res.redirect(withResult('fieldCreated=1'));
   } catch (err) {
     const message = err.code === 11000 ? 'A custom field with that name already exists.' : err.message;
-    res.redirect(`/admin/leads?error=${encodeURIComponent(message)}`);
+    res.redirect(withResult(`error=${encodeURIComponent(message)}`));
   }
 };
 
@@ -1517,17 +1521,18 @@ exports.postConvertLead = async (req, res) => {
       });
     }
 
-    const totalFees = Number(req.body.fees_total) || selectedCourse.fees || 0;
-    const paidFees = Number(req.body.fees_paid) || 0;
-    if (totalFees <= 0 || paidFees < 0 || paidFees > totalFees) throw new Error('Fee and opening payment amounts are invalid.');
-    const installments = buildFeeSchedule(req.body, totalFees);
-    if (!installments.length) throw new Error('Add at least one installment.');
+    const feesEnabled = res.locals.modules?.fees !== false;
+    const totalFees = feesEnabled ? (Number(req.body.fees_total) || selectedCourse.fees || 0) : 0;
+    const paidFees = feesEnabled ? (Number(req.body.fees_paid) || 0) : 0;
+    if (feesEnabled && (totalFees <= 0 || paidFees < 0 || paidFees > totalFees)) throw new Error('Fee and opening payment amounts are invalid.');
+    const installments = feesEnabled ? buildFeeSchedule(req.body, totalFees) : [];
+    if (feesEnabled && !installments.length) throw new Error('Add at least one installment.');
 
     // ponytail: batches remain as a compatibility layer until attendance and schedules are course-native.
     const batchName = `${selectedCourse.code || selectedCourse.name} - General`;
     let targetBatch = await Batch.findOne({ name: batchName, course: selectedCourse._id });
 
-    const selectedTeacherProfile = req.body.teacherId
+    const selectedTeacherProfile = res.locals.modules?.teachers !== false && req.body.teacherId
       ? await Teacher.findById(req.body.teacherId).populate('user', '_id name')
       : null;
     const selectedTeacherUserId = selectedTeacherProfile?.user?._id || null;
@@ -1582,6 +1587,7 @@ exports.postConvertLead = async (req, res) => {
       }]
     });
 
+    if (feesEnabled) {
     const feeLedger = new Fee({
       student: studentProfile._id,
       course: selectedCourse._id,
@@ -1600,6 +1606,7 @@ exports.postConvertLead = async (req, res) => {
     });
 
     await feeLedger.save();
+    }
 
     lead.status = 'admission_completed';
     lead.convertedStudent = studentProfile._id;

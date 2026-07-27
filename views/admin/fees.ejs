@@ -31,7 +31,8 @@
       <% } %>
     </div>
   </div>
-<% } else if (filter.error) { %><div class="alert alert-error"><%= filter.error %></div><% } %>
+<% } else if (filter.error) { %><div class="alert alert-error"><%= filter.error %></div>
+<% } else if (filter.completed) { %><div class="alert alert-success"><%= Number(filter.completed) %> fee ledger(s) completed successfully.</div><% } %>
 
 <details class="card" style="margin-bottom:1.25rem;">
   <summary style="padding:.85rem 1rem; cursor:pointer; font-weight:800; list-style-position:inside;">Import fees from CSV <span class="text-muted" style="font-weight:500; margin-left:.4rem;">Optional</span></summary>
@@ -90,10 +91,20 @@
       <a href="/admin/students" class="btn btn-primary btn-sm">Choose Student &amp; Set Up Invoice</a>
     </div>
   <% } else { %>
+    <form id="bulkCompleteFees" method="POST" action="/admin/fees/bulk-complete" data-native-submit="true" data-confirm="Record every selected outstanding balance as fully paid?" data-confirm-title="Complete selected fees" data-confirm-label="Complete fees">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+      <div style="display:flex; justify-content:flex-end; align-items:center; gap:.75rem; padding:1rem; border-bottom:1px solid var(--border);">
+        <button type="button" class="btn btn-ghost btn-sm" id="selectAllFees">Select all due</button>
+        <select name="method" class="form-control" style="width:auto;" aria-label="Bulk payment method">
+          <option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Card</option><option>Other</option>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm" id="completeSelectedFees" disabled>Complete selected</button>
+      </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
+            <th style="width:42px;"><input type="checkbox" id="selectAllFeesHeader" aria-label="Select all outstanding fee ledgers"></th>
             <th>Student</th>
             <th>Batch & Course</th>
             <th>Total Fees</th>
@@ -114,6 +125,7 @@
               const pct = f.totalAmount > 0 ? Math.round((f.paidAmount / actualTotal) * 100) : 0;
             %>
             <tr>
+              <td><input type="checkbox" class="fee-check" name="feeIds" value="<%= f._id %>" <%= due <= 0 ? 'disabled' : '' %> aria-label="Select fee ledger for <%= student?.name || 'deleted student' %>"></td>
               <td class="td-name">
                 <% if (student) { %>
                   <a href="/admin/fees/<%= student._id %>" style="color:var(--gold); font-weight:600;"><%= student.name %></a>
@@ -165,6 +177,26 @@
         </tbody>
       </table>
     </div>
+    </form>
   <% } %>
 </div>
 <script src="/js/instant-filter.js"></script>
+<script>
+  (() => {
+    const checks = [...document.querySelectorAll('.fee-check:not(:disabled)')];
+    const buttons = [document.getElementById('selectAllFees'), document.getElementById('selectAllFeesHeader')];
+    const submit = document.getElementById('completeSelectedFees');
+    const sync = () => {
+      const selected = checks.filter(check => check.checked).length;
+      submit.disabled = selected === 0;
+      document.getElementById('selectAllFeesHeader').checked = selected > 0 && selected === checks.length;
+      document.getElementById('selectAllFees').textContent = selected === checks.length && selected ? 'Clear selection' : 'Select all due';
+    };
+    buttons.forEach(button => button?.addEventListener('click', () => {
+      const select = !checks.length || !checks.every(check => check.checked);
+      checks.forEach(check => { check.checked = select; });
+      sync();
+    }));
+    checks.forEach(check => check.addEventListener('change', sync));
+  })();
+</script>

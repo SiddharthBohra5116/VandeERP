@@ -629,6 +629,7 @@
             </select>
           </div>
           
+          <% if (modules?.teachers !== false) { %>
           <div class="form-group" style="margin-bottom: 0.5rem;">
             <label style="font-size: 0.6rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Instructor *</label>
             <select id="pop_teacher" class="form-control" style="font-size: 0.75rem; padding: 0.3rem;">
@@ -637,6 +638,7 @@
               <% }) %>
             </select>
           </div>
+          <% } else { %><input type="hidden" id="pop_teacher" value=""><% } %>
 
           <div class="form-group" style="margin-bottom: 0.5rem;">
             <label style="font-size: 0.6rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Classroom / Hall *</label>
@@ -952,6 +954,7 @@
         </select>
       </div>
 
+      <% if (modules?.teachers !== false) { %>
       <div class="form-group">
         <label class="form-label" for="c_teacher">Assigned Instructor *</label>
         <select id="c_teacher" name="teacher" class="form-control" required>
@@ -961,6 +964,7 @@
           <% }) %>
         </select>
       </div>
+      <% } else { %><input type="hidden" id="c_teacher" name="teacher" value=""><% } %>
 
       <div class="form-group">
         <label class="form-label" for="c_classroom">Target Classroom / Suite *</label>
@@ -1024,6 +1028,7 @@
         </select>
       </div>
 
+      <% if (modules?.teachers !== false) { %>
       <div class="form-group">
         <label class="form-label" for="e_teacher">Assigned Instructor *</label>
         <select id="e_teacher" name="teacher" class="form-control" required>
@@ -1033,6 +1038,7 @@
           <% }) %>
         </select>
       </div>
+      <% } else { %><input type="hidden" id="e_teacher" name="teacher" value=""><% } %>
 
       <div class="form-group">
         <label class="form-label" for="e_classroom">Target Classroom / Suite *</label>

@@ -201,6 +201,7 @@
     <% if (flaggedUsers.length === 0) { %>
       <div style="text-align:center; color: var(--text-muted); padding: 2rem; font-size: 0.82rem;">No flagged users.</div>
     <% } else { %>
+      <div class="table-wrap">
       <table style="font-size: 0.8rem;">
         <thead>
           <tr>
@@ -229,6 +230,7 @@
           <% }) %>
         </tbody>
       </table>
+      </div>
     <% } %>
   </div>
 

@@ -1,5 +1,6 @@
 <% if (typeof user !== 'undefined' && user) { %>
 <aside class="sidebar">
+  <script>if(document.documentElement.classList.contains('sidebar-collapsed-preload'))document.currentScript.parentElement.classList.add('collapsed')</script>
   <div class="sidebar-logo">
     <div class="brand">
       <span class="brand-main">Vande <span>Digital</span></span>
@@ -32,10 +33,11 @@
         <span>Manage Students</span>
       </a>
       <a href="/admin/students?status=complete" class="nav-item">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>
         <span>Completed Students</span>
       </a>
       <% } %>
-      <a href="/admin/profile-requests" class="nav-item <%= page === 'profile-requests' ? 'active' : '' %>">
+      <% if (modules?.students !== false) { %><a href="/admin/profile-requests" class="nav-item <%= page === 'profile-requests' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         <span>Profile Requests</span>
         <% if (typeof sidebarBadges !== 'undefined' && sidebarBadges.profileRequests > 0) { %>
@@ -44,22 +46,36 @@
       </a>
       <% if (modules?.teachers !== false) { %>
       <a href="/admin/teachers" class="nav-item <%= page === 'teachers' ? 'active' : '' %>">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 10 10-5 10 5-10 5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/><path d="M22 10v6"/></svg>
         <span>Manage Teachers</span>
-      </a>
+      </a><% } %>
+      <% } %>
+      <% if (modules?.counsellors !== false) { %>
       <a href="/admin/counsellors" class="nav-item <%= page === 'counsellors' ? 'active' : '' %>">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 8h8"/><path d="M8 12h5"/></svg>
         <span>Manage Counsellors</span>
       </a>
+      <% } %>
+      <% if (modules?.courses !== false) { %>
       <a href="/admin/courses" class="nav-item <%= page === 'courses' ? 'active' : '' %>">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         <span>Manage Courses</span>
       </a>
+      <% } %>
+      <% if (modules?.batches !== false) { %>
+      <a href="/admin/batches" class="nav-item <%= page === 'batches' ? 'active' : '' %>">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 9h18"/><path d="M8 13h3M13 13h3M8 17h3"/></svg>
+        <span>Manage Batches</span>
+      </a>
+      <% } %>
+      <% if (modules?.announcements !== false) { %>
       <a href="/admin/announcements" class="nav-item <%= page === 'announcements' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span>Announcements</span>
       </a>
+      <% } %>
       <div class="nav-label">Operations</div>
+      <% if (modules?.fees !== false) { %>
       <a href="/admin/fees" class="nav-item <%= page === 'fees' || page === 'fee-detail' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
         <span>Fees & Ledger</span>
@@ -67,6 +83,8 @@
           <span class="badge badge-gold" style="margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 5px;"><%= sidebarBadges.feesOverdue %></span>
         <% } %>
       </a>
+      <% } %>
+      <% if (modules?.leads !== false) { %>
       <div class="nav-flyout">
         <a href="/admin/leads" class="nav-item <%= page === 'leads' || page === 'leads-new' ? 'active' : '' %>">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4h-7a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
@@ -74,6 +92,7 @@
           <span class="nav-flyout-arrow">›</span>
         </a>
         <div class="nav-flyout-menu" aria-label="Lead pipeline filters">
+          <a href="/admin/leads/create" class="nav-flyout-action">+ Add Lead</a>
           <a href="/admin/leads?status=high_potential">High Potential</a>
           <a href="/admin/leads?status=new">New</a>
           <a href="/admin/leads?status=in_the_loop">In the Loop</a>
@@ -81,9 +100,6 @@
           <a href="/admin/leads">All Leads</a>
         </div>
       </div>
-      <a href="/admin/leads/create" class="nav-item <%= page === 'leads-new' ? 'active' : '' %>">
-        <span>+ Manual Add Lead</span>
-      </a>
       <% } %>
       <% if (modules?.attendance !== false) { %>
       <a href="/admin/attendance" class="nav-item <%= page === 'attendance' ? 'active' : '' %>">
@@ -91,14 +107,19 @@
         <span>Attendance Summary</span>
       </a>
       <% } %>
+      <% if (modules?.schedules !== false) { %>
       <a href="/admin/schedules" class="nav-item <%= page === 'schedules' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span>Class Schedules</span>
       </a>
+      <% } %>
+      <% if (modules?.reports !== false) { %>
       <a href="/admin/reports" class="nav-item <%= page === 'reports' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
         <span>Reports & Analytics</span>
       </a>
+      <% } %>
+      <% if (modules?.leaves !== false) { %>
       <a href="/admin/holidays-leaves" class="nav-item <%= page === 'holidays-leaves' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span>Holidays & Leaves</span>
@@ -111,8 +132,10 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         <span>Security Monitor</span>
       </a>
+      <% } %>
       <a href="/admin/modules" class="nav-item <%= page === 'module-settings' ? 'active' : '' %>">
-        <span>Module Settings</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 14v7M14 17.5h7"/></svg>
+        <span>Academy Modules</span>
       </a>
     
     <!-- TEACHER NAVIGATION -->
@@ -139,6 +162,7 @@
         <span>Attendance History</span>
       </a>
       <% } %>
+      <% if (modules?.assignments !== false) { %>
       <a href="/teacher/assignments" class="nav-item <%= page === 'assignments' || page === 'assignment-form' || page === 'assignment-detail' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 14h6"/><path d="M9 18h6"/><path d="M9 10h3"/></svg>
         <span>Assignments</span>
@@ -146,23 +170,33 @@
           <span class="badge badge-gold" style="margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 5px;"><%= sidebarBadges.ungradedAssignments %></span>
         <% } %>
       </a>
+      <% } %>
+      <% if (modules?.updates !== false) { %>
       <a href="/teacher/updates" class="nav-item <%= page === 'updates' || page === 'update-form' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         <span>Daily Updates</span>
       </a>
+      <% } %>
+      <% if (modules?.leaves !== false) { %>
       <a href="/teacher/leaves" class="nav-item <%= page === 'leaves' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span>Leave Requests</span>
       </a>
+      <% } %>
+      <% if (modules?.announcements !== false) { %>
       <a href="/teacher/announcements" class="nav-item <%= page === 'teacher-announcements' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span>Announcements</span>
       </a>
+      <% } %>
       <div class="nav-label">Academic Progress</div>
+      <% if (modules?.curriculum !== false) { %>
       <a href="/teacher/curriculum" class="nav-item <%= page === 'curriculum' || page === 'curriculum-detail' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5v-15z"/></svg>
         <span>Curriculum Tracker</span>
       </a>
+      <% } %>
+      <% if (modules?.progress !== false) { %>
       <a href="/teacher/progress" class="nav-item <%= page === 'progress' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
         <span>Student Progress</span>
@@ -177,10 +211,13 @@
       </a>
       <% if (user.course && user.batch) { %>
       <div class="nav-label">Classrooms</div>
+      <% if (modules?.announcements !== false) { %>
       <a href="/student/announcements" class="nav-item <%= page === 'student-announcements' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span>Announcements & Materials</span>
       </a>
+      <% } %>
+      <% if (modules?.assignments !== false) { %>
       <a href="/student/assignments" class="nav-item <%= page === 'assignments' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 14h6"/><path d="M9 18h6"/><path d="M9 10h3"/></svg>
         <span>Assignments</span>
@@ -191,19 +228,28 @@
         <span>My Attendance</span>
       </a>
       <% } %>
+      <% } %>
+      <% } %>
+      <% if (modules?.updates !== false) { %>
       <a href="/student/updates" class="nav-item <%= page === 'updates' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         <span>Class Updates</span>
       </a>
+      <% } %>
       <div class="nav-label">My Academics</div>
+      <% if (modules?.reports !== false) { %>
       <a href="/student/analytics" class="nav-item <%= (page === 'analytics' || page === 'progress') ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><circle cx="12" cy="12" r="10" stroke-dasharray="3 3" stroke-width="1.5"/></svg>
         <span>Reports & Analytics</span>
       </a>
+      <% } %>
+      <% if (modules?.curriculum !== false) { %>
       <a href="/student/curriculum" class="nav-item <%= page === 'curriculum' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5v-15z"/></svg>
         <span>Curriculum View</span>
       </a>
+      <% } %>
+      <% if (modules?.fees !== false) { %>
       <a href="/student/fees" class="nav-item <%= page === 'fees' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
         <span>My Fee Ledger</span>
@@ -217,6 +263,7 @@
         <span>Dashboard</span>
       </a>
       <div class="nav-label">Leads & CRM</div>
+      <% if (modules?.leads !== false) { %>
       <a href="/counsellor/leads" class="nav-item <%= page === 'leads' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
         <span>All Leads</span>
@@ -235,6 +282,7 @@
           <span class="badge badge-gold" style="margin-left: auto; font-size: 10px; font-weight: 700; padding: 1px 5px;"><%= followupCount %></span>
         <% } %>
       </a>
+      <% } %>
       <div class="nav-label">Admissions</div>
       <% if (modules?.students !== false) { %>
       <a href="/counsellor/students" class="nav-item <%= page === 'my-students' ? 'active' : '' %>">
@@ -245,18 +293,25 @@
         <% } %>
       </a>
       <% } %>
+      <% } %>
+      <% if (modules?.students !== false) { %>
       <a href="/counsellor/admissions" class="nav-item <%= page === 'admissions' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
         <span>Pipeline Admissions</span>
       </a>
+      <% } %>
+      <% if (modules?.leaves !== false) { %>
       <a href="/counsellor/leaves" class="nav-item <%= page === 'leaves' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span>Leave Requests</span>
       </a>
+      <% } %>
+      <% if (modules?.announcements !== false) { %>
       <a href="/counsellor/announcements" class="nav-item <%= page === 'counsellor-announcements' ? 'active' : '' %>">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span>Announcements</span>
       </a>
+      <% } %>
     <% } %>
     
     <div class="nav-label">Account</div>
@@ -281,9 +336,9 @@
     <button id="customizeSidebarBtn" type="button" class="btn btn-ghost btn-block btn-sm" style="margin-bottom:.5rem;">
       <span>Customize Sidebar</span>
     </button>
-    <form action="/logout" method="POST" style="margin: 0; padding: 0; width: 100%;">
+    <form action="/logout" method="POST" data-native-submit="true" style="margin: 0; padding: 0; width: 100%;">
       <button type="submit" class="btn btn-danger btn-block btn-sm">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 13px; height: 13px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="21" x2="9" y2="12"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 13px; height: 13px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="9" y1="12" x2="21" y2="12"/></svg>
         <span>Sign Out</span>
       </button>
     </form>
@@ -291,12 +346,13 @@
 </aside>
 <style>
   .nav-flyout{position:relative}
-  .nav-flyout-arrow{margin-left:auto;font-size:1rem}
-  .nav-flyout-menu{display:none;position:absolute;z-index:100;left:100%;top:0;min-width:180px;padding:.4rem;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.22)}
+  .nav-flyout-arrow{margin-left:auto;font-size:1rem;color:var(--text-muted);transition:transform .18s ease}
+  .nav-flyout-menu{display:none;gap:.15rem;margin:.25rem .7rem .55rem 2.55rem;padding:.4rem;background:var(--bg-card);border:1px solid var(--border);border-radius:10px}
   .nav-flyout:hover .nav-flyout-menu,.nav-flyout:focus-within .nav-flyout-menu{display:grid}
-  .nav-flyout-menu a{padding:.6rem .75rem;color:var(--text-sub);border-radius:6px;font-size:.78rem;font-weight:650;white-space:nowrap}
+  .nav-flyout:hover .nav-flyout-arrow,.nav-flyout:focus-within .nav-flyout-arrow{transform:rotate(90deg);color:var(--gold)}
+  .nav-flyout-menu a{padding:.55rem .65rem;color:var(--text-sub);border-radius:7px;font-size:.78rem;font-weight:650;white-space:nowrap}
   .nav-flyout-menu a:hover,.nav-flyout-menu a:focus{color:var(--gold);background:var(--gold-dim);outline:none}
-  @media(max-width:768px){.nav-flyout-menu{position:static;margin:.25rem 0 .4rem 1.5rem;box-shadow:none}}
+  .nav-flyout-menu .nav-flyout-action{margin-bottom:.15rem;color:var(--gold);background:var(--gold-dim);border:1px solid var(--gold-border);font-weight:750}
   .sbc-backdrop{position:fixed;inset:0;z-index:9997;background:rgba(10,10,10,.58);backdrop-filter:blur(5px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .22s ease,visibility .22s ease}
   .sbc-backdrop.open{opacity:1;visibility:visible;pointer-events:auto}
   .sbc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:9998;display:flex;flex-direction:column;width:min(470px,100vw);color:var(--text,#161616);background:radial-gradient(circle at 100% 0,rgba(255,204,0,.16),transparent 30%),var(--bg-card,#fff);border-left:1px solid var(--gold-border,rgba(180,140,0,.3));box-shadow:-28px 0 80px rgba(0,0,0,.28);transform:translateX(105%);transition:transform .28s cubic-bezier(.22,1,.36,1)}
@@ -326,7 +382,10 @@
   .sbc-option.selected{border-color:var(--gold-border,rgba(180,140,0,.35));background:var(--gold-dim,rgba(180,140,0,.1))}
   .sbc-monogram{display:grid;place-items:center;width:36px;height:36px;flex:0 0 auto;color:var(--gold,#b99100);background:rgba(255,204,0,.1);border:1px solid var(--gold-border,rgba(180,140,0,.3));border-radius:9px;font-size:.72rem;font-weight:850}
   .sbc-copy{min-width:0;flex:1}
-  .sbc-copy strong{display:block;font-size:.83rem}
+  .sbc-name-input,.sbc-group-name{width:100%;color:var(--text,#161616);background:transparent;border:0;border-bottom:1px solid transparent;outline:none}
+  .sbc-name-input{display:block;padding:.15rem 0;font-size:.83rem;font-weight:750}
+  .sbc-group-name{padding:.2rem 0 .35rem;color:var(--text-muted,#777);font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+  .sbc-name-input:focus,.sbc-group-name:focus{border-bottom-color:var(--gold,#b99100)}
   .sbc-copy small{display:block;overflow:hidden;color:var(--text-muted,#777);font-size:.64rem;text-overflow:ellipsis;white-space:nowrap}
   .sbc-order{display:flex;gap:.25rem}
   .sbc-order button{width:27px;height:27px;padding:0;color:var(--text-muted,#777);background:transparent;border:1px solid var(--border,#e8dfc5);border-radius:6px;cursor:pointer}
@@ -375,13 +434,25 @@
   const hiddenCount = document.getElementById('sbcHiddenCount');
   const storageKey = 'sidebar-hidden:<%= user._id %>';
   const orderKey = 'sidebar-order:<%= user._id %>';
+  const renameKey = 'sidebar-names:<%= user._id %>';
   const items = [...sidebar.querySelectorAll('a.nav-item')];
+  const labels = [...sidebar.querySelectorAll('.nav-label')];
+  items.forEach(item => { item.dataset.defaultName = item.querySelector('span').textContent.trim(); });
+  labels.forEach(label => { label.dataset.defaultName = label.textContent.trim(); });
   let hidden;
   let savedOrder;
+  let savedNames;
   try { hidden = new Set(JSON.parse(localStorage.getItem(storageKey) || '[]')); }
   catch (_) { hidden = new Set(); }
   try { savedOrder = JSON.parse(localStorage.getItem(orderKey) || '[]'); }
   catch (_) { savedOrder = []; }
+  try { savedNames = JSON.parse(localStorage.getItem(renameKey) || '{"items":{},"groups":{}}'); }
+  catch (_) { savedNames = { items: {}, groups: {} }; }
+
+  const applyNames = () => {
+    items.forEach(item => { item.querySelector('span').textContent = savedNames.items?.[item.getAttribute('href')] || item.dataset.defaultName; });
+    labels.forEach(label => { label.textContent = savedNames.groups?.[label.dataset.defaultName] || label.dataset.defaultName; });
+  };
 
   const itemContainer = item => item.closest('.nav-flyout') || item;
   const applyOrder = () => {
@@ -404,6 +475,7 @@
   };
 
   const applySaved = () => {
+    applyNames();
     applyOrder();
     items.forEach(item => {
       const isHidden = hidden.has(item.getAttribute('href'));
@@ -426,10 +498,10 @@
   const groupFor = item => {
     let sibling = itemContainer(item).previousElementSibling;
     while (sibling && !sibling.classList.contains('nav-label')) sibling = sibling.previousElementSibling;
-    return sibling ? sibling.textContent.trim() : 'Menu';
+    return sibling ? sibling.dataset.defaultName : 'Menu';
   };
   const updateCounts = () => {
-    const inputs = [...options.querySelectorAll('input')];
+    const inputs = [...options.querySelectorAll('input[type="checkbox"]')];
     const shown = inputs.filter(input => input.checked).length;
     visibleCount.textContent = shown;
     hiddenCount.textContent = inputs.length - shown;
@@ -447,7 +519,12 @@
       section.className = 'sbc-group';
       const title = document.createElement('h3');
       title.className = 'sbc-group-title';
-      title.textContent = group;
+      const groupName = document.createElement('input');
+      groupName.className = 'sbc-group-name';
+      groupName.dataset.group = group;
+      groupName.value = savedNames.groups?.[group] || group;
+      groupName.setAttribute('aria-label', `Rename ${group} section`);
+      title.appendChild(groupName);
       const grid = document.createElement('div');
       grid.className = 'sbc-grid';
       groupItems.forEach(item => {
@@ -463,8 +540,12 @@
         monogram.textContent = name.split(/\s+/).map(word => word[0]).join('').slice(0, 2).toUpperCase();
         const copy = document.createElement('span');
         copy.className = 'sbc-copy';
-        const strong = document.createElement('strong');
-        strong.textContent = name;
+        const strong = document.createElement('input');
+        strong.className = 'sbc-name-input';
+        strong.dataset.path = path;
+        strong.value = savedNames.items?.[path] || name;
+        strong.setAttribute('aria-label', `Rename ${name}`);
+        strong.addEventListener('click', event => event.stopPropagation());
         const small = document.createElement('small');
         small.textContent = path;
         copy.append(strong, small);
@@ -547,11 +628,11 @@
   document.getElementById('sbcCancel').addEventListener('click', close);
   backdrop.addEventListener('click', close);
   document.getElementById('sbcShowAll').addEventListener('click', () => {
-    options.querySelectorAll('input').forEach(input => { input.checked = true; });
+    options.querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = true; });
     updateCounts();
   });
   document.getElementById('sbcHideAll').addEventListener('click', () => {
-    options.querySelectorAll('input').forEach(input => { input.checked = false; });
+    options.querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = false; });
     updateCounts();
   });
   search.addEventListener('input', () => {
@@ -562,10 +643,15 @@
     });
   });
   document.getElementById('sbcSave').addEventListener('click', () => {
-    hidden = new Set([...options.querySelectorAll('input:not(:checked)')].map(input => input.value));
+    hidden = new Set([...options.querySelectorAll('input[type="checkbox"]:not(:checked)')].map(input => input.value));
     savedOrder = [...options.querySelectorAll('.sbc-option')].map(option => option.dataset.path);
+    savedNames = {
+      items: Object.fromEntries([...options.querySelectorAll('.sbc-name-input')].map(input => [input.dataset.path, input.value.trim() || items.find(item => item.getAttribute('href') === input.dataset.path)?.dataset.defaultName])),
+      groups: Object.fromEntries([...options.querySelectorAll('.sbc-group-name')].map(input => [input.dataset.group, input.value.trim() || input.dataset.group]))
+    };
     localStorage.setItem(storageKey, JSON.stringify([...hidden]));
     localStorage.setItem(orderKey, JSON.stringify(savedOrder));
+    localStorage.setItem(renameKey, JSON.stringify(savedNames));
     applySaved();
     close();
   });

@@ -12,6 +12,11 @@
   const isCurrentPicImage = currentPic && /\.(jpe?g|png|webp)($|\?)/i.test(currentPic);
   const localSuccessList = Array.isArray(success) ? success.filter(msg => String(msg || '').trim()) : (success ? [success] : []);
   const localErrorList = Array.isArray(error) ? error.filter(msg => String(msg || '').trim() && String(msg).trim() !== '1') : (error && String(error).trim() !== '1' ? [error] : []);
+  const coursesEnabled = modules?.courses !== false;
+  const batchesEnabled = modules?.batches !== false;
+  const feesEnabled = modules?.fees !== false;
+  const teachersEnabled = modules?.teachers !== false;
+  const counsellorsEnabled = modules?.counsellors !== false;
 
   const studentFamily = profile && profile.family ? profile.family : {};
   const fatherName = user.fatherName || (studentFamily.father && studentFamily.father.name) || '';
@@ -76,18 +81,18 @@
         <span>Roll number</span>
         <strong><%= showValue(profile && profile.rollNumber) %></strong>
       </div>
-      <div class="profile-info-tile">
+      <% if (coursesEnabled) { %><div class="profile-info-tile">
         <span>Course</span>
         <strong><%= showValue(profile && profile.course && profile.course.name) %></strong>
-      </div>
-      <div class="profile-info-tile">
+      </div><% } %>
+      <% if (batchesEnabled) { %><div class="profile-info-tile">
         <span>Batch</span>
         <strong><%= showValue(profile && profile.batch && profile.batch.name) %></strong>
-      </div>
-      <div class="profile-info-tile">
+      </div><% } %>
+      <% if (feesEnabled) { %><div class="profile-info-tile">
         <span>Fees due</span>
         <strong>Rs. <%= profile ? (profile.fees_due || 0).toLocaleString('en-IN') : '0' %></strong>
-      </div>
+      </div><% } %>
     <% } else if (user.role === 'teacher') { %>
       <div class="profile-info-tile">
         <span>Teacher ID</span>
@@ -101,10 +106,10 @@
         <span>Experience</span>
         <strong><%= profile ? `${profile.experienceYears || 0} yrs` : 'Not added' %></strong>
       </div>
-      <div class="profile-info-tile">
+      <% if (coursesEnabled) { %><div class="profile-info-tile">
         <span>Courses</span>
         <strong><%= profile && profile.courses && profile.courses.length ? profile.courses.map(c => c.name).join(', ') : 'Not assigned' %></strong>
-      </div>
+      </div><% } %>
     <% } else if (user.role === 'counsellor') { %>
       <div class="profile-info-tile">
         <span>Counsellor ID</span>
@@ -298,8 +303,8 @@
         <div class="card profile-side-card">
           <div class="card-header"><div class="card-title">Assigned Team</div></div>
           <div class="profile-detail-list">
-            <div><span>Teacher</span><strong><%= profile && profile.teacher && profile.teacher.user ? profile.teacher.user.name : 'Not assigned' %></strong></div>
-            <div><span>Counsellor</span><strong><%= profile && profile.counsellor && profile.counsellor.user ? profile.counsellor.user.name : 'Not assigned' %></strong></div>
+            <% if (teachersEnabled) { %><div><span>Teacher</span><strong><%= profile && profile.teacher && profile.teacher.user ? profile.teacher.user.name : 'Not assigned' %></strong></div><% } %>
+            <% if (counsellorsEnabled) { %><div><span>Counsellor</span><strong><%= profile && profile.counsellor && profile.counsellor.user ? profile.counsellor.user.name : 'Not assigned' %></strong></div><% } %>
             <div><span>Enrollment</span><strong><%= formatDate(profile && profile.enrollmentDate) %></strong></div>
           </div>
         </div>

@@ -3,8 +3,15 @@
   title = 'My Performance Reports';
   subtitle = 'Overview of your pipeline conversion speed, lead metrics, and active cohort health';
   page = 'reports';
+  const leadsEnabled = modules?.leads !== false;
+  const studentsEnabled = modules?.students !== false;
+  const batchesEnabled = modules?.batches !== false;
+  const attendanceEnabled = modules?.attendance !== false;
+  const feesEnabled = modules?.fees !== false;
+  const assignmentsEnabled = modules?.assignments !== false;
 %>
 
+<% if (leadsEnabled) { %>
 <div class="stats-grid" style="margin-bottom: 2rem;">
   <div class="stat-card gold">
     <div class="stat-label">Total Leads Assigned</div>
@@ -24,7 +31,9 @@
     <div class="stat-sub">From creation to enrollment</div>
   </div>
 </div>
+<% } %>
 
+<% if (studentsEnabled) { %>
 <!-- Health Cohort Grid -->
 <div class="card">
   <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px;">
@@ -45,22 +54,22 @@
         <thead>
           <tr>
             <th>Student Name</th>
-            <th>Batch</th>
-            <th class="text-right">Attendance Rate</th>
-            <th class="text-center">Fee Status</th>
-            <th class="text-right">Outstanding Fee</th>
-            <th class="text-right">Assignment Submission Rate</th>
+            <% if (batchesEnabled) { %><th>Batch</th><% } %>
+            <% if (attendanceEnabled) { %><th class="text-right">Attendance Rate</th><% } %>
+            <% if (feesEnabled) { %><th class="text-center">Fee Status</th>
+            <th class="text-right">Outstanding Fee</th><% } %>
+            <% if (assignmentsEnabled) { %><th class="text-right">Assignment Submission Rate</th><% } %>
           </tr>
         </thead>
         <tbody>
           <% studentHealthGrid.forEach(item => { %>
-            <tr style="border-left: 3px solid <%= item.attendancePct < 75 || item.feeStatus === 'overdue' ? 'var(--red, #ef4444)' : 'var(--green, #10b981)' %>;">
+            <tr style="border-left: 3px solid <%= (attendanceEnabled && item.attendancePct < 75) || (feesEnabled && item.feeStatus === 'overdue') ? 'var(--red, #ef4444)' : 'var(--green, #10b981)' %>;">
               <td><strong><%= item.student.name %></strong></td>
-              <td class="td-mono"><%= item.student.batch && item.student.batch.name ? item.student.batch.name : 'Unassigned' %></td>
-              <td class="mono text-right <%= item.attendancePct < 75 ? 'text-red fw-700' : '' %>">
+              <% if (batchesEnabled) { %><td class="td-mono"><%= item.student.batch && item.student.batch.name ? item.student.batch.name : 'Unassigned' %></td><% } %>
+              <% if (attendanceEnabled) { %><td class="mono text-right <%= item.attendancePct < 75 ? 'text-red fw-700' : '' %>">
                 <%= item.attendancePct %>%
-              </td>
-              <td class="text-center">
+              </td><% } %>
+              <% if (feesEnabled) { %><td class="text-center">
                 <% 
                   let badgeClass = 'badge-green';
                   if (item.feeStatus === 'partial') badgeClass = 'badge-gold';
@@ -70,10 +79,10 @@
               </td>
               <td class="mono text-right">
                 ₹<%= item.outstanding.toLocaleString('en-IN') %>
-              </td>
-              <td class="mono text-right <%= item.submissionRate < 75 ? 'text-orange' : '' %>">
+              </td><% } %>
+              <% if (assignmentsEnabled) { %><td class="mono text-right <%= item.submissionRate < 75 ? 'text-orange' : '' %>">
                 <%= item.submissionRate %>%
-              </td>
+              </td><% } %>
             </tr>
           <% }) %>
         </tbody>
@@ -81,3 +90,4 @@
     </div>
   <% } %>
 </div>
+<% } %>

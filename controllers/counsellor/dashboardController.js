@@ -14,6 +14,9 @@ const { visibleToCounsellor } = require('../../utils/leadOwnership');
  */
 exports.getDashboard = async (req, res) => {
   try {
+    const modules = res.locals.modules || {};
+    const leadsEnabled = modules.leads !== false;
+    const studentsEnabled = modules.students !== false;
     const counsellorId = req.user.counsellorProfileId;
     const visibleLeads = visibleToCounsellor(counsellorId);
     const userId = req.user._id;
@@ -40,46 +43,46 @@ exports.getDashboard = async (req, res) => {
       messages,
       activeAnnouncements
     ] = await Promise.all([
-      Lead.find({ ...visibleLeads, createdAt: { $gte: threeDaysAgo } })
+      leadsEnabled ? Lead.find({ ...visibleLeads, createdAt: { $gte: threeDaysAgo } })
         .populate('interestedCourse', 'name')
-        .sort({ createdAt: -1 }),
-      Lead.find({
+        .sort({ createdAt: -1 }) : [],
+      leadsEnabled ? Lead.find({
         ...visibleLeads,
         nextFollowUpAt: { $lt: tomorrow },
         status: { $nin: ['admission_completed', 'lost'] }
-      }).populate('interestedCourse', 'name').sort({ nextFollowUpAt: 1 }),
-      Lead.find({
+      }).populate('interestedCourse', 'name').sort({ nextFollowUpAt: 1 }) : [],
+      leadsEnabled ? Lead.find({
         ...visibleLeads,
         nextFollowUpAt: { $lt: today },
         status: { $nin: ['admission_completed', 'lost'] }
-      }).populate('interestedCourse', 'name').sort({ nextFollowUpAt: 1 }),
-      Lead.find({
+      }).populate('interestedCourse', 'name').sort({ nextFollowUpAt: 1 }) : [],
+      leadsEnabled ? Lead.find({
         ...visibleLeads,
         nextFollowUpAt: { $gte: today, $lt: tomorrow },
         status: { $nin: ['admission_completed', 'lost'] }
-      }).populate('interestedCourse', 'name').sort({ nextFollowUpAt: 1 }),
-      Student.find({ counsellor: counsellorId }).populate('user'),
-      Lead.aggregate([
+      }).populate('interestedCourse', 'name').sort({ nextFollowUpAt: 1 }) : [],
+      studentsEnabled ? Student.find({ counsellor: counsellorId }).populate('user') : [],
+      leadsEnabled ? Lead.aggregate([
         { $match: visibleLeads },
         { $group: { _id: '$status', count: { $sum: 1 } } }
-      ]),
-      Lead.aggregate([
+      ]) : [],
+      leadsEnabled ? Lead.aggregate([
         { $match: visibleLeads },
         { $group: { _id: '$source', count: { $sum: 1 } } }
-      ]),
-      Lead.countDocuments(visibleLeads),
-      Lead.countDocuments({
+      ]) : [],
+      leadsEnabled ? Lead.countDocuments(visibleLeads) : 0,
+      leadsEnabled ? Lead.countDocuments({
         ...visibleLeads,
         createdAt: { $gte: today, $lt: tomorrow }
-      }),
-      Lead.countDocuments({ ...visibleLeads, status: 'admission_completed' }),
-      Lead.countDocuments({ ...visibleLeads, status: 'lost' }),
+      }) : 0,
+      leadsEnabled ? Lead.countDocuments({ ...visibleLeads, status: 'admission_completed' }) : 0,
+      leadsEnabled ? Lead.countDocuments({ ...visibleLeads, status: 'lost' }) : 0,
       User.findOne({ role: 'admin' }),
       Message.find({ recipient: userId })
         .populate('sender', 'name role')
         .sort({ createdAt: -1 })
         .limit(5),
-      Announcement.find({
+      modules.announcements === false ? [] : Announcement.find({
         isActive: true,
         $or: [
           { audienceType: 'all' },
@@ -101,7 +104,7 @@ exports.getDashboard = async (req, res) => {
 
     // Compute fee callbacks (overdue payments) in parallel
     const studentIds = enrolledStudents.map(s => s._id);
-    const studentFees = studentIds.length > 0 ? await Fee.find({ student: { $in: studentIds } }).populate('student') : [];
+    const studentFees = modules.fees !== false && studentIds.length > 0 ? await Fee.find({ student: { $in: studentIds } }).populate('student') : [];
     const feeCallbacks = studentFees.filter(f => {
       const net = (f.totalAmount || 0) - (f.discount || 0);
       const due = Math.max(0, net - (f.paidAmount || 0));
@@ -113,7 +116,7 @@ exports.getDashboard = async (req, res) => {
     // To be accurate, we do a full query for all leads, or reuse what is needed. We already count total.
     // Let's load the full minimal list of leads if we want to run computeSourceStats on all leads.
     // Or we can do a projection to save memory.
-    const allLeadsForAnalytics = await Lead.find(visibleLeads).select('status source interestedCourse createdAt followUpHistory');
+    const allLeadsForAnalytics = leadsEnabled ? await Lead.find(visibleLeads).select('status source interestedCourse createdAt followUpHistory') : [];
     const sourceStatsMap = computeSourceStats(allLeadsForAnalytics);
 
     const byStatus = { new: 0, contacted: 0, mentorship_scheduled: 0, mentorship_attended: 0, follow_up: 0, joining_interested: 0, admission_completed: 0, lost: 0 };

@@ -19,6 +19,7 @@ const { escapeRegex } = require('../../utils/sanitize');
 const { calculateStudentsAttendance } = require('../../utils/attendanceHelper');
 const { getOpenLeadStatusKeys } = require('../../utils/leadStatusOptions');
 const logger = require('../../utils/logger');
+const { buildTallyMastersXml, buildTallyXml } = require('../../utils/tallyExport');
 
 /**
  * Helper to convert array of objects to CSV formatted string.
@@ -46,11 +47,31 @@ function convertToCSV(data) {
 exports.getReports = async (req, res) => {
   try {
     const {
-      tab = 'overview',
+      tab: requestedTab = 'overview',
       batch = 'all',
       course = 'all',
       export: exportType
     } = req.query;
+    const attendanceEnabled = res.locals.modules?.attendance !== false;
+    const teacherEnabled = res.locals.modules?.teachers !== false;
+    const counsellorEnabled = res.locals.modules?.counsellors !== false;
+    const studentsEnabled = res.locals.modules?.students !== false;
+    const feesEnabled = res.locals.modules?.fees !== false;
+    const leadsEnabled = res.locals.modules?.leads !== false;
+    const batchesEnabled = res.locals.modules?.batches !== false;
+    const coursesEnabled = res.locals.modules?.courses !== false;
+    const assignmentsEnabled = res.locals.modules?.assignments !== false;
+    const progressEnabled = res.locals.modules?.progress !== false;
+    const schedulesEnabled = res.locals.modules?.schedules !== false;
+    const curriculumEnabled = res.locals.modules?.curriculum !== false;
+    const academicEnabled = studentsEnabled && (attendanceEnabled || assignmentsEnabled || progressEnabled || feesEnabled);
+    const tab = (requestedTab === 'financial' && !feesEnabled) ||
+      (requestedTab === 'enrollment' && !leadsEnabled) ||
+      (requestedTab === 'attendance' && (!attendanceEnabled || !studentsEnabled)) ||
+      (requestedTab === 'academic' && !academicEnabled) ||
+      (requestedTab === 'staff' && !teacherEnabled && !counsellorEnabled)
+      ? 'overview'
+      : requestedTab;
 
     let { startDate, endDate } = req.query;
 
@@ -75,13 +96,13 @@ exports.getReports = async (req, res) => {
 
     // 1. Get Distinct Filter Lists
     const [distinctBatchIds, distinctCourseIds] = await Promise.all([
-      Student.distinct('batch', { batch: { $ne: null } }),
-      Student.distinct('course', { course: { $ne: null } })
+      studentsEnabled && batchesEnabled ? Student.distinct('batch', { batch: { $ne: null } }) : [],
+      studentsEnabled && coursesEnabled ? Student.distinct('course', { course: { $ne: null } }) : []
     ]);
 
     const [batches, courses] = await Promise.all([
-      Batch.find({ _id: { $in: distinctBatchIds } }).select('name').lean(),
-      Course.find({ _id: { $in: distinctCourseIds } }).select('name').lean()
+      batchesEnabled ? Batch.find({ _id: { $in: distinctBatchIds } }).select('name').lean() : [],
+      coursesEnabled ? Course.find({ _id: { $in: distinctCourseIds } }).select('name').lean() : []
     ]);
 
     // Build DB query filters
@@ -90,10 +111,10 @@ exports.getReports = async (req, res) => {
     if (course !== 'all') studentQuery.course = course;
 
     // Fetch filtered students
-    const dbStudents = await Student.find(studentQuery)
+    const dbStudents = studentsEnabled ? await Student.find(studentQuery)
       .populate('user', 'name status')
       .populate('batch', 'name')
-      .populate('course', 'name code');
+      .populate('course', 'name code') : [];
     const studentIds = dbStudents.map(s => s._id);
 
     // Active students count
@@ -106,7 +127,7 @@ exports.getReports = async (req, res) => {
     }).length;
 
     // Collections & Outstandings calculations
-    const fees = await Fee.find({ student: { $in: studentIds } });
+    const fees = feesEnabled ? await Fee.find({ student: { $in: studentIds } }) : [];
 
 
     let currentPeriodCollection = 0;
@@ -171,7 +192,7 @@ exports.getReports = async (req, res) => {
     // Attendance
     const attFilter = { student: { $in: studentIds } };
     attFilter.date = { $gte: startDate, $lte: endDate };
-    const attendanceRecords = await Attendance.find(attFilter);
+    const attendanceRecords = attendanceEnabled && studentsEnabled ? await Attendance.find(attFilter) : [];
     let avgAtt = 0;
     if (attendanceRecords.length > 0) {
       const present = attendanceRecords.filter(a => a.status === 'present' || a.status === 'late').length;
@@ -191,12 +212,13 @@ exports.getReports = async (req, res) => {
     };
     if (course !== 'all') convertedFilter.interestedCourse = course;
     const [leads, convertedInPeriod] = await Promise.all([
-      Lead.find(leadFilter),
-      Lead.countDocuments(convertedFilter)
+      leadsEnabled ? Lead.find(leadFilter) : [],
+      leadsEnabled ? Lead.countDocuments(convertedFilter) : 0
     ]);
-    const openStatuses = await getOpenLeadStatusKeys();
+    const openStatuses = leadsEnabled ? await getOpenLeadStatusKeys() : [];
     const openLeadsCount = leads.filter(l => openStatuses.includes(l.status)).length;
-    const convertedCount = leads.filter(l => l.status === 'admission_completed').length;
+    const isConvertedLead = lead => lead.status === 'admission_completed' || Boolean(lead.convertedStudent);
+    const convertedCount = leads.filter(isConvertedLead).length;
     const totalLeads = leads.length;
     const cRate = totalLeads > 0 ? Math.round((convertedCount / totalLeads) * 100) : 0;
 
@@ -237,7 +259,11 @@ exports.getReports = async (req, res) => {
         trend: 'Converted in selected date range',
         isPositive: true
       },
-      keyInsight: `Collection efficiency is ${totalBilled > 0 ? Math.round((totalCollected / totalBilled) * 100) : 0}% under the selected filters. Open leads volume stands at ${openLeadsCount} with a conversion rate of ${cRate}%. Average attendance is ${avgAtt}%.`
+      keyInsight: [
+        feesEnabled ? `Collection efficiency is ${totalBilled > 0 ? Math.round((totalCollected / totalBilled) * 100) : 0}% under the selected filters.` : '',
+        leadsEnabled ? `Open leads volume stands at ${openLeadsCount} with a conversion rate of ${cRate}%.` : '',
+        attendanceEnabled && studentsEnabled ? `Average attendance is ${avgAtt}%.` : ''
+      ].filter(Boolean).join(' ') || 'Enable operational modules to populate executive insights.'
     };
 
     // Populate chart datasets dynamically
@@ -315,7 +341,10 @@ exports.getReports = async (req, res) => {
       Leads: leads.length,
       Contacted: leads.filter(l => ['contacted', 'mentorship_scheduled', 'mentorship_attended', 'follow_up', 'joining_interested', 'admission_completed'].includes(l.status)).length,
       Interested: leads.filter(l => ['joining_interested', 'admission_completed'].includes(l.status)).length,
-      Enrolled: leads.filter(l => l.status === 'admission_completed').length
+      Converted: convertedCount,
+      Open: openLeadsCount,
+      Lost: leads.filter(l => l.status === 'lost').length,
+      ConversionRate: cRate
     };
 
     // 5. Lead Channels (Sources) distribution count
@@ -369,10 +398,10 @@ exports.getReports = async (req, res) => {
     if (batch !== 'all') {
       assignmentFilter.batch = batch;
     } else if (course !== 'all') {
-      const courseBatches = await Batch.find({ course });
+      const courseBatches = assignmentsEnabled ? await Batch.find({ course }) : [];
       assignmentFilter.batch = { $in: courseBatches.map(b => b._id) };
     }
-    const weeklyAssignments = await Assignment.find(assignmentFilter);
+    const weeklyAssignments = assignmentsEnabled ? await Assignment.find(assignmentFilter) : [];
 
     for (let i = 3; i >= 0; i--) {
       const startOfWeek = new Date(now.getTime() - (i + 1) * 7 * 24 * 60 * 60 * 1000);
@@ -470,12 +499,12 @@ exports.getReports = async (req, res) => {
     // ─── TAB: OVERVIEW ──────────────────────────────────────────────
     if (tab === 'overview') {
       const [allStudents, allFees, allLeads] = await Promise.all([
-        Student.find(studentQuery)
+        studentsEnabled ? Student.find(studentQuery)
           .populate('user', 'name')
           .populate('course', 'name')
-          .populate('batch', 'name').select('name course batch enrollmentDate'),
-        Fee.find().populate('student'),
-        Lead.find().select('status source course createdAt'),
+          .populate('batch', 'name').select('name course batch enrollmentDate') : [],
+        feesEnabled ? Fee.find().populate('student') : [],
+        leadsEnabled ? Lead.find().select('status source course createdAt') : [],
       ]);
 
       renderData.students = allStudents;
@@ -562,6 +591,26 @@ exports.getReports = async (req, res) => {
       renderData.revenueData = Object.values(monthlyStats).sort((a, b) => a.month.localeCompare(b.month));
       renderData.expensesList = expensesList;
 
+      if (exportType === 'tally' || exportType === 'tally-masters') {
+        const students = new Map(dbStudents.map(student => [String(student._id), {
+          name: student.user?.name || '',
+          course: student.course?.name || ''
+        }]));
+        const tallyXml = exportType === 'tally-masters' ? buildTallyMastersXml({
+          fees,
+          expenses: expensesList
+        }) : buildTallyXml({
+          fees,
+          expenses: expensesList,
+          students,
+          start: startOfPeriod,
+          end: endOfPeriod
+        });
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=${exportType === 'tally-masters' ? 'tally_ledger_setup' : `tally_vouchers_${startDate}_to_${endDate}`}.xml`);
+        return res.status(200).send(tallyXml);
+      }
+
       // Calculate Outstanding Aging Buckets
       let aging = {
         current: 0,
@@ -618,7 +667,7 @@ exports.getReports = async (req, res) => {
 
     // ─── TAB: ENROLLMENT ────────────────────────────────────────────
     else if (tab === 'enrollment') {
-      const stats = await Lead.aggregate([
+      const stats = counsellorEnabled && leadsEnabled ? await Lead.aggregate([
         {
           $group: {
             _id: '$assignedTo',
@@ -629,9 +678,9 @@ exports.getReports = async (req, res) => {
             lost: { $sum: { $cond: [{ $eq: ['$status', 'lost'] }, 1, 0] } }
           }
         }
-      ]);
+      ]) : [];
 
-      const counsellors = await User.find({ role: 'counsellor' });
+      const counsellors = counsellorEnabled && leadsEnabled ? await User.find({ role: 'counsellor' }) : [];
       for (const c of counsellors) {
         const leadStat = stats.find(s => String(s._id) === String(c._id)) || { total: 0, converted: 0, contacted: 0, interested: 0, lost: 0 };
         const leads = await Lead.find({ assignedTo: c._id });
@@ -816,10 +865,10 @@ exports.getReports = async (req, res) => {
 
         const studentIds = students.map(s => s._id);
         const [attendanceList, assignments, progressList, fees] = await Promise.all([
-          Attendance.find({ student: { $in: studentIds }, date: { $gte: startDate, $lte: endDate } }),
-          Assignment.find({ batch: b, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }),
-          Progress.find({ student: { $in: studentIds }, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }),
-          Fee.find({ student: { $in: studentIds } })
+          attendanceEnabled ? Attendance.find({ student: { $in: studentIds }, date: { $gte: startDate, $lte: endDate } }) : [],
+          assignmentsEnabled ? Assignment.find({ batch: b, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }) : [],
+          progressEnabled ? Progress.find({ student: { $in: studentIds }, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }) : [],
+          feesEnabled ? Fee.find({ student: { $in: studentIds } }) : []
         ]);
 
         let avgAttendance = 0;
@@ -849,7 +898,12 @@ exports.getReports = async (req, res) => {
         });
         const collectionRate = totalBilled > 0 ? Math.round((totalCollected / totalBilled) * 100) : 100;
 
-        const healthScore = Math.round((avgAttendance + submissionRate + collectionRate) / 3);
+        const healthInputs = [
+          attendanceEnabled ? avgAttendance : null,
+          assignmentsEnabled ? submissionRate : null,
+          feesEnabled ? collectionRate : null
+        ].filter(value => value !== null);
+        const healthScore = healthInputs.length ? Math.round(healthInputs.reduce((sum, value) => sum + value, 0) / healthInputs.length) : 0;
 
         renderData.batchHealthScores.push({
           batchName: batchLabel,
@@ -880,13 +934,13 @@ exports.getReports = async (req, res) => {
 
       // Fetch fees, progress, and all batch assignments in parallel
       const [feesList, progressList, allAssignments] = await Promise.all([
-        Fee.find({ student: { $in: studentIds } }),
-        Progress.find({ student: { $in: studentIds } }),
-        Assignment.find({ batch: { $in: activeBatchIds } })
+        feesEnabled ? Fee.find({ student: { $in: studentIds } }) : [],
+        progressEnabled ? Progress.find({ student: { $in: studentIds } }) : [],
+        assignmentsEnabled ? Assignment.find({ batch: { $in: activeBatchIds } }) : []
       ]);
 
       // Optimize Attendance calculation via aggregate join
-      const attendanceStats = await Attendance.aggregate([
+      const attendanceStats = attendanceEnabled ? await Attendance.aggregate([
         { $match: { student: { $in: studentIds } } },
         {
           $group: {
@@ -899,7 +953,7 @@ exports.getReports = async (req, res) => {
             }
           }
         }
-      ]);
+      ]) : [];
 
       const attendanceMap = {};
       attendanceStats.forEach(stat => {
@@ -952,13 +1006,13 @@ exports.getReports = async (req, res) => {
         }, 0);
 
         let riskReasons = [];
-        if (att.total > 0 && s.attendancePct < 75) {
+        if (attendanceEnabled && att.total > 0 && s.attendancePct < 75) {
           riskReasons.push(`Low Attendance (${s.attendancePct}%)`);
         }
-        if (isFeeOverdue && overdueAmount > 0) {
+        if (feesEnabled && isFeeOverdue && overdueAmount > 0) {
           riskReasons.push(`Overdue Fees (₹${overdueAmount.toLocaleString('en-IN')})`);
         }
-        if (pendingAssignmentsCount >= 3) {
+        if (assignmentsEnabled && pendingAssignmentsCount >= 3) {
           riskReasons.push(`${pendingAssignmentsCount} unsubmitted/pending assignments`);
         }
 
@@ -978,7 +1032,7 @@ exports.getReports = async (req, res) => {
 
     // ─── TAB: STAFF ─────────────────────────────────────────────────
     else if (tab === 'staff') {
-      const teachers = await User.find({ role: 'teacher', isActive: true });
+      const teachers = teacherEnabled ? await User.find({ role: 'teacher', isActive: true }) : [];
       for (const t of teachers) {
         const teacherDoc = await Teacher.findOne({ user: t._id });
         if (!teacherDoc) {
@@ -1001,14 +1055,14 @@ exports.getReports = async (req, res) => {
           attendanceSessions,
           curriculums
         ] = await Promise.all([
-          Schedule.countDocuments({ teacher: teacherDoc._id, status: 'completed', date: { $gte: startDate, $lte: endDate } }),
-          Assignment.countDocuments({ teacher: teacherDoc._id, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }),
-          Assignment.find({ teacher: teacherDoc._id }),
-          Attendance.aggregate([
+          schedulesEnabled ? Schedule.countDocuments({ teacher: teacherDoc._id, status: 'completed', date: { $gte: startDate, $lte: endDate } }) : 0,
+          assignmentsEnabled ? Assignment.countDocuments({ teacher: teacherDoc._id, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }) : 0,
+          assignmentsEnabled ? Assignment.find({ teacher: teacherDoc._id }) : [],
+          attendanceEnabled ? Attendance.aggregate([
             { $match: { teacher: teacherDoc._id, date: { $gte: startDate, $lte: endDate } } },
             { $group: { _id: { date: '$date', batch: '$batch' } } }
-          ]),
-          Curriculum.find({ teacher: teacherDoc._id }).populate('course')
+          ]) : [],
+          curriculumEnabled ? Curriculum.find({ teacher: teacherDoc._id }).populate('course') : []
         ]);
 
         let gradedCount = 0;
@@ -1037,7 +1091,7 @@ exports.getReports = async (req, res) => {
       }
 
       // Also fetch counsellor performance metrics for toggle inside the staff tab
-      const stats = await Lead.aggregate([
+      const stats = counsellorEnabled && leadsEnabled ? await Lead.aggregate([
         {
           $group: {
             _id: '$assignedTo',
@@ -1048,9 +1102,9 @@ exports.getReports = async (req, res) => {
             lost: { $sum: { $cond: [{ $eq: ['$status', 'lost'] }, 1, 0] } }
           }
         }
-      ]);
+      ]) : [];
 
-      const counsellors = await User.find({ role: 'counsellor' });
+      const counsellors = counsellorEnabled && leadsEnabled ? await User.find({ role: 'counsellor' }) : [];
       for (const c of counsellors) {
         const leadStat = stats.find(s => String(s._id) === String(c._id)) || { total: 0, converted: 0, contacted: 0, interested: 0, lost: 0 };
         const leads = await Lead.find({ assignedTo: c._id });
@@ -1085,13 +1139,13 @@ exports.getReports = async (req, res) => {
     if (exportType === 'csv') {
       if (tab === 'all') {
         const [expensesList, customTargets, allAssignments, teachersList] = await Promise.all([
-          Expense.find({ month: { $gte: startDate.slice(0, 7), $lte: endDate.slice(0, 7) } }).sort({ date: -1 }),
-          RevenueTarget.find({ month: { $gte: startDate.slice(0, 7), $lte: endDate.slice(0, 7) } }),
-          Assignment.find({}),
-          User.find({ role: 'teacher', isActive: true })
+          feesEnabled ? Expense.find({ month: { $gte: startDate.slice(0, 7), $lte: endDate.slice(0, 7) } }).sort({ date: -1 }) : [],
+          feesEnabled ? RevenueTarget.find({ month: { $gte: startDate.slice(0, 7), $lte: endDate.slice(0, 7) } }) : [],
+          assignmentsEnabled ? Assignment.find({}) : [],
+          teacherEnabled ? User.find({ role: 'teacher', isActive: true }) : []
         ]);
 
-        const activeBatches = batch === 'all' ? batches.map(b => b._id.toString()) : [batch];
+        const activeBatches = studentsEnabled && batchesEnabled ? (batch === 'all' ? batches.map(b => b._id.toString()) : [batch]) : [];
         const batchHealthScores = [];
 
         for (const b of activeBatches) {
@@ -1104,10 +1158,10 @@ exports.getReports = async (req, res) => {
           const localStudentIds = students.map(s => s._id);
 
           const [att, assign, progress, localFees] = await Promise.all([
-            Attendance.find({ student: { $in: localStudentIds }, date: { $gte: startDate, $lte: endDate } }),
-            Assignment.find({ batch: b, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }),
-            Progress.find({ student: { $in: localStudentIds }, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }),
-            Fee.find({ student: { $in: localStudentIds } })
+            attendanceEnabled ? Attendance.find({ student: { $in: localStudentIds }, date: { $gte: startDate, $lte: endDate } }) : [],
+            assignmentsEnabled ? Assignment.find({ batch: b, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }) : [],
+            progressEnabled ? Progress.find({ student: { $in: localStudentIds }, createdAt: { $gte: startOfPeriod, $lte: endOfPeriod } }) : [],
+            feesEnabled ? Fee.find({ student: { $in: localStudentIds } }) : []
           ]);
 
           let avgAttendance = 0;
@@ -1162,19 +1216,19 @@ exports.getReports = async (req, res) => {
         const activeBatchIds = [...new Set(activeStudents.map(s => s.batch?._id || s.batch).filter(Boolean))];
 
         const [feesList, progressList, allAssignmentsForBatch] = await Promise.all([
-          Fee.find({ student: { $in: activeStudentIds } }),
-          Progress.find({ student: { $in: activeStudentIds } }),
-          Assignment.find({ batch: { $in: activeBatchIds } })
+          feesEnabled ? Fee.find({ student: { $in: activeStudentIds } }) : [],
+          progressEnabled ? Progress.find({ student: { $in: activeStudentIds } }) : [],
+          assignmentsEnabled ? Assignment.find({ batch: { $in: activeBatchIds } }) : []
         ]);
 
-        const attendanceAggr = await Attendance.aggregate([
+        const attendanceAggr = attendanceEnabled ? await Attendance.aggregate([
           { $match: { student: { $in: activeStudentIds } } },
           { $group: {
               _id: '$student',
               total: { $sum: 1 },
               present: { $sum: { $cond: [{ $in: ['$status', ['present', 'late']] }, 1, 0] } }
           }}
-        ]);
+        ]) : [];
 
         const attendanceMap = {};
         attendanceAggr.forEach(a => {
@@ -1390,10 +1444,12 @@ exports.getReports = async (req, res) => {
         fileContent += "\n";
 
         fileContent += "=== TEACHER WORKLOAD & PRODUCTIVITY ===\n";
-        fileContent += "Teacher Name,Classes Taught,Assignments Created,Submissions Graded,Attendance Sessions Marked,Curriculum Completion %\n";
-        teacherLoad.forEach(tl => {
-          fileContent += `"${tl.teacher.name.replace(/"/g, '""')}",${tl.classesConducted},${tl.assignmentsCreated},${tl.submissionsGraded},${tl.attendanceSessionsMarked},${tl.curriculumCompletion}%\n`;
-        });
+        if (teacherEnabled) {
+          fileContent += "Teacher Name,Classes Taught,Assignments Created,Submissions Graded,Attendance Sessions Marked,Curriculum Completion %\n";
+          teacherLoad.forEach(tl => {
+            fileContent += `"${tl.teacher.name.replace(/"/g, '""')}",${tl.classesConducted},${tl.assignmentsCreated},${tl.submissionsGraded},${tl.attendanceSessionsMarked},${tl.curriculumCompletion}%\n`;
+          });
+        }
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename=academy_full_report_${new Date().toISOString().slice(0, 10)}.csv`);

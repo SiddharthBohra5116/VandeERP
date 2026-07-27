@@ -338,6 +338,7 @@ exports.postCreateSchedule = async (req, res) => {
       status,
       note
     } = req.body;
+    const assignedTeacher = res.locals.modules?.teachers === false ? null : (teacher || null);
 
     const { checkScheduleClash } = require('../../utils/clashDetector');
     const batchObj = await Batch.findById(batch);
@@ -351,7 +352,7 @@ exports.postCreateSchedule = async (req, res) => {
       startTime,
       endTime,
       classroom,
-      teacher,
+      assignedTeacher,
       null,
       batch
     );
@@ -365,7 +366,7 @@ exports.postCreateSchedule = async (req, res) => {
     const schedule = await Schedule.create({
       course,
       batch,
-      teacher,
+      teacher: assignedTeacher,
       classroom,
       date,
       startTime,
@@ -393,7 +394,7 @@ exports.postCreateSchedule = async (req, res) => {
     await notifyBatchStudents({
       adminId: req.user._id,
       batchId: batch,
-      teacherId: teacher,
+      teacherId: assignedTeacher,
       content: notificationContent
     });
 
@@ -491,6 +492,7 @@ exports.postEditSchedule = async (req, res) => {
       status,
       note
     } = req.body;
+    const assignedTeacher = res.locals.modules?.teachers === false ? null : (teacher || null);
 
     const { checkScheduleClash } = require('../../utils/clashDetector');
     const batchObj = await Batch.findById(batch);
@@ -504,7 +506,7 @@ exports.postEditSchedule = async (req, res) => {
       startTime,
       endTime,
       classroom,
-      teacher,
+      assignedTeacher,
       req.params.id,
       batch
     );
@@ -518,7 +520,7 @@ exports.postEditSchedule = async (req, res) => {
     await Schedule.findByIdAndUpdate(req.params.id, {
       course,
       batch,
-      teacher,
+      ...(res.locals.modules?.teachers === false ? {} : { teacher: assignedTeacher }),
       classroom,
       date,
       startTime,
@@ -546,7 +548,7 @@ exports.postEditSchedule = async (req, res) => {
     await notifyBatchStudents({
       adminId: req.user._id,
       batchId: batch,
-      teacherId: teacher,
+      teacherId: assignedTeacher,
       content: notificationContent
     });
 
@@ -640,10 +642,10 @@ exports.postSaveTimetable = async (req, res) => {
       const ends = Array.isArray(endTime) ? endTime : [endTime];
 
       for (let i = 0; i < days.length; i++) {
-        if (days[i] && teachers[i] && classrooms[i] && starts[i] && ends[i]) {
+        if (days[i] && classrooms[i] && starts[i] && ends[i] && (res.locals.modules?.teachers === false || teachers[i])) {
           slots.push({
             dayOfWeek: days[i],
-            teacher: teachers[i],
+            teacher: res.locals.modules?.teachers === false ? null : teachers[i],
             classroom: classrooms[i],
             startTime: starts[i],
             endTime: ends[i],

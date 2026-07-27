@@ -1,8 +1,21 @@
 <%
   layout = 'main';
   title = 'Reports & Analytics';
-  subtitle = 'Executive insights and operational analytics for cohorts, collections, conversion pipelines, and attendance';
+  subtitle = 'Executive insights for cohorts, collections, conversion pipelines, and academy operations';
   page = 'reports';
+  const attendanceEnabled = typeof modules === 'undefined' || modules.attendance !== false;
+  const teacherEnabled = typeof modules === 'undefined' || modules.teachers !== false;
+  const counsellorEnabled = typeof modules === 'undefined' || modules.counsellors !== false;
+  const studentsEnabled = typeof modules === 'undefined' || modules.students !== false;
+  const feesEnabled = typeof modules === 'undefined' || modules.fees !== false;
+  const leadsEnabled = typeof modules === 'undefined' || modules.leads !== false;
+  const batchesEnabled = typeof modules === 'undefined' || modules.batches !== false;
+  const coursesEnabled = typeof modules === 'undefined' || modules.courses !== false;
+  const assignmentsEnabled = typeof modules === 'undefined' || modules.assignments !== false;
+  const progressEnabled = typeof modules === 'undefined' || modules.progress !== false;
+  const schedulesEnabled = typeof modules === 'undefined' || modules.schedules !== false;
+  const curriculumEnabled = typeof modules === 'undefined' || modules.curriculum !== false;
+  const academicEnabled = studentsEnabled && (attendanceEnabled || assignmentsEnabled || progressEnabled || feesEnabled);
 %>
 
 <script>
@@ -212,7 +225,7 @@
     <input type="date" name="endDate" class="form-control" value="<%= endDate %>" onchange="this.form.submit()">
   </div>
 
-  <div class="form-group">
+  <% if (batchesEnabled && studentsEnabled) { %><div class="form-group">
     <label class="form-label">Batch</label>
     <select name="batch" class="form-control" onchange="this.form.submit()">
       <option value="all" <%= batch === 'all' ? 'selected' : '' %>>All Batches</option>
@@ -220,9 +233,9 @@
         <option value="<%= b._id.toString() %>" <%= String(batch) === String(b._id) ? 'selected' : '' %>><%= b.name %></option>
       <% }) %>
     </select>
-  </div>
+  </div><% } %>
 
-  <div class="form-group">
+  <% if (coursesEnabled) { %><div class="form-group">
     <label class="form-label">Course</label>
     <select name="course" class="form-control" onchange="this.form.submit()">
       <option value="all" <%= course === 'all' ? 'selected' : '' %>>All Courses</option>
@@ -230,9 +243,13 @@
         <option value="<%= c._id.toString() %>" <%= String(course) === String(c._id) ? 'selected' : '' %>><%= c.name %></option>
       <% }) %>
     </select>
-  </div>
+  </div><% } %>
 
   <div style="margin-left: auto; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+    <% if (tab === 'financial' && feesEnabled) { %>
+      <a href="/admin/reports?tab=financial&export=tally-masters&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="btn btn-sm btn-ghost" style="height: 38px; display: inline-flex; align-items: center; border-radius: 8px;">1. Tally setup</a>
+      <a href="/admin/reports?tab=financial&export=tally&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="btn btn-sm btn-primary" style="height: 38px; display: inline-flex; align-items: center; border-radius: 8px; font-weight: 600;">2. Download vouchers</a>
+    <% } %>
     <a href="/admin/reports?tab=<%= tab %>&export=csv&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="btn btn-sm btn-ghost" style="color: var(--gold); border: 1px solid var(--gold-border); height: 38px; display: inline-flex; align-items: center; border-radius: 8px;">📥 Export <%= tab.charAt(0).toUpperCase() + tab.slice(1) %> CSV</a>
     <a href="/admin/reports?tab=all&export=csv&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="btn btn-sm btn-primary" style="height: 38px; display: inline-flex; align-items: center; border-radius: 8px; font-weight: 600;">📥 Download Full Report</a>
   </div>
@@ -241,23 +258,23 @@
 <!-- Navigation Tab List -->
 <div class="analytics-tab-container">
   <a href="/admin/reports?tab=overview&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'overview' ? 'active' : '' %>">✨ Overview</a>
-  <a href="/admin/reports?tab=financial&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'financial' ? 'active' : '' %>">💰 Financial</a>
-  <a href="/admin/reports?tab=enrollment&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'enrollment' ? 'active' : '' %>">🚀 Leads & Funnels</a>
-  <a href="/admin/reports?tab=attendance&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'attendance' ? 'active' : '' %>">📅 Attendance</a>
-  <a href="/admin/reports?tab=academic&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'academic' ? 'active' : '' %>">🎓 Academic</a>
-  <a href="/admin/reports?tab=staff&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'staff' ? 'active' : '' %>">🤝 Staff Performance</a>
+  <% if (feesEnabled) { %><a href="/admin/reports?tab=financial&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'financial' ? 'active' : '' %>">💰 Financial</a><% } %>
+  <% if (leadsEnabled) { %><a href="/admin/reports?tab=enrollment&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'enrollment' ? 'active' : '' %>">🚀 Leads & Funnels</a><% } %>
+  <% if (attendanceEnabled && studentsEnabled) { %><a href="/admin/reports?tab=attendance&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'attendance' ? 'active' : '' %>">📅 Attendance</a><% } %>
+  <% if (academicEnabled) { %><a href="/admin/reports?tab=academic&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'academic' ? 'active' : '' %>">🎓 Academic</a><% } %>
+  <% if (teacherEnabled || counsellorEnabled) { %><a href="/admin/reports?tab=staff&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'staff' ? 'active' : '' %>">🤝 Staff Performance</a><% } %>
 </div>
 
 <!-- ==================== TAB: OVERVIEW ==================== -->
 <% if (tab === 'overview') { %>
   <!-- Stats Grid -->
   <div class="stats-grid" style="margin-bottom: 1.5rem;">
-    <div class="stat-card" style="border-top-color: var(--blue);">
+    <% if (studentsEnabled) { %><div class="stat-card" style="border-top-color: var(--blue);">
       <div class="stat-label">Active students</div>
       <div class="stat-value"><%= overviewStats.activeStudents.value %></div>
       <div class="stat-sub text-green"><%= overviewStats.activeStudents.trend %></div>
-    </div>
-    <div class="stat-card" style="border-top-color: var(--green);">
+    </div><% } %>
+    <% if (feesEnabled) { %><div class="stat-card" style="border-top-color: var(--green);">
       <div class="stat-label">Collection</div>
       <div class="stat-value"><%= overviewStats.collection.value %></div>
       <div class="stat-sub text-green"><%= overviewStats.collection.trend %></div>
@@ -266,13 +283,13 @@
       <div class="stat-label">Outstanding</div>
       <div class="stat-value"><%= overviewStats.outstanding.value %></div>
       <div class="stat-sub text-red"><%= overviewStats.outstanding.trend %></div>
-    </div>
-    <div class="stat-card" style="border-top-color: var(--orange);">
+    </div><% } %>
+    <% if (attendanceEnabled && studentsEnabled) { %><div class="stat-card" style="border-top-color: var(--orange);">
       <div class="stat-label">Avg attendance</div>
       <div class="stat-value"><%= overviewStats.avgAttendance.value %></div>
       <div class="stat-sub text-red"><%= overviewStats.avgAttendance.trend %></div>
-    </div>
-    <div class="stat-card" style="border-top-color: var(--yellow);">
+    </div><% } %>
+    <% if (leadsEnabled) { %><div class="stat-card" style="border-top-color: var(--yellow);">
       <div class="stat-label">Open leads</div>
       <div class="stat-value"><%= overviewStats.openLeads.value %></div>
       <div class="stat-sub text-green"><%= overviewStats.openLeads.trend %></div>
@@ -286,7 +303,7 @@
       <div class="stat-label">Converted</div>
       <div class="stat-value"><%= overviewStats.converted.value %></div>
       <div class="stat-sub text-green"><%= overviewStats.converted.trend %></div>
-    </a>
+    </a><% } %>
   </div>
 
   <!-- Key Insight Box -->
@@ -298,6 +315,7 @@
   <!-- Overview Charts Grid -->
   <div class="grid-2" style="margin-bottom: 1.5rem;">
     <!-- Revenue vs Collection -->
+    <% if (feesEnabled) { %>
     <div class="card">
       <div class="card-header">
         <div class="card-title">Revenue vs Collection</div>
@@ -307,8 +325,10 @@
         <canvas id="overviewRevenueChart" style="max-height: 230px; width: 100%;"></canvas>
       </div>
     </div>
+    <% } %>
 
     <!-- Enrollment Trend -->
+    <% if (studentsEnabled) { %>
     <div class="card">
       <div class="card-header">
         <div class="card-title">Enrollment Trend</div>
@@ -318,7 +338,9 @@
         <canvas id="overviewEnrollmentChart" style="max-height: 230px; width: 100%;"></canvas>
       </div>
     </div>
+    <% } %>
 
+    <% if (attendanceEnabled && studentsEnabled) { %>
     <!-- Attendance Trend -->
     <div class="card">
       <div class="card-header">
@@ -329,8 +351,10 @@
         <canvas id="overviewAttendanceChart" style="max-height: 230px; width: 100%;"></canvas>
       </div>
     </div>
+    <% } %>
 
     <!-- Lead Funnel -->
+    <% if (leadsEnabled) { %>
     <div class="card">
       <div class="card-header">
         <div class="card-title">Lead Funnel</div>
@@ -341,11 +365,11 @@
         const leadsCount = funnel.Leads;
         const contactedCount = funnel.Contacted;
         const interestedCount = funnel.Interested;
-        const enrolledCount = funnel.Enrolled;
+        const convertedCount = funnel.Converted;
 
         const contactedPct = leadsCount > 0 ? Math.round((contactedCount / leadsCount) * 100) : 0;
         const interestedPct = leadsCount > 0 ? Math.round((interestedCount / leadsCount) * 100) : 0;
-        const enrolledPct = leadsCount > 0 ? Math.round((enrolledCount / leadsCount) * 100) : 0;
+        const convertedPct = funnel.ConversionRate;
       %>
       <div class="funnel-wrapper">
         <div class="funnel-stage">
@@ -370,10 +394,10 @@
           </div>
         </div>
         <div class="funnel-stage">
-          <div class="funnel-fill" <%= `style="width: ${enrolledPct}%; background: rgba(16, 185, 129, 0.2);"` %>></div>
+          <div class="funnel-fill" <%= `style="width: ${convertedPct}%; background: rgba(16, 185, 129, 0.2);"` %>></div>
           <div class="funnel-content">
-            <span>Enrolled</span>
-            <span><%= enrolledCount %> (<%= enrolledPct %>%)</span>
+            <span>Converted</span>
+            <span><%= convertedCount %> (<%= convertedPct %>%)</span>
           </div>
         </div>
       </div>
@@ -389,8 +413,10 @@
         <canvas id="overviewChannelsChart" style="max-height: 220px; max-width: 220px;"></canvas>
       </div>
     </div>
+    <% } %>
 
     <!-- [ADDITIONAL VISUAL 2] Batch enrollment distribution (Doughnut) -->
+    <% if (studentsEnabled && batchesEnabled) { %>
     <div class="card">
       <div class="card-header">
         <div class="card-title">Batch Enrollment Distribution</div>
@@ -400,11 +426,12 @@
         <canvas id="overviewBatchDistChart" style="max-height: 220px; max-width: 220px;"></canvas>
       </div>
     </div>
+    <% } %>
   </div>
 <% } %>
 
 <!-- ==================== TAB: FINANCIAL ==================== -->
-<% if (tab === 'financial') { %>
+<% if (tab === 'financial' && feesEnabled) { %>
   <!-- Outstanding Aging Categories -->
   <div class="card" style="margin-bottom: 1.5rem;">
     <div class="card-header">
@@ -656,7 +683,16 @@
 <% } %>
 
 <!-- ==================== TAB: ENROLLMENT (LEADS & FUNNELS) ==================== -->
-<% if (tab === 'enrollment') { %>
+<% if (tab === 'enrollment' && leadsEnabled) { %>
+  <% const leadMetrics = charts.leadFunnel; %>
+  <div class="stats-grid" style="margin-bottom:1.5rem;">
+    <div class="stat-card blue"><div class="stat-label">Total Leads</div><div class="stat-value"><%= leadMetrics.Leads %></div><div class="stat-sub">In the selected period</div></div>
+    <div class="stat-card orange"><div class="stat-label">Open Pipeline</div><div class="stat-value"><%= leadMetrics.Open %></div><div class="stat-sub">Still being worked</div></div>
+    <div class="stat-card green"><div class="stat-label">Converted</div><div class="stat-value"><%= leadMetrics.Converted %></div><div class="stat-sub">Admissions completed</div></div>
+    <div class="stat-card gold"><div class="stat-label">Conversion Rate</div><div class="stat-value"><%= leadMetrics.ConversionRate %>%</div><div class="stat-sub">Converted ÷ total leads</div></div>
+    <div class="stat-card red"><div class="stat-label">Lost</div><div class="stat-value"><%= leadMetrics.Lost %></div><div class="stat-sub">Closed without admission</div></div>
+  </div>
+
   <!-- Lead Funnel & Sources Grid -->
   <div class="grid-2" style="margin-bottom: 1.5rem;">
     <!-- Lead Funnel -->
@@ -670,11 +706,11 @@
         const leadsCount = funnel.Leads;
         const contactedCount = funnel.Contacted;
         const interestedCount = funnel.Interested;
-        const enrolledCount = funnel.Enrolled;
+        const convertedCount = funnel.Converted;
 
         const contactedPct = leadsCount > 0 ? Math.round((contactedCount / leadsCount) * 100) : 0;
         const interestedPct = leadsCount > 0 ? Math.round((interestedCount / leadsCount) * 100) : 0;
-        const enrolledPct = leadsCount > 0 ? Math.round((enrolledCount / leadsCount) * 100) : 0;
+        const convertedPct = funnel.ConversionRate;
       %>
       <div class="funnel-wrapper" style="padding: 1.25rem;">
         <div class="funnel-stage">
@@ -699,10 +735,10 @@
           </div>
         </div>
         <div class="funnel-stage">
-          <div class="funnel-fill" <%= `style="width: ${enrolledPct}%; background: rgba(16, 185, 129, 0.2);"` %>></div>
+          <div class="funnel-fill" <%= `style="width: ${convertedPct}%; background: rgba(16, 185, 129, 0.2);"` %>></div>
           <div class="funnel-content">
-            <span>Enrolled</span>
-            <span><%= enrolledCount %> (<%= enrolledPct %>%)</span>
+            <span>Converted</span>
+            <span><%= convertedCount %> (<%= convertedPct %>%)</span>
           </div>
         </div>
       </div>
@@ -777,7 +813,7 @@
 <% } %>
 
 <!-- ==================== TAB: ATTENDANCE ==================== -->
-<% if (tab === 'attendance') { %>
+<% if (tab === 'attendance' && attendanceEnabled) { %>
   <style>
   .calendar-container {
     margin-top: 1.5rem;
@@ -1158,12 +1194,12 @@ window.runReportsReady(() => {
 <% } %>
 
 <!-- ==================== TAB: ACADEMIC ==================== -->
-<% if (tab === 'academic') { %>
+<% if (tab === 'academic' && academicEnabled) { %>
   <!-- Batch Health Scores table -->
   <div class="card" style="margin-bottom: 1.5rem;">
     <div class="card-header">
       <div class="card-title">Batch Health Scores</div>
-      <p class="td-muted text-sm">Composite health index measuring student engagement, attendance consistency, and financial compliance.</p>
+      <p class="td-muted text-sm">Composite score using only enabled academic and financial modules.</p>
     </div>
     <% if (batchHealthScores.length === 0) { %>
       <div class="empty-state">
@@ -1176,9 +1212,9 @@ window.runReportsReady(() => {
             <tr>
               <th>Batch Name</th>
               <th class="text-right">Students Count</th>
-              <th class="text-right">Avg Attendance</th>
-              <th class="text-right">Homework Submission Rate</th>
-              <th class="text-right">Fee Collection Rate</th>
+              <% if (attendanceEnabled) { %><th class="text-right">Avg Attendance</th><% } %>
+              <% if (assignmentsEnabled) { %><th class="text-right">Homework Submission Rate</th><% } %>
+              <% if (feesEnabled) { %><th class="text-right">Fee Collection Rate</th><% } %>
               <th class="text-right">Health Score</th>
             </tr>
           </thead>
@@ -1192,9 +1228,9 @@ window.runReportsReady(() => {
               <tr>
                 <td><strong><%= bh.batchName %></strong></td>
                 <td class="mono text-right"><%= bh.studentCount %></td>
-                <td class="mono text-right"><%= bh.avgAttendance %>%</td>
-                <td class="mono text-right"><%= bh.submissionRate %>%</td>
-                <td class="mono text-right"><%= bh.collectionRate %>%</td>
+                <% if (attendanceEnabled) { %><td class="mono text-right"><%= bh.avgAttendance %>%</td><% } %>
+                <% if (assignmentsEnabled) { %><td class="mono text-right"><%= bh.submissionRate %>%</td><% } %>
+                <% if (feesEnabled) { %><td class="mono text-right"><%= bh.collectionRate %>%</td><% } %>
                 <td class="mono text-right">
                   <span class="badge <%= healthBadge %>" style="font-weight:700;"><%= bh.healthScore %>%</span>
                 </td>
@@ -1208,7 +1244,7 @@ window.runReportsReady(() => {
 
   <div class="grid-2" style="margin-bottom: 1.5rem;">
     <!-- [ADDITIONAL VISUAL 6] Homework submitted vs graded line -->
-    <div class="card">
+    <% if (assignmentsEnabled) { %><div class="card">
       <div class="card-header">
         <div class="card-title">Weekly Homework & Grading Load</div>
         <p class="td-muted text-xs">Comparison of assignments submitted vs graded by week</p>
@@ -1216,13 +1252,13 @@ window.runReportsReady(() => {
       <div style="padding: 1.5rem; min-height: 250px;">
         <canvas id="weeklyHomeworkChart" style="max-height: 230px; width: 100%;"></canvas>
       </div>
-    </div>
+    </div><% } %>
 
     <!-- At-Risk Student Alerts table -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">At-Risk Student Alerts</div>
-        <p class="td-muted text-sm">Students flagged due to low attendance (&lt; 75%), outstanding overdue fees, or &gt;= 3 pending assignments.</p>
+        <p class="td-muted text-sm">Students are flagged using only the enabled attendance, fee, and assignment modules.</p>
       </div>
       <% if (atRiskStudents.length === 0) { %>
         <div class="empty-state">
@@ -1235,9 +1271,9 @@ window.runReportsReady(() => {
               <tr>
                 <th>Student Name</th>
                 <th>Batch</th>
-                <th class="text-right">Attendance</th>
-                <th class="text-right">Overdue Fees</th>
-                <th class="text-right">Pending Tasks</th>
+                <% if (attendanceEnabled) { %><th class="text-right">Attendance</th><% } %>
+                <% if (feesEnabled) { %><th class="text-right">Overdue Fees</th><% } %>
+                <% if (assignmentsEnabled) { %><th class="text-right">Pending Tasks</th><% } %>
                 <th>Flag Reasons</th>
                 <th class="text-center">Actions</th>
               </tr>
@@ -1247,14 +1283,14 @@ window.runReportsReady(() => {
                 <tr style="background: rgba(220, 53, 69, 0.05); border-left: 3px solid var(--red);">
                   <td class="td-name"><strong><%= ar.student.name %></strong></td>
                   <td><%= ar.student.batch && ar.student.batch.name ? ar.student.batch.name : 'No Batch' %></td>
-                  <td class="mono text-right <%= ar.attendance < 75 ? 'text-red fw-700' : '' %>"><%= ar.attendance %>%</td>
-                  <td class="mono text-right <%= ar.overdueFees > 0 ? 'text-red fw-700' : '' %>">₹<%= ar.overdueFees.toLocaleString('en-IN') %></td>
-                  <td class="mono text-right <%= ar.pendingAssignments >= 3 ? 'text-red fw-700' : '' %>"><%= ar.pendingAssignments %></td>
+                  <% if (attendanceEnabled) { %><td class="mono text-right <%= ar.attendance < 75 ? 'text-red fw-700' : '' %>"><%= ar.attendance %>%</td><% } %>
+                  <% if (feesEnabled) { %><td class="mono text-right <%= ar.overdueFees > 0 ? 'text-red fw-700' : '' %>">₹<%= ar.overdueFees.toLocaleString('en-IN') %></td><% } %>
+                  <% if (assignmentsEnabled) { %><td class="mono text-right <%= ar.pendingAssignments >= 3 ? 'text-red fw-700' : '' %>"><%= ar.pendingAssignments %></td><% } %>
                   <td style="color: var(--red); font-size: 13px;"><%= ar.reasons %></td>
                   <td class="text-center" style="white-space: nowrap;">
                     <a href="/auth/inbox?chat=<%= ar.student._id %>" class="btn btn-sm btn-ghost btn-send-msg" style="padding: 2px 8px; font-size: 11px; margin-right: 4px;">✉ Send Message</a>
-                    <a href="/admin/fees/<%= ar.student._id %>" class="btn btn-sm btn-ghost btn-view-fee" style="padding: 2px 8px; font-size: 11px; margin-right: 4px; color: var(--gold);">💵 View Fee</a>
-                    <a href="/admin/students/<%= ar.student._id %>#attendance" class="btn btn-sm btn-ghost btn-view-att" style="padding: 2px 8px; font-size: 11px; color: var(--blue);">📅 View Attendance</a>
+                    <% if (feesEnabled) { %><a href="/admin/fees/<%= ar.student._id %>" class="btn btn-sm btn-ghost btn-view-fee" style="padding: 2px 8px; font-size: 11px; margin-right: 4px; color: var(--gold);">💵 View Fee</a><% } %>
+                    <% if (attendanceEnabled) { %><a href="/admin/students/<%= ar.student._id %>#attendance" class="btn btn-sm btn-ghost btn-view-att" style="padding: 2px 8px; font-size: 11px; color: var(--blue);">📅 View Attendance</a><% } %>
                   </td>
                 </tr>
               <% }) %>
@@ -1269,17 +1305,18 @@ window.runReportsReady(() => {
 <!-- ==================== TAB: STAFF ==================== -->
 <% if (tab === 'staff') { %>
   <!-- Section Toggle Pills -->
-  <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: var(--card-bg); padding: 0.4rem; border-radius: 8px; border: 1px solid var(--border); width: fit-content;">
+  <% if (teacherEnabled && counsellorEnabled) { %><div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: var(--card-bg); padding: 0.4rem; border-radius: 8px; border: 1px solid var(--border); width: fit-content;">
     <button type="button" class="btn btn-sm btn-primary staff-view-btn" id="btn-staff-teachers" onclick="switchStaffView('teachers')" style="font-weight: 600; padding: 0.4rem 1rem; border-radius: 6px;">👩‍🏫 Teachers Workload</button>
     <button type="button" class="btn btn-sm btn-ghost staff-view-btn" id="btn-staff-counsellors" onclick="switchStaffView('counsellors')" style="font-weight: 600; padding: 0.4rem 1rem; border-radius: 6px; color: var(--text-muted);">💼 Counsellors Performance</button>
-  </div>
+  </div><% } %>
 
   <!-- TEACHERS SECTION -->
+  <% if (teacherEnabled) { %>
   <div id="staff-teachers-section">
     <div class="card" style="margin-bottom: 1.5rem;">
       <div class="card-header">
         <div class="card-title">Teacher Workload Visual Insights</div>
-        <p class="td-muted text-sm">Workload compared across classes, assignments, grading, attendance, and curriculum completion.</p>
+        <p class="td-muted text-sm">Workload comparison using only enabled teaching modules.</p>
       </div>
       <div style="padding: 1rem; height: 340px; position: relative;">
         <canvas id="teacherLoadChart"></canvas>
@@ -1289,7 +1326,7 @@ window.runReportsReady(() => {
     <div class="card">
       <div class="card-header">
         <div class="card-title">Teacher Load & Productivity Metrics</div>
-        <p class="td-muted text-sm">Detailed 5-dimension workload data per teacher.</p>
+        <p class="td-muted text-sm">Detailed workload data per teacher.</p>
       </div>
       <% if (teacherLoad.length === 0) { %>
         <div class="empty-state">
@@ -1301,22 +1338,20 @@ window.runReportsReady(() => {
             <thead>
               <tr>
                 <th>Teacher Name</th>
-                <th class="text-right">Classes Taught</th>
-                <th class="text-right">Assignments Created</th>
-                <th class="text-right">Submissions Graded</th>
-                <th class="text-right">Attendance Sessions Marked</th>
-                <th class="text-right">Curriculum Completion</th>
+                <% if (schedulesEnabled) { %><th class="text-right">Classes Taught</th><% } %>
+                <% if (assignmentsEnabled) { %><th class="text-right">Assignments Created</th><th class="text-right">Submissions Graded</th><% } %>
+                <% if (attendanceEnabled) { %><th class="text-right">Attendance Sessions Marked</th><% } %>
+                <% if (curriculumEnabled) { %><th class="text-right">Curriculum Completion</th><% } %>
               </tr>
             </thead>
             <tbody>
               <% teacherLoad.forEach(tl => { %>
                 <tr>
                   <td class="td-name"><strong><%= tl.teacher.name %></strong></td>
-                  <td class="mono text-right"><%= tl.classesConducted %></td>
-                  <td class="mono text-right"><%= tl.assignmentsCreated %></td>
-                  <td class="mono text-right"><%= tl.submissionsGraded %></td>
-                  <td class="mono text-right"><%= tl.attendanceSessionsMarked %></td>
-                  <td class="mono text-right text-gold"><%= tl.curriculumCompletion %>%</td>
+                  <% if (schedulesEnabled) { %><td class="mono text-right"><%= tl.classesConducted %></td><% } %>
+                  <% if (assignmentsEnabled) { %><td class="mono text-right"><%= tl.assignmentsCreated %></td><td class="mono text-right"><%= tl.submissionsGraded %></td><% } %>
+                  <% if (attendanceEnabled) { %><td class="mono text-right"><%= tl.attendanceSessionsMarked %></td><% } %>
+                  <% if (curriculumEnabled) { %><td class="mono text-right text-gold"><%= tl.curriculumCompletion %>%</td><% } %>
                 </tr>
               <% }) %>
             </tbody>
@@ -1325,9 +1360,10 @@ window.runReportsReady(() => {
       <% } %>
     </div>
   </div>
+  <% } %>
 
   <!-- COUNSELLORS SECTION (HIDDEN BY DEFAULT) -->
-  <div id="staff-counsellors-section" style="display: none;">
+  <% if (counsellorEnabled) { %><div id="staff-counsellors-section" style="display: <%= teacherEnabled ? 'none' : 'block' %>;">
     <div class="grid-2" style="margin-bottom: 1.5rem;">
       <!-- Counsellor Conversion Volumes -->
       <div class="card">
@@ -1412,6 +1448,7 @@ window.runReportsReady(() => {
       <% } %>
     </div>
   </div>
+  <% } %>
 
   <script>
     function switchStaffView(view) {
@@ -1493,7 +1530,8 @@ window.runReportsReady(() => {
   const revCollected = reportsData.charts?.revenueVsCollection?.collected || [];
 
   // Revenue vs Collection Bar
-  new Chart(document.getElementById('overviewRevenueChart').getContext('2d'), {
+  const overviewRevenueEl = document.getElementById('overviewRevenueChart');
+  if (overviewRevenueEl) new Chart(overviewRevenueEl.getContext('2d'), {
     type: 'bar',
     data: {
       labels: revMonths,
@@ -1532,7 +1570,8 @@ window.runReportsReady(() => {
   const enrollCounts = reportsData.charts?.enrollmentTrend?.counts || [];
 
   // Enrollment Trend Line
-  new Chart(document.getElementById('overviewEnrollmentChart').getContext('2d'), {
+  const overviewEnrollmentEl = document.getElementById('overviewEnrollmentChart');
+  if (overviewEnrollmentEl) new Chart(overviewEnrollmentEl.getContext('2d'), {
     type: 'line',
     data: {
       labels: enrollMonths,
@@ -1561,7 +1600,8 @@ window.runReportsReady(() => {
   const attPct = reportsData.charts?.attendanceTrend?.pct || [];
 
   // Attendance Line
-  new Chart(document.getElementById('overviewAttendanceChart').getContext('2d'), {
+  const overviewAttendanceEl = document.getElementById('overviewAttendanceChart');
+  if (overviewAttendanceEl) new Chart(overviewAttendanceEl.getContext('2d'), {
     type: 'line',
     data: {
       labels: attDays,
@@ -1595,7 +1635,8 @@ window.runReportsReady(() => {
   const chanLabels = reportsData.charts?.leadSources?.labels || [];
   const chanValues = reportsData.charts?.leadSources?.values || [];
 
-  new Chart(document.getElementById('overviewChannelsChart').getContext('2d'), {
+  const overviewChannelsEl = document.getElementById('overviewChannelsChart');
+  if (overviewChannelsEl) new Chart(overviewChannelsEl.getContext('2d'), {
     type: 'pie',
     data: {
       labels: chanLabels,
@@ -1625,7 +1666,8 @@ window.runReportsReady(() => {
   const batchLabels = reportsData.charts?.batchDistribution?.labels || [];
   const batchValues = reportsData.charts?.batchDistribution?.values || [];
 
-  new Chart(document.getElementById('overviewBatchDistChart').getContext('2d'), {
+  const overviewBatchEl = document.getElementById('overviewBatchDistChart');
+  if (overviewBatchEl) new Chart(overviewBatchEl.getContext('2d'), {
     type: 'doughnut',
     data: {
       labels: batchLabels,
@@ -1947,7 +1989,8 @@ window.runReportsReady(() => {
   const hwSubmitted = reportsData.charts?.weeklyHomework?.submitted || [];
   const hwGraded = reportsData.charts?.weeklyHomework?.graded || [];
 
-  new Chart(document.getElementById('weeklyHomeworkChart').getContext('2d'), {
+  const weeklyHomeworkEl = document.getElementById('weeklyHomeworkChart');
+  if (weeklyHomeworkEl) new Chart(weeklyHomeworkEl.getContext('2d'), {
     type: 'line',
     data: {
       labels: hwLabels,
@@ -2000,7 +2043,7 @@ window.runReportsReady(() => {
     new Chart(teacherChartEl.getContext('2d'), {
       type: 'bar',
       data: {
-        labels: ['Classes Taught', 'Assignments Created', 'Submissions Graded', 'Attendance Sessions Marked', 'Curriculum Completion %'],
+        labels: [<% if (schedulesEnabled) { %>'Classes Taught',<% } %><% if (assignmentsEnabled) { %>'Assignments Created','Submissions Graded',<% } %><% if (attendanceEnabled) { %>'Attendance Sessions Marked',<% } %><% if (curriculumEnabled) { %>'Curriculum Completion %'<% } %>],
         datasets: tLoad.map((tl, index) => {
           const colors = [
             'rgba(59, 130, 246, 0.85)', // Blue
@@ -2010,7 +2053,7 @@ window.runReportsReady(() => {
           ];
           return {
             label: tl.teacher.name,
-            data: [tl.classesConducted, tl.assignmentsCreated, tl.submissionsGraded, tl.attendanceSessionsMarked, tl.curriculumCompletion],
+            data: [<% if (schedulesEnabled) { %>tl.classesConducted,<% } %><% if (assignmentsEnabled) { %>tl.assignmentsCreated,tl.submissionsGraded,<% } %><% if (attendanceEnabled) { %>tl.attendanceSessionsMarked,<% } %><% if (curriculumEnabled) { %>tl.curriculumCompletion<% } %>],
             backgroundColor: colors[index % colors.length],
             borderRadius: 4
           };

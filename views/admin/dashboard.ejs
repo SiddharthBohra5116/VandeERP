@@ -12,14 +12,25 @@
     <h2 id="dashboardGreeting" class="dashboard-greeting" style="margin:0;">Welcome back!</h2>
   </div>
   <div class="d-flex gap-1" style="flex-wrap:wrap;">
-    <a href="/admin/leads/create" class="btn btn-primary btn-sm">+ Manual lead</a>
+    <% if (modules?.students !== false) { %>
     <a href="/admin/users/create?role=student" class="btn btn-primary btn-sm">Add student</a>
-    <a href="/admin/fees" class="btn btn-ghost btn-sm">Record payment</a>
-    <a href="/admin/schedules" class="btn btn-ghost btn-sm">Plan classes</a>
+    <% } %>
+    <% if (modules?.fees !== false) { %><a href="/admin/fees" class="btn btn-ghost btn-sm">Record payment</a><% } %>
+    <% if (modules?.schedules !== false) { %><a href="/admin/schedules" class="btn btn-ghost btn-sm">Plan classes</a><% } %>
+    <details class="dashboard-settings">
+      <summary class="btn btn-ghost btn-sm">Customize dashboard</summary>
+      <div class="dashboard-settings-menu">
+        <strong>Visible sections</strong>
+        <label><input type="checkbox" value="pipeline" checked> Lead pipeline</label>
+        <label><input type="checkbox" value="ledgers" checked> Student &amp; fee status</label>
+        <label><input type="checkbox" value="today" checked> Today's operations</label>
+      </div>
+    </details>
   </div>
 </div>
 
-<div class="card" style="margin-bottom:1.5rem;">
+<% if (modules?.leads !== false) { %>
+<div class="card" data-dashboard-section="pipeline" style="margin-bottom:1.5rem;">
   <div class="card-header">
     <div>
       <div class="card-title">Lead Pipeline</div>
@@ -34,46 +45,65 @@
     <a href="/admin/leads?status=admission_completed" class="stat-card green"><div class="stat-label">Converted</div><div class="stat-value"><%= stats.convertedLeads %></div><div class="stat-sub">Admission completed</div></a>
   </div>
 </div>
+<% } %>
 
-<div class="stats-grid" style="margin-bottom:1.5rem;">
+<% if (modules?.fees !== false || modules?.students !== false) { %>
+<div class="stats-grid" data-dashboard-section="ledgers" style="margin-bottom:1.5rem;">
+  <% if (modules?.students !== false) { %>
   <a href="/admin/students?status=complete" class="stat-card green"><div class="stat-label">Completed Students</div><div class="stat-value"><%= stats.completedStudents %></div><div class="stat-sub">Finished course records</div></a>
+  <% } %>
+  <% if (modules?.fees !== false) { %>
   <a href="/admin/fees?paymentStatus=completed" class="stat-card green"><div class="stat-label">Completed Ledgers</div><div class="stat-value"><%= stats.feeStats.completed %></div><div class="stat-sub">No balance remaining</div></a>
   <a href="/admin/fees?paymentStatus=overdue" class="stat-card red"><div class="stat-label">Overdue Ledgers</div><div class="stat-value"><%= stats.feeStats.overdue %></div><div class="stat-sub">Action required</div></a>
   <a href="/admin/fees?paymentStatus=partially_paid" class="stat-card gold"><div class="stat-label">Partial Ledgers</div><div class="stat-value"><%= stats.feeStats.partial %></div><div class="stat-sub">Payment in progress</div></a>
+  <% } %>
 </div>
+<% } %>
 
 <!-- Stats Grid -->
-<div class="stats-grid">
+<div class="stats-grid" data-dashboard-section="today">
+  <% if (modules?.fees !== false) { %>
   <a href="/admin/fees" class="stat-card gold">
     <div class="stat-label">Today's Fee Collections</div>
     <div class="stat-value">₹<%= stats.todayCollections.toLocaleString('en-IN') %></div>
     <div class="stat-sub">Payments collected today</div>
   </a>
+  <% } %>
+  <% if (modules?.schedules !== false) { %>
   <a href="/admin/schedules" class="stat-card blue">
     <div class="stat-label">Today's Scheduled Classes</div>
     <div class="stat-value"><%= stats.todayCompletedCount %> / <%= stats.todayScheduledCount %></div>
     <div class="stat-sub">Completed / Total scheduled</div>
   </a>
+  <% } %>
+  <% if (modules?.leads !== false) { %>
   <a href="/admin/leads?status=joining_interested" class="stat-card orange">
     <div class="stat-label">Leads Ready to Convert</div>
     <div class="stat-value"><%= stats.readyLeadsCount %></div>
     <div class="stat-sub">Converted status pending</div>
   </a>
+  <% } %>
+  <% if (modules?.students !== false && modules?.attendance !== false) { %>
   <a href="/admin/students?attendance=low" class="stat-card red">
     <div class="stat-label">At-Risk Students</div>
     <div class="stat-value"><%= stats.atRiskCount %></div>
     <div class="stat-sub">Attendance below 75%</div>
   </a>
+  <% } %>
+  <% if (modules?.leaves !== false) { %>
   <a href="/admin/holidays-leaves" class="stat-card purple">
     <div class="stat-label">Pending Leave Requests</div>
     <div class="stat-value"><%= stats.pendingLeavesCount %></div>
     <div class="stat-sub">Awaiting admin approval</div>
   </a>
+  <% } %>
+  <% if (modules?.students !== false && modules?.assignments !== false) { %>
   <a href="/admin/students" class="stat-card green">
     <div class="stat-label">Ungraded Submissions</div>
     <div class="stat-value"><%= stats.ungradedSubmissionsCount %></div>
     <div class="stat-sub">Awaiting marks evaluation</div>
   </a>
+  <% } %>
 </div>
 
 <!-- Password Reset Requests -->
@@ -295,6 +325,31 @@
 </div>
 
 <script>
+  function initDashboardSettings() {
+    const settings = document.querySelector('.dashboard-settings');
+    if (!settings || settings.dataset.ready) return;
+    const key = 'admin-dashboard-sections:<%= user._id %>';
+    let visible;
+    try { visible = new Set(JSON.parse(localStorage.getItem(key) || '["pipeline","ledgers","today"]')); }
+    catch (_) { visible = new Set(['pipeline', 'ledgers', 'today']); }
+    const apply = () => {
+      settings.querySelectorAll('input').forEach(input => {
+        input.checked = visible.has(input.value);
+        document.querySelectorAll(`[data-dashboard-section="${input.value}"]`).forEach(section => {
+          section.hidden = !input.checked;
+        });
+      });
+    };
+    settings.addEventListener('change', event => {
+      if (!event.target.matches('input')) return;
+      event.target.checked ? visible.add(event.target.value) : visible.delete(event.target.value);
+      localStorage.setItem(key, JSON.stringify([...visible]));
+      apply();
+    });
+    apply();
+    settings.dataset.ready = 'true';
+  }
+
   function initAdminRecentLeads() {
     const filters = document.getElementById('adminRecentLeadFilters');
     if (!filters || filters.dataset.ready) return;
@@ -334,10 +389,13 @@
   }
 
   if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDashboardSettings);
     document.addEventListener('DOMContentLoaded', initAdminRecentLeads);
   } else {
+    initDashboardSettings();
     initAdminRecentLeads();
   }
+  document.addEventListener('softnav:load', initDashboardSettings);
   document.addEventListener('softnav:load', initAdminRecentLeads);
 </script>
 

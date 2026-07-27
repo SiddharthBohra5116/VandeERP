@@ -80,6 +80,7 @@
       </div>
 
       <div class="form-row-responsive" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
+        <% if (modules?.teachers !== false) { %>
         <div class="form-group" style="margin-bottom:0;">
           <label class="form-label" style="font-size: 10px;">Assign Teacher</label>
           <select id="teacher_select" name="teacherId" class="form-control">
@@ -89,12 +90,13 @@
             <% }); %>
           </select>
         </div>
+        <% } else { %><input type="hidden" id="teacher_select" name="teacherId" value=""><% } %>
       </div>
 
-      <div class="form-row-responsive" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
+      <div class="form-row-responsive" <%= modules?.fees === false ? 'hidden' : '' %> style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
         <div class="form-group" style="margin-bottom:0;">
           <label class="form-label" style="font-size: 10px;">Total Invoice Fees (₹) *</label>
-          <input type="number" id="fees_total" name="fees_total" class="form-control" placeholder="30000" required min="0.01" step="0.01" oninput="syncFeePlan()">
+          <input type="number" id="fees_total" name="fees_total" class="form-control" placeholder="30000" <%= modules?.fees !== false ? 'required' : '' %> min="0.01" step="0.01" oninput="syncFeePlan()">
         </div>
         <div class="form-group" style="margin-bottom:0;">
           <label class="form-label" style="font-size: 10px;">Initial Down Payment (₹)</label>
@@ -109,7 +111,7 @@
           value="<%= new Date().toISOString().split('T')[0] %>">
       </div>
 
-      <div style="border-top:1px solid var(--border); padding-top:1rem; margin-bottom:1.25rem;">
+      <div <%= modules?.fees === false ? 'hidden' : '' %> style="border-top:1px solid var(--border); padding-top:1rem; margin-bottom:1.25rem;">
         <div style="display:flex; justify-content:space-between; gap:1rem; margin-bottom:.75rem;">
           <div><strong>Custom Installments</strong><div class="form-hint">One row for full payment, or add as many installments as needed. Amounts must equal the total fee.</div></div>
           <button type="button" class="btn btn-ghost btn-sm" onclick="addEmiRow()">+ Add EMI</button>

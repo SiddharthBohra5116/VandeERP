@@ -10,7 +10,9 @@
   const attentionCount = hasRole && activeRole === 'student'
     ? users.filter(item => !item.idVerified || Number(item.attendancePct) < 75).length
     : users.filter(item => (item.status || 'active') !== 'active').length;
-  const moduleFlags = typeof modules === 'object' ? modules : { students:true, teachers:true, batches:true, attendance:true, kyc:true };
+  const moduleFlags = typeof modules === 'object' ? modules : { students:true, teachers:true, counsellors:true, batches:true, attendance:true, kyc:true, fees:true };
+  const showStudentColumns = !hasRole || activeRole === 'student';
+  const showCourseColumn = !hasRole || activeRole === 'student' || activeRole === 'teacher';
   const activeFilterCount = ['status', 'incomplete']
     .concat(moduleFlags.kyc ? ['kyc'] : [])
     .concat(moduleFlags.attendance ? ['attendance'] : [])
@@ -49,9 +51,17 @@
   .person-context span { display:block; color:var(--text-sub); font-size:.75rem; line-height:1.45; }
   .person-signals { display:flex; gap:.35rem; align-items:center; flex-wrap:wrap; }
   .person-actions { display:flex; justify-content:flex-end; align-items:center; gap:.4rem; flex-wrap:wrap; }
-  .person-status-form { margin:0; }
-  .person-status-select { width:112px; min-height:34px; padding:.35rem .55rem; border:1px solid var(--gold-border); border-radius:6px; background:var(--bg-input); color:var(--text); font-size:.72rem; font-weight:800; text-transform:capitalize; box-shadow:inset 0 0 0 1px rgba(212,175,55,.05); }
-  .person-status-select:focus { outline:2px solid var(--gold); outline-offset:1px; }
+  .person-status-form { position:relative; margin:0; }
+  .person-status-menu { position:relative; width:112px; }
+  .person-status-menu > summary { min-height:36px; display:flex; align-items:center; justify-content:space-between; gap:.65rem; padding:.4rem .65rem; border:1px solid var(--gold-border); border-radius:7px; background:var(--bg-input); color:var(--text); cursor:pointer; font-size:.72rem; font-weight:800; text-transform:capitalize; list-style:none; box-shadow:inset 0 1px 0 rgba(255,255,255,.04); transition:border-color .15s, background .15s, box-shadow .15s; }
+  .person-status-menu > summary::-webkit-details-marker { display:none; }
+  .person-status-menu > summary::after { content:''; width:6px; height:6px; border-right:2px solid var(--text-sub); border-bottom:2px solid var(--text-sub); transform:rotate(45deg) translateY(-2px); transition:transform .15s; }
+  .person-status-menu > summary:hover { border-color:var(--gold); background:var(--bg-hover); }
+  .person-status-menu[open] > summary { border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-dim); }
+  .person-status-menu[open] > summary::after { transform:rotate(225deg) translate(-1px,-1px); }
+  .person-status-options { position:absolute; z-index:20; top:calc(100% + 6px); left:0; display:grid; width:140px; padding:.3rem; border:1px solid var(--gold-border); border-radius:7px; background:var(--bg-card); box-shadow:0 14px 32px rgba(0,0,0,.55); white-space:normal; }
+  .person-status-options button { width:100%; padding:.45rem .5rem; border:0; border-radius:4px; background:transparent; color:var(--text); cursor:pointer; font:inherit; text-align:left; }
+  .person-status-options button:hover, .person-status-options button[aria-current="true"] { background:var(--gold-dim); color:var(--gold); }
   .people-bulk-bar { display:flex; justify-content:space-between; align-items:center; gap:.75rem; padding:.75rem 0; flex-wrap:wrap; }
   .people-bulk-copy { color:var(--text-sub); font-size:.78rem; }
   .people-select { width:18px; height:18px; accent-color:var(--gold); }
@@ -65,14 +75,29 @@
   .column-picker-grid { display:grid; grid-template-columns:repeat(3,minmax(150px,1fr)); gap:.45rem 1rem; max-height:42vh; margin:.65rem 0 .85rem; overflow-y:auto; }
   .column-picker-option { display:flex; align-items:center; gap:.5rem; min-height:32px; color:var(--text-sub); font-size:.78rem; }
   .column-picker-option.is-locked { opacity:.7; }
-  .people-table-wrap { overflow:auto; max-height:calc(100vh - 280px); border:1px solid var(--border); border-radius:8px; }
+  .people-table-wrap { max-width:100%; overflow-x:auto; overflow-y:visible; border:1px solid var(--border); border-radius:8px; scrollbar-gutter:stable; }
   .people-table { width:100%; min-width:100%; border-collapse:separate; border-spacing:0; }
   .people-table th { position:sticky; top:0; z-index:2; padding:.7rem .8rem; background:var(--bg-hover); color:var(--text-muted); font-size:.68rem; font-weight:850; text-align:left; text-transform:uppercase; white-space:nowrap; }
-  .people-table td { padding:.75rem .8rem; border-top:1px solid var(--border); background:var(--bg-card); color:var(--text-sub); font-size:.78rem; white-space:nowrap; }
+  .people-table td { height:64px; padding:.65rem .8rem; border-top:1px solid var(--border); background:var(--bg-card); color:var(--text-sub); font-size:.78rem; white-space:nowrap; }
   .people-table tbody tr { cursor:pointer; }
   .people-table tbody tr:hover td { background:var(--bg-hover); }
   .people-table .cell-name { color:var(--text); font-weight:850; }
+  .person-name-cell { display:flex; align-items:center; gap:.65rem; min-width:0; }
+  .person-mini-avatar { width:34px; height:34px; display:grid; place-items:center; flex:0 0 auto; border:1px solid var(--gold-border); border-radius:9px; background:var(--gold-dim); color:var(--gold); font-size:.68rem; font-weight:900; letter-spacing:.03em; }
+  .person-name-copy { overflow:hidden; text-overflow:ellipsis; }
+  .directory-course-chip { display:inline-flex; align-items:center; min-height:26px; padding:.25rem .55rem; border:1px solid var(--border); border-radius:999px; background:var(--bg-input); color:var(--text); font-weight:700; }
+  .directory-money { color:var(--text); font:800 .78rem var(--mono); }
+  .directory-money.is-clear { color:var(--green); }
+  .directory-money.is-due { color:var(--red); }
   .people-table .cell-actions { display:flex; align-items:center; gap:.4rem; }
+  .people-table [data-column="select"] { position:sticky; left:0; z-index:3; width:64px; min-width:64px; max-width:64px; text-align:center; }
+  .people-table [data-column="name"] { position:sticky; left:64px; z-index:3; width:260px; min-width:260px; max-width:260px; border-right:1px solid var(--border); }
+  .people-table [data-column="actions"] { position:sticky; right:0; z-index:3; min-width:220px; }
+  .people-table tbody tr:has(.person-status-menu[open]) { position:relative; z-index:10; }
+  .people-table tbody tr:has(.person-status-menu[open]) [data-column="actions"] { z-index:11; }
+  .people-table th[data-column] { z-index:4; }
+  .people-table td[data-column="select"], .people-table td[data-column="name"] { z-index:5; }
+  .people-table th[data-column="select"], .people-table th[data-column="name"] { z-index:6; }
   .people-table [hidden] { display:none !important; }
   @media (max-width:1100px) {
     .people-directory-head { display:none; }
@@ -90,7 +115,7 @@
     .person-context, .person-signals, .person-actions { grid-column:1; grid-row:auto; }
     .person-actions { justify-content:flex-start; max-width:none; padding-top:.7rem; border-top:1px solid var(--border); }
     .person-status-form { flex:1; }
-    .person-status-select { width:100%; }
+    .person-status-menu { width:100%; }
     .people-filter-panel { position:fixed; left:1rem; right:1rem; top:18%; width:auto; }
     .people-filter-grid { grid-template-columns:1fr; }
     .column-picker-grid { grid-template-columns:repeat(2,minmax(130px,1fr)); }
@@ -173,31 +198,37 @@
           <th data-column="name">Name</th>
           <th data-column="email">Email</th>
           <th data-column="phone">Phone</th>
-          <th data-column="academyId">Academy ID</th>
-          <th data-column="role">Role</th>
-          <th data-column="course">Course</th>
+          <th data-column="academyId"><%= hasRole ? roleName + ' ID' : 'Academy ID' %></th>
+          <% if (!hasRole) { %><th data-column="role">Role</th><% } %>
+          <% if (showCourseColumn) { %><th data-column="course">Course Name</th><% } %>
+          <% if (showStudentColumns) { %>
           <th data-column="leadSource">Lead Source</th>
           <th data-column="referredBy">Referred By</th>
           <% if (moduleFlags.batches) { %><th data-column="batch">Batch</th><% } %>
-          <th data-column="teacher">Teacher</th>
-          <th data-column="counsellor">Counsellor</th>
+          <% if (moduleFlags.teachers) { %><th data-column="teacher">Teacher</th><% } %>
+          <% if (moduleFlags.counsellors) { %><th data-column="counsellor">Counsellor</th><% } %>
           <% if (moduleFlags.attendance) { %><th data-column="attendance">Attendance</th><% } %>
           <% if (moduleFlags.kyc) { %><th data-column="kyc">KYC</th><% } %>
+          <% if (moduleFlags.fees) { %>
           <th data-column="feeTotal">Total Fee</th>
           <th data-column="feePaid">Fee Paid</th>
           <th data-column="feeDue">Fee Due</th>
+          <% } %>
+          <% } %>
           <th data-column="status">Status</th>
           <th data-column="lastActive">Last Active</th>
           <th data-column="joined">Joined</th>
           <th data-column="dob">Date of Birth</th>
           <th data-column="city">City</th>
           <th data-column="address">Address</th>
+          <% if (showStudentColumns) { %>
           <th data-column="fatherName">Father Name</th>
           <th data-column="fatherPhone">Father Phone</th>
           <th data-column="motherName">Mother Name</th>
           <th data-column="motherPhone">Mother Phone</th>
           <th data-column="guardianName">Guardian Name</th>
           <th data-column="guardianPhone">Guardian Phone</th>
+          <% } %>
           <th data-column="actions">Actions</th>
         </tr></thead>
         <tbody>
@@ -210,40 +241,48 @@
           const lastActive = u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : 'Never signed in';
           const student = u.studentProfile;
           const money = value => Number(value || 0).toLocaleString('en-IN');
+          const initials = String(u.name || 'U').split(/\s+/).map(part => part[0]).join('').toUpperCase().slice(0, 2);
+          const feeDue = Math.max(0, Number(u.feeTotal || 0) - Number(u.feePaid || 0));
           const date = value => value ? new Date(value).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—';
         %>
         <tr data-row-href="<%= profileHref %>" tabindex="0" aria-label="Open <%= u.name %> profile">
           <td data-column="select"><% if (u.role !== 'admin') { %><input type="checkbox" class="people-select account-archive-check" name="userIds" value="<%= u._id %>" form="bulkArchiveForm" aria-label="Select <%= u.name %> for archiving"><% } %><% if (moduleFlags.kyc && activeRole === 'student' && student && u.idProof && !u.idVerified) { %><input class="people-select kyc-check" type="checkbox" form="bulkKycForm" name="studentIds" value="<%= student._id %>" aria-label="Select <%= u.name %> for KYC verification"><% } %></td>
-          <td data-column="name" class="cell-name"><%= u.name %></td>
+          <td data-column="name" class="cell-name"><div class="person-name-cell"><span class="person-mini-avatar" aria-hidden="true"><%= initials %></span><span class="person-name-copy"><%= u.name %></span></div></td>
           <td data-column="email"><%= u.email || '—' %></td>
           <td data-column="phone"><%= u.phone || '—' %></td>
           <td data-column="academyId" class="person-id"><%= u.rollNumber || 'Pending' %></td>
-          <td data-column="role"><%= u.role %></td>
-          <td data-column="course"><%= student?.course?.name || (u.teacherProfile?.courses?.length ? u.teacherProfile.courses.map(course => course.name || course).join(', ') : '—') %></td>
+          <% if (!hasRole) { %><td data-column="role"><%= u.role %></td><% } %>
+          <% if (showCourseColumn) { %><td data-column="course"><span class="directory-course-chip"><%= student?.course?.name || (u.teacherProfile?.courses?.length ? u.teacherProfile.courses.map(course => course.name || course).join(', ') : '—') %></span></td><% } %>
+          <% if (showStudentColumns) { %>
           <td data-column="leadSource"><%= u.leadSource || '—' %></td>
           <td data-column="referredBy"><%= u.referredBy || '—' %></td>
           <% if (moduleFlags.batches) { %><td data-column="batch"><%= student?.batch?.name || '—' %></td><% } %>
-          <td data-column="teacher"><%= student?.teacher?.user?.name || '—' %></td>
-          <td data-column="counsellor"><%= student?.counsellor?.user?.name || '—' %></td>
+          <% if (moduleFlags.teachers) { %><td data-column="teacher"><%= student?.teacher?.user?.name || '—' %></td><% } %>
+          <% if (moduleFlags.counsellors) { %><td data-column="counsellor"><%= student?.counsellor?.user?.name || '—' %></td><% } %>
           <% if (moduleFlags.attendance) { %><td data-column="attendance"><%= u.role === 'student' ? pct + '%' : '—' %></td><% } %>
           <% if (moduleFlags.kyc) { %><td data-column="kyc"><%= u.role === 'student' ? (u.idVerified ? 'Verified' : hasKycDocs ? 'Ready' : 'Pending') : '—' %></td><% } %>
+          <% if (moduleFlags.fees) { %>
           <td data-column="feeTotal"><%= u.role === 'student' ? '₹' + money(u.feeTotal) : '—' %></td>
-          <td data-column="feePaid"><%= u.role === 'student' ? '₹' + money(u.feePaid) : '—' %></td>
-          <td data-column="feeDue"><%= u.role === 'student' ? '₹' + money(Math.max(0, Number(u.feeTotal || 0) - Number(u.feePaid || 0))) : '—' %></td>
+          <td data-column="feePaid"><span class="directory-money"><%= u.role === 'student' ? '₹' + money(u.feePaid) : '—' %></span></td>
+          <td data-column="feeDue"><span class="directory-money <%= feeDue > 0 ? 'is-due' : 'is-clear' %>"><%= u.role === 'student' ? '₹' + money(feeDue) : '—' %></span></td>
+          <% } %>
+          <% } %>
           <td data-column="status"><span class="badge <%= statusVal === 'active' ? 'badge-green' : statusVal === 'complete' ? 'badge-gold' : statusVal === 'drop' ? 'badge-red' : 'badge-grey' %>"><%= statusVal %></span></td>
           <td data-column="lastActive"><%= lastActive %></td>
           <td data-column="joined"><%= date(student?.enrollmentDate || u.createdAt) %></td>
           <td data-column="dob"><%= date(u.dob) %></td>
           <td data-column="city"><%= u.city || '—' %></td>
           <td data-column="address"><%= u.address || '—' %></td>
+          <% if (showStudentColumns) { %>
           <td data-column="fatherName"><%= student?.family?.father?.name || '—' %></td>
           <td data-column="fatherPhone"><%= student?.family?.father?.phone || '—' %></td>
           <td data-column="motherName"><%= student?.family?.mother?.name || '—' %></td>
           <td data-column="motherPhone"><%= student?.family?.mother?.phone || '—' %></td>
           <td data-column="guardianName"><%= student?.family?.guardian?.name || '—' %></td>
           <td data-column="guardianPhone"><%= student?.family?.guardian?.phone || '—' %></td>
+          <% } %>
           <td data-column="actions"><div class="cell-actions">
-            <form action="/admin/users/<%= u._id %>/status" method="POST" class="person-status-form" data-native-submit="true"><label class="sr-only" for="status-<%= u._id %>">Account status for <%= u.name %></label><select id="status-<%= u._id %>" name="status" class="person-status-select" onchange="this.form.submit()"><option value="active" <%= statusVal === 'active' ? 'selected' : '' %>>Active</option><option value="inactive" <%= statusVal === 'inactive' ? 'selected' : '' %>>Archived</option><option value="drop" <%= statusVal === 'drop' ? 'selected' : '' %>>Dropped</option><option value="complete" <%= statusVal === 'complete' ? 'selected' : '' %>>Completed</option></select></form>
+            <form action="/admin/users/<%= u._id %>/status" method="POST" class="person-status-form" data-native-submit="true"><details class="person-status-menu"><summary aria-label="Account status for <%= u.name %>"><%= statusVal %></summary><div class="person-status-options"><button type="submit" name="status" value="active" aria-current="<%= statusVal === 'active' %>">Active</button><button type="submit" name="status" value="inactive" aria-current="<%= statusVal === 'inactive' %>">Archived</button><button type="submit" name="status" value="drop" aria-current="<%= statusVal === 'drop' %>">Dropped</button><button type="submit" name="status" value="complete" aria-current="<%= statusVal === 'complete' %>">Completed</button></div></details></form>
             <a href="/admin/users/<%= u._id %>/edit" class="btn btn-ghost btn-xs"><%= u.profileIncomplete ? 'Set up account' : 'Edit' %></a>
             <% if (!u.profileIncomplete) { %><button type="button" class="btn btn-ghost btn-xs reset-password-btn" data-user-id="<%= u._id %>" data-user-name="<%= u.name %>" data-user-phone="<%= u.phone || '' %>">Reset password</button><% } %>
           </div></td>
@@ -313,17 +352,17 @@
     const search = document.getElementById('columnSearch');
     const count = document.getElementById('visibleColumnCount');
     if (!table || !grid || grid.dataset.ready) return;
-    const key = `vande.peopleColumns.v2.<%= activeRole || 'all' %>`;
+    const key = `vande.peopleColumns.v3.<%= activeRole || 'all' %>`;
     const columns = Array.from(table.querySelectorAll('thead [data-column]')).map(cell => ({
       key: cell.dataset.column,
       label: cell.textContent.trim()
     }));
     const defaults = <%- JSON.stringify(activeRole === 'student'
-      ? ['select','name','email','phone','academyId','course','leadSource','referredBy','batch','attendance','kyc','status','actions']
+      ? ['select','name','phone','academyId','course','status','actions']
       : ['select','name','email','phone','academyId','role','status','lastActive','actions']) %>;
     const locked = new Set(['name', 'actions']);
     const presets = {
-      essential: ['select', 'name', 'phone', 'academyId', 'status', 'actions'],
+      essential: ['select', 'name', 'phone', 'academyId', 'course', 'feeDue', 'status', 'actions'],
       finance: ['select', 'name', 'phone', 'course', 'feeTotal', 'feePaid', 'feeDue', 'status', 'actions'],
       all: columns.map(column => column.key)
     };

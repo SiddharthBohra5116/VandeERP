@@ -10,12 +10,16 @@
   const inputDate = value => value ? new Date(value).toISOString().split('T')[0] : '';
   const placeholderEmail = isEdit && /@(pending\.local|staff\.invalid)$/i.test(target.email || '');
   const moduleFlags = typeof modules === 'object' ? modules : { students:true, teachers:true, batches:true, attendance:true, kyc:true };
-  title = isEdit ? `Edit ${roleLabel}` : `Add ${roleLabel}`;
-  subtitle = isEdit ? `Modify profile details for ${target.name}` : `Create new credentials for academy ${roleLabel ? roleLabel.toLowerCase() + 's' : 'students or staff'}`;
+  const isStudentSetup = isEdit && activeRole === 'student' && !studentData;
+  title = isStudentSetup ? 'Set Up Student Profile' : isEdit ? `Edit ${roleLabel}` : `Add ${roleLabel}`;
+  subtitle = isStudentSetup ? `Complete enrollment details for ${target.name}` : isEdit ? `Modify profile details for ${target.name}` : `Create new credentials for academy ${roleLabel ? roleLabel.toLowerCase() + 's' : 'students or staff'}`;
   page = activeRole === 'student' ? 'students' : activeRole === 'teacher' ? 'teachers' : activeRole === 'counsellor' ? 'counsellors' : 'users';
 %>
 
 <div class="card" style="max-width: 700px; margin: 0 auto;">
+  <% if (isStudentSetup) { %>
+    <div class="alert alert-info" style="margin:1rem 1rem 0;">This login exists, but its student profile has not been created yet. Assign the course and complete the required details below; the Academy ID and full profile will then be generated.</div>
+  <% } %>
   <form action="<%= isEdit ? '/admin/users/' + target._id + '/edit' : '/admin/users/create' %>" method="POST" enctype="multipart/form-data">
     <div class="form-row">
       <div class="form-group">
@@ -113,6 +117,7 @@
       </div>
 
       <div class="form-row">
+        <% if (moduleFlags.teachers) { %>
         <div class="form-group">
           <label class="form-label" for="teacher">Assigned Teacher</label>
           <select id="teacher" name="teacher" class="form-control">
@@ -123,6 +128,7 @@
           </select>
           <div class="d-flex gap-1" style="margin-top:0.5rem;"><input id="newTeacherName" class="form-control" placeholder="Type future teacher name"><button type="button" class="btn btn-ghost btn-sm" onclick="createTemporaryStaff('teacher')">Add temporary</button></div>
         </div>
+        <% } %>
         <div class="form-group">
           <label class="form-label" for="counsellor">Assigned Counsellor</label>
           <select id="counsellor" name="counsellor" class="form-control">
@@ -255,7 +261,7 @@
     <div class="divider"></div>
 
     <div class="d-flex gap-2">
-      <button type="submit" class="btn btn-primary"><%= isEdit ? 'Update User' : 'Create User' %></button>
+      <button type="submit" class="btn btn-primary"><%= isStudentSetup ? 'Create Student Profile' : isEdit ? 'Update User' : 'Create User' %></button>
       <a href="<%= activeRole ? '/admin/' + activeRole + 's' : '/admin/dashboard' %>" class="btn btn-ghost">Cancel</a>
     </div>
   </form>

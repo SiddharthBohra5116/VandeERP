@@ -114,6 +114,7 @@
         </div>
       </div>
 
+      <% if (modules?.teachers !== false) { %>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Assign Primary Teacher *</label>
@@ -130,9 +131,10 @@
           <input type="date" name="enrollmentDate" class="form-control" value="<%= new Date().toISOString().split('T')[0] %>">
         </div>
       </div>
+      <% } else { %><input type="hidden" id="teacher_select" name="teacherId" value=""><% } %>
     </section>
 
-    <section class="convert-section">
+    <section class="convert-section" <%= modules?.fees === false ? 'hidden' : '' %>>
       <div class="convert-section-head">
         <div>
           <h3>Fee Setup</h3>
@@ -143,7 +145,7 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Total Invoice Fees (Rs.) *</label>
-          <input type="number" id="fees_total" name="fees_total" class="form-control" placeholder="30000" required min="0" oninput="checkDownpayment()">
+          <input type="number" id="fees_total" name="fees_total" class="form-control" placeholder="30000" <%= modules?.fees !== false ? 'required' : '' %> min="0" oninput="checkDownpayment()">
         </div>
         <div class="form-group">
           <label class="form-label">Initial Down Payment (Rs.)</label>
@@ -178,13 +180,13 @@
         <div id="installments_container">
           <div class="installment-row">
             <div class="form-group" data-label="Name">
-              <input type="text" name="instName[]" class="form-control form-control-sm" value="Down Payment (50%)" required>
+              <input type="text" name="instName[]" class="form-control form-control-sm" value="Down Payment (50%)" <%= modules?.fees !== false ? 'required' : '' %>>
             </div>
             <div class="form-group" data-label="Amount (Rs.)">
-              <input type="number" name="instAmount[]" class="form-control form-control-sm" placeholder="0" required>
+              <input type="number" name="instAmount[]" class="form-control form-control-sm" placeholder="0" <%= modules?.fees !== false ? 'required' : '' %>>
             </div>
             <div class="form-group" data-label="Due Date">
-              <input type="date" name="instDueDate[]" class="form-control form-control-sm" value="<%= new Date().toISOString().split('T')[0] %>" required>
+              <input type="date" name="instDueDate[]" class="form-control form-control-sm" value="<%= new Date().toISOString().split('T')[0] %>" <%= modules?.fees !== false ? 'required' : '' %>>
             </div>
             <button type="button" class="btn btn-red btn-xs" onclick="removeInstallmentRow(this)">Delete</button>
           </div>

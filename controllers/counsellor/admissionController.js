@@ -45,12 +45,15 @@ exports.getMyStudents = async (req, res) => {
   const { search } = req.query;
   try {
     const counsellorId = req.user.counsellorProfileId;
+    const modules = res.locals.modules || {};
+    const coursesEnabled = modules.courses !== false;
+    const batchesEnabled = modules.batches !== false;
+    const feesEnabled = modules.fees !== false;
 
-    let students = await Student.find({ counsellor: counsellorId })
-      .populate('user', 'name email phone status isActive profilePic')
-      .populate('course', 'name')
-      .populate('batch', 'name')
-      .sort({ createdAt: -1 });
+    let studentsQuery = Student.find({ counsellor: counsellorId }).populate('user', 'name email phone status isActive profilePic');
+    if (coursesEnabled) studentsQuery = studentsQuery.populate('course', 'name');
+    if (batchesEnabled) studentsQuery = studentsQuery.populate('batch', 'name');
+    let students = await studentsQuery.sort({ createdAt: -1 });
 
     // Filter out students whose user doc has been deleted
     students = students.filter(s => s.user);
@@ -66,7 +69,7 @@ exports.getMyStudents = async (req, res) => {
 
     // Fetch fee records for all these students
     const studentIds = students.map(s => s._id);
-    const fees = studentIds.length > 0 ? await Fee.find({ student: { $in: studentIds } }) : [];
+    const fees = feesEnabled && studentIds.length > 0 ? await Fee.find({ student: { $in: studentIds } }) : [];
 
     const studentData = students.map(s => {
       const fee = fees.find(f => String(f.student) === String(s._id));
@@ -131,20 +134,23 @@ exports.getMyStudents = async (req, res) => {
 exports.getAdmissions = async (req, res) => {
   const { search } = req.query;
   try {
+    const modules = res.locals.modules || {};
+    const coursesEnabled = modules.courses !== false;
+    const batchesEnabled = modules.batches !== false;
+    const feesEnabled = modules.fees !== false;
     const query = {
       assignedTo: req.user.counsellorProfileId,
       status: 'admission_completed',
       convertedStudent: { $exists: true, $ne: null }
     };
     
+    const studentPopulate = [{ path: 'user', select: 'name email phone status isActive' }];
+    if (coursesEnabled) studentPopulate.push({ path: 'course', select: 'name' });
+    if (batchesEnabled) studentPopulate.push({ path: 'batch', select: 'name' });
     let convertedLeads = await Lead.find(query)
       .populate({
         path: 'convertedStudent',
-        populate: [
-          { path: 'user', select: 'name email phone status isActive' },
-          { path: 'course', select: 'name' },
-          { path: 'batch', select: 'name' }
-        ]
+        populate: studentPopulate
       })
       .sort({ updatedAt: -1 });
 
@@ -157,7 +163,7 @@ exports.getAdmissions = async (req, res) => {
     }
 
     const studentIds = convertedLeads.map(l => l.convertedStudent && l.convertedStudent._id).filter(Boolean);
-    const fees = await Fee.find({ student: { $in: studentIds } });
+    const fees = feesEnabled ? await Fee.find({ student: { $in: studentIds } }) : [];
 
     const students = convertedLeads.map(lead => {
       const sp = lead.convertedStudent;
@@ -307,9 +313,10 @@ exports.postConvertLead = async (req, res) => {
       return res.status(403).render('403', { title: 'Access Denied', user: req.user });
     }
 
-    const totalFees = Number(req.body.fees_total) || 0;
-    const paidFees = Number(req.body.fees_paid) || 0;
-    if (totalFees <= 0 || paidFees < 0 || paidFees > totalFees) {
+    const feesEnabled = res.locals.modules?.fees !== false;
+    const totalFees = feesEnabled ? (Number(req.body.fees_total) || 0) : 0;
+    const paidFees = feesEnabled ? (Number(req.body.fees_paid) || 0) : 0;
+    if (feesEnabled && (totalFees <= 0 || paidFees < 0 || paidFees > totalFees)) {
       return res.render('counsellor/convert', {
         title: `Convert: ${lead.name}`,
         user: req.user,
@@ -321,8 +328,8 @@ exports.postConvertLead = async (req, res) => {
       });
     }
 
-    const installments = buildFeeSchedule(req.body, totalFees);
-    if (!installments.length) throw new Error('Add at least one installment.');
+    const installments = feesEnabled ? buildFeeSchedule(req.body, totalFees) : [];
+    if (feesEnabled && !installments.length) throw new Error('Add at least one installment.');
 
     const email = req.body.email ? req.body.email.trim().toLowerCase() : '';
     const password = req.body.password ? req.body.password.trim() : '';
@@ -375,7 +382,7 @@ exports.postConvertLead = async (req, res) => {
     // ponytail: keep one internal roster per course while the batch UI is paused.
     const batchName = `${courseDoc.code || courseDoc.name} - General`;
 
-    const selectedTeacherProfile = req.body.teacherId
+    const selectedTeacherProfile = res.locals.modules?.teachers !== false && req.body.teacherId
       ? teacherProfiles.find(profile => profile._id.toString() === req.body.teacherId)
       : null;
     const selectedTeacherUserId = selectedTeacherProfile?.user?._id || null;
@@ -415,7 +422,7 @@ exports.postConvertLead = async (req, res) => {
       studentProfile = await Student.create({
         user: studentUser._id,
         counsellor: req.user.counsellorProfileId,
-        teacher: req.body.teacherId || null,
+        teacher: selectedTeacherProfile?._id || null,
         course: courseDoc ? courseDoc._id : null,
         batch: targetBatchObj ? targetBatchObj._id : null,
         enrollmentDate: req.body.enrollmentDate ? new Date(req.body.enrollmentDate) : new Date(),
@@ -428,7 +435,8 @@ exports.postConvertLead = async (req, res) => {
         }]
       });
 
-      let feeLedger = new Fee({
+      if (feesEnabled) {
+      const feeLedger = new Fee({
         student: studentProfile._id,
         course: courseDoc ? courseDoc._id : null,
         batch: targetBatchObj ? targetBatchObj._id : null,
@@ -451,6 +459,7 @@ exports.postConvertLead = async (req, res) => {
         fees_total: feeLedger.totalAmount,
         fees_paid: feeLedger.paidAmount
       });
+      }
 
       const oldLeadStatus = lead.status;
       lead.status = 'admission_completed';

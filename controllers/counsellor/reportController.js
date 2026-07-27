@@ -10,11 +10,18 @@ const Student = require('../../models/Student');
 exports.getReports = async (req, res) => {
   try {
     const counsellorId = req.user.counsellorProfileId;
+    const modules = res.locals.modules || {};
+    const leadsEnabled = modules.leads !== false;
+    const studentsEnabled = modules.students !== false;
+    const batchesEnabled = modules.batches !== false;
+    const attendanceEnabled = modules.attendance !== false;
+    const feesEnabled = modules.fees !== false;
+    const assignmentsEnabled = modules.assignments !== false;
 
     // 1. Fetch leads metrics
     const [totalLeads, convertedLeads] = await Promise.all([
-      Lead.countDocuments({ assignedTo: counsellorId }),
-      Lead.find({ assignedTo: counsellorId, status: 'admission_completed' })
+      leadsEnabled ? Lead.countDocuments({ assignedTo: counsellorId }) : 0,
+      leadsEnabled ? Lead.find({ assignedTo: counsellorId, status: 'admission_completed' }) : []
     ]);
 
     const conversionRate = totalLeads > 0 ? Math.round((convertedLeads.length / totalLeads) * 100) : 0;
@@ -30,14 +37,16 @@ exports.getReports = async (req, res) => {
     }
 
     // 2. Fetch admitted students (health grid)
-    const students = await Student.find({ counsellor: counsellorId }).populate('user').populate('batch', 'name').sort({ name: 1 });
+    let studentsQuery = Student.find(studentsEnabled ? { counsellor: counsellorId } : { _id: null }).populate('user');
+    if (batchesEnabled) studentsQuery = studentsQuery.populate('batch', 'name');
+    const students = await studentsQuery.sort({ name: 1 });
 
     const studentHealthGrid = [];
     for (const student of students) {
       const [attList, fee, assignments] = await Promise.all([
-        Attendance.find({ student: student._id }),
-        Fee.findOne({ student: student._id }),
-        student.batch ? Assignment.find({ batch: student.batch }) : []
+        attendanceEnabled ? Attendance.find({ student: student._id }) : [],
+        feesEnabled ? Fee.findOne({ student: student._id }) : null,
+        assignmentsEnabled && student.batch ? Assignment.find({ batch: student.batch }) : []
       ]);
 
       // Attendance %

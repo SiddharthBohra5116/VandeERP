@@ -167,7 +167,7 @@ exports.postCreateBatch = async (req, res) => {
 
     let teachersArray = [];
 
-    if (teachers) {
+    if (res.locals.modules?.teachers !== false && teachers) {
       teachersArray = Array.isArray(teachers)
         ? teachers
         : [teachers];
@@ -326,7 +326,7 @@ exports.postEditBatch = async (req, res) => {
 
     let teachersArray = [];
 
-    if (teachers) {
+    if (res.locals.modules?.teachers !== false && teachers) {
       teachersArray = Array.isArray(teachers)
         ? teachers
         : [teachers];
@@ -337,6 +337,7 @@ exports.postEditBatch = async (req, res) => {
     if (!batch) {
       return res.redirect('/admin/batches');
     }
+    if (res.locals.modules?.teachers === false) teachersArray = batch.teachers || [];
 
     const oldTeacherIds = (batch.teachers || []).map(id => id.toString()).sort();
     const oldCourseId = batch.course ? batch.course.toString() : '';

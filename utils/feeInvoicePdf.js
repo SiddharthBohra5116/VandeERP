@@ -25,9 +25,8 @@ function createFeeInvoice(fee) {
   doc.fillColor('#111').font('Helvetica-Bold').fontSize(11).text('BILL TO', 48, 140);
   doc.fontSize(15).text(student.user?.name || student.name || 'Student', 48, 160);
   doc.font('Helvetica').fontSize(9).fillColor('#555');
-  doc.text(`Academy ID: ${student.rollNumber || 'Pending'}`, 48, 184);
-  doc.text(`Phone: ${student.user?.phone || student.phone || 'Not provided'}`, 48, 199);
-  doc.text(`Email: ${student.user?.email || student.email || 'Not provided'}`, 48, 214);
+  doc.text(`Phone: ${student.user?.phone || student.phone || 'Not provided'}`, 48, 184);
+  doc.text(`Email: ${student.user?.email || student.email || 'Not provided'}`, 48, 199);
 
   doc.font('Helvetica-Bold').fontSize(10).fillColor('#111').text('INVOICE DATE', 380, 140, { width: 167, align: 'right' });
   doc.font('Helvetica').fillColor('#555').text(

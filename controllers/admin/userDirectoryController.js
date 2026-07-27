@@ -97,6 +97,15 @@ exports.postCreateTemporaryStaff = async (req, res) => {
 // GET /admin/users
 exports.getUsers = async (req, res) => {
   try {
+    const modules = res.locals.modules || {};
+    const studentsEnabled = modules.students !== false;
+    const teachersEnabled = modules.teachers !== false;
+    const counsellorsEnabled = modules.counsellors !== false;
+    const coursesEnabled = modules.courses !== false;
+    const batchesEnabled = modules.batches !== false;
+    const attendanceEnabled = modules.attendance !== false;
+    const feesEnabled = modules.fees !== false;
+    const leadsEnabled = modules.leads !== false;
     const { role, search } = req.query;
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 10), 100);
@@ -113,29 +122,29 @@ exports.getUsers = async (req, res) => {
 
       // Search matching courses and batches for students/teachers
       const [matchingCourses, matchingBatches] = await Promise.all([
-        Course.find({ name: { $regex: escaped, $options: 'i' } }).select('_id'),
-        Batch.find({ name: { $regex: escaped, $options: 'i' } }).select('_id')
+        coursesEnabled ? Course.find({ name: { $regex: escaped, $options: 'i' } }).select('_id') : [],
+        batchesEnabled ? Batch.find({ name: { $regex: escaped, $options: 'i' } }).select('_id') : []
       ]);
 
       const courseIds = matchingCourses.map(c => c._id);
       const batchIds = matchingBatches.map(b => b._id);
 
       // Find students matching course, batch or rollNumber
-      const matchingStudents = await Student.find({
+      const matchingStudents = studentsEnabled ? await Student.find({
         $or: [
           { rollNumber: { $regex: escaped, $options: 'i' } },
           { course: { $in: courseIds } },
           { batch: { $in: batchIds } }
         ]
-      }).select('user');
+      }).select('user') : [];
 
       // Find teachers matching qualification or rollNumber
-      const matchingTeachers = await Teacher.find({
+      const matchingTeachers = teachersEnabled ? await Teacher.find({
         $or: [
           { rollNumber: { $regex: escaped, $options: 'i' } },
           { qualification: { $regex: escaped, $options: 'i' } }
         ]
-      }).select('user');
+      }).select('user') : [];
 
       const matchedUserIdsFromProfiles = [
         ...matchingStudents.map(s => s.user),
@@ -158,27 +167,29 @@ exports.getUsers = async (req, res) => {
     const userIds = users.map(user => user._id);
 
     // Fetch student profiles for these users
-    const studentProfiles = await Student.find({ user: { $in: userIds } })
-      .populate('course', 'name code')
-      .populate('batch', 'name')
-      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
-      .populate({ path: 'counsellor', populate: { path: 'user', select: 'name' } });
+    let studentProfilesQuery = Student.find({ user: { $in: studentsEnabled ? userIds : [] } });
+    if (coursesEnabled) studentProfilesQuery = studentProfilesQuery.populate('course', 'name code');
+    if (batchesEnabled) studentProfilesQuery = studentProfilesQuery.populate('batch', 'name');
+    if (teachersEnabled) studentProfilesQuery = studentProfilesQuery.populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
+    if (counsellorsEnabled) studentProfilesQuery = studentProfilesQuery.populate({ path: 'counsellor', populate: { path: 'user', select: 'name' } });
+    const studentProfiles = await studentProfilesQuery;
 
     // Fetch teacher profiles for these users
-    const teacherProfiles = await Teacher.find({ user: { $in: userIds } })
-      .populate('courses', 'name code');
+    let teacherProfilesQuery = Teacher.find({ user: { $in: teachersEnabled ? userIds : [] } });
+    if (coursesEnabled) teacherProfilesQuery = teacherProfilesQuery.populate('courses', 'name code');
+    const teacherProfiles = await teacherProfilesQuery;
 
     const studentProfileMap = new Map(studentProfiles.map(p => [String(p.user), p]));
     const teacherProfileMap = new Map(teacherProfiles.map(p => [String(p.user), p]));
-    const fees = await Fee.find({ student: { $in: studentProfiles.map(profile => profile._id) } }).select('student totalAmount paidAmount');
+    const fees = feesEnabled ? await Fee.find({ student: { $in: studentProfiles.map(profile => profile._id) } }).select('student totalAmount paidAmount') : [];
     const feeMap = new Map(fees.map(fee => [String(fee.student), fee]));
-    const leads = await Lead.find({ convertedStudent: { $in: studentProfiles.map(profile => profile._id) } }).select('convertedStudent source referredBy');
+    const leads = leadsEnabled ? await Lead.find({ convertedStudent: { $in: studentProfiles.map(profile => profile._id) } }).select('convertedStudent source referredBy') : [];
     const leadMap = new Map(leads.map(lead => [String(lead.convertedStudent), lead]));
 
     // Fetch student attendance stats if there are students
     let attendanceMap = new Map();
     const studentsToCalculate = studentProfiles.filter(p => userIds.map(String).includes(String(p.user)));
-    if (studentsToCalculate.length > 0) {
+    if (attendanceEnabled && studentsToCalculate.length > 0) {
       const studentIds = studentsToCalculate.map(s => s._id);
       const [attendanceRecords, todayRecords] = await Promise.all([
         Attendance.find({ student: { $in: studentIds } }),
@@ -345,7 +356,7 @@ exports.postCreateUser = async (req, res) => {
       const studentProfile = await Student.create({
         user: newUser._id,
         counsellor: data.counsellor || null,
-        teacher: data.teacher || null,
+        teacher: res.locals.modules?.teachers === false ? null : (data.teacher || null),
         course: data.course || null,
         batch: courseRoster?._id || null,
         enrollmentDate: data.enrollmentDate || Date.now(),
@@ -464,6 +475,9 @@ exports.getEditUser = async (req, res) => {
     if (!target) {
       return res.redirect('/admin/dashboard');
     }
+    if (res.locals.modules?.[`${target.role}s`] === false) {
+      return res.status(404).render('module-disabled', { title: 'Module unavailable', moduleName: target.role, user: req.user, layout: 'main' });
+    }
 
     const [formOptions, studentProfile, teacherProfile, counsellorProfile] = await Promise.all([
       getUserFormOptions(),
@@ -510,6 +524,9 @@ exports.postEditUser = async (req, res) => {
 
     if (!targetUser) {
       return res.redirect('/admin/dashboard');
+    }
+    if (res.locals.modules?.[`${targetUser.role}s`] === false) {
+      return res.status(404).render('module-disabled', { title: 'Module unavailable', moduleName: targetUser.role, user: req.user, layout: 'main' });
     }
 
     const completingTemporaryStaff = targetUser.profileIncomplete;
@@ -591,11 +608,12 @@ exports.postEditUser = async (req, res) => {
 
     await targetUser.save();
 
+    let savedStudent = null;
     if (targetUser.role === 'student') {
       const courseRoster = res.locals.modules?.batches === false ? null : await getCourseRoster(data.course);
       const studentUpdate = {
         counsellor: data.counsellor || null,
-        teacher: data.teacher || null,
+        teacher: res.locals.modules?.teachers === false ? null : (data.teacher || null),
         course: data.course || null,
         ...(res.locals.modules?.batches === false ? {} : { batch: courseRoster?._id || null }),
         family: {
@@ -622,7 +640,7 @@ exports.postEditUser = async (req, res) => {
       if (data.fees_paid !== undefined && data.fees_paid !== '') studentUpdate.fees_paid = Number(data.fees_paid);
       if (uploadedPhoto) studentUpdate['documents.profilePic'] = uploadedPhoto.url;
 
-      await Student.findOneAndUpdate(
+      savedStudent = await Student.findOneAndUpdate(
         { user: targetUser._id },
         studentUpdate,
         {
@@ -671,7 +689,7 @@ exports.postEditUser = async (req, res) => {
       });
     }
 
-    res.redirect(getRoleRedirect(targetUser.role, '?updated=1'));
+    res.redirect(savedStudent ? `/admin/students/${savedStudent._id}?updated=1` : getRoleRedirect(targetUser.role, '?updated=1'));
 
   } catch (err) {
     logger.error('Edit User Error', {

@@ -18,7 +18,18 @@ const syncCourseCompletion = require('../../utils/syncCourseCompletion');
 // GET /admin/students
 exports.getStudents = async (req, res) => {
   try {
-    const { search, attendance, incomplete, status, kyc } = req.query;
+    const modules = res.locals.modules || {};
+    const attendanceEnabled = modules.attendance !== false;
+    const teacherEnabled = modules.teachers !== false;
+    const counsellorEnabled = modules.counsellors !== false;
+    const coursesEnabled = modules.courses !== false;
+    const batchesEnabled = modules.batches !== false;
+    const feesEnabled = modules.fees !== false;
+    const leadsEnabled = modules.leads !== false;
+    const kycEnabled = modules.kyc !== false;
+    const { search, incomplete, status } = req.query;
+    const attendance = attendanceEnabled ? req.query.attendance : '';
+    const kyc = kycEnabled ? req.query.kyc : '';
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 10), 100);
     const skip = (page - 1) * limit;
@@ -28,13 +39,19 @@ exports.getStudents = async (req, res) => {
       archivedAt: null
     };
     if (status) userFilter.status = status;
-    const incompleteProfileFilter = { $or: [{ batch: null }, { teacher: null }, { counsellor: null }] };
-    const incompleteCount = await Student.countDocuments(incompleteProfileFilter);
+    const incompleteConditions = [
+      ...(batchesEnabled ? [{ batch: null }] : []),
+      ...(teacherEnabled ? [{ teacher: null }] : []),
+      ...(counsellorEnabled ? [{ counsellor: null }] : [])
+    ];
+    const incompleteProfileFilter = incompleteConditions.length ? { $or: incompleteConditions } : { _id: null };
+    const completeProfileFilter = Object.fromEntries(incompleteConditions.map(condition => [Object.keys(condition)[0], { $ne: null }]));
+    const incompleteCount = incompleteConditions.length ? await Student.countDocuments(incompleteProfileFilter) : 0;
 
     if (incomplete === '1' || incomplete === '0' || kyc) {
       const profileFilter = {};
       if (incomplete === '1') Object.assign(profileFilter, incompleteProfileFilter);
-      if (incomplete === '0') Object.assign(profileFilter, { batch: { $ne: null }, teacher: { $ne: null }, counsellor: { $ne: null } });
+      if (incomplete === '0') Object.assign(profileFilter, completeProfileFilter);
       if (kyc === 'complete') profileFilter.idVerified = true;
       if (kyc === 'pending') profileFilter.idVerified = { $ne: true };
       const matchingProfiles = await Student.find(profileFilter).select('user');
@@ -49,8 +66,8 @@ exports.getStudents = async (req, res) => {
       const Batch = require('../../models/Batch');
 
       const [matchingCourses, matchingBatches] = await Promise.all([
-        Course.find({ name: { $regex: escaped, $options: 'i' } }).select('_id'),
-        Batch.find({ name: { $regex: escaped, $options: 'i' } }).select('_id')
+        coursesEnabled ? Course.find({ name: { $regex: escaped, $options: 'i' } }).select('_id') : [],
+        batchesEnabled ? Batch.find({ name: { $regex: escaped, $options: 'i' } }).select('_id') : []
       ]);
 
       const courseIds = matchingCourses.map(c => c._id);
@@ -81,15 +98,12 @@ exports.getStudents = async (req, res) => {
 
     const userIds = users.map(user => user._id);
 
-    const studentProfiles = await Student.find({
-      user: { $in: userIds }
-    })
-      .populate('user', 'name email phone status profilePic')
-      .populate('course', 'name code')
-      .populate('batch', 'name')
-      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
-      .populate({ path: 'counsellor', populate: { path: 'user', select: 'name' } })
-      .sort({ createdAt: -1 });
+    let profilesQuery = Student.find({ user: { $in: userIds } }).populate('user', 'name email phone status profilePic');
+    if (coursesEnabled) profilesQuery = profilesQuery.populate('course', 'name code');
+    if (batchesEnabled) profilesQuery = profilesQuery.populate('batch', 'name');
+    if (teacherEnabled) profilesQuery = profilesQuery.populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
+    if (counsellorEnabled) profilesQuery = profilesQuery.populate({ path: 'counsellor', populate: { path: 'user', select: 'name' } });
+    const studentProfiles = await profilesQuery.sort({ createdAt: -1 });
 
     const studentProfileMap = new Map(
       studentProfiles
@@ -99,14 +113,14 @@ exports.getStudents = async (req, res) => {
           profile
         ])
     );
-    const fees = await Fee.find({ student: { $in: studentProfiles.map(profile => profile._id) } }).select('student totalAmount paidAmount');
+    const fees = feesEnabled ? await Fee.find({ student: { $in: studentProfiles.map(profile => profile._id) } }).select('student totalAmount paidAmount') : [];
     const feeMap = new Map(fees.map(fee => [String(fee.student), fee]));
-    const leads = await Lead.find({ convertedStudent: { $in: studentProfiles.map(profile => profile._id) } }).select('convertedStudent source referredBy');
+    const leads = leadsEnabled ? await Lead.find({ convertedStudent: { $in: studentProfiles.map(profile => profile._id) } }).select('convertedStudent source referredBy') : [];
     const leadMap = new Map(leads.map(lead => [String(lead.convertedStudent), lead]));
 
     let attendanceMap = new Map();
 
-    if (studentProfiles.length > 0) {
+    if (attendanceEnabled && studentProfiles.length > 0) {
       const studentIds = studentProfiles.map(student => student._id);
 
       const [attendanceRecords, todayRecords] = await Promise.all([
@@ -215,38 +229,51 @@ exports.getStudents = async (req, res) => {
 // GET /admin/students/:id
 exports.getStudentProfile = async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id)
-      .populate('user', 'name email phone status profilePic address city dob socialHandle createdAt updatedAt')
-      .populate({ path: 'teacher', populate: { path: 'user', select: 'name email phone' } })
-      .populate({ path: 'counsellor', populate: { path: 'user', select: 'name email phone' } })
-      .populate('course', 'name code durationMonths fees requiredClasses')
-      .populate('batch', 'name');
+    const modules = res.locals.modules || {};
+    const attendanceEnabled = modules.attendance !== false;
+    const teacherEnabled = modules.teachers !== false;
+    const counsellorEnabled = modules.counsellors !== false;
+    const coursesEnabled = modules.courses !== false;
+    const batchesEnabled = modules.batches !== false;
+    const feesEnabled = modules.fees !== false;
+    const leadsEnabled = modules.leads !== false;
+    const progressEnabled = modules.progress !== false;
+    const schedulesEnabled = modules.schedules !== false;
+    let studentQuery = Student.findById(req.params.id)
+      .populate('user', 'name email phone status profilePic address city dob socialHandle createdAt updatedAt');
+    if (teacherEnabled) studentQuery = studentQuery.populate({ path: 'teacher', populate: { path: 'user', select: 'name email phone' } });
+    if (counsellorEnabled) studentQuery = studentQuery.populate({ path: 'counsellor', populate: { path: 'user', select: 'name email phone' } });
+    if (coursesEnabled) studentQuery = studentQuery.populate('course', 'name code durationMonths fees requiredClasses');
+    if (batchesEnabled) studentQuery = studentQuery.populate('batch', 'name');
+    const student = await studentQuery;
 
     if (!student || !student.user) {
       return res.redirect('/admin/students');
     }
 
     const [fee, attendance, progress, lead, messages, futureSchedules] = await Promise.all([
-      Fee.findOne({ student: student._id })
-        .populate('payments.receivedBy', 'name'),
+      feesEnabled ? Fee.findOne({ student: student._id }).populate('payments.receivedBy', 'name') : null,
 
-      Attendance.find({ student: student._id })
-        .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
-        .sort({ date: -1 }),
+      attendanceEnabled ? (() => {
+        let query = Attendance.find({ student: student._id }).sort({ date: -1 });
+        if (teacherEnabled) query = query.populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
+        return query;
+      })() : [],
 
-      Progress.findOne({ student: student._id })
-        .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
-        .populate('course', 'name code')
-        .populate('batch', 'name'),
+      progressEnabled ? (() => {
+        let query = Progress.findOne({ student: student._id }).populate('course', 'name code').populate('batch', 'name');
+        if (teacherEnabled) query = query.populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
+        return query;
+      })() : null,
 
-      Lead.findOne({ convertedStudent: student._id })
-        .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name' } }),
+      leadsEnabled ? Lead.findOne({ convertedStudent: student._id })
+        .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name' } }) : null,
 
       Message.find({ recipient: student.user._id })
         .populate('sender', 'name role')
         .sort({ createdAt: -1 }),
 
-      student.batch ? Schedule.find({ batch: student.batch._id, date: { $gte: todayIST() }, status: { $ne: 'cancelled' } }).select('date').sort({ date: 1 }).lean() : []
+      schedulesEnabled && batchesEnabled && student.batch ? Schedule.find({ batch: student.batch._id, date: { $gte: todayIST() }, status: { $ne: 'cancelled' } }).select('date').sort({ date: 1 }).lean() : []
     ]);
 
     const courseProgress = calculateCourseProgress(student, attendance, futureSchedules);

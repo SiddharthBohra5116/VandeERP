@@ -323,6 +323,7 @@ router.post(
 
 router.get('/fees', ...guard, feeCtrl.getFees);
 router.post('/fees/import', ...guard, csvUpload('feeCsv', '/admin/fees'), csrfProtection, bulkImportCtrl.postImportFees);
+router.post('/fees/bulk-complete', ...guard, csrfProtection, feeCtrl.postBulkComplete);
 router.get('/fees/:studentId/invoice.pdf', ...guard, feeCtrl.getFeeInvoice);
 
 router.get(
@@ -393,8 +394,8 @@ router.post(
   leadCtrl.postDeleteStatus
 );
 
-router.post('/leads/custom-fields', ...guard, leadCtrl.postCreateCustomField);
-router.post('/leads/custom-fields/:id/delete', ...guard, leadCtrl.postDeleteCustomField);
+router.post('/leads/custom-fields', ...guard, csrfProtection, leadCtrl.postCreateCustomField);
+router.post('/leads/custom-fields/:id/delete', ...guard, csrfProtection, leadCtrl.postDeleteCustomField);
 
 router.post(
   '/leads/delete',

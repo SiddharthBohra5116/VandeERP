@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %> — Vande Digital Academy</title>
+  <script>
+    if (localStorage.getItem('sidebar-collapsed') === 'true' && matchMedia('(min-width: 901px)').matches) {
+      document.documentElement.classList.add('sidebar-collapsed-preload');
+    }
+  </script>
   <link rel="icon" type="image/png" href="/images/favicon.png?v=2">
   <!-- NProgress Loader -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.css">
@@ -44,6 +49,7 @@
     <%- include('../partials/sidebar') %>
 
     <div class="main-wrap">
+      <script>if(document.documentElement.classList.contains('sidebar-collapsed-preload'))document.currentScript.parentElement.classList.add('expanded')</script>
       <%- include('../partials/topbar') %>
 
       <main class="page-content">
@@ -112,6 +118,7 @@
           document.querySelector('.main-wrap').classList.remove('expanded');
         }
       }
+      document.documentElement.classList.remove('sidebar-collapsed-preload');
     };
 
     if (sidebar && sidebarBackdrop) {
@@ -281,6 +288,20 @@
     });
 
     // 10. Close alerts/toasts automatically
+    window.consolidateToasts = () => {
+      const toasts = [...document.querySelectorAll('.alert-toast')];
+      if (!toasts.length) return;
+      let stack = document.querySelector('.flash-stack');
+      if (!stack) {
+        stack = document.createElement('div');
+        stack.className = 'flash-stack';
+        stack.setAttribute('aria-live', 'polite');
+        document.body.appendChild(stack);
+      }
+      toasts.forEach(toast => stack.appendChild(toast));
+    };
+    window.consolidateToasts();
+
     const dismissAlert = (el) => {
       if (!el || el.dataset.dismissing === '1') return;
       el.dataset.dismissing = '1';

@@ -9,7 +9,9 @@ function configureCrmSync() {
 }
 
 function installCrmSyncTriggers() {
-  ScriptApp.getProjectTriggers().forEach(trigger => ScriptApp.deleteTrigger(trigger));
+  ScriptApp.getProjectTriggers()
+    .filter(trigger => ['syncEditedRows', 'syncSubmittedRow'].includes(trigger.getHandlerFunction()))
+    .forEach(trigger => ScriptApp.deleteTrigger(trigger));
   ScriptApp.newTrigger('syncEditedRows').forSpreadsheet(SpreadsheetApp.getActive()).onEdit().create();
   ScriptApp.newTrigger('syncSubmittedRow').forSpreadsheet(SpreadsheetApp.getActive()).onFormSubmit().create();
 }

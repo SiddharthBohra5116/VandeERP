@@ -3,6 +3,9 @@
   title = 'Admitted Students';
   subtitle = `${students.length} students converted from CRM pipeline`;
   page = 'admissions';
+  const coursesEnabled = !modules || modules.courses !== false;
+  const batchesEnabled = !modules || modules.batches !== false;
+  const feesEnabled = !modules || modules.fees !== false;
 %>
 
 <!-- Summary Grid -->
@@ -12,6 +15,7 @@
     <div class="stat-value"><%= students.length %></div>
     <div class="stat-sub">From your pipeline</div>
   </div>
+  <% if (coursesEnabled) { %>
   <div class="stat-card gold">
     <div class="stat-label">Video Editing</div>
     <div class="stat-value"><%= students.filter(s => s.course === 'Video Editing').length %></div>
@@ -24,6 +28,7 @@
     <div class="stat-label">Both Courses</div>
     <div class="stat-value"><%= students.filter(s => s.course === 'Both').length %></div>
   </div>
+  <% } %>
 </div>
 
 <!-- Search Bar -->
@@ -48,12 +53,12 @@
             <th>#</th>
             <th>Name</th>
             <th>Phone</th>
-            <th>Course</th>
-            <th>Batch</th>
+            <% if (coursesEnabled) { %><th>Course</th><% } %>
+            <% if (batchesEnabled) { %><th>Batch</th><% } %>
             <th>Source</th>
             <th>Admitted On</th>
             <th>Status</th>
-            <th>Fee Ledger Status</th>
+            <% if (feesEnabled) { %><th>Fee Ledger Status</th><% } %>
           </tr>
         </thead>
         <tbody>
@@ -61,7 +66,7 @@
             <%
               const student = item.student;
               const lead = item.lead;
-              const feePct = student.fees_total > 0 ? Math.round((student.fees_paid / student.fees_total) * 100) : 0;
+              const feePct = feesEnabled && student.fees_total > 0 ? Math.round((student.fees_paid / student.fees_total) * 100) : 0;
               const statusVal = student.status || (student.isActive ? 'active' : 'inactive');
               const statusBadgeClass = {
                 active: 'badge-green',
@@ -81,8 +86,8 @@
                 </div>
               </td>
               <td class="td-mono"><%= student.phone || '—' %></td>
-              <td><span class="badge badge-orange"><%= student.course %></span></td>
-              <td class="td-muted"><%= student.batch || '—' %></td>
+              <% if (coursesEnabled) { %><td><span class="badge badge-orange"><%= student.course %></span></td><% } %>
+              <% if (batchesEnabled) { %><td class="td-muted"><%= student.batch || '—' %></td><% } %>
               <td class="td-muted"><%= lead ? lead.source : '—' %></td>
               <td class="td-mono td-muted">
                 <%= lead ? new Date(lead.updatedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'}) : '—' %>
@@ -90,7 +95,7 @@
               <td>
                 <span class="badge <%= statusBadgeClass %>"><%= statusVal %></span>
               </td>
-              <td>
+              <% if (feesEnabled) { %><td>
                 <div style="min-width:110px;">
                   <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted); font-family:var(--mono); margin-bottom:4px;">
                     <span>₹<%= (student.fees_paid||0).toLocaleString('en-IN') %></span>
@@ -113,7 +118,7 @@
                     View Ledger
                   </a>
                 </div>
-              </td>
+              </td><% } %>
             </tr>
           <% }); %>
         </tbody>
@@ -123,4 +128,3 @@
 </div>
 
 <script src="/js/instant-filter.js"></script>
-

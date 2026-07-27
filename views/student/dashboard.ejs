@@ -47,7 +47,7 @@
       body: 'Your account is ready, but a course and batch must be assigned before classroom features unlock.',
       tone: 'warn'
     };
-  } else if (isKycIncomplete) {
+  } else if (modules?.kyc !== false && isKycIncomplete) {
     primaryAction = {
       label: 'Complete verification',
       href: '/auth/profile#document-verification',
@@ -55,7 +55,7 @@
       body: 'Upload your ID and parent/guardian details to keep your account fully active.',
       tone: 'danger'
     };
-  } else if (isIdNotVerified) {
+  } else if (modules?.kyc !== false && isIdNotVerified) {
     primaryAction = {
       label: 'View profile',
       href: '/auth/profile#document-verification',
@@ -63,7 +63,7 @@
       body: 'Your ID document is uploaded. The academy team will approve it soon.',
       tone: 'warn'
     };
-  } else if ((pendingAssignments || []).length > 0) {
+  } else if (modules?.assignments !== false && (pendingAssignments || []).length > 0) {
     primaryAction = {
       label: 'Submit homework',
       href: '/student/assignments',
@@ -71,7 +71,7 @@
       body: 'Open assignments and submit the pending work before the due date.',
       tone: 'warn'
     };
-  } else if (netDue > 0) {
+  } else if (modules?.fees !== false && netDue > 0) {
     primaryAction = {
       label: 'Review fee ledger',
       href: '/student/fees',
@@ -79,7 +79,7 @@
       body: fee && fee.dueDate ? `Next due date: ${new Date(fee.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}.` : 'Check your fee ledger for details.',
       tone: 'danger'
     };
-  } else if (nextClass) {
+  } else if (modules?.schedules !== false && nextClass) {
     primaryAction = {
       label: 'See schedule',
       href: '#today-classes',
@@ -132,16 +132,20 @@
       <small><%= presentCount %> of <%= totalClasses %> sessions attended</small>
     </a>
     <% } %>
+    <% if (modules?.assignments !== false) { %>
     <a href="/student/assignments" class="student-metric-card">
       <span>Homework</span>
       <strong><%= assignmentSummary.pending %></strong>
       <small><%= assignmentSummary.graded %> graded, <%= assignmentSummary.submitted %> submitted</small>
     </a>
+    <% } %>
+    <% if (modules?.fees !== false) { %>
     <a href="/student/fees" class="student-metric-card">
       <span>Fees</span>
       <strong>Rs. <%= netDue.toLocaleString('en-IN') %></strong>
       <small><%= netDue > 0 && fee && fee.dueDate ? `Due ${new Date(fee.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'No outstanding invoice' %></small>
     </a>
+    <% } %>
     <% if (typeof modules === 'undefined' || modules.kyc !== false) { %>
     <a href="/auth/profile#document-verification" class="student-metric-card">
       <span>Verification</span>
@@ -177,13 +181,14 @@
   <% } %>
 
   <section class="student-dashboard-grid">
+    <% if (modules?.schedules !== false) { %>
     <div class="card student-panel" id="today-classes">
       <div class="student-panel-head">
         <div>
           <span class="student-kicker">Classes</span>
           <h3>Today</h3>
         </div>
-        <a href="/student/attendance" class="btn btn-ghost btn-sm">Attendance</a>
+        <% if (modules?.attendance !== false) { %><a href="/student/attendance" class="btn btn-ghost btn-sm">Attendance</a><% } %>
       </div>
 
       <% if (isNotEnrolled) { %>
@@ -196,7 +201,7 @@
             <div class="student-class-item">
               <div>
                 <strong><%= (sched.course && sched.course.name) || sched.note || 'Class' %></strong>
-                <span><%= sched.teacher && sched.teacher.user ? sched.teacher.user.name : sched.teacher ? sched.teacher.name : 'Teacher' %></span>
+                <% if (modules?.teachers !== false) { %><span><%= sched.teacher && sched.teacher.user ? sched.teacher.user.name : sched.teacher ? sched.teacher.name : 'Teacher' %></span><% } %>
               </div>
               <time><%= sched.startTime %> - <%= sched.endTime %></time>
             </div>
@@ -204,7 +209,9 @@
         </div>
       <% } %>
     </div>
+    <% } %>
 
+    <% if (modules?.assignments !== false) { %>
     <div class="card student-panel">
       <div class="student-panel-head">
         <div>
@@ -251,7 +258,9 @@
         </div>
       <% } %>
     </div>
+    <% } %>
 
+    <% if (modules?.schedules !== false) { %>
     <div class="card student-panel student-panel-wide">
       <div class="student-panel-head">
         <div>
@@ -288,6 +297,7 @@
         </div>
       <% } %>
     </div>
+    <% } %>
 
     <div class="card student-panel">
       <div class="student-panel-head">
@@ -321,11 +331,11 @@
       <% } %>
     </div>
 
-    <div class="card student-panel">
+    <% if (modules?.updates !== false) { %><div class="card student-panel">
       <div class="student-panel-head">
         <div>
           <span class="student-kicker">Class updates</span>
-          <h3>Latest from teacher</h3>
+          <h3><%= modules?.teachers !== false ? 'Latest from teacher' : 'Latest class update' %></h3>
         </div>
         <a href="/student/updates" class="btn btn-ghost btn-sm">All</a>
       </div>
@@ -352,7 +362,7 @@
           <% }) %>
         </div>
       <% } %>
-    </div>
+    </div><% } %>
 
     <% if (latestRemarks.length) { %>
       <div class="card student-panel student-panel-wide">

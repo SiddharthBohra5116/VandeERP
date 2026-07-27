@@ -21,14 +21,14 @@
   }
 
   let primaryAction = {
-    label: 'Open students',
-    href: '/teacher/students',
+    label: modules?.students !== false ? 'Open students' : 'Open inbox',
+    href: modules?.students !== false ? '/teacher/students' : '/auth/inbox',
     title: 'Everything looks calm',
     body: 'No urgent class action is waiting. Review students or prepare the next update when ready.',
     tone: 'calm'
   };
 
-  if (nextClass && nextClass.status === 'scheduled' && nextClass.date === (typeof today !== 'undefined' ? today : nextClass.date)) {
+  if (modules?.schedules !== false && modules?.attendance !== false && nextClass && nextClass.status === 'scheduled' && nextClass.date === (typeof today !== 'undefined' ? today : nextClass.date)) {
     primaryAction = {
       label: 'Mark attendance',
       href: '/teacher/attendance',
@@ -36,7 +36,7 @@
       body: `${nextClass.course && nextClass.course.name ? nextClass.course.name : 'Class'} · ${nextClass.startTime || ''}${nextClass.endTime ? ' - ' + nextClass.endTime : ''}`,
       tone: 'warn'
     };
-  } else if (assignmentList.length > 0) {
+  } else if (modules?.assignments !== false && assignmentList.length > 0) {
     primaryAction = {
       label: 'Review assignments',
       href: '/teacher/assignments',
@@ -44,7 +44,7 @@
       body: 'Check upcoming deadlines and submissions from your assignment board.',
       tone: 'warn'
     };
-  } else if (unreadMessages.length > 0) {
+  } else if (modules?.announcements !== false && unreadMessages.length > 0) {
     primaryAction = {
       label: 'Open announcements',
       href: '/teacher/announcements',
@@ -72,36 +72,45 @@
   </section>
 
   <section class="teacher-metric-grid">
+    <% if (modules?.attendance !== false) { %>
     <a href="/teacher/attendance" class="student-metric-card">
       <span>Attendance today</span>
       <strong><%= todayAttendance || 0 %></strong>
       <small>Records marked today</small>
     </a>
+    <% } %>
+    <% if (modules?.assignments !== false) { %>
     <a href="/teacher/assignments" class="student-metric-card">
       <span>Assignment goals</span>
       <strong><%= assignmentList.length %></strong>
       <small><%= assignmentList.length ? 'Active deadlines' : 'No pending deadlines' %></small>
     </a>
+    <% } %>
+    <% if (modules?.updates !== false) { %>
     <a href="/teacher/updates" class="student-metric-card">
       <span>Recent updates</span>
       <strong><%= updateList.length %></strong>
       <small>Latest class update posts</small>
     </a>
+    <% } %>
+    <% if (modules?.announcements !== false) { %>
     <a href="/teacher/announcements" class="student-metric-card">
       <span>Announcements</span>
       <strong><%= unreadMessages.length %></strong>
       <small><%= unreadMessages.length ? 'Unread academy notes' : 'No unread notes' %></small>
     </a>
+    <% } %>
   </section>
 
   <section class="teacher-dashboard-grid">
+    <% if (modules?.schedules !== false) { %>
     <div class="card teacher-panel teacher-panel-wide" id="today-classes">
       <div class="student-panel-head">
         <div>
           <span class="student-kicker">Classes</span>
           <h3>Today</h3>
         </div>
-        <a href="/teacher/attendance" class="btn btn-ghost btn-sm">Mark attendance</a>
+        <% if (modules?.attendance !== false) { %><a href="/teacher/attendance" class="btn btn-ghost btn-sm">Mark attendance</a><% } %>
       </div>
 
       <% if (todayList.length === 0) { %>
@@ -163,7 +172,9 @@
         </div>
       <% } %>
     </div>
+    <% } %>
 
+    <% if (modules?.assignments !== false) { %>
     <div class="card teacher-panel">
       <div class="student-panel-head">
         <div>
@@ -186,6 +197,7 @@
         </div>
       <% } %>
     </div>
+    <% } %>
 
     <div class="card teacher-panel">
       <div class="student-panel-head">
@@ -215,7 +227,7 @@
       <% } %>
     </div>
 
-    <div class="card teacher-panel teacher-panel-wide">
+    <% if (modules?.updates !== false) { %><div class="card teacher-panel teacher-panel-wide">
       <div class="student-panel-head">
         <div>
           <span class="student-kicker">Class updates</span>
@@ -246,6 +258,6 @@
           <% }) %>
         </div>
       <% } %>
-    </div>
+    </div><% } %>
   </section>
 </div>

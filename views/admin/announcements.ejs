@@ -4,6 +4,19 @@
   page = 'announcements';
 %>
 
+<style>
+  .announcement-table { min-width:900px; table-layout:fixed; }
+  .announcement-table th:nth-child(1) { width:46%; }
+  .announcement-table th:nth-child(2) { width:16%; }
+  .announcement-table th:nth-child(3) { width:12%; }
+  .announcement-table th:nth-child(4) { width:10%; }
+  .announcement-table th:nth-child(5) { width:14%; }
+  .announcement-copy { min-width:0; white-space:normal; }
+  .announcement-title { color:var(--gold); font-weight:750; line-height:1.35; overflow-wrap:anywhere; }
+  .announcement-body { margin-top:.3rem; color:var(--text); font-size:.82rem; line-height:1.5; overflow-wrap:anywhere; }
+  .announcement-meta { margin-top:.35rem; color:var(--text-muted); font-size:.72rem; }
+</style>
+
 <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: flex-end;">
   <a href="/admin/announcements/create" class="btn btn-primary btn-sm">+ Create Announcement</a>
 </div>
@@ -16,7 +29,7 @@
     </div>
   <% } else { %>
     <div class="table-wrap">
-      <table>
+      <table class="announcement-table">
         <thead>
           <tr>
             <th>Title & Content</th>
@@ -29,10 +42,10 @@
         <tbody>
           <% announcements.forEach(a => { %>
             <tr>
-              <td>
-                <div style="font-weight: 600; color: var(--gold);"><%= a.title %></div>
-                <div style="font-size: 0.8rem; color: var(--text); margin-top: 4px; max-width: 400px; word-wrap: break-word;"><%= a.content %></div>
-                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">Posted: <%= new Date(a.createdAt).toLocaleString('en-IN') %></div>
+              <td class="announcement-copy">
+                <div class="announcement-title"><%= a.title %></div>
+                <div class="announcement-body"><%= a.content %></div>
+                <div class="announcement-meta">Posted: <%= new Date(a.createdAt).toLocaleString('en-IN') %></div>
               </td>
               <td>
                 <span class="badge badge-blue" style="text-transform: uppercase;"><%= a.audienceType %></span>

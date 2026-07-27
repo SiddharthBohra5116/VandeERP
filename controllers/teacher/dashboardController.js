@@ -22,23 +22,24 @@ exports.getDashboard = async (req, res) => {
   console.log('📊 Teacher Dashboard load:', { teacherId: req.user._id, today });
 
   try {
+    const modules = res.locals.modules || {};
     const [pendingAssignments, todayAttendance, recentUpdates, messages, schedules, admin, todaySchedules, activeAnnouncements] = await Promise.all([
-      Assignment.find({ teacher: req.user.teacherProfileId, isActive: true })
+      modules.assignments === false ? [] : Assignment.find({ teacher: req.user.teacherProfileId, isActive: true })
         .populate('batch', 'name')
         .sort({ createdAt: -1 }).limit(5),
-      Attendance.countDocuments({ teacher: req.user.teacherProfileId, date: today }),
-      DailyUpdate.find({ teacher: req.user.teacherProfileId }).populate('course', 'name code').populate('batch', 'name').sort({ createdAt: -1 }).limit(5),
+      modules.attendance === false ? 0 : Attendance.countDocuments({ teacher: req.user.teacherProfileId, date: today }),
+      modules.updates === false ? [] : DailyUpdate.find({ teacher: req.user.teacherProfileId }).populate('course', 'name code').populate('batch', 'name').sort({ createdAt: -1 }).limit(5),
       Message.find({ recipient: req.user._id }).populate('sender', 'name role').sort({ createdAt: -1 }).limit(5),
-      Schedule.find({ teacher: req.user.teacherProfileId, date: { $gte: today } })
+      modules.schedules === false ? [] : Schedule.find({ teacher: req.user.teacherProfileId, date: { $gte: today } })
         .populate('course', 'name code')
         .populate('batch', 'name')
         .populate('classroom', 'name location').sort({ date: 1, startTime: 1 }).limit(5),
       User.findOne({ role: 'admin' }),
-      Schedule.find({ teacher: req.user.teacherProfileId, date: today })
+      modules.schedules === false ? [] : Schedule.find({ teacher: req.user.teacherProfileId, date: today })
         .populate('course', 'name code')
         .populate('batch', 'name')
         .populate('classroom', 'name location').sort({ startTime: 1 }),
-      Announcement.find({
+      modules.announcements === false ? [] : Announcement.find({
         isActive: true,
         $or: [
           { audienceType: 'all' },
@@ -80,7 +81,7 @@ exports.getDashboard = async (req, res) => {
       d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     );
 
-    const weekSchedules = await Schedule.find({
+    const weekSchedules = modules.schedules === false ? [] : await Schedule.find({
       teacher: req.user.teacherProfileId,
       date: { $in: dateStrings },
       status: { $ne: 'cancelled' },

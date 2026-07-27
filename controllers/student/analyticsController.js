@@ -9,12 +9,17 @@ const logger = require('../../utils/logger');
 
 exports.getAnalytics = async (req, res) => {
   try {
-    const studentProfile = await Student.findOne({
-      user: req.user._id
-    })
-      .populate('user', 'name email phone status')
-      .populate('course', 'name code')
-      .populate('batch', 'name');
+    const modules = res.locals.modules || {};
+    const attendanceEnabled = modules.attendance !== false;
+    const assignmentsEnabled = modules.assignments !== false;
+    const progressEnabled = modules.progress !== false;
+    const feesEnabled = modules.fees !== false;
+    const curriculumEnabled = modules.curriculum !== false;
+    const teachersEnabled = modules.teachers !== false;
+    let studentQuery = Student.findOne({ user: req.user._id }).populate('user', 'name email phone status');
+    if (modules.courses !== false) studentQuery = studentQuery.populate('course', 'name code');
+    if (modules.batches !== false) studentQuery = studentQuery.populate('batch', 'name');
+    const studentProfile = await studentQuery;
 
     if (!studentProfile) {
       return res.render('student/analytics', {
@@ -41,9 +46,9 @@ exports.getAnalytics = async (req, res) => {
     const courseId = studentProfile.course?._id || studentProfile.course;
 
     // 1. Attendance Trend week-by-week — last 8 weeks
-    const attendanceList = await Attendance.find({
+    const attendanceList = attendanceEnabled ? await Attendance.find({
       student: studentId
-    }).sort({ date: 1 });
+    }).sort({ date: 1 }) : [];
 
     const weeks = [];
     const now = new Date();
@@ -81,7 +86,7 @@ exports.getAnalytics = async (req, res) => {
     });
 
     // 2. Assignment Score History
-    const assignments = batchId
+    const assignments = assignmentsEnabled && batchId
       ? await Assignment.find({
         batch: batchId,
         isActive: true
@@ -102,11 +107,9 @@ exports.getAnalytics = async (req, res) => {
     });
 
     // 3. Test / Progress Scores
-    const progressRecords = await Progress.find({
-      student: studentId
-    })
-      .populate('course', 'name code')
-      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
+    let progressQuery = Progress.find(progressEnabled ? { student: studentId } : { _id: null }).populate('course', 'name code');
+    if (teachersEnabled) progressQuery = progressQuery.populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
+    const progressRecords = await progressQuery;
 
     const avgTestScores = progressRecords.map(progress => ({
       subject: progress.course?.name || studentProfile.course?.name || 'Course',
@@ -116,9 +119,9 @@ exports.getAnalytics = async (req, res) => {
     }));
 
     // 4. Fee Payment Status
-    const fee = await Fee.findOne({
+    const fee = feesEnabled ? await Fee.findOne({
       student: studentId
-    });
+    }) : null;
 
     let totalBilled = 0;
     let paidAmount = 0;
@@ -154,8 +157,7 @@ exports.getAnalytics = async (req, res) => {
       curriculumQuery.course = courseId;
     }
 
-    const curriculums = await Curriculum.find(curriculumQuery)
-      .populate('course');
+    const curriculums = curriculumEnabled ? await Curriculum.find(curriculumQuery).populate('course') : [];
 
     const curriculumCompletion = curriculums.map(curriculum => ({
       subject: curriculum.course?.name || studentProfile.course?.name || 'Course',

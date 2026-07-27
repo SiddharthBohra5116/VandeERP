@@ -18,14 +18,15 @@ const { todayIST } = require('../../utils/dateHelper');
  */
 exports.getDashboard = async (req, res) => {
   try {
-    const studentProfile = await Student.findOne({ user: req.user._id })
-      .populate('user', 'name email phone status profilePic address city dob')
-      .populate('course', 'name')
-      .populate('batch', 'name startDate endDate')
-      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
-      .populate({ path: 'counsellor', populate: { path: 'user', select: 'name' } });
+    const modules = res.locals.modules || {};
+    let studentQuery = Student.findOne({ user: req.user._id }).populate('user', 'name email phone status profilePic address city dob');
+    if (modules.courses !== false) studentQuery = studentQuery.populate('course', 'name');
+    if (modules.batches !== false) studentQuery = studentQuery.populate('batch', 'name startDate endDate');
+    if (modules.teachers !== false) studentQuery = studentQuery.populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
+    if (modules.counsellors !== false) studentQuery = studentQuery.populate({ path: 'counsellor', populate: { path: 'user', select: 'name' } });
+    const studentProfile = await studentQuery;
 
-    if (!studentProfile || !studentProfile.batch) {
+    if (!studentProfile || (modules.batches !== false && !studentProfile.batch)) {
       const fallbackUser = req.user.toObject ? req.user.toObject() : req.user;
       return res.render('student/dashboard', {
         title: 'My Dashboard', user: fallbackUser,
@@ -70,22 +71,25 @@ exports.getDashboard = async (req, res) => {
     const counsellorUserId = studentProfile.counsellor?.user?._id || null;
 
     const [fee, assignments, attendance, updates, admin, messages, schedules, activeAnnouncements] = await Promise.all([
-      Fee.findOne({ student: student._id }),
-      Assignment.find({ batch: student.batch, isActive: true }).populate('course', 'name').sort({ dueDate: 1 }),
-      Attendance.find({ student: student._id, date: { $gte: thirtyDaysStr } }),
-      DailyUpdate.find({ batch: student.batch }).populate('course', 'name').populate({ path: 'teacher', populate: { path: 'user', select: 'name' } }).sort({ date: -1 }).limit(5),
+      modules.fees === false ? null : Fee.findOne({ student: student._id }),
+      modules.assignments === false || !student.batch ? [] : Assignment.find({ batch: student.batch, isActive: true }).populate('course', 'name').sort({ dueDate: 1 }),
+      modules.attendance === false ? [] : Attendance.find({ student: student._id, date: { $gte: thirtyDaysStr } }),
+      modules.updates === false || !student.batch ? [] : (() => {
+        let query = DailyUpdate.find({ batch: student.batch }).populate('course', 'name').sort({ date: -1 }).limit(5);
+        if (modules.teachers !== false) query = query.populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
+        return query;
+      })(),
       User.findOne({ role: 'admin' }),
       Message.find({ recipient: req.user._id })
         .populate('sender', 'name role')
         .sort({ createdAt: -1 })
         .limit(5),
-      Schedule.find({ batch: student.batch, date: { $gte: today } })
-        .populate('course', 'name')
-        .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
-        .populate('classroom', 'name location')
-        .sort({ date: 1, startTime: 1 })
-        .limit(5),
-      Announcement.find({
+      modules.schedules === false || !student.batch ? [] : (() => {
+        let query = Schedule.find({ batch: student.batch, date: { $gte: today } }).populate('course', 'name').populate('classroom', 'name location').sort({ date: 1, startTime: 1 }).limit(5);
+        if (modules.teachers !== false) query = query.populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
+        return query;
+      })(),
+      modules.announcements === false ? [] : Announcement.find({
         isActive: true,
         $or: [
           { audienceType: 'all' },
@@ -131,15 +135,16 @@ exports.getDashboard = async (req, res) => {
       d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     );
 
-    const weekSchedules = await Schedule.find({
+    let weekScheduleQuery = Schedule.find({
       batch: student.batch,
       date: { $in: dateStrings },
       status: { $ne: 'cancelled' },
     })
       .populate('course', 'name')
-      .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
       .populate('classroom', 'name location')
       .sort({ startTime: 1 });
+    if (modules.teachers !== false) weekScheduleQuery = weekScheduleQuery.populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
+    const weekSchedules = modules.schedules === false || !student.batch ? [] : await weekScheduleQuery;
 
     const daysTimetable = { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] };
     const { parseTimeToMinutes } = require('../../utils/clashDetector');

@@ -3,11 +3,23 @@
   title = 'Module Settings';
   page = 'module-settings';
   const labels = {
-    students: ['Students', 'Student management and the student portal'],
-    teachers: ['Teachers', 'Teacher management and the teacher portal'],
-    batches: ['Batches', 'Batch creation, assignment, and management'],
-    attendance: ['Attendance', 'Admin, teacher, and student attendance screens'],
-    kyc: ['KYC', 'Student identity verification actions']
+    students: ['Students', 'Student records and student portal only'],
+    teachers: ['Teachers', 'Teacher records and teacher portal only'],
+    counsellors: ['Counsellors', 'Counsellor records and counsellor portal only'],
+    courses: ['Courses', 'Course catalogue management only'],
+    batches: ['Batches', 'Batch creation and assignment only'],
+    attendance: ['Attendance', 'Attendance screens across all portals only'],
+    kyc: ['KYC', 'Identity verification only; the student portal remains available'],
+    leads: ['Lead Pipeline', 'Lead capture, follow-ups, assignment, and conversion'],
+    fees: ['Fees & Ledger', 'Fee setup, payments, invoices, and student fee views'],
+    schedules: ['Class Schedules', 'Sessions, timetables, and classroom planning'],
+    assignments: ['Assignments', 'Teacher assignment and student submission screens'],
+    updates: ['Daily Updates', 'Teacher updates and student update feed'],
+    curriculum: ['Curriculum', 'Curriculum tracking and student curriculum view'],
+    progress: ['Student Progress', 'Tests, remarks, progress, and certificates'],
+    announcements: ['Announcements', 'Announcements and shared learning materials'],
+    reports: ['Reports & Analytics', 'Admin, counsellor, and student analytics'],
+    leaves: ['Holidays & Leaves', 'Holiday calendar and staff leave requests']
   };
 %>
 
@@ -15,7 +27,7 @@
 
 <div class="card" style="max-width:820px;margin:0 auto;">
   <div class="card-header">
-    <div><div class="card-title">Enable academy modules</div><div class="card-sub">Disabled modules disappear from navigation and their routes stop accepting requests.</div></div>
+    <div><div class="card-title">Enable academy modules</div><div class="card-sub">Every switch is independent. Turning one off removes only that feature and its direct inputs.</div></div>
   </div>
   <form method="POST" action="/admin/modules" data-native-submit="true">
     <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">

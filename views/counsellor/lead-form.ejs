@@ -158,6 +158,9 @@
   <a href="<%= leadsBase %>" class="btn btn-ghost btn-sm" style="min-height:36px; display:inline-flex; align-items:center;">&larr; Back to Leads</a>
 </div>
 
+<% if (typeof error !== 'undefined' && error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %>
+<% if (typeof fieldCreated !== 'undefined' && fieldCreated) { %><div class="alert alert-success" role="status">Custom field added. It is ready to use below.</div><% } %>
+
 <div style="max-width:768px; margin: 0 auto;">
   <div class="card premium-form-card">
 
@@ -165,6 +168,13 @@
     <svg class="sparkle-decorator" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
       <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.5 5.5l3 3M15.5 15.5l3 3M5.5 15.5l3-3M15.5 5.5l3-3" stroke-linecap="round"/>
     </svg>
+
+    <% if (!isEdit && user?.role === 'admin') { %>
+      <form id="customFieldForm" action="/admin/leads/custom-fields" method="POST" data-native-submit="true">
+        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+        <input type="hidden" name="returnTo" value="/admin/leads/create">
+      </form>
+    <% } %>
 
     <form action="<%= isEdit ? `${leadsBase}/${lead._id}/edit` : `${leadsBase}/create` %>" method="POST" data-native-submit="true">
       <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
@@ -228,6 +238,36 @@
           placeholder="Name of the person who referred this student"
           value="<%= isEdit ? (lead.referredBy || '') : '' %>">
       </div>
+
+      <% if (!isEdit && user?.role === 'admin') { %>
+        <details style="margin-top:2rem; padding:1rem; border:1px dashed var(--gold-border); border-radius:10px; background:var(--gold-dim);">
+          <summary style="cursor:pointer; color:var(--gold); font-weight:800; list-style:none;">+ Add a custom field</summary>
+          <div class="form-row-2" style="margin-top:1rem;">
+            <div class="form-group">
+              <label class="premium-label" for="newCustomFieldLabel">Field label</label>
+              <input id="newCustomFieldLabel" form="customFieldForm" name="label" class="premium-input" maxlength="60" placeholder="e.g. Preferred language" required>
+            </div>
+            <div class="form-group">
+              <label class="premium-label" for="newCustomFieldType">Field type</label>
+              <select id="newCustomFieldType" form="customFieldForm" name="type" class="premium-input" onchange="const options=document.getElementById('newCustomFieldOptions'); options.hidden=this.value!=='select'; options.required=this.value==='select'">
+                <option value="text">Text</option>
+                <option value="number">Number</option>
+                <option value="date">Date</option>
+                <option value="select">Dropdown</option>
+                <option value="checkbox">Checkbox</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="premium-label" for="newCustomFieldOptions">Dropdown options</label>
+            <input id="newCustomFieldOptions" form="customFieldForm" name="options" class="premium-input" placeholder="Option one, Option two" hidden>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+            <label style="display:flex; align-items:center; gap:.55rem;"><input type="checkbox" form="customFieldForm" name="required"><span>Required field</span></label>
+            <button type="submit" form="customFieldForm" class="btn btn-primary btn-sm">Save custom field</button>
+          </div>
+        </details>
+      <% } %>
 
       <% if (typeof customFieldDefinitions !== 'undefined' && customFieldDefinitions.length) { %>
         <div class="form-section-title" style="margin-top: 2rem;">Additional Details</div>

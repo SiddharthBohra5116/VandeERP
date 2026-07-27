@@ -1,21 +1,32 @@
 <% layout='main' ; title=student.name; subtitle=`Student · ${student.rollNumber || 'No Roll Number' }`; page='users' ;
+  const attendanceEnabled = modules?.attendance !== false;
+  const teacherEnabled = modules?.teachers !== false;
+  const counsellorEnabled = modules?.counsellors !== false;
+  const coursesEnabled = modules?.courses !== false;
+  const batchesEnabled = modules?.batches !== false;
+  const feesEnabled = modules?.fees !== false;
+  const leadsEnabled = modules?.leads !== false;
+  const progressEnabled = modules?.progress !== false;
+  const kycEnabled = modules?.kyc !== false;
+  const defaultTab = feesEnabled ? 'ledger' : progressEnabled ? 'progress' : leadsEnabled ? 'crm' : coursesEnabled ? 'feedback' : 'remarks_history';
   /* Warnings calculations */ const today=new Date(); const isFeeOverdue=fee && Math.max(0, fee.totalAmount - (fee.discount || 0) - fee.paidAmount) > 0 && fee.dueDate && new Date(fee.dueDate) < today; let attendancePct=0; if
     (attendance && attendance.length> 0) {
     const presentCount = attendance.filter(a => a.status === 'present' || a.status === 'late').length;
     attendancePct = Math.round((presentCount / attendance.length) * 100);
     }
-    const isAttendanceLow = attendance && attendance.length > 0 && attendancePct < 75; /* Profile completeness
-      calculations */ let score=0; let maxScore=6; const missing=[]; if (student.profilePic) score++; else missing.push({
-      label: 'Photo' , link: `/admin/users/${student._id}/edit` }); if (student.phone) score++; else missing.push({
-      label: 'Phone' , link: `/admin/users/${student._id}/edit` }); if (student.batch) score++; else missing.push({
-      label: 'Batch' , link: `/admin/users/${student._id}/edit` }); if (fee) score++; else missing.push({
-      label: 'Fee Record' , link: `/admin/fees` }); if (student.idProof) score++; else missing.push({ label: 'ID Proof'
-      , link: '#' }); if (student.fatherName || student.motherName) score++; else missing.push({ label: 'Parents' ,
-      link: `/admin/users/${student._id}/edit` }); const completenessPct=Math.round((score / maxScore) * 100); %>
+    const isAttendanceLow = attendanceEnabled && attendance && attendance.length > 0 && attendancePct < 75;
+    let score=0; let maxScore=3; const missing=[]; const editLink=`/admin/users/${student.user._id}/edit`;
+    if (student.profilePic) score++; else missing.push({ label:'Photo', link:editLink });
+    if (student.phone) score++; else missing.push({ label:'Phone', link:editLink });
+    if (student.fatherName || student.motherName) score++; else missing.push({ label:'Parents', link:editLink });
+    if (batchesEnabled) { maxScore++; if (student.batch) score++; else missing.push({ label:'Batch', link:editLink }); }
+    if (feesEnabled) { maxScore++; if (fee) score++; else missing.push({ label:'Fee Record', link:'/admin/fees' }); }
+    if (kycEnabled) { maxScore++; if (student.idProof) score++; else missing.push({ label:'ID Proof', link:'#' }); }
+    const completenessPct=Math.round((score / maxScore) * 100); %>
 
 
       <!-- Inline Contextual Warnings -->
-      <% if (isFeeOverdue) { %>
+      <% if (feesEnabled && isFeeOverdue) { %>
         <div class="alert alert-warn" style="margin-bottom: 1rem; position: static; max-width: none; animation: none;">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -322,10 +333,10 @@
                           <h1 class="profile-name"><%= student.name %></h1>
                           <div class="profile-meta">
                             <span>Roll: <strong style="color: var(--gold);"><%= student.rollNumber || 'Not Generated' %></strong></span>
-                            <span>&middot;</span>
-                            <span>Course: <strong style="color: var(--text);"><%= student.course && student.course.name ? student.course.name : 'Unassigned' %></strong></span>
-                            <span>&middot;</span>
-                            <span>Batch: <strong style="color: var(--text);"><%= student.batch && student.batch.name ? student.batch.name : 'Unassigned' %></strong></span>
+                            <% if (coursesEnabled) { %><span>&middot;</span>
+                            <span>Course: <strong style="color: var(--text);"><%= student.course && student.course.name ? student.course.name : 'Unassigned' %></strong></span><% } %>
+                            <% if (batchesEnabled) { %><span>&middot;</span>
+                            <span>Batch: <strong style="color: var(--text);"><%= student.batch && student.batch.name ? student.batch.name : 'Unassigned' %></strong></span><% } %>
                           </div>
                         </div>
 
@@ -346,25 +357,26 @@
                           <!-- Tabs Navigation -->
                           <div class="card" style="padding: 0.5rem; margin-bottom: 1rem;">
                             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                              <button class="btn btn-sm btn-primary tab-btn" onclick="openTab(event, 'ledger')">Fee
-                                Ledger</button>
-                              <button class="btn btn-sm btn-ghost tab-btn"
-                                onclick="openTab(event, 'attendance')">Attendance</button>
-                              <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'progress')">Progress
-                                & Tests</button>
-                              <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'crm')">CRM Lead
-                                History</button>
-                              <button class="btn btn-sm btn-ghost tab-btn"
+                              <% if (feesEnabled) { %><button class="btn btn-sm <%= defaultTab === 'ledger' ? 'btn-primary' : 'btn-ghost' %> tab-btn" onclick="openTab(event, 'ledger')">Fee
+                                Ledger</button><% } %>
+                              <% if (attendanceEnabled) { %><button class="btn btn-sm btn-ghost tab-btn"
+                                onclick="openTab(event, 'attendance')">Attendance</button><% } %>
+                              <% if (progressEnabled) { %><button class="btn btn-sm <%= defaultTab === 'progress' ? 'btn-primary' : 'btn-ghost' %> tab-btn" onclick="openTab(event, 'progress')">Progress
+                                & Tests</button><% } %>
+                              <% if (leadsEnabled) { %><button class="btn btn-sm <%= defaultTab === 'crm' ? 'btn-primary' : 'btn-ghost' %> tab-btn" onclick="openTab(event, 'crm')">CRM Lead
+                                History</button><% } %>
+                              <button class="btn btn-sm <%= defaultTab === 'remarks_history' ? 'btn-primary' : 'btn-ghost' %> tab-btn"
                                 onclick="openTab(event, 'remarks_history')">Remarks & History</button>
-                              <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'feedback')">Course
-                                Feedback</button>
+                              <% if (coursesEnabled) { %><button class="btn btn-sm <%= defaultTab === 'feedback' ? 'btn-primary' : 'btn-ghost' %> tab-btn" onclick="openTab(event, 'feedback')">Course
+                                Feedback</button><% } %>
                               <button class="btn btn-sm btn-ghost tab-btn" onclick="openTab(event, 'messages')">Admin
                                 Messenger</button>
                             </div>
                           </div>
 
+                          <% if (feesEnabled) { %>
                           <!-- Tab: Fee Ledger -->
-                          <div id="ledger" class="tab-content card">
+                          <div id="ledger" class="tab-content card" style="<%= defaultTab === 'ledger' ? '' : 'display:none;' %>">
                             <div class="card-header" style="margin-bottom:1.25rem;">
                               <div class="card-title">Fee Ledger Summary</div>
                               <a href="/admin/fees/<%= student._id %>" class="btn btn-ghost btn-xs"><%= fee ? 'Open Full Invoice' : 'Set Up Invoice' %></a>
@@ -537,6 +549,8 @@
                                         <% } %>
                           </div>
 
+                          <% } %>
+                          <% if (attendanceEnabled) { %>
                           <!-- Tab: Attendance -->
                           <div id="attendance" class="tab-content card" style="display:none;">
                             <div class="card-header" style="margin-bottom:1.25rem;">
@@ -646,8 +660,10 @@
                                 <% } %>
                           </div>
 
+                          <% } %>
+                          <% if (progressEnabled) { %>
                           <!-- Tab: Progress -->
-                          <div id="progress" class="tab-content card" style="display:none;">
+                          <div id="progress" class="tab-content card" style="<%= defaultTab === 'progress' ? '' : 'display:none;' %>">
                             <div class="card-header" style="margin-bottom:1.25rem;">
                               <div class="card-title">Academic Progress & Test Scores</div>
                             </div>
@@ -661,14 +677,14 @@
                                   style="background:var(--bg3); padding:1rem; border-radius:var(--radius); margin-bottom:1.5rem;">
                                   <div
                                     style="font-size:0.75rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.4rem;">
-                                    Tutor Remarks</div>
+                                    Academic Remarks</div>
                                   <p style="font-size:0.85rem; color:var(--text-sub); line-height:1.5;">
                                     <%= progress.teacherRemark || 'No remarks recorded.' %>
                                   </p>
-                                  <div
+                                  <% if (teacherEnabled) { %><div
                                     style="font-size:0.7rem; color:var(--text-muted); margin-top:0.5rem; text-align:right;">
                                     Last Updated by: <%= progress.teacher ? progress.teacher.name : 'Faculty' %>
-                                  </div>
+                                  </div><% } %>
                                 </div>
 
                                 <div class="section-title">Test Performance</div>
@@ -714,8 +730,10 @@
                                 <% } %>
                           </div>
 
+                          <% } %>
+                          <% if (leadsEnabled) { %>
                           <!-- Tab: CRM Lead History -->
-                          <div id="crm" class="tab-content card" style="display:none;">
+                          <div id="crm" class="tab-content card" style="<%= defaultTab === 'crm' ? '' : 'display:none;' %>">
                             <div class="card-header" style="margin-bottom:1.25rem;">
                               <div class="card-title">Admission & CRM Logs</div>
                             </div>
@@ -775,8 +793,9 @@
                                       <% } %>
                           </div>
 
+                          <% } %>
                           <!-- Tab: Remarks & History -->
-                          <div id="remarks_history" class="tab-content card" style="display:none;">
+                          <div id="remarks_history" class="tab-content card" style="<%= defaultTab === 'remarks_history' ? '' : 'display:none;' %>">
                             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
 
                               <!-- Remarks Section -->
@@ -905,8 +924,9 @@
                             </div>
                           </div>
 
+                          <% if (coursesEnabled) { %>
                           <!-- Tab: Course Feedback -->
-                          <div id="feedback" class="tab-content card" style="display:none;">
+                          <div id="feedback" class="tab-content card" style="<%= defaultTab === 'feedback' ? '' : 'display:none;' %>">
                             <div class="card-header" style="margin-bottom:1.25rem;">
                               <div class="card-title">Course Completion Feedback</div>
                             </div>
@@ -925,13 +945,13 @@
                                 <div
                                   style="background:var(--bg3); padding:1.25rem; border-radius:var(--radius); border:1px solid var(--border);">
                                   <div class="fee-summary"
-                                    style="margin-bottom: 1.5rem; grid-template-columns: repeat(3, 1fr);">
-                                    <div class="stat-card" style="padding: 10px 14px; text-align: center;">
+                                    style="margin-bottom: 1.5rem; grid-template-columns: repeat(<%= teacherEnabled ? 3 : 2 %>, 1fr);">
+                                    <% if (teacherEnabled) { %><div class="stat-card" style="padding: 10px 14px; text-align: center;">
                                       <div class="stat-label">Instructor Rating</div>
                                       <div class="stat-value" style="font-size:1.8rem; color:var(--gold);">
                                         <%= student.feedback.teacherRating %> / 5
                                       </div>
-                                    </div>
+                                    </div><% } %>
                                     <div class="stat-card" style="padding: 10px 14px; text-align: center;">
                                       <div class="stat-label">Content Rating</div>
                                       <div class="stat-value" style="font-size:1.8rem; color:var(--gold);">
@@ -965,6 +985,7 @@
                                 <% } %>
                           </div>
 
+                          <% } %>
                           <!-- Tab: Admin Messenger -->
                           <div id="messages" class="tab-content card" style="display:none;">
                             <div class="card-header" style="margin-bottom:1.25rem;">
@@ -1016,7 +1037,7 @@
                         <!-- Right Side: Quick Contacts & Connections -->
                         <div>
                           <!-- Identity Verification -->
-                          <% if (typeof modules === 'undefined' || modules.kyc !== false) { %>
+                          <% if (kycEnabled) { %>
                           <div class="card" style="margin-bottom: 1rem;">
                             <div class="card-title"
                               style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
@@ -1183,6 +1204,7 @@
                             </div>
                           </div>
 
+                          <% if (teacherEnabled) { %>
                           <!-- Assigned Teacher Profile -->
                           <div class="card" style="margin-bottom: 1rem;">
                             <div class="card-title" style="margin-bottom:1rem;">Primary Instructor</div>
@@ -1202,7 +1224,9 @@
                               edit this user profile to assign one.</p>
                             <% } %>
                         </div>
+                        <% } %>
 
+                        <% if (counsellorEnabled) { %>
                         <!-- Assigned Counsellor Profile -->
                         <div class="card">
                           <div class="card-title" style="margin-bottom:1rem;">Assigned Counsellor</div>
@@ -1221,6 +1245,7 @@
                           <p style="font-size:0.8rem; color:var(--text-muted);">No counsellor mapped to this student.
                           </p>
                           <% } %>
+                        <% } %>
                       </div>
                       </div>
                       </div>

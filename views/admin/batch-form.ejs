@@ -54,6 +54,7 @@
       </div>
     </div>
 
+    <% if (modules?.teachers !== false) { %>
     <div class="form-group">
       <label class="form-label">Assign Faculty / Teachers</label>
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-top: 6px; padding: 10px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 6px; max-height: 180px; overflow-y: auto;">
@@ -67,6 +68,7 @@
       </div>
       <div class="form-hint">Assign one or more instructors who can grade assignments and post updates for this cohort.</div>
     </div>
+    <% } %>
 
     <div class="form-group">
       <label class="form-label" for="isActive">Batch Status</label>

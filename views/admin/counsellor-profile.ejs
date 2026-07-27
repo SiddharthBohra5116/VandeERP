@@ -5,6 +5,16 @@
   page = 'users';
 %>
 
+<style>
+  .counsellor-workspace{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:1.25rem;align-items:start}
+  .counsellor-lead-table{min-width:1120px}
+  .counsellor-lead-table th,.counsellor-lead-table td{white-space:nowrap;vertical-align:middle}
+  .counsellor-lead-table th:first-child,.counsellor-lead-table td:first-child{min-width:180px}
+  .counsellor-contact-card{position:sticky;top:5.5rem}
+  .counsellor-contact-value{font-size:.9rem;font-weight:600;overflow-wrap:anywhere}
+  @media(max-width:1100px){.counsellor-workspace{grid-template-columns:1fr}.counsellor-contact-card{position:static;grid-row:1}}
+</style>
+
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
   <a href="/admin/counsellors" class="btn btn-ghost btn-sm">&larr; Back to Counsellors</a>
   <div style="display:flex; gap:0.5rem;">
@@ -60,7 +70,7 @@
   </div>
 </div>
 
-<div class="two-col">
+<div class="counsellor-workspace">
   <!-- Left Side: Interactive Details Tabs -->
   <div>
     <!-- Tabs Navigation -->
@@ -94,24 +104,27 @@
           </div>
         <% } else { %>
           <div class="table-wrap">
-            <table>
+            <table class="counsellor-lead-table">
               <thead>
                 <tr>
-                  <th>Lead Info</th>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>Email</th>
                   <th>Course</th>
                   <th>Source</th>
                   <th>Status</th>
-                  <th>Reassign Counsellor</th>
+                  <th>Counsellor</th>
                   <th>Date Assigned</th>
                 </tr>
               </thead>
               <tbody>
                 <% leads.forEach(lead => { %>
-                  <tr>
+                  <tr data-lead-href="/admin/leads/<%= lead._id %>" tabindex="0" aria-label="Open <%= lead.name %> lead" style="cursor:pointer;">
                     <td>
                       <a href="/admin/leads/<%= lead._id %>" style="font-weight:600; color:var(--text);"><%= lead.name %></a>
-                      <div class="td-muted text-sm"><%= lead.phone %> &middot; <%= lead.email || '—' %></div>
                     </td>
+                    <td><%= lead.phone || '—' %></td>
+                    <td><%= lead.email || '—' %></td>
                     <td><span class="badge badge-orange"><%= lead.interestedCourse?.name || 'Undecided' %></span></td>
                     <td><%= lead.source %></td>
                     <td>
@@ -127,7 +140,7 @@
                           lost: 'badge-red'
                         }[lead.status] || 'badge-grey';
                       %>
-                      <span class="badge <%= statusClass %>"><%= lead.status %></span>
+                      <span class="badge <%= statusClass %>"><%= leadStatuses.find(option => option.key === lead.status)?.label || lead.status %></span>
                     </td>
                     <td>
                       <form action="/admin/leads/<%= lead._id %>/assign" method="POST" style="margin:0; display:flex; gap:0.5rem; align-items:center;">
@@ -197,17 +210,17 @@
 
   <!-- Right Side: Contact info -->
   <div>
-    <div class="card">
+    <div class="card counsellor-contact-card">
       <div class="card-title" style="margin-bottom:1rem;">Contact Card</div>
       
       <div style="display:flex; flex-direction:column; gap:12px;">
         <div>
           <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Email Address</div>
-          <div style="font-size:0.9rem; font-weight:500; word-break:break-all;"><%= counsellor.email %></div>
+          <div class="counsellor-contact-value"><%= counsellor.email %></div>
         </div>
         <div>
           <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Mobile Number</div>
-          <div style="font-size:0.9rem; font-weight:500; font-family:var(--mono);"><%= counsellor.phone || '—' %></div>
+          <div class="counsellor-contact-value" style="font-family:var(--mono);"><%= counsellor.phone || '—' %></div>
         </div>
         <div>
           <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Joined On</div>
@@ -221,6 +234,16 @@
 </div>
 
 <script>
+  document.querySelectorAll('[data-lead-href]').forEach(row => {
+    const openLead = event => {
+      if (event.target.closest('a, button, input, select, form, label, .app-select')) return;
+      if (window.AppSoftNav?.navigateTo) window.AppSoftNav.navigateTo(row.dataset.leadHref);
+      else window.location.href = row.dataset.leadHref;
+    };
+    row.addEventListener('click', openLead);
+    row.addEventListener('keydown', event => { if (event.key === 'Enter') openLead(event); });
+  });
+
   function openTab(evt, tabId) {
     const tabcontents = document.querySelectorAll(".tab-content");
     tabcontents.forEach(tab => tab.style.display = "none");

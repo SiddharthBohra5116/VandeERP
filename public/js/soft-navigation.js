@@ -11,6 +11,7 @@
     url.origin !== window.location.origin ||
     url.pathname.startsWith('/files/') ||
     url.pathname.startsWith('/api/') ||
+    url.pathname === '/logout' ||
     url.pathname.startsWith('/auth/logout');
 
   const shouldSkipLink = link => {
@@ -84,6 +85,8 @@
   };
 
   const initSoftContentBehaviors = () => {
+    window.consolidateToasts?.();
+
     document.querySelectorAll('.alert[data-auto-dismiss]').forEach(el => {
       if (el.dataset.softDismissReady === 'true') return;
       el.dataset.softDismissReady = 'true';

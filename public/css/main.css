@@ -188,6 +188,11 @@ ul { list-style: none; }
   min-height: 100vh;
 }
 
+html.sidebar-collapsed-preload .sidebar,
+html.sidebar-collapsed-preload .main-wrap {
+  transition: none !important;
+}
+
 /* ─── SIDEBAR ───────────────────────────────────────────────────────────── */
 .sidebar {
   width: var(--sidebar-w);
@@ -308,6 +313,26 @@ ul { list-style: none; }
   padding: 1rem 1.25rem;
   border-top: 1px solid var(--border);
 }
+
+.dashboard-settings { position: relative; }
+.dashboard-settings summary { list-style: none; }
+.dashboard-settings summary::-webkit-details-marker { display: none; }
+.dashboard-settings-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  display: grid;
+  gap: 0.65rem;
+  min-width: 220px;
+  padding: 0.85rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 14px 35px rgba(0,0,0,.25);
+}
+.dashboard-settings-menu label { display: flex; gap: 0.55rem; align-items: center; cursor: pointer; }
+.dashboard-settings-menu input { accent-color: var(--gold); }
 
 /* ─── TOPBAR ────────────────────────────────────────────────────────────── */
 .topbar {
@@ -520,9 +545,13 @@ a.stat-card:hover, .stat-card:hover {
 
 /* ─── TABLE ─────────────────────────────────────────────────────────────── */
 .table-wrap,
-.table-responsive {
+.table-responsive,
+.people-table-wrap {
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
 }
 table {
   width: 100%;
@@ -740,6 +769,27 @@ select.form-control option {
 .app-select-option.is-selected {
   background: var(--gold-dim);
   color: var(--text);
+}
+.app-select-compact {
+  width: auto;
+  min-width: 136px;
+}
+.app-select-compact .app-select-button {
+  min-height: 30px;
+  padding: 0.3rem 0.4rem 0.3rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+.app-select-compact .app-select-caret {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  background: transparent;
+}
+.app-select-compact .app-select-menu {
+  right: auto;
+  min-width: 170px;
 }
 .app-select-option.is-selected {
   box-shadow: inset 3px 0 0 var(--gold);
@@ -3632,18 +3682,25 @@ a.stat-card:hover,
 }
 
 .table-wrap,
-.table-responsive {
+.table-responsive,
+.people-table-wrap {
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: rgba(255,255,255,0.012);
 }
 
 .table-wrap table,
-.table-responsive table {
+.table-responsive table,
+.people-table-wrap table {
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
   background: transparent;
 }
 
-thead th {
+.table-wrap thead th,
+.table-responsive thead th,
+.people-table-wrap thead th {
   position: sticky;
   top: 0;
   z-index: 1;
@@ -3653,19 +3710,41 @@ thead th {
   color: var(--text-sub);
 }
 
-tbody tr {
+.table-wrap tbody tr,
+.table-responsive tbody tr,
+.people-table-wrap tbody tr {
   scroll-margin-top: calc(var(--topbar-h) + 16px);
   background: rgba(255,255,255,0.006);
 }
 
-tbody tr:hover {
+.table-wrap tbody tr:hover,
+.table-responsive tbody tr:hover,
+.people-table-wrap tbody tr:hover {
   background:
     linear-gradient(90deg, rgba(255,204,0,0.055), transparent 46%),
     var(--bg-hover);
 }
 
-tbody td {
+.table-wrap tbody td,
+.table-responsive tbody td,
+.people-table-wrap tbody td {
   overflow-wrap: anywhere;
+}
+
+.table-wrap table:not(.student-matrix-table) tbody td,
+.table-responsive table:not(.student-matrix-table) tbody td {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.table-wrap table:not(.student-matrix-table) tbody tr:last-child td,
+.table-responsive table:not(.student-matrix-table) tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table-wrap table:not(.student-matrix-table) tbody tr:hover td,
+.table-responsive table:not(.student-matrix-table) tbody tr:hover td {
+  background: var(--bg-hover);
 }
 
 .td-name {
@@ -5082,6 +5161,9 @@ body.light-theme .sidebar-logo {
   }
   .sidebar.collapsed:not(:hover) .sidebar-nav a {
     position: relative;
+  }
+  .sidebar.collapsed:not(:hover) .nav-flyout-menu {
+    display: none !important;
   }
   .sidebar.collapsed:not(:hover) .sidebar-nav a .badge {
     display: flex !important;

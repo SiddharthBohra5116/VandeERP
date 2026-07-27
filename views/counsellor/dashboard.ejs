@@ -9,6 +9,7 @@
 <h2 id="dashboardGreeting" class="dashboard-greeting">Welcome back!</h2>
 
 <!-- Stats Grid -->
+<% if (modules?.leads !== false) { %>
 <div class="stats-grid">
   <a href="/counsellor/leads?status=high_potential" class="stat-card gold">
     <div class="stat-label">High Potential</div>
@@ -36,8 +37,9 @@
     <div class="stat-sub">Inactive leads</div>
   </a>
 </div>
+<% } %>
 
-<% if (stats && stats.followupsDue > 0) { %>
+<% if (modules?.leads !== false && stats && stats.followupsDue > 0) { %>
   <div class="card" id="followupNotificationPrompt" style="margin-top:1.25rem; display:none; border-color:var(--gold-border);">
     <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
       <div>
@@ -124,7 +126,7 @@
   <% } %>
 </div>
 
-<div class="grid-2">
+<% if (modules?.leads !== false) { %><div class="grid-2">
 
   <!-- Pipeline Overview -->
   <div class="card">
@@ -179,10 +181,10 @@
         Today
         <span class="badge badge-gold" style="font-size: 8px; padding: 1px 4px;"><%= todayCallbacks.length %></span>
       </button>
-      <button class="btn btn-xs btn-ghost" onclick="switchTaskTab('fees-tab')" id="fees-tab-btn" style="display: inline-flex; align-items: center; gap: 4px; font-weight: 600; padding: 4px 8px; border-radius: var(--radius);">
+      <% if (modules?.fees !== false) { %><button class="btn btn-xs btn-ghost" onclick="switchTaskTab('fees-tab')" id="fees-tab-btn" style="display: inline-flex; align-items: center; gap: 4px; font-weight: 600; padding: 4px 8px; border-radius: var(--radius);">
         Fee Dues
         <span class="badge badge-orange" style="font-size: 8px; padding: 1px 4px;"><%= feeCallbacks.length %></span>
-      </button>
+      </button><% } %>
     </div>
 
     <!-- Tab Content Blocks -->
@@ -234,7 +236,7 @@
     </div>
 
     <!-- Student Fee Dues Tab -->
-    <div id="fees-tab" class="task-tab-content" style="display: none;">
+    <% if (modules?.fees !== false) { %><div id="fees-tab" class="task-tab-content" style="display: none;">
       <% if (feeCallbacks.length === 0) { %>
         <div class="empty-state" style="padding: 1.5rem 1rem;">
           <p style="font-size: 0.78rem; color: var(--text-muted);">🎉 All students are clear on fees!</p>
@@ -254,10 +256,10 @@
           <% }); %>
         </div>
       <% } %>
-    </div>
+    </div><% } %>
   </div>
 
-</div>
+</div><% } %>
 
 <script>
   function switchTaskTab(tabId) {
@@ -280,6 +282,7 @@
 </style>
 
 <!-- Recent Leads -->
+<% if (modules?.leads !== false) { %>
 <div class="card" style="margin-top:1.25rem;">
   <div class="card-header">
     <div>
@@ -419,6 +422,7 @@
     </table>
   </div>
 </div>
+<% } %>
 <script>
   function initDashboardRecentLeadRowClicks() {
     document.querySelectorAll('[data-row-href]').forEach(row => {

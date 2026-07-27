@@ -14,6 +14,14 @@ const getFeeStatus = require('../../utils/feeStatus');
 
 exports.getDashboard = async (req, res) => {
   try {
+    const modules = res.locals.modules || {};
+    const feesEnabled = modules.fees !== false;
+    const schedulesEnabled = modules.schedules !== false;
+    const leadsEnabled = modules.leads !== false;
+    const studentsEnabled = modules.students !== false;
+    const attendanceEnabled = modules.attendance !== false;
+    const leavesEnabled = modules.leaves !== false;
+    const assignmentsEnabled = modules.assignments !== false;
     const todayStr = todayIST();
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
 
@@ -31,7 +39,7 @@ exports.getDashboard = async (req, res) => {
     };
 
     // Today fee collections
-    const fees = await Fee.find().select('payments');
+    const fees = feesEnabled ? await Fee.find().select('payments totalAmount paidAmount discount dueDate installments') : [];
 
     let todayCollections = 0;
 
@@ -56,9 +64,9 @@ exports.getDashboard = async (req, res) => {
     }, { completed: 0, overdue: 0, partial: 0, pending: 0 });
 
     // Today schedules
-    const todaySchedules = await Schedule
+    const todaySchedules = schedulesEnabled ? await Schedule
       .find({ date: todayStr })
-      .select('status');
+      .select('status') : [];
 
     const todayScheduledCount = todaySchedules.length;
 
@@ -67,21 +75,21 @@ exports.getDashboard = async (req, res) => {
     ).length;
 
     // Leads ready to convert
-    const readyLeadsCount = await Lead.countDocuments({
+    const readyLeadsCount = leadsEnabled ? await Lead.countDocuments({
       status: 'joining_interested'
-    });
+    }) : 0;
     const [highPotentialLeads, newLeads, loopLeads, convertedLeads, completedStudents] = await Promise.all([
-      Lead.countDocuments({ status: 'high_potential' }),
-      Lead.countDocuments({ status: 'new' }),
-      Lead.countDocuments({ status: 'in_the_loop' }),
-      Lead.countDocuments({ status: 'admission_completed' }),
-      User.countDocuments({ role: 'student', status: 'complete', archivedAt: null })
+      leadsEnabled ? Lead.countDocuments({ status: 'high_potential' }) : 0,
+      leadsEnabled ? Lead.countDocuments({ status: 'new' }) : 0,
+      leadsEnabled ? Lead.countDocuments({ status: 'in_the_loop' }) : 0,
+      leadsEnabled ? Lead.countDocuments({ status: 'admission_completed' }) : 0,
+      studentsEnabled ? User.countDocuments({ role: 'student', status: 'complete', archivedAt: null }) : 0
     ]);
 
     // At-risk students
-    const studentProfiles = await Student
+    const studentProfiles = studentsEnabled && attendanceEnabled ? await Student
       .find()
-      .populate('user', 'name role status');
+      .populate('user', 'name role status') : [];
 
     const activeStudentProfiles = studentProfiles.filter(student => {
       return (
@@ -92,13 +100,13 @@ exports.getDashboard = async (req, res) => {
 
     const studentIds = activeStudentProfiles.map(student => student._id);
 
-    const [attendanceRecords, todayRecords] = await Promise.all([
+    const [attendanceRecords, todayRecords] = attendanceEnabled ? await Promise.all([
       Attendance.find({ student: { $in: studentIds } }),
       Attendance.find({
         date: todayStr,
         student: { $in: studentIds }
       })
-    ]);
+    ]) : [[], []];
 
     const studentsForAttendance = activeStudentProfiles.map(student => {
       const plainStudent = student.toObject();
@@ -121,12 +129,12 @@ exports.getDashboard = async (req, res) => {
     ).length;
 
     // Pending leave requests
-    const pendingLeavesCount = await LeaveRequest.countDocuments({
+    const pendingLeavesCount = leavesEnabled ? await LeaveRequest.countDocuments({
       status: 'pending'
-    });
+    }) : 0;
 
     // Ungraded submissions
-    const assignmentsList = await Assignment.find().select('submissions');
+    const assignmentsList = assignmentsEnabled ? await Assignment.find().select('submissions') : [];
 
     let ungradedSubmissionsCount = 0;
 
@@ -141,15 +149,15 @@ exports.getDashboard = async (req, res) => {
     });
 
     // Recent students
-    const recentStudents = await Student.find()
+    const recentStudents = studentsEnabled ? await Student.find()
       .populate('user', 'name email phone status profilePic')
       .populate('course', 'name code')
       .populate('batch', 'name')
       .sort({ createdAt: -1 })
-      .limit(5);
+      .limit(5) : [];
 
     // Hot leads
-    const hotLeads = await Lead.find({
+    const hotLeads = leadsEnabled ? await Lead.find({
       status: {
         $in: [
           'contacted',
@@ -163,12 +171,12 @@ exports.getDashboard = async (req, res) => {
       .sort({ nextFollowUpAt: 1, followUpDate: 1 })
       .limit(5)
       .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name' } })
-      .populate('interestedCourse', 'name code');
+      .populate('interestedCourse', 'name code') : [];
 
-    const recentLeads = await Lead.find({ createdAt: { $gte: threeDaysAgo } })
+    const recentLeads = leadsEnabled ? await Lead.find({ createdAt: { $gte: threeDaysAgo } })
       .populate('interestedCourse', 'name')
       .populate({ path: 'assignedTo', populate: { path: 'user', select: 'name' } })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 }) : [];
 
     const resetRequests = await User.find({ resetRequested: true })
       .select('name email phone role updatedAt')

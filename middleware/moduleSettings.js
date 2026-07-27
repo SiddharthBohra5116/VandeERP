@@ -3,9 +3,21 @@ const ModuleSettings = require('../models/ModuleSettings');
 const DEFAULTS = Object.freeze({
   students: true,
   teachers: true,
+  counsellors: true,
+  courses: true,
   batches: true,
   attendance: true,
-  kyc: true
+  kyc: true,
+  leads: true,
+  fees: true,
+  schedules: true,
+  assignments: true,
+  updates: true,
+  curriculum: true,
+  progress: true,
+  announcements: true,
+  reports: true,
+  leaves: true
 });
 
 let cached = null;
@@ -37,11 +49,25 @@ async function saveModules(input) {
 }
 
 const routeRules = [
-  ['students', /^\/(?:admin\/students|student|counsellor\/students)(?:\/|$)/],
+  ['students', /^\/(?:admin\/students|student|teacher\/students|counsellor\/students)(?:\/|$)/],
+  ['students', /^\/admin\/profile-requests(?:\/|$)/],
+  ['students', /^\/counsellor\/admissions(?:\/|$)|^\/(?:admin|counsellor)\/leads\/[^/]+\/convert(?:\/|$)/],
   ['teachers', /^\/(?:admin\/teachers|teacher)(?:\/|$)/],
+  ['counsellors', /^\/(?:admin\/counsellors|counsellor)(?:\/|$)/],
+  ['courses', /^\/admin\/courses(?:\/|$)/],
   ['batches', /^\/admin\/batches(?:\/|$)/],
   ['attendance', /^\/(?:admin|teacher|student)\/attendance(?:\/|$)/],
-  ['kyc', /^\/admin\/students\/(?:bulk-verify-id|[^/]+\/verify-id)$/]
+  ['kyc', /^\/admin\/students\/(?:bulk-verify-id|[^/]+\/verify-id)$/],
+  ['leads', /^\/(?:admin|counsellor)\/leads(?:\/|$)/],
+  ['fees', /^\/(?:admin\/fees|student\/fees|counsellor\/admissions\/[^/]+\/fee)(?:\/|$)/],
+  ['schedules', /^\/(?:admin\/(?:schedules|timetables|classrooms)|teacher\/schedules)(?:\/|$)/],
+  ['assignments', /^\/(?:teacher|student)\/assignments(?:\/|$)/],
+  ['updates', /^\/(?:teacher\/updates|student\/updates)(?:\/|$)/],
+  ['curriculum', /^\/(?:teacher|student)\/curriculum(?:\/|$)/],
+  ['progress', /^\/(?:teacher\/progress|student\/(?:progress|certificate))(?:\/|$)/],
+  ['announcements', /^\/(?:admin|teacher|student|counsellor)\/announcements(?:\/|$)/],
+  ['reports', /^\/(?:admin|counsellor)\/reports(?:\/|$)|^\/student\/analytics(?:\/|$)/],
+  ['leaves', /^\/(?:admin\/holidays-leaves|teacher\/leaves|counsellor\/leaves)(?:\/|$)/]
 ];
 
 async function moduleSettings(req, res, next) {
@@ -54,6 +80,7 @@ async function moduleSettings(req, res, next) {
     if (!disabled && /^\/admin\/users(?:\/create|\/temporary-staff)?$/.test(path)) {
       if (requestedRole === 'student' && !modules.students) disabled = ['students'];
       if (requestedRole === 'teacher' && !modules.teachers) disabled = ['teachers'];
+      if (requestedRole === 'counsellor' && !modules.counsellors) disabled = ['counsellors'];
     }
     if (!disabled || req.path === '/admin/modules') return next();
     return res.status(404).render('module-disabled', {

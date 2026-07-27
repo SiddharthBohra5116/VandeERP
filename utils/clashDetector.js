@@ -90,7 +90,7 @@ async function checkScheduleClash(date, startTime, endTime, classroomId, teacher
       }
 
       // 2. Teacher Clash
-      if (sched.teacher && sched.teacher._id.toString() === teacherId.toString()) {
+      if (teacherId && sched.teacher && sched.teacher._id.toString() === teacherId.toString()) {
         return {
           clashed: true,
           type: 'teacher',

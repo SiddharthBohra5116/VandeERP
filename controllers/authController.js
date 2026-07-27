@@ -286,20 +286,22 @@ exports.postForceChangePassword = async (req, res) => {
   }
 };
 
-async function getRoleProfile(user) {
+async function getRoleProfile(user, modules = {}) {
   if (!user || !user.role) return null;
 
   if (user.role === 'student') {
-    return Student.findOne({ user: user._id })
-      .populate('course', 'name code')
-      .populate('batch', 'name')
-      .populate({ path: 'teacher', populate: { path: 'user', select: 'name email phone profilePic' } })
-      .populate({ path: 'counsellor', populate: { path: 'user', select: 'name email phone profilePic' } });
+    let query = Student.findOne({ user: user._id });
+    if (modules.courses !== false) query = query.populate('course', 'name code');
+    if (modules.batches !== false) query = query.populate('batch', 'name');
+    if (modules.teachers !== false) query = query.populate({ path: 'teacher', populate: { path: 'user', select: 'name email phone profilePic' } });
+    if (modules.counsellors !== false) query = query.populate({ path: 'counsellor', populate: { path: 'user', select: 'name email phone profilePic' } });
+    return query;
   }
 
   if (user.role === 'teacher') {
     const Teacher = require('../models/Teacher');
-    return Teacher.findOne({ user: user._id }).populate('courses', 'name code');
+    const query = Teacher.findOne({ user: user._id });
+    return modules.courses === false ? query : query.populate('courses', 'name code');
   }
 
   if (user.role === 'counsellor') {
@@ -312,7 +314,7 @@ async function getRoleProfile(user) {
 
 // GET /auth/profile
 exports.getProfile = async (req, res) => {
-  const roleProfile = await getRoleProfile(req.user);
+  const roleProfile = await getRoleProfile(req.user, res.locals.modules);
   if (req.query.updated || req.query.saved || req.query.request_submitted) {
     res.locals.success = [];
   }
@@ -467,6 +469,8 @@ exports.changePassword = async (req, res) => {
 exports.getInbox = async (req, res) => {
   try {
     const Message = require('../models/Message');
+    const modules = res.locals.modules || {};
+    const roleEnabled = role => role === 'admin' || modules[`${role}s`] !== false;
 
     // Fetch all unique participants current user has chatted with
     const allUserMessages = await Message.find({
@@ -575,13 +579,13 @@ exports.getInbox = async (req, res) => {
 
     // Merge default contacts and message participants
     const contactMap = new Map();
-    defaultContacts.forEach(c => contactMap.set(c._id.toString(), c));
+    defaultContacts.filter(c => roleEnabled(c.role)).forEach(c => contactMap.set(c._id.toString(), c));
 
     if (participantIds.size > 0) {
       const extraUsers = await User.find({ _id: { $in: Array.from(participantIds) }, status: 'active', archivedAt: null })
         .select('name role profilePic');
       extraUsers.forEach(u => {
-        if (!contactMap.has(u._id.toString()) && u._id.toString() !== req.user._id.toString()) {
+        if (roleEnabled(u.role) && !contactMap.has(u._id.toString()) && u._id.toString() !== req.user._id.toString()) {
           contactMap.set(u._id.toString(), u);
         }
       });

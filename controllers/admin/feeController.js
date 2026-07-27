@@ -7,6 +7,7 @@ const logger = require('../../utils/logger');
 const buildFeeSchedule = require('../../utils/feeSchedule');
 const getFeeStatus = require('../../utils/feeStatus');
 const { createFeeInvoice, invoiceNumber } = require('../../utils/feeInvoicePdf');
+const { PAYMENT_METHODS } = require('../../config/constants');
 
 
 // GET /admin/fees
@@ -372,6 +373,37 @@ exports.postAddPayment = async (req, res) => {
     });
 
     res.redirect(`/admin/fees/${req.params.studentId}?error=1`);
+  }
+};
+
+// POST /admin/fees/bulk-complete
+exports.postBulkComplete = async (req, res) => {
+  try {
+    const submitted = Array.isArray(req.body.feeIds) ? req.body.feeIds : [req.body.feeIds];
+    const feeIds = [...new Set(submitted.filter(id => /^[0-9a-fA-F]{24}$/.test(String(id || ''))))].slice(0, 500);
+    const method = PAYMENT_METHODS.includes(req.body.method) ? req.body.method : 'Cash';
+    if (!feeIds.length) return res.redirect('/admin/fees?error=Select+at+least+one+fee+ledger');
+
+    const fees = await Fee.find({ _id: { $in: feeIds } });
+    let completed = 0;
+    for (const fee of fees) {
+      const due = Math.max(0, fee.totalAmount - (fee.discount || 0) - fee.paidAmount);
+      if (due <= 0) continue;
+      fee.payments.push({
+        amount: due,
+        method,
+        note: 'Bulk fee completion',
+        receivedBy: req.user._id,
+        paidAt: new Date()
+      });
+      await fee.save();
+      await Student.findByIdAndUpdate(fee.student, { fees_total: fee.totalAmount, fees_paid: fee.paidAmount });
+      completed += 1;
+    }
+    return res.redirect(`/admin/fees?completed=${completed}`);
+  } catch (err) {
+    logger.error('Bulk Fee Completion Error', { err: err.message });
+    return res.redirect('/admin/fees?error=Unable+to+complete+selected+fees');
   }
 };
 

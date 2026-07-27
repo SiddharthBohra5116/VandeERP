@@ -3,6 +3,9 @@
   title = 'My Students';
   subtitle = `${students.length} students assigned to you`;
   page = 'my-students';
+  const coursesEnabled = modules?.courses !== false;
+  const batchesEnabled = modules?.batches !== false;
+  const feesEnabled = modules?.fees !== false;
 %>
 
 <!-- Summary Stats -->
@@ -17,7 +20,7 @@
     <div class="stat-value"><%= activeCount %></div>
     <div class="stat-sub">Currently enrolled</div>
   </div>
-  <% const courseEntries = Object.entries(courseMap); %>
+  <% if (coursesEnabled) { const courseEntries = Object.entries(courseMap); %>
   <% if (courseEntries.length > 0) { %>
     <% courseEntries.slice(0, 2).forEach(([courseName, count]) => { %>
       <div class="stat-card gold">
@@ -32,6 +35,7 @@
       <div class="stat-value">0</div>
       <div class="stat-sub">No data yet</div>
     </div>
+  <% } %>
   <% } %>
 </div>
 
@@ -59,11 +63,11 @@
             <th>Student</th>
             <th>Roll No.</th>
             <th>Phone</th>
-            <th>Course</th>
-            <th>Batch</th>
+            <% if (coursesEnabled) { %><th>Course</th><% } %>
+            <% if (batchesEnabled) { %><th>Batch</th><% } %>
             <th>Enrolled</th>
             <th>Status</th>
-            <th>Fee Progress</th>
+            <% if (feesEnabled) { %><th>Fee Progress</th><% } %>
           </tr>
         </thead>
         <tbody>
@@ -98,14 +102,14 @@
               </td>
               <td class="td-mono" style="font-size:11px; color:var(--gold); font-weight:600;"><%= s.rollNumber || '—' %></td>
               <td class="td-mono"><%= s.phone %></td>
-              <td><span class="badge badge-orange"><%= s.course %></span></td>
-              <td class="td-muted"><%= s.batch %></td>
+              <% if (coursesEnabled) { %><td><span class="badge badge-orange"><%= s.course %></span></td><% } %>
+              <% if (batchesEnabled) { %><td class="td-muted"><%= s.batch %></td><% } %>
               <td class="td-mono td-muted">
                 <%= s.enrollmentDate ? new Date(s.enrollmentDate).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'}) : '—' %>
               </td>
-              <td>
+              <% if (feesEnabled) { %><td>
                 <span class="badge <%= statusBadgeClass %>"><%= s.status %></span>
-              </td>
+              </td><% } %>
               <td>
                 <div style="min-width:100px;">
                   <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted); font-family:var(--mono); margin-bottom:4px;">
