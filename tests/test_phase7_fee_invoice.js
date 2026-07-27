@@ -1,6 +1,6 @@
 const assert = require('assert');
 const fs = require('fs');
-const { createFeeInvoice, invoiceNumber } = require('../utils/feeInvoicePdf');
+const { createFeeInvoice, formatIndianPhone } = require('../utils/feeInvoicePdf');
 
 const fee = {
   _id: '507f1f77bcf86cd799439011',
@@ -16,7 +16,9 @@ const fee = {
   paidAmount: 10000
 };
 
-assert.strictEqual(invoiceNumber(fee), 'VDA-INV-99439011');
+assert.strictEqual(formatIndianPhone('9876543210'), '+91 98765 43210');
+assert.strictEqual(formatIndianPhone('+91 98765 43210'), '+91 98765 43210');
+assert.doesNotMatch(fs.readFileSync('utils/feeInvoicePdf.js', 'utf8'), /VDA-INV/);
 assert.match(fs.readFileSync('routes/admin.js', 'utf8'), /fees\/:studentId\/invoice\.pdf/);
 
 const chunks = [];

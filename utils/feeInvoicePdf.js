@@ -1,10 +1,14 @@
 const PDFDocument = require('pdfkit');
 
 const money = value => `Rs. ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-const invoiceNumber = fee => `VDA-INV-${String(fee._id).slice(-8).toUpperCase()}`;
+const formatIndianPhone = value => {
+  const digits = String(value || '').replace(/\D/g, '');
+  const local = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits.length === 11 && digits.startsWith('0') ? digits.slice(1) : digits;
+  return local.length === 10 ? `+91 ${local.slice(0, 5)} ${local.slice(5)}` : (value || 'Not provided');
+};
 
 function createFeeInvoice(fee) {
-  const doc = new PDFDocument({ size: 'A4', margin: 48, info: { Title: `Invoice ${invoiceNumber(fee)}` } });
+  const doc = new PDFDocument({ size: 'A4', margin: 48, info: { Title: 'Fee Invoice' } });
   const student = fee.student;
   const net = Number(fee.totalAmount) - Number(fee.discount || 0);
   const paid = Number(fee.paidAmount || 0);
@@ -20,12 +24,11 @@ function createFeeInvoice(fee) {
   doc.fillColor('#d4af37').font('Helvetica-Bold').fontSize(22).text('VANDE DIGITAL ACADEMY', 48, 38);
   doc.fillColor('#fff').font('Helvetica').fontSize(10).text('Professional Learning. Practical Careers.', 48, 70);
   doc.font('Helvetica-Bold').fontSize(24).text('INVOICE', 400, 36, { width: 147, align: 'right' });
-  doc.font('Helvetica').fontSize(9).text(invoiceNumber(fee), 400, 70, { width: 147, align: 'right' });
 
   doc.fillColor('#111').font('Helvetica-Bold').fontSize(11).text('BILL TO', 48, 140);
   doc.fontSize(15).text(student.user?.name || student.name || 'Student', 48, 160);
   doc.font('Helvetica').fontSize(9).fillColor('#555');
-  doc.text(`Phone: ${student.user?.phone || student.phone || 'Not provided'}`, 48, 184);
+  doc.text(`Phone: ${formatIndianPhone(student.user?.phone || student.phone)}`, 48, 184);
   doc.text(`Email: ${student.user?.email || student.email || 'Not provided'}`, 48, 199);
 
   doc.font('Helvetica-Bold').fontSize(10).fillColor('#111').text('INVOICE DATE', 380, 140, { width: 167, align: 'right' });
@@ -59,4 +62,4 @@ function createFeeInvoice(fee) {
   return doc;
 }
 
-module.exports = { createFeeInvoice, invoiceNumber, money };
+module.exports = { createFeeInvoice, formatIndianPhone, money };
