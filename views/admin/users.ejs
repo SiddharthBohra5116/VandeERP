@@ -3,7 +3,7 @@
   const hasRole = typeof roleActive !== 'undefined';
   const activeRole = hasRole ? roleActive : '';
   const roleName = hasRole ? activeRole.charAt(0).toUpperCase() + activeRole.slice(1) : 'User';
-  title = hasRole ? `Manage ${roleName}s` : 'Manage Users';
+  title = activeRole === 'student' && filter.status === 'complete' ? 'Completed Students' : (hasRole ? `Manage ${roleName}s` : 'Manage Users');
   page = typeof page !== 'undefined' ? page : 'users';
   const directoryUrl = hasRole ? `/admin/${activeRole}s` : '/admin/users';
   const activeCount = users.filter(item => (item.status || 'active') === 'active').length;
@@ -125,6 +125,7 @@
 </style>
 
 <% if (filter.error) { %><div class="alert alert-toast alert-error" role="alert"><span><%= filter.error %></span></div><% } %>
+<% if (filter.updated && activeRole === 'student' && filter.status === 'complete') { %><div class="alert alert-toast alert-success" role="status"><span>Student moved to Completed Students.</span></div><% } %>
 <% if (filter.archived !== undefined) { %><div class="alert alert-toast alert-success" role="status"><span>Archived <b><%= filter.archived %></b> account(s).<% if (Number(filter.protected || 0)) { %> Protected <b><%= filter.protected %></b> admin account(s).<% } %></span></div><% } %>
 
 <section class="people-summary" aria-label="Directory summary">
@@ -284,7 +285,7 @@
           <td data-column="guardianPhone"><%= student?.family?.guardian?.phone || '—' %></td>
           <% } %>
           <td data-column="actions"><div class="cell-actions">
-            <form action="/admin/users/<%= u._id %>/status" method="POST" class="person-status-form" data-native-submit="true"><details class="person-status-menu"><summary aria-label="Account status for <%= u.name %>"><%= statusVal %></summary><div class="person-status-options"><button type="submit" name="status" value="active" aria-current="<%= statusVal === 'active' %>">Active</button><button type="submit" name="status" value="inactive" aria-current="<%= statusVal === 'inactive' %>">Archived</button><button type="submit" name="status" value="drop" aria-current="<%= statusVal === 'drop' %>">Dropped</button><button type="submit" name="status" value="complete" aria-current="<%= statusVal === 'complete' %>">Completed</button></div></details></form>
+            <form action="/admin/users/<%= u._id %>/status" method="POST" class="person-status-form" data-native-submit="true"><details class="person-status-menu"><summary aria-label="Account status for <%= u.name %>"><%= statusVal %></summary><div class="person-status-options"><button type="submit" name="status" value="active" aria-current="<%= statusVal === 'active' %>">Active</button><button type="submit" name="status" value="inactive" aria-current="<%= statusVal === 'inactive' %>">Archived</button><button type="submit" name="status" value="drop" aria-current="<%= statusVal === 'drop' %>">Dropped</button><button type="submit" name="status" value="complete" aria-current="<%= statusVal === 'complete' %>"><%= activeRole === 'student' ? 'Mark course completed' : 'Completed' %></button></div></details></form>
             <a href="/admin/users/<%= u._id %>/edit" class="btn btn-ghost btn-xs"><%= u.profileIncomplete ? 'Set up account' : 'Edit' %></a>
             <% if (!u.profileIncomplete) { %><button type="button" class="btn btn-ghost btn-xs reset-password-btn" data-user-id="<%= u._id %>" data-user-name="<%= u.name %>" data-user-phone="<%= u.phone || '' %>">Reset password</button><% } %>
           </div></td>

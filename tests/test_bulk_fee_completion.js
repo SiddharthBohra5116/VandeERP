@@ -10,4 +10,7 @@ assert.match(controller, /totalAmount - \(fee\.discount \|\| 0\) - fee\.paidAmou
 assert.match(controller, /amount: due/);
 assert.match(view, /name="feeIds"/);
 assert.match(view, /Complete selected/);
+assert.doesNotMatch(view, /<form id="bulkCompleteFees"[^>]*data-confirm=/);
+assert.match(view, /id="completeSelectedFees" disabled data-confirm=/);
+assert.match(view, /if \(!checks\.some\(check => check\.checked\)\) event\.preventDefault\(\)/);
 console.log('Bulk fee completion test passed');

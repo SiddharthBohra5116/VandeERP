@@ -6,6 +6,7 @@ const sidebar = fs.readFileSync('views/partials/sidebar.ejs', 'utf8');
 const softNavigation = fs.readFileSync('public/js/soft-navigation.js', 'utf8');
 const dashboard = fs.readFileSync('views/admin/dashboard.ejs', 'utf8');
 const layout = fs.readFileSync('views/layouts/main.ejs', 'utf8');
+assert.match(layout, /document\.querySelectorAll\('details\[open\]'\)/);
 const directory = fs.readFileSync('views/admin/users.ejs', 'utf8');
 const studentController = fs.readFileSync('controllers/admin/studentManagementController.js', 'utf8');
 const leads = fs.readFileSync('views/admin/leads.ejs', 'utf8');
@@ -61,6 +62,8 @@ assert.match(leads, /id="leadColumnPicker"/);
 assert.match(counsellorProfile, /class="counsellor-lead-table"/);
 assert.match(counsellorProfile, /<th>Name<\/th>[\s\S]*<th>Phone<\/th>[\s\S]*<th>Email<\/th>/);
 assert.match(leads, /vande\.leadColumns\.v2/);
+assert.match(leads, /data-lead-column="phone"\]\s*\{\s*min-width:140px;\s*white-space:nowrap/);
+assert.match(leads, /class="lead-actions"/);
 for (const column of ['name', 'phone', 'email', 'course', 'source', 'referredBy', 'counsellor', 'status', 'followUp', 'actions']) {
   assert.match(leads, new RegExp(`data-lead-column="${column}"`));
 }

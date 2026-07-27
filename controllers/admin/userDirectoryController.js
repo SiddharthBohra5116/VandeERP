@@ -747,8 +747,22 @@ exports.setUserStatus = async (req, res) => {
     }
 
     user.status = nextStatus;
+    user.isActive = !['inactive', 'drop'].includes(nextStatus);
     user.archivedAt = nextStatus === 'inactive' ? (user.archivedAt || new Date()) : null;
     await user.save();
+
+    if (user.role === 'student') {
+      const student = await Student.findOne({ user: user._id });
+      if (student) {
+        if (!student.statusHistory) student.statusHistory = [];
+        student.statusHistory.push({
+          status: nextStatus,
+          changedBy: req.user._id,
+          reason: req.body.reason || (nextStatus === 'complete' ? 'Course marked completed' : 'Status updated from student directory')
+        });
+        await student.save();
+      }
+    }
 
     logger.info('Admin updated user status', {
       userId: user._id,
@@ -756,7 +770,9 @@ exports.setUserStatus = async (req, res) => {
       status: nextStatus
     });
 
-    return res.redirect(getRoleRedirect(user.role, '?updated=1'));
+    return res.redirect(user.role === 'student' && nextStatus === 'complete'
+      ? '/admin/students?status=complete&updated=1'
+      : getRoleRedirect(user.role, '?updated=1'));
   } catch (err) {
     logger.error('setUserStatus Error', { err: err.message, userId: req.params.id });
     return res.redirect('/admin/users?error=Unable%20to%20update%20status');

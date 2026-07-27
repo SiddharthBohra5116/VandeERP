@@ -13,9 +13,10 @@ const { PAYMENT_METHODS } = require('../../config/constants');
 // GET /admin/fees
 exports.getFees = async (req, res) => {
   try {
-    const { search, paymentStatus, sortBy } = req.query;
+    const { search, paymentStatus, sortBy, aging, course } = req.query;
 
     const filter = {};
+    if (/^[a-f\d]{24}$/i.test(course || '')) filter.course = course;
 
     if (search) {
       const matchingStudents = await Student.find()
@@ -98,6 +99,21 @@ exports.getFees = async (req, res) => {
 
     if (paymentStatus) {
       fees = fees.filter(fee => fee.paymentStatus === paymentStatus);
+    }
+    if (['current', '1_30', '31_60', '61_90', '91_plus'].includes(aging)) {
+      fees = fees.filter(fee => {
+        const dues = fee.installments?.length
+          ? fee.installments.filter(item => Math.max(0, item.amount - item.paidAmount) > 0).map(item => item.dueDate)
+          : (fee.dueAmount > 0 ? [fee.dueDate] : []);
+        return dues.some(dueDate => {
+          if (!dueDate || new Date(dueDate) >= now) return aging === 'current';
+          const days = Math.ceil((now - new Date(dueDate)) / 86400000);
+          if (aging === '1_30') return days <= 30;
+          if (aging === '31_60') return days > 30 && days <= 60;
+          if (aging === '61_90') return days > 60 && days <= 90;
+          return aging === '91_plus' && days > 90;
+        });
+      });
     }
 
     if (sortBy === 'outstanding') {

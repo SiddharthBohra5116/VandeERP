@@ -255,7 +255,7 @@ exports.getImportProgress = (req, res) => {
 exports.getLeads = async (req, res) => {
   try {
     await enrollExistingImportedStudents(req.user._id);
-    const { status, course, source, search } = req.query;
+    const { status, course, source, search, age, startDate, endDate, dateField, pipeline } = req.query;
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 10), 100);
     const skip = (page - 1) * limit;
@@ -263,22 +263,41 @@ exports.getLeads = async (req, res) => {
     const filter = {};
 
     if (status) filter.status = status;
+    if (pipeline === 'open') filter.status = { $nin: ['admission_completed', 'lost'] };
     if (source) filter.source = source;
+    if (['fresh', 'warm', 'stale'].includes(age)) {
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000);
+      const fifteenDaysAgo = new Date(now.getTime() - 15 * 86400000);
+      filter.status = { $nin: ['admission_completed', 'lost'] };
+      if (age === 'fresh') filter.createdAt = { $gte: sevenDaysAgo };
+      if (age === 'warm') filter.createdAt = { $gte: fifteenDaysAgo, $lt: sevenDaysAgo };
+      if (age === 'stale') filter.createdAt = { $lt: fifteenDaysAgo };
+    }
 
     if (course) {
       const courseDoc = await resolveCourse(course);
       if (courseDoc) filter.interestedCourse = courseDoc._id;
     }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(startDate || '') && /^\d{4}-\d{2}-\d{2}$/.test(endDate || '')) {
+      const range = { $gte: new Date(`${startDate}T00:00:00`), $lte: new Date(`${endDate}T23:59:59`) };
+      if (dateField === 'converted') {
+        filter.$and = [{ $or: [{ convertedAt: range }, { convertedAt: null, updatedAt: range }] }];
+      } else {
+        filter.createdAt = range;
+      }
+    }
 
     if (search) {
       const escaped = escapeRegex(search);
       const phonePattern = phoneSearchPattern(search);
-      filter.$or = [
+      filter.$and = filter.$and || [];
+      filter.$and.push({ $or: [
         { name: { $regex: escaped, $options: 'i' } },
         { phone: { $regex: phonePattern, $options: 'i' } },
         { email: { $regex: escaped, $options: 'i' } },
         { referredBy: { $regex: escaped, $options: 'i' } }
-      ];
+      ] });
     }
 
     const [leads, totalLeads, leadStatuses, customFieldDefinitions] = await Promise.all([
@@ -551,6 +570,62 @@ exports.postEditLead = async (req, res) => {
   } catch (err) {
     logger.error('Admin Edit Lead Error', { err: err.message, leadId: req.params.id });
     return res.redirect(`${editUrl}?error=${encodeURIComponent(err.message)}`);
+  }
+};
+
+exports.postUpdateLeadStatus = async (req, res) => {
+  const returnTo = /^\/admin\/leads(?:\/[0-9a-f]{24})?(?:\?|$)/i.test(String(req.body.returnTo || ''))
+    ? req.body.returnTo
+    : `/admin/leads/${req.params.id}`;
+  try {
+    const [lead, statuses] = await Promise.all([Lead.findById(req.params.id), getLeadStatuses()]);
+    const status = String(req.body.status || '').trim();
+    if (!lead || !statuses.some(option => option.key === status)) throw new Error('Invalid lead status.');
+    if (status === 'admission_completed' && !lead.convertedStudent) throw new Error('Use Admit as Student to complete admission.');
+
+    const oldStatus = lead.status;
+    lead.status = status;
+    await lead.save();
+    await LeadActivity.create({
+      lead: lead._id,
+      type: 'note',
+      title: 'Lead status updated',
+      note: `Status changed from ${oldStatus} to ${status}.`,
+      doneBy: req.user._id,
+      oldStatus,
+      newStatus: status
+    });
+    return res.redirect(returnTo);
+  } catch (err) {
+    const join = returnTo.includes('?') ? '&' : '?';
+    return res.redirect(`${returnTo}${join}error=${encodeURIComponent(err.message)}`);
+  }
+};
+
+exports.postUpdateLeadFollowUp = async (req, res) => {
+  const returnTo = /^\/admin\/leads(?:\/[0-9a-f]{24})?(?:\?|$)/i.test(String(req.body.returnTo || ''))
+    ? req.body.returnTo
+    : `/admin/leads/${req.params.id}`;
+  try {
+    const value = String(req.body.followUpDate || '').trim();
+    if (value && !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error('Invalid follow-up date.');
+    const lead = await Lead.findById(req.params.id);
+    if (!lead) throw new Error('Lead not found.');
+
+    lead.nextFollowUpAt = value ? new Date(`${value}T12:00:00`) : null;
+    await lead.save();
+    await LeadActivity.create({
+      lead: lead._id,
+      type: 'note',
+      title: value ? 'Next follow-up rescheduled' : 'Next follow-up cleared',
+      note: value ? `Next follow-up set for ${value}.` : 'The scheduled follow-up was removed.',
+      doneBy: req.user._id,
+      followUp: { scheduledFor: lead.nextFollowUpAt }
+    });
+    return res.redirect(returnTo);
+  } catch (err) {
+    const join = returnTo.includes('?') ? '&' : '?';
+    return res.redirect(`${returnTo}${join}error=${encodeURIComponent(err.message)}`);
   }
 };
 

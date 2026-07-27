@@ -317,6 +317,15 @@
     document.addEventListener('click', (e) => {
       const closeBtn = e.target.closest('.alert-close');
       if (closeBtn) dismissAlert(closeBtn.closest('.alert'));
+      document.querySelectorAll('details[open]').forEach(details => {
+        if (!details.contains(e.target)) details.removeAttribute('open');
+      });
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('details[open]').forEach(details => details.removeAttribute('open'));
+      }
     });
 
     // Remove one-shot flash query flags after rendering so refresh does not replay old success/error messages.

@@ -87,6 +87,9 @@ exports.getReports = async (req, res) => {
 
     const startOfPeriod = new Date(startDate + 'T00:00:00');
     const endOfPeriod = new Date(endDate + 'T23:59:59');
+    const startMonth = startDate.slice(0, 7);
+    const endMonth = endDate.slice(0, 7);
+    const monthInPeriod = month => month >= startMonth && month <= endMonth;
 
     // Calculate comparison period (for trends) of the same duration
     const periodLengthMs = endOfPeriod - startOfPeriod;
@@ -112,14 +115,21 @@ exports.getReports = async (req, res) => {
 
     // Fetch filtered students
     const dbStudents = studentsEnabled ? await Student.find(studentQuery)
-      .populate('user', 'name status')
+      .populate('user', 'name role status isActive archivedAt')
       .populate('batch', 'name')
       .populate('course', 'name code') : [];
     const studentIds = dbStudents.map(s => s._id);
 
     // Active students count
-    const activeCount = dbStudents.filter(s => s.user && s.user.status === 'active').length;
-    const newThisMonth = dbStudents.filter(s => {
+    const activeStudents = dbStudents.filter(s =>
+      s.user &&
+      s.user.role === 'student' &&
+      s.user.status === 'active' &&
+      s.user.isActive !== false &&
+      !s.user.archivedAt
+    );
+    const activeCount = activeStudents.length;
+    const newThisMonth = activeStudents.filter(s => {
       const enrollDate = s.enrollmentDate ? new Date(s.enrollmentDate) : null;
       const createDate = s.createdAt ? new Date(s.createdAt) : null;
       return (enrollDate && enrollDate >= startOfPeriod && enrollDate <= endOfPeriod) ||
@@ -175,12 +185,19 @@ exports.getReports = async (req, res) => {
       });
     });
 
-    const outstandingAmount = Math.max(0, totalBilled - totalCollected);
+    const outstandingAmount = fees.reduce(
+      (sum, fee) => sum + Math.max(0, fee.totalAmount - (fee.discount || 0) - fee.paidAmount),
+      0
+    );
+    const totalLedgerBilled = fees.reduce(
+      (sum, fee) => sum + Math.max(0, fee.totalAmount - (fee.discount || 0)),
+      0
+    );
 
     // Outstanding trend percentage vs total billed
     let outstandingDiffPct = 0;
-    if (totalBilled > 0) {
-      outstandingDiffPct = Math.round((outstandingAmount / totalBilled) * 100);
+    if (totalLedgerBilled > 0) {
+      outstandingDiffPct = Math.round((outstandingAmount / totalLedgerBilled) * 100);
     }
 
     // Collection trend
@@ -529,10 +546,11 @@ exports.getReports = async (req, res) => {
     // ─── TAB: FINANCIAL ─────────────────────────────────────────────
     else if (tab === 'financial') {
       const monthlyStats = {};
-      const [expensesList, customTargets] = await Promise.all([
+      const [allExpenses, customTargets] = await Promise.all([
         Expense.find({}).sort({ date: -1 }),
         RevenueTarget.find({})
       ]);
+      const expensesList = allExpenses.filter(exp => monthInPeriod(exp.month));
 
       const customTargetsMap = {};
       customTargets.forEach(t => {
@@ -588,7 +606,9 @@ exports.getReports = async (req, res) => {
         monthlyStats[m].netProfit = monthlyStats[m].actual - monthlyStats[m].expense;
       });
 
-      renderData.revenueData = Object.values(monthlyStats).sort((a, b) => a.month.localeCompare(b.month));
+      renderData.revenueData = Object.values(monthlyStats)
+        .filter(row => monthInPeriod(row.month))
+        .sort((a, b) => a.month.localeCompare(b.month));
       renderData.expensesList = expensesList;
 
       if (exportType === 'tally' || exportType === 'tally-masters') {
@@ -598,10 +618,10 @@ exports.getReports = async (req, res) => {
         }]));
         const tallyXml = exportType === 'tally-masters' ? buildTallyMastersXml({
           fees,
-          expenses: expensesList
+          expenses: allExpenses
         }) : buildTallyXml({
           fees,
-          expenses: expensesList,
+          expenses: allExpenses,
           students,
           start: startOfPeriod,
           end: endOfPeriod
@@ -749,7 +769,9 @@ exports.getReports = async (req, res) => {
       };
 
       // Lead Pipeline Aging
-      const openLeads = await Lead.find({ status: { $nin: ['admission_completed', 'lost'] } });
+      const openLeadFilter = { status: { $nin: ['admission_completed', 'lost'] } };
+      if (course !== 'all') openLeadFilter.interestedCourse = course;
+      const openLeads = await Lead.find(openLeadFilter);
       const aging = { fresh: 0, warm: 0, stale: 0 };
       openLeads.forEach(l => {
         const ageDays = Math.floor((now - new Date(l.createdAt)) / (1000 * 60 * 60 * 24));

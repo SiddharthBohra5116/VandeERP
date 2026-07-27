@@ -91,14 +91,14 @@
       <a href="/admin/students" class="btn btn-primary btn-sm">Choose Student &amp; Set Up Invoice</a>
     </div>
   <% } else { %>
-    <form id="bulkCompleteFees" method="POST" action="/admin/fees/bulk-complete" data-native-submit="true" data-confirm="Record every selected outstanding balance as fully paid?" data-confirm-title="Complete selected fees" data-confirm-label="Complete fees">
+    <form id="bulkCompleteFees" method="POST" action="/admin/fees/bulk-complete" data-native-submit="true">
       <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
       <div style="display:flex; justify-content:flex-end; align-items:center; gap:.75rem; padding:1rem; border-bottom:1px solid var(--border);">
         <button type="button" class="btn btn-ghost btn-sm" id="selectAllFees">Select all due</button>
         <select name="method" class="form-control" style="width:auto;" aria-label="Bulk payment method">
           <option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Card</option><option>Other</option>
         </select>
-        <button type="submit" class="btn btn-primary btn-sm" id="completeSelectedFees" disabled>Complete selected</button>
+        <button type="submit" class="btn btn-primary btn-sm" id="completeSelectedFees" disabled data-confirm="Record every selected outstanding balance as fully paid?" data-confirm-title="Complete selected fees" data-confirm-label="Complete fees">Complete selected</button>
       </div>
     <div class="table-wrap">
       <table>
@@ -167,7 +167,7 @@
               <td>
                 <% if (student) { %>
                   <a href="/admin/fees/<%= student._id %>" class="btn btn-ghost btn-xs">Ledger / Add Payment</a>
-                  <a href="/admin/fees/<%= student._id %>/invoice.pdf" target="_blank" class="btn btn-ghost btn-xs" aria-label="Generate invoice for <%= student.name %>" title="Generate invoice">▣ Invoice</a>
+                  <a href="/admin/fees/<%= student._id %>/invoice.pdf" target="_blank" class="btn btn-ghost btn-xs" aria-label="Generate invoice for <%= student.name %>" title="Generate invoice"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v17l-3-2-3 2-3-2-3 2V2Z"/><path d="M14 2v4h4M9 10h6M9 14h6"/></svg> Invoice</a>
                 <% } else { %>
                   —
                 <% } %>
@@ -185,6 +185,7 @@
   (() => {
     const checks = [...document.querySelectorAll('.fee-check:not(:disabled)')];
     const buttons = [document.getElementById('selectAllFees'), document.getElementById('selectAllFeesHeader')];
+    const form = document.getElementById('bulkCompleteFees');
     const submit = document.getElementById('completeSelectedFees');
     const sync = () => {
       const selected = checks.filter(check => check.checked).length;
@@ -198,5 +199,9 @@
       sync();
     }));
     checks.forEach(check => check.addEventListener('change', sync));
+    form?.addEventListener('submit', event => {
+      if (!checks.some(check => check.checked)) event.preventDefault();
+    });
+    sync();
   })();
 </script>

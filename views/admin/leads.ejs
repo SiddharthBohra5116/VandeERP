@@ -171,10 +171,19 @@
   .lead-column-presets { display:flex; gap:.35rem; margin:.75rem 0; }
   .lead-column-grid { display:grid; gap:.25rem; }
   .lead-column-option { display:flex; align-items:center; gap:.55rem; min-height:34px; color:var(--text-sub); font-size:.78rem; }
+  #leadTable { width:100%; min-width:max-content; table-layout:auto; }
   #leadTable [data-lead-column][hidden] { display:none !important; }
   #leadTable [data-lead-column="select"] { position:sticky; left:0; z-index:3; width:56px; min-width:56px; background:var(--bg-card); text-align:center; }
   #leadTable [data-lead-column="name"] { position:sticky; left:56px; z-index:3; min-width:220px; background:var(--bg-card); border-right:1px solid var(--border); }
-  #leadTable [data-lead-column="actions"] { position:sticky; right:0; z-index:3; min-width:300px; background:var(--bg-card); }
+  #leadTable [data-lead-column="phone"] { min-width:140px; white-space:nowrap; font-family:var(--mono); }
+  #leadTable [data-lead-column="course"] { min-width:180px; white-space:nowrap; }
+  #leadTable [data-lead-column="counsellor"] { min-width:230px; white-space:nowrap; }
+  #leadTable [data-lead-column="status"] { min-width:190px; white-space:nowrap; }
+  #leadTable [data-lead-column="followUp"] { min-width:145px; white-space:nowrap; }
+  #leadTable [data-lead-column="actions"] { position:sticky; right:0; z-index:3; width:300px; min-width:300px; background:var(--bg-card); border-left:1px solid var(--border); }
+  .lead-actions { display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; }
+  .lead-actions form { margin:0 !important; }
+  .lead-inline-date { width:140px; min-height:34px; padding:.35rem .5rem; border:1px solid var(--gold-border); border-radius:8px; background:var(--bg-input); color:var(--text); font:700 .72rem var(--mono); }
   #leadTable th[data-lead-column="select"], #leadTable th[data-lead-column="name"], #leadTable th[data-lead-column="actions"] { z-index:5; background:var(--bg-hover); }
   #leadTable tbody tr:hover [data-lead-column="select"], #leadTable tbody tr:hover [data-lead-column="name"], #leadTable tbody tr:hover [data-lead-column="actions"] { background:var(--bg-hover); }
   
@@ -619,17 +628,26 @@
                 </form>
               </td>
               <td data-lead-column="status">
-                <span class="badge <%= statusBadgeMap[l.status] || 'badge-grey' %>"><%= statusLabelMap[l.status] || l.status %></span>
+                <form action="/admin/leads/<%= l._id %>/status" method="POST" style="margin:0;">
+                  <input type="hidden" name="returnTo" value="<%= currentListUrl %>">
+                  <select name="status" class="lead-select-badge" aria-label="Status for <%= l.name %>" onchange="this.form.submit()">
+                    <% statusOptions.forEach(option => { if (option.key !== 'admission_completed' || l.convertedStudent || l.status === 'admission_completed') { %>
+                      <option value="<%= option.key %>" <%= l.status === option.key ? 'selected' : '' %>><%= option.label %></option>
+                    <% } }) %>
+                  </select>
+                </form>
               </td>
               <td data-lead-column="followUp">
-                <span class="<%= isOverdue ? 'text-red' : 'td-muted' %>">
-                  <%= l.nextFollowUpAt ? new Date(l.nextFollowUpAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—' %>
-                </span>
+                <form action="/admin/leads/<%= l._id %>/follow-up" method="POST" style="margin:0;">
+                  <input type="hidden" name="returnTo" value="<%= currentListUrl %>">
+                  <input type="date" name="followUpDate" class="lead-inline-date <%= isOverdue ? 'text-red' : '' %>" value="<%= l.nextFollowUpAt ? new Date(l.nextFollowUpAt).toISOString().slice(0,10) : '' %>" aria-label="Next follow-up for <%= l.name %>" onchange="this.form.submit()">
+                </form>
               </td>
               <td data-lead-column="actions">
-                <a href="/admin/leads/<%= l._id %>/edit" class="btn btn-ghost btn-xs" style="margin-right:0.35rem;">Edit</a>
+                <div class="lead-actions">
+                <a href="/admin/leads/<%= l._id %>/edit" class="btn btn-ghost btn-xs">Edit</a>
                 <% if (!l.convertedStudent && l.status !== 'admission_completed') { %>
-                  <form method="POST" action="/admin/leads/delete" data-confirm="Delete this lead and its activity history?" data-confirm-title="Delete lead" data-confirm-label="Delete" style="display:inline-block; margin-left:0.35rem;">
+                  <form method="POST" action="/admin/leads/delete" data-confirm="Delete this lead and its activity history?" data-confirm-title="Delete lead" data-confirm-label="Delete">
                     <input type="hidden" name="leadIds" value="<%= l._id %>">
                     <input type="hidden" name="returnTo" value="<%= currentListUrl %>">
                     <button type="submit" class="btn btn-danger btn-xs">Delete</button>
@@ -644,6 +662,7 @@
                 <% } else { %>
                   <span class="text-red text-sm" style="font-weight:600;">Lost</span>
                 <% } %>
+                </div>
               </td>
             </tr>
           <% }) %>

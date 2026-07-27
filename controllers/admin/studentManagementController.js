@@ -14,6 +14,7 @@ const { escapeRegex, phoneSearchPattern } = require('../../utils/sanitize');
 const logger = require('../../utils/logger');
 const calculateCourseProgress = require('../../utils/courseProgress');
 const syncCourseCompletion = require('../../utils/syncCourseCompletion');
+const { USER_STATUSES } = require('../../config/constants');
 
 
 // GET /admin/students
@@ -40,7 +41,10 @@ exports.getStudents = async (req, res) => {
       role: 'student',
       archivedAt: null
     };
-    if (status) userFilter.status = status;
+    if (status) {
+      userFilter.status = status;
+      if (status === 'active') userFilter.isActive = { $ne: false };
+    }
     const incompleteConditions = [
       ...(batchesEnabled ? [{ batch: null }] : []),
       ...(teacherEnabled ? [{ teacher: null }] : []),
@@ -440,12 +444,18 @@ exports.postAddStudentRemark = async (req, res) => {
 exports.postUpdateStudentStatus = async (req, res) => {
   try {
     const student = await Student.findById(req.params.id).populate('user');
+    const nextStatus = String(req.body.status || '').trim().toLowerCase();
 
     if (!student || !student.user) {
       return res.redirect('/admin/students');
     }
+    if (!USER_STATUSES.includes(nextStatus)) {
+      return res.redirect(`/admin/students/${student._id}?error=Invalid%20student%20status`);
+    }
 
-    student.user.status = req.body.status;
+    student.user.status = nextStatus;
+    student.user.isActive = !['inactive', 'drop'].includes(nextStatus);
+    student.user.archivedAt = nextStatus === 'inactive' ? (student.user.archivedAt || new Date()) : null;
 
     await student.user.save();
 
@@ -454,14 +464,16 @@ exports.postUpdateStudentStatus = async (req, res) => {
     }
 
     student.statusHistory.push({
-      status: req.body.status,
+      status: nextStatus,
       changedBy: req.user._id,
       reason: req.body.reason || 'Manual status change'
     });
 
     await student.save();
 
-    res.redirect(`/admin/students/${student._id}?updated=1`);
+    res.redirect(nextStatus === 'complete'
+      ? '/admin/students?status=complete&updated=1'
+      : `/admin/students/${student._id}?updated=1`);
 
   } catch (err) {
     logger.error('Update Student Status Error', { err: err.message });

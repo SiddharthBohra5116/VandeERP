@@ -16,6 +16,10 @@
   const schedulesEnabled = typeof modules === 'undefined' || modules.schedules !== false;
   const curriculumEnabled = typeof modules === 'undefined' || modules.curriculum !== false;
   const academicEnabled = studentsEnabled && (attendanceEnabled || assignmentsEnabled || progressEnabled || feesEnabled);
+  const reportFilters = `startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&batch=${encodeURIComponent(batch)}&course=${encodeURIComponent(course)}`;
+  const reportTab = target => `/admin/reports?tab=${target}&${reportFilters}`;
+  const courseFilter = course !== 'all' ? `&course=${encodeURIComponent(course)}` : '';
+  const leadPeriod = `&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
 %>
 
 <script>
@@ -151,6 +155,9 @@
     transform: translateY(-2px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
   }
+  a.stat-card { position:relative; color:inherit; text-decoration:none; cursor:pointer; }
+  a.stat-card::after { content:'View details →'; display:block; margin-top:.55rem; color:var(--gold); font-size:.68rem; font-weight:800; }
+  a.stat-card:focus-visible { outline:2px solid var(--gold); outline-offset:3px; }
 
   .insight-box {
     background: rgba(212, 175, 55, 0.06);
@@ -269,37 +276,37 @@
 <% if (tab === 'overview') { %>
   <!-- Stats Grid -->
   <div class="stats-grid" style="margin-bottom: 1.5rem;">
-    <% if (studentsEnabled) { %><div class="stat-card" style="border-top-color: var(--blue);">
+    <% if (studentsEnabled) { %><a href="/admin/students?status=active<%= courseFilter %>" class="stat-card" style="border-top-color: var(--blue);">
       <div class="stat-label">Active students</div>
       <div class="stat-value"><%= overviewStats.activeStudents.value %></div>
       <div class="stat-sub text-green"><%= overviewStats.activeStudents.trend %></div>
-    </div><% } %>
-    <% if (feesEnabled) { %><div class="stat-card" style="border-top-color: var(--green);">
+    </a><% } %>
+    <% if (feesEnabled) { %><a href="<%= reportTab('financial') %>" class="stat-card" style="border-top-color: var(--green);">
       <div class="stat-label">Collection</div>
       <div class="stat-value"><%= overviewStats.collection.value %></div>
       <div class="stat-sub text-green"><%= overviewStats.collection.trend %></div>
-    </div>
-    <div class="stat-card" style="border-top-color: var(--red);">
+    </a>
+    <a href="/admin/fees?sortBy=outstanding<%= courseFilter %>" class="stat-card" style="border-top-color: var(--red);">
       <div class="stat-label">Outstanding</div>
       <div class="stat-value"><%= overviewStats.outstanding.value %></div>
       <div class="stat-sub text-red"><%= overviewStats.outstanding.trend %></div>
-    </div><% } %>
-    <% if (attendanceEnabled && studentsEnabled) { %><div class="stat-card" style="border-top-color: var(--orange);">
+    </a><% } %>
+    <% if (attendanceEnabled && studentsEnabled) { %><a href="<%= reportTab('attendance') %>" class="stat-card" style="border-top-color: var(--orange);">
       <div class="stat-label">Avg attendance</div>
       <div class="stat-value"><%= overviewStats.avgAttendance.value %></div>
       <div class="stat-sub text-red"><%= overviewStats.avgAttendance.trend %></div>
-    </div><% } %>
-    <% if (leadsEnabled) { %><div class="stat-card" style="border-top-color: var(--yellow);">
+    </a><% } %>
+    <% if (leadsEnabled) { %><a href="/admin/leads?pipeline=open<%= courseFilter %><%= leadPeriod %>" class="stat-card" style="border-top-color: var(--yellow);">
       <div class="stat-label">Open leads</div>
       <div class="stat-value"><%= overviewStats.openLeads.value %></div>
       <div class="stat-sub text-green"><%= overviewStats.openLeads.trend %></div>
-    </div>
-    <div class="stat-card" style="border-top-color: var(--gold);">
+    </a>
+    <a href="<%= reportTab('enrollment') %>" class="stat-card" style="border-top-color: var(--gold);">
       <div class="stat-label">Conv. rate</div>
       <div class="stat-value"><%= overviewStats.convRate.value %></div>
       <div class="stat-sub text-green"><%= overviewStats.convRate.trend %></div>
-    </div>
-    <a href="/admin/leads?status=admission_completed" class="stat-card" style="border-top-color: var(--green);">
+    </a>
+    <a href="/admin/leads?status=admission_completed&dateField=converted<%= courseFilter %><%= leadPeriod %>" class="stat-card" style="border-top-color: var(--green);">
       <div class="stat-label">Converted</div>
       <div class="stat-value"><%= overviewStats.converted.value %></div>
       <div class="stat-sub text-green"><%= overviewStats.converted.trend %></div>
@@ -439,31 +446,31 @@
       <p class="td-muted text-sm">Receivables categorized by overdue duration buckets based on installment due dates.</p>
     </div>
     <div class="stats-grid" style="padding: 1.25rem; margin-bottom: 0;">
-      <div class="stat-card green">
+      <a href="/admin/fees?aging=current<%= courseFilter %>" class="stat-card green">
         <div class="stat-label">Current (Not Overdue)</div>
         <div class="stat-value">₹<%= agingBuckets.current.toLocaleString('en-IN') %></div>
         <div class="stat-sub">Not yet due</div>
-      </div>
-      <div class="stat-card gold">
+      </a>
+      <a href="/admin/fees?aging=1_30&sortBy=longest_overdue<%= courseFilter %>" class="stat-card gold">
         <div class="stat-label">1 - 30 Days Overdue</div>
         <div class="stat-value">₹<%= agingBuckets.days_1_30.toLocaleString('en-IN') %></div>
         <div class="stat-sub">Bucket 1</div>
-      </div>
-      <div class="stat-card orange">
+      </a>
+      <a href="/admin/fees?aging=31_60&sortBy=longest_overdue<%= courseFilter %>" class="stat-card orange">
         <div class="stat-label">31 - 60 Days Overdue</div>
         <div class="stat-value">₹<%= agingBuckets.days_31_60.toLocaleString('en-IN') %></div>
         <div class="stat-sub">Bucket 2</div>
-      </div>
-      <div class="stat-card red">
+      </a>
+      <a href="/admin/fees?aging=61_90&sortBy=longest_overdue<%= courseFilter %>" class="stat-card red">
         <div class="stat-label">61 - 90 Days Overdue</div>
         <div class="stat-value">₹<%= agingBuckets.days_61_90.toLocaleString('en-IN') %></div>
         <div class="stat-sub">Bucket 3</div>
-      </div>
-      <div class="stat-card red" style="background: rgba(220,53,69,0.12); border-color: rgba(220,53,69,0.35);">
+      </a>
+      <a href="/admin/fees?aging=91_plus&sortBy=longest_overdue<%= courseFilter %>" class="stat-card red" style="background: rgba(220,53,69,0.12); border-color: rgba(220,53,69,0.35);">
         <div class="stat-label" style="color: var(--red);">90+ Days Overdue</div>
         <div class="stat-value" style="color: var(--red);">₹<%= agingBuckets.days_91_plus.toLocaleString('en-IN') %></div>
         <div class="stat-sub">Critical receivables</div>
-      </div>
+      </a>
     </div>
   </div>
 
@@ -686,17 +693,17 @@
 <% if (tab === 'enrollment' && leadsEnabled) { %>
   <% const leadMetrics = charts.leadFunnel; %>
   <div class="stats-grid" style="margin-bottom:1.5rem;">
-    <div class="stat-card blue"><div class="stat-label">Total Leads</div><div class="stat-value"><%= leadMetrics.Leads %></div><div class="stat-sub">In the selected period</div></div>
-    <div class="stat-card orange"><div class="stat-label">Open Pipeline</div><div class="stat-value"><%= leadMetrics.Open %></div><div class="stat-sub">Still being worked</div></div>
-    <div class="stat-card green"><div class="stat-label">Converted</div><div class="stat-value"><%= leadMetrics.Converted %></div><div class="stat-sub">Admissions completed</div></div>
-    <div class="stat-card gold"><div class="stat-label">Conversion Rate</div><div class="stat-value"><%= leadMetrics.ConversionRate %>%</div><div class="stat-sub">Converted ÷ total leads</div></div>
-    <div class="stat-card red"><div class="stat-label">Lost</div><div class="stat-value"><%= leadMetrics.Lost %></div><div class="stat-sub">Closed without admission</div></div>
+    <a href="/admin/leads?<%= (courseFilter + leadPeriod).replace(/^&/, '') %>" class="stat-card blue"><div class="stat-label">Total Leads</div><div class="stat-value"><%= leadMetrics.Leads %></div><div class="stat-sub">In the selected period</div></a>
+    <a href="/admin/leads?pipeline=open<%= courseFilter %><%= leadPeriod %>" class="stat-card orange"><div class="stat-label">Open Pipeline</div><div class="stat-value"><%= leadMetrics.Open %></div><div class="stat-sub">Still being worked</div></a>
+    <a href="/admin/leads?status=admission_completed&dateField=converted<%= courseFilter %><%= leadPeriod %>" class="stat-card green"><div class="stat-label">Converted</div><div class="stat-value"><%= leadMetrics.Converted %></div><div class="stat-sub">Admissions completed</div></a>
+    <a href="#lead-conversion-funnel" class="stat-card gold"><div class="stat-label">Conversion Rate</div><div class="stat-value"><%= leadMetrics.ConversionRate %>%</div><div class="stat-sub">Converted ÷ total leads</div></a>
+    <a href="/admin/leads?status=lost<%= courseFilter %><%= leadPeriod %>" class="stat-card red"><div class="stat-label">Lost</div><div class="stat-value"><%= leadMetrics.Lost %></div><div class="stat-sub">Closed without admission</div></a>
   </div>
 
   <!-- Lead Funnel & Sources Grid -->
   <div class="grid-2" style="margin-bottom: 1.5rem;">
     <!-- Lead Funnel -->
-    <div class="card">
+    <div class="card" id="lead-conversion-funnel">
       <div class="card-header">
         <div class="card-title">Lead Conversion Funnel</div>
         <p class="td-muted text-xs">Progression rate of leads through pipeline stages</p>
@@ -763,21 +770,21 @@
       <p class="td-muted text-sm">Distribution of open, unconverted leads by days since creation.</p>
     </div>
     <div class="stats-grid" style="padding: 1.25rem; margin-bottom: 0;">
-      <div class="stat-card" style="border-top-color: var(--green);">
+      <a href="/admin/leads?age=fresh<%= courseFilter %>" class="stat-card" style="border-top-color: var(--green);">
         <div class="stat-label">Active / Fresh (0-7 days)</div>
         <div class="stat-value"><%= leadAging.fresh %> leads</div>
         <div class="stat-sub">Recent inquiries under active follow-up</div>
-      </div>
-      <div class="stat-card" style="border-top-color: var(--gold);">
+      </a>
+      <a href="/admin/leads?age=warm<%= courseFilter %>" class="stat-card" style="border-top-color: var(--gold);">
         <div class="stat-label">Warm (8-15 days)</div>
         <div class="stat-value"><%= leadAging.warm %> leads</div>
         <div class="stat-sub">Needs immediate attention / re-engagement</div>
-      </div>
-      <div class="stat-card" style="border-top-color: var(--red);">
+      </a>
+      <a href="/admin/leads?age=stale<%= courseFilter %>" class="stat-card" style="border-top-color: var(--red);">
         <div class="stat-label">Stale / Aging (15+ days)</div>
         <div class="stat-value"><%= leadAging.stale %> leads</div>
         <div class="stat-sub">High risk of lead drop-off / conversion loss</div>
-      </div>
+      </a>
     </div>
   </div>
 
@@ -788,26 +795,26 @@
       <p class="td-muted text-sm">Measures the speed in days at which inquiries progress through stages to final conversion.</p>
     </div>
     <div class="stats-grid" style="padding: 1.25rem; margin-bottom: 0;">
-      <div class="stat-card gold">
+      <a href="/admin/leads?<%= courseFilter.replace(/^&/, '') %>" class="stat-card gold">
         <div class="stat-label">New ➔ Contacted</div>
         <div class="stat-value"><%= funnelVelocity.newToContacted %> days</div>
         <div class="stat-sub">Initial outbound outreach</div>
-      </div>
-      <div class="stat-card orange">
+      </a>
+      <a href="/admin/leads?<%= courseFilter.replace(/^&/, '') %>" class="stat-card orange">
         <div class="stat-label">Contacted ➔ Interested</div>
         <div class="stat-value"><%= funnelVelocity.contactedToInterested %> days</div>
         <div class="stat-sub">Nurturing response delay</div>
-      </div>
-      <div class="stat-card blue">
+      </a>
+      <a href="/admin/leads?status=admission_completed<%= courseFilter %>" class="stat-card blue">
         <div class="stat-label">Interested ➔ Converted</div>
         <div class="stat-value"><%= funnelVelocity.interestedToConverted %> days</div>
         <div class="stat-sub">Closing and enrollment finalize</div>
-      </div>
-      <div class="stat-card green">
+      </a>
+      <a href="/admin/leads?status=admission_completed<%= courseFilter %>" class="stat-card green">
         <div class="stat-label">Overall Cycle Duration</div>
         <div class="stat-value"><%= funnelVelocity.overall %> days</div>
         <div class="stat-sub">Total time to convert (<%= funnelVelocity.count %> converted)</div>
-      </div>
+      </a>
     </div>
   </div>
 <% } %>
