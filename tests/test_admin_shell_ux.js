@@ -1,11 +1,13 @@
 const assert = require('assert');
 const fs = require('fs');
+const ejs = require('ejs');
 
 const sidebar = fs.readFileSync('views/partials/sidebar.ejs', 'utf8');
 const softNavigation = fs.readFileSync('public/js/soft-navigation.js', 'utf8');
 const dashboard = fs.readFileSync('views/admin/dashboard.ejs', 'utf8');
 const layout = fs.readFileSync('views/layouts/main.ejs', 'utf8');
 const directory = fs.readFileSync('views/admin/users.ejs', 'utf8');
+const studentController = fs.readFileSync('controllers/admin/studentManagementController.js', 'utf8');
 const leads = fs.readFileSync('views/admin/leads.ejs', 'utf8');
 const counsellorProfile = fs.readFileSync('views/admin/counsellor-profile.ejs', 'utf8');
 const mainCss = fs.readFileSync('public/css/main.css', 'utf8');
@@ -34,9 +36,25 @@ assert.match(directory, /\[data-column="select"\]\s*\{\s*position:sticky;\s*left
 assert.match(directory, /\[data-column="name"\]\s*\{\s*position:sticky;\s*left:64px/);
 assert.match(directory, /essential:\s*\[[^\]]*'course'[^\]]*'feeDue'/);
 assert.match(directory, /const showStudentColumns = !hasRole \|\| activeRole === 'student'/);
+assert.match(directory, /id="courseFilter" name="course"/);
+assert.match(studentController, /if \(course\) profileFilter\.course = course/);
 assert.match(directory, /class="person-status-menu"/);
 assert.doesNotMatch(directory, /class="person-status-select"/);
 assert.match(mainCss, /\.sidebar\.collapsed:not\(:hover\) \.nav-flyout-menu\s*\{\s*display:\s*none\s*!important/);
+
+const sidebarTemplate = fs.readFileSync('views/partials/sidebar.ejs', 'utf8');
+const renderSidebar = role => ejs.render(sidebarTemplate, {
+  user: { role, course: true, batch: true },
+  page: 'dashboard',
+  modules: {},
+  sidebarBadges: {},
+  leadCount: 0,
+  followupCount: 0,
+  studentCount: 0
+}, { filename: 'views/partials/sidebar.ejs' });
+assert.doesNotMatch(renderSidebar('teacher'), /Pipeline Admissions/);
+assert.doesNotMatch(renderSidebar('student'), /Pipeline Admissions/);
+assert.match(renderSidebar('counsellor'), /Pipeline Admissions/);
 assert.match(dropdownEnhancer, /select\.lead-select-badge/);
 assert.match(leads, /href="\/admin\/leads\/create" class="btn btn-primary btn-sm">\+ Add Lead/);
 assert.match(leads, /id="leadColumnPicker"/);

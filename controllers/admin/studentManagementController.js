@@ -6,6 +6,7 @@ const Progress = require('../../models/Progress');
 const Lead = require('../../models/Lead');
 const Message = require('../../models/Message');
 const Schedule = require('../../models/Schedule');
+const Course = require('../../models/Course');
 
 const { todayIST } = require('../../utils/dateHelper');
 const { calculateStudentsAttendance } = require('../../utils/attendanceHelper');
@@ -30,6 +31,7 @@ exports.getStudents = async (req, res) => {
     const { search, incomplete, status } = req.query;
     const attendance = attendanceEnabled ? req.query.attendance : '';
     const kyc = kycEnabled ? req.query.kyc : '';
+    const course = coursesEnabled && /^[a-f\d]{24}$/i.test(req.query.course || '') ? req.query.course : '';
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 10), 100);
     const skip = (page - 1) * limit;
@@ -48,12 +50,13 @@ exports.getStudents = async (req, res) => {
     const completeProfileFilter = Object.fromEntries(incompleteConditions.map(condition => [Object.keys(condition)[0], { $ne: null }]));
     const incompleteCount = incompleteConditions.length ? await Student.countDocuments(incompleteProfileFilter) : 0;
 
-    if (incomplete === '1' || incomplete === '0' || kyc) {
+    if (incomplete === '1' || incomplete === '0' || kyc || course) {
       const profileFilter = {};
       if (incomplete === '1') Object.assign(profileFilter, incompleteProfileFilter);
       if (incomplete === '0') Object.assign(profileFilter, completeProfileFilter);
       if (kyc === 'complete') profileFilter.idVerified = true;
       if (kyc === 'pending') profileFilter.idVerified = { $ne: true };
+      if (course) profileFilter.course = course;
       const matchingProfiles = await Student.find(profileFilter).select('user');
       userFilter._id = { $in: matchingProfiles.map(profile => profile.user).filter(Boolean) };
     }
@@ -62,7 +65,6 @@ exports.getStudents = async (req, res) => {
       const escaped = escapeRegex(search);
       const phonePattern = phoneSearchPattern(search);
 
-      const Course = require('../../models/Course');
       const Batch = require('../../models/Batch');
 
       const [matchingCourses, matchingBatches] = await Promise.all([
@@ -193,6 +195,8 @@ exports.getStudents = async (req, res) => {
       mergedStudents = mergedStudents.slice(skip, skip + limit);
     }
 
+    const courses = coursesEnabled ? await Course.find({ isActive: true }).select('name code').sort({ name: 1 }).lean() : [];
+
     res.render('admin/users', {
       title: 'Manage Students',
       user: req.user,
@@ -206,6 +210,7 @@ exports.getStudents = async (req, res) => {
         pages: Math.max(Math.ceil(totalUsers / limit), 1)
       },
       filter: req.query,
+      courses,
       incompleteCount
     });
 

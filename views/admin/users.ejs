@@ -10,10 +10,11 @@
   const attentionCount = hasRole && activeRole === 'student'
     ? users.filter(item => !item.idVerified || Number(item.attendancePct) < 75).length
     : users.filter(item => (item.status || 'active') !== 'active').length;
-  const moduleFlags = typeof modules === 'object' ? modules : { students:true, teachers:true, counsellors:true, batches:true, attendance:true, kyc:true, fees:true };
+  const moduleFlags = typeof modules === 'object' ? modules : { students:true, teachers:true, counsellors:true, courses:true, batches:true, attendance:true, kyc:true, fees:true };
   const showStudentColumns = !hasRole || activeRole === 'student';
   const showCourseColumn = !hasRole || activeRole === 'student' || activeRole === 'teacher';
   const activeFilterCount = ['status', 'incomplete']
+    .concat(moduleFlags.courses ? ['course'] : [])
     .concat(moduleFlags.kyc ? ['kyc'] : [])
     .concat(moduleFlags.attendance ? ['attendance'] : [])
     .filter(key => filter[key] !== undefined && filter[key] !== '').length;
@@ -145,6 +146,7 @@
       <div class="people-filter-panel">
         <div class="people-filter-grid">
           <div class="form-group"><label for="studentStatus">Status</label><select id="studentStatus" name="status" class="form-control"><option value="">Any status</option><option value="active" <%= filter.status === 'active' ? 'selected' : '' %>>Active</option><option value="inactive" <%= filter.status === 'inactive' ? 'selected' : '' %>>Archived</option><option value="drop" <%= filter.status === 'drop' ? 'selected' : '' %>>Dropped</option><option value="complete" <%= filter.status === 'complete' ? 'selected' : '' %>>Completed</option></select></div>
+          <% if (moduleFlags.courses) { %><div class="form-group"><label for="courseFilter">Course</label><select id="courseFilter" name="course" class="form-control"><option value="">All courses</option><% (typeof courses !== 'undefined' ? courses : []).forEach(course => { %><option value="<%= course._id %>" <%= String(filter.course || '') === String(course._id) ? 'selected' : '' %>><%= course.name %></option><% }) %></select></div><% } %>
           <% if (moduleFlags.kyc) { %><div class="form-group"><label for="kycFilter">KYC</label><select id="kycFilter" name="kyc" class="form-control"><option value="">Any KYC state</option><option value="complete" <%= filter.kyc === 'complete' ? 'selected' : '' %>>Verified</option><option value="pending" <%= filter.kyc === 'pending' ? 'selected' : '' %>>Pending</option></select></div><% } %>
           <div class="form-group"><label for="assignmentFilter">Profile setup</label><select id="assignmentFilter" name="incomplete" class="form-control"><option value="">Any profile state</option><option value="1" <%= filter.incomplete === '1' ? 'selected' : '' %>>Pending profiles</option><option value="0" <%= filter.incomplete === '0' ? 'selected' : '' %>>Complete profiles</option></select></div>
           <% if (moduleFlags.attendance) { %><div class="form-group"><label for="attendanceTier">Attendance</label><select id="attendanceTier" name="attendance" class="form-control"><option value="">Any attendance</option><option value="low" <%= filter.attendance === 'low' ? 'selected' : '' %>>Below 75%</option><option value="medium" <%= filter.attendance === 'medium' ? 'selected' : '' %>>75% to 85%</option><option value="high" <%= filter.attendance === 'high' ? 'selected' : '' %>>Above 85%</option><option value="not_marked_today" <%= filter.attendance === 'not_marked_today' ? 'selected' : '' %>>Unmarked today</option></select></div><% } %>
