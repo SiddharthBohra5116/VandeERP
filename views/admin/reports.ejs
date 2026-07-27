@@ -16,7 +16,7 @@
   const schedulesEnabled = typeof modules === 'undefined' || modules.schedules !== false;
   const curriculumEnabled = typeof modules === 'undefined' || modules.curriculum !== false;
   const academicEnabled = studentsEnabled && (attendanceEnabled || assignmentsEnabled || progressEnabled || feesEnabled);
-  const reportFilters = `startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&batch=${encodeURIComponent(batch)}&course=${encodeURIComponent(course)}`;
+  const reportFilters = `datePreset=${encodeURIComponent(datePreset)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&batch=${encodeURIComponent(batch)}&course=${encodeURIComponent(course)}`;
   const reportTab = target => `/admin/reports?tab=${target}&${reportFilters}`;
   const courseFilter = course !== 'all' ? `&course=${encodeURIComponent(course)}` : '';
   const leadPeriod = `&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
@@ -223,13 +223,23 @@
   <input type="hidden" name="tab" value="<%= tab %>">
 
   <div class="form-group">
+    <label class="form-label">Date Range</label>
+    <select name="datePreset" class="form-control" onchange="this.form.submit()">
+      <option value="all" <%= datePreset === 'all' ? 'selected' : '' %>>All time</option>
+      <option value="last30" <%= datePreset === 'last30' ? 'selected' : '' %>>Last 30 days</option>
+      <option value="month" <%= datePreset === 'month' ? 'selected' : '' %>>This month</option>
+      <option value="custom" <%= datePreset === 'custom' ? 'selected' : '' %>>Custom range</option>
+    </select>
+  </div>
+
+  <div class="form-group">
     <label class="form-label">Start Date</label>
-    <input type="date" name="startDate" class="form-control" value="<%= startDate %>" onchange="this.form.submit()">
+    <input type="date" name="startDate" class="form-control" value="<%= startDate %>" onchange="this.form.elements.datePreset.value='custom'; this.form.submit()">
   </div>
 
   <div class="form-group">
     <label class="form-label">End Date</label>
-    <input type="date" name="endDate" class="form-control" value="<%= endDate %>" onchange="this.form.submit()">
+    <input type="date" name="endDate" class="form-control" value="<%= endDate %>" onchange="this.form.elements.datePreset.value='custom'; this.form.submit()">
   </div>
 
   <% if (batchesEnabled && studentsEnabled) { %><div class="form-group">
@@ -254,22 +264,22 @@
 
   <div style="margin-left: auto; display: flex; gap: 0.5rem; flex-wrap: wrap;">
     <% if (tab === 'financial' && feesEnabled) { %>
-      <a href="/admin/reports?tab=financial&export=tally-masters&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="btn btn-sm btn-ghost" style="height: 38px; display: inline-flex; align-items: center; border-radius: 8px;">1. Tally setup</a>
-      <a href="/admin/reports?tab=financial&export=tally&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="btn btn-sm btn-primary" style="height: 38px; display: inline-flex; align-items: center; border-radius: 8px; font-weight: 600;">2. Download vouchers</a>
+      <a href="/admin/reports?tab=financial&export=tally-masters&<%= reportFilters %>" class="btn btn-sm btn-ghost" style="height: 38px; display: inline-flex; align-items: center; border-radius: 8px;">1. Tally setup</a>
+      <a href="/admin/reports?tab=financial&export=tally&<%= reportFilters %>" class="btn btn-sm btn-primary" style="height: 38px; display: inline-flex; align-items: center; border-radius: 8px; font-weight: 600;">2. Download vouchers</a>
     <% } %>
-    <a href="/admin/reports?tab=<%= tab %>&export=csv&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="btn btn-sm btn-ghost" style="color: var(--gold); border: 1px solid var(--gold-border); height: 38px; display: inline-flex; align-items: center; border-radius: 8px;">📥 Export <%= tab.charAt(0).toUpperCase() + tab.slice(1) %> CSV</a>
-    <a href="/admin/reports?tab=all&export=csv&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="btn btn-sm btn-primary" style="height: 38px; display: inline-flex; align-items: center; border-radius: 8px; font-weight: 600;">📥 Download Full Report</a>
+    <a href="/admin/reports?tab=<%= tab %>&export=csv&<%= reportFilters %>" class="btn btn-sm btn-ghost" style="color: var(--gold); border: 1px solid var(--gold-border); height: 38px; display: inline-flex; align-items: center; border-radius: 8px;">📥 Export <%= tab.charAt(0).toUpperCase() + tab.slice(1) %> CSV</a>
+    <a href="/admin/reports?tab=all&export=csv&<%= reportFilters %>" class="btn btn-sm btn-primary" style="height: 38px; display: inline-flex; align-items: center; border-radius: 8px; font-weight: 600;">📥 Download Full Report</a>
   </div>
 </form>
 
 <!-- Navigation Tab List -->
 <div class="analytics-tab-container">
-  <a href="/admin/reports?tab=overview&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'overview' ? 'active' : '' %>">✨ Overview</a>
-  <% if (feesEnabled) { %><a href="/admin/reports?tab=financial&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'financial' ? 'active' : '' %>">💰 Financial</a><% } %>
-  <% if (leadsEnabled) { %><a href="/admin/reports?tab=enrollment&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'enrollment' ? 'active' : '' %>">🚀 Leads & Funnels</a><% } %>
-  <% if (attendanceEnabled && studentsEnabled) { %><a href="/admin/reports?tab=attendance&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'attendance' ? 'active' : '' %>">📅 Attendance</a><% } %>
-  <% if (academicEnabled) { %><a href="/admin/reports?tab=academic&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'academic' ? 'active' : '' %>">🎓 Academic</a><% } %>
-  <% if (teacherEnabled || counsellorEnabled) { %><a href="/admin/reports?tab=staff&startDate=<%= startDate %>&endDate=<%= endDate %>&batch=<%= batch %>&course=<%= course %>" class="analytics-tab-btn <%= tab === 'staff' ? 'active' : '' %>">🤝 Staff Performance</a><% } %>
+  <a href="/admin/reports?tab=overview&<%= reportFilters %>" class="analytics-tab-btn <%= tab === 'overview' ? 'active' : '' %>">✨ Overview</a>
+  <% if (feesEnabled) { %><a href="/admin/reports?tab=financial&<%= reportFilters %>" class="analytics-tab-btn <%= tab === 'financial' ? 'active' : '' %>">💰 Financial</a><% } %>
+  <% if (leadsEnabled) { %><a href="/admin/reports?tab=enrollment&<%= reportFilters %>" class="analytics-tab-btn <%= tab === 'enrollment' ? 'active' : '' %>">🚀 Leads & Funnels</a><% } %>
+  <% if (attendanceEnabled && studentsEnabled) { %><a href="/admin/reports?tab=attendance&<%= reportFilters %>" class="analytics-tab-btn <%= tab === 'attendance' ? 'active' : '' %>">📅 Attendance</a><% } %>
+  <% if (academicEnabled) { %><a href="/admin/reports?tab=academic&<%= reportFilters %>" class="analytics-tab-btn <%= tab === 'academic' ? 'active' : '' %>">🎓 Academic</a><% } %>
+  <% if (teacherEnabled || counsellorEnabled) { %><a href="/admin/reports?tab=staff&<%= reportFilters %>" class="analytics-tab-btn <%= tab === 'staff' ? 'active' : '' %>">🤝 Staff Performance</a><% } %>
 </div>
 
 <!-- ==================== TAB: OVERVIEW ==================== -->

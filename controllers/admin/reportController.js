@@ -74,15 +74,26 @@ exports.getReports = async (req, res) => {
       : requestedTab;
 
     let { startDate, endDate } = req.query;
+    let datePreset = req.query.datePreset || (startDate && endDate ? 'custom' : 'month');
 
     const now = new Date();
 
-    // Default to current month if no range is selected
-    if (!startDate || !endDate) {
+    if (datePreset === 'all') {
+      startDate = '1970-01-01';
+      endDate = now.toISOString().slice(0, 10);
+    } else if (datePreset === 'last30') {
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+      startDate = thirtyDaysAgo.toISOString().slice(0, 10);
+      endDate = now.toISOString().slice(0, 10);
+    } else if (datePreset === 'month' || !startDate || !endDate) {
+      datePreset = 'month';
       const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-      startDate = startDate || startOfCurrentMonth.toISOString().slice(0, 10);
-      endDate = endDate || endOfCurrentMonth.toISOString().slice(0, 10);
+      startDate = startOfCurrentMonth.toISOString().slice(0, 10);
+      endDate = endOfCurrentMonth.toISOString().slice(0, 10);
+    } else {
+      datePreset = 'custom';
     }
 
     const startOfPeriod = new Date(startDate + 'T00:00:00');
@@ -454,6 +465,7 @@ exports.getReports = async (req, res) => {
       tab,
       startDate,
       endDate,
+      datePreset,
       batch,
       course,
       batches,

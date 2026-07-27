@@ -22,5 +22,10 @@ assert.match(students, /status === 'active'\) userFilter\.isActive = \{ \$ne: fa
 assert.match(reports, /const overviewFees = fees\.filter\(fee => activeStudentIds\.has\(String\(fee\.student\)\)\)/);
 assert.match(report, /Collected in period/);
 assert.match(report, /Current outstanding/);
+assert.match(report, /All time/);
+assert.match(report, /Last 30 days/);
+assert.match(report, /Custom range/);
+assert.match(reports, /datePreset === 'all'/);
+assert.match(reports, /datePreset === 'last30'/);
 
 console.log('Report card drill-down checks passed.');
