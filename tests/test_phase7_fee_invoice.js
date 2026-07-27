@@ -20,6 +20,7 @@ const fee = {
 assert.strictEqual(formatIndianPhone('9876543210'), '+91 98765 43210');
 assert.strictEqual(formatIndianPhone('+91 98765 43210'), '+91 98765 43210');
 assert.doesNotMatch(fs.readFileSync('utils/feeInvoicePdf.js', 'utf8'), /VDA-INV/);
+assert.match(fs.readFileSync('utils/feeInvoicePdf.js', 'utf8'), /GSTIN: 08PQRPV9232JIZV/);
 assert.match(fs.readFileSync('views/counsellor/leads.ejs', 'utf8'), /formatPhone\(lead\.phone\)/);
 assert.match(fs.readFileSync('routes/admin.js', 'utf8'), /fees\/:studentId\/invoice\.pdf/);
 

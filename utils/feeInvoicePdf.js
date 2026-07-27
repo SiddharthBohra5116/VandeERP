@@ -19,6 +19,7 @@ function createFeeInvoice(fee) {
   doc.rect(0, 0, 595, 112).fill('#171717');
   doc.fillColor('#d4af37').font('Helvetica-Bold').fontSize(22).text('VANDE DIGITAL ACADEMY', 48, 38);
   doc.fillColor('#fff').font('Helvetica').fontSize(10).text('Professional Learning. Practical Careers.', 48, 70);
+  doc.text('GSTIN: 08PQRPV9232JIZV', 48, 87);
   doc.font('Helvetica-Bold').fontSize(24).text('INVOICE', 400, 36, { width: 147, align: 'right' });
 
   doc.fillColor('#111').font('Helvetica-Bold').fontSize(11).text('BILL TO', 48, 140);
