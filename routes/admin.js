@@ -146,6 +146,7 @@ router.post(
   ...guard,
   userDirectoryCtrl.bulkArchiveUsers
 );
+router.post('/users/bulk-complete', ...guard, userDirectoryCtrl.bulkCompleteUsers);
 
 router.post(
   '/users/:id/restore',

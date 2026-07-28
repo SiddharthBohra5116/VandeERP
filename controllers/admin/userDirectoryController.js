@@ -816,6 +816,28 @@ exports.bulkArchiveUsers = async (req, res) => {
   }
 };
 
+exports.bulkCompleteUsers = async (req, res) => {
+  try {
+    const submitted = Array.isArray(req.body.userIds) ? req.body.userIds : [req.body.userIds];
+    const userIds = [...new Set(submitted.filter(id => /^[0-9a-fA-F]{24}$/.test(String(id || ''))))].slice(0, 500);
+    if (!userIds.length) return res.redirect('/admin/students?error=Select+at+least+one+student');
+
+    const students = await User.find({ _id: { $in: userIds }, role: 'student', status: { $ne: 'complete' } }).select('_id');
+    const completedIds = students.map(student => student._id);
+    await Promise.all([
+      User.updateMany({ _id: { $in: completedIds } }, { $set: { status: 'complete', isActive: true, archivedAt: null } }),
+      Student.updateMany(
+        { user: { $in: completedIds } },
+        { $push: { statusHistory: { status: 'complete', changedBy: req.user._id, reason: 'Course marked completed in bulk' } } }
+      )
+    ]);
+    return res.redirect(`/admin/students?status=complete&updated=1&completed=${completedIds.length}`);
+  } catch (err) {
+    logger.error('Bulk Complete Users Error', { err: err.message });
+    return res.redirect('/admin/students?error=Unable+to+complete+selected+students');
+  }
+};
+
 exports.getRecycleBin = async (req, res) => {
   try {
     const [users, leads] = await Promise.all([

@@ -9,7 +9,12 @@ assert.match(directory, /student\.statusHistory\.push/);
 assert.match(directory, /nextStatus === 'complete'[\s\S]*\/admin\/students\?status=complete&updated=1/);
 assert.match(profile, /USER_STATUSES\.includes\(nextStatus\)/);
 assert.match(profile, /nextStatus === 'complete'[\s\S]*\/admin\/students\?status=complete&updated=1/);
-assert.match(view, /Mark course completed/);
+assert.match(view, /name="status"[\s\S]*Course completed/);
 assert.match(view, /Student moved to Completed Students/);
+assert.match(view, /onchange="this\.form\.requestSubmit\(\)"/);
+assert.doesNotMatch(view, />Apply filters</);
+assert.match(view, /formaction="\/admin\/users\/bulk-complete"/);
+assert.match(directory, /exports\.bulkCompleteUsers/);
+assert.match(directory, /Course marked completed in bulk/);
 
 console.log('Completed student workflow checks passed.');
