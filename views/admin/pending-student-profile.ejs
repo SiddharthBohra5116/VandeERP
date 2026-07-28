@@ -1,0 +1,33 @@
+<%
+  layout = 'main';
+  page = 'users';
+  const initials = String(studentUser.name || 'S').split(/\s+/).map(part => part[0]).join('').toUpperCase().slice(0, 2);
+%>
+
+<div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  <a href="/admin/students" class="btn btn-ghost btn-sm">&larr; Back to Students</a>
+  <a href="/admin/users/<%= studentUser._id %>/edit" class="btn btn-primary btn-sm">Set up student profile</a>
+</div>
+
+<section class="card" style="max-width:900px;">
+  <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+    <div class="avatar-lg" style="display:grid;place-items:center;"><%= initials %></div>
+    <div>
+      <h1 style="margin:0;"><%= studentUser.name %></h1>
+      <p class="text-muted" style="margin:.35rem 0 0;">Student login exists · Profile setup pending</p>
+    </div>
+  </div>
+
+  <div class="alert alert-warn" style="position:static;max-width:none;margin:1.25rem 0;">
+    Assign the course and complete the required details to generate the Academy ID and full student profile.
+  </div>
+
+  <div class="grid grid-2" style="gap:1rem;">
+    <div><span class="text-muted">Email</span><strong style="display:block;margin-top:.25rem;"><%= studentUser.email || '—' %></strong></div>
+    <div><span class="text-muted">Phone</span><strong style="display:block;margin-top:.25rem;"><%= studentUser.phone || '—' %></strong></div>
+    <div><span class="text-muted">SIM Code</span><strong style="display:block;margin-top:.25rem;"><%= studentUser.defaultSimCode || 'Not set' %></strong></div>
+    <div><span class="text-muted">Status</span><strong style="display:block;margin-top:.25rem;text-transform:capitalize;"><%= studentUser.status || 'active' %></strong></div>
+    <div><span class="text-muted">Academy ID</span><strong style="display:block;margin-top:.25rem;">Not generated</strong></div>
+    <div><span class="text-muted">Account created</span><strong style="display:block;margin-top:.25rem;"><%= studentUser.createdAt ? new Date(studentUser.createdAt).toLocaleDateString('en-IN') : '—' %></strong></div>
+  </div>
+</section>

@@ -237,6 +237,26 @@ exports.getStudents = async (req, res) => {
 
 
 // GET /admin/students/:id
+exports.getPendingStudentProfile = async (req, res) => {
+  try {
+    const user = await User.findOne({ _id: req.params.userId, role: 'student' });
+    if (!user) return res.redirect('/admin/students?error=Student+not+found');
+
+    const student = await Student.findOne({ user: user._id });
+    if (student) return res.redirect(`/admin/students/${student._id}`);
+
+    return res.render('admin/pending-student-profile', {
+      title: `${user.name} — Profile`,
+      user: req.user,
+      studentUser: user
+    });
+  } catch (err) {
+    logger.error('Pending Student Profile Fetch Error', { err: err.message, userId: req.params.userId });
+    return res.redirect('/admin/students?error=Unable+to+open+profile');
+  }
+};
+
+// GET /admin/students/:id
 exports.getStudentProfile = async (req, res) => {
   try {
     const modules = res.locals.modules || {};

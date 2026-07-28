@@ -250,7 +250,7 @@
         <tbody>
       <% users.forEach(u => { %>
         <%
-          const profileHref = u.role === 'student' ? (u.studentProfile ? `/admin/students/${u.studentProfile._id}` : `/admin/users/${u._id}/edit`) : u.role === 'teacher' ? `/admin/teachers/${u._id}` : u.role === 'counsellor' ? `/admin/counsellors/${u._id}` : `/admin/users/${u._id}/edit`;
+          const profileHref = u.role === 'student' ? (u.studentProfile ? `/admin/students/${u.studentProfile._id}` : `/admin/students/account/${u._id}`) : u.role === 'teacher' ? `/admin/teachers/${u._id}` : u.role === 'counsellor' ? `/admin/counsellors/${u._id}` : `/admin/users/${u._id}/edit`;
           const statusVal = u.status || (u.isActive ? 'active' : 'inactive');
           const pct = Number.isFinite(Number(u.attendancePct)) ? Number(u.attendancePct) : 100;
           const hasKycDocs = u.idProof && u.fatherName && u.guardianPhone;

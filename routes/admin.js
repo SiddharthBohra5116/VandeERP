@@ -226,6 +226,8 @@ router.get(
 // STUDENT MANAGEMENT
 // ===================================
 
+router.get('/students/account/:userId', ...guard, studentCtrl.getPendingStudentProfile);
+
 router.get(
   '/students/:id',
   ...guard,
