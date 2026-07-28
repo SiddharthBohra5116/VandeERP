@@ -335,6 +335,8 @@
                             <span>Roll: <strong style="color: var(--gold);"><%= student.rollNumber || 'Not Generated' %></strong></span>
                             <% if (coursesEnabled) { %><span>&middot;</span>
                             <span>Course: <strong style="color: var(--text);"><%= student.course && student.course.name ? student.course.name : 'Unassigned' %></strong></span><% } %>
+                            <span>&middot;</span>
+                            <span>SIM: <strong style="color: var(--text);"><%= student.user?.defaultSimCode || lead?.defaultSimCode || 'Not set' %></strong></span>
                             <% if (batchesEnabled) { %><span>&middot;</span>
                             <span>Batch: <strong style="color: var(--text);"><%= student.batch && student.batch.name ? student.batch.name : 'Unassigned' %></strong></span><% } %>
                           </div>

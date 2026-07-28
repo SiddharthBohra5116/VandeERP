@@ -5265,3 +5265,79 @@ body.light-theme .sidebar-logo {
     white-space: nowrap;
   }
 }
+
+/* Phone safety layer shared by admin, counsellor, teacher, and student portals. */
+@media (max-width: 600px) {
+  .page-content,
+  .page-content > *,
+  .card,
+  .table-card,
+  .form-shell,
+  .form-shell-narrow {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .page-content img,
+  .page-content video,
+  .page-content canvas {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .page-content input,
+  .page-content select,
+  .page-content textarea,
+  .page-content .form-control {
+    max-width: 100%;
+  }
+
+  .grid-2,
+  .grid-3,
+  .two-col,
+  .form-row,
+  .form-row-2,
+  .form-row-3,
+  .curriculum-detail-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .page-content .btn {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .table-wrap,
+  .table-responsive,
+  .people-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-overlay {
+    padding: .65rem;
+  }
+
+  .modal {
+    width: calc(100vw - 1.3rem) !important;
+    max-width: calc(100vw - 1.3rem) !important;
+  }
+
+  .dashboard-settings-menu,
+  .lead-column-panel,
+  .column-picker-panel {
+    max-width: calc(100vw - 1.5rem);
+  }
+}
+
+@media (max-width: 380px) {
+  .stats-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}

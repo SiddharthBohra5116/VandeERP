@@ -105,6 +105,12 @@
             <% }) %>
           </select>
         </div>
+        <div class="form-group">
+          <label class="form-label" for="defaultSimCode">SIM Code</label>
+          <input type="text" id="defaultSimCode" name="defaultSimCode" class="form-control" maxlength="50"
+            value="<%= target?.defaultSimCode || '' %>" placeholder="e.g. A7 or G2"
+            autocapitalize="characters" oninput="this.value=this.value.toUpperCase()">
+        </div>
         <div class="form-group" style="display:none" aria-hidden="true" hidden>
           <label class="form-label" for="batch">Batch Title</label>
           <select id="batch" name="batch" class="form-control">

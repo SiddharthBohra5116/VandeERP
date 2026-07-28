@@ -90,6 +90,7 @@
   .directory-money { color:var(--text); font:800 .78rem var(--mono); }
   .directory-money.is-clear { color:var(--green); }
   .directory-money.is-due { color:var(--red); }
+  .directory-sim-code { width:72px; padding:8px 9px; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--text); font:800 .78rem var(--mono); text-transform:uppercase; }
   .people-table .cell-actions { display:flex; align-items:center; gap:.4rem; }
   .people-table [data-column="select"] { position:sticky; left:0; z-index:3; width:64px; min-width:64px; max-width:64px; text-align:center; }
   .people-table [data-column="name"] { position:sticky; left:64px; z-index:3; width:260px; min-width:260px; max-width:260px; border-right:1px solid var(--border); }
@@ -121,6 +122,17 @@
     .people-filter-grid { grid-template-columns:1fr; }
     .column-picker-grid { grid-template-columns:repeat(2,minmax(130px,1fr)); }
     .column-picker-panel { position:fixed; left:1rem; right:1rem; top:18%; width:auto; max-height:70vh; overflow:auto; }
+    .people-bulk-bar { align-items:stretch; }
+    .people-bulk-main, .people-bulk-actions { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%; }
+    .people-bulk-main > *, .people-bulk-actions > * { width:100%; justify-content:center; }
+    .people-table-wrap { overflow-x:auto; }
+    .people-table { min-width:max-content; }
+    .people-table [data-column="select"] { width:52px; min-width:52px; max-width:52px; }
+    .people-table [data-column="name"] { left:52px; width:190px; min-width:190px; max-width:190px; }
+    .people-table [data-column="actions"] { position:static; width:180px; min-width:180px; }
+    .people-table .cell-actions { display:grid; gap:.45rem; }
+    .people-table .cell-actions > *, .people-table .person-status-menu { width:100%; }
+    .people-table .cell-actions .btn { justify-content:center; }
   }
 </style>
 
@@ -172,7 +184,7 @@
       <form id="bulkKycForm" action="/admin/students/bulk-verify-id" method="POST"></form>
     <% } %>
     <div class="people-bulk-bar">
-      <div class="d-flex gap-1" style="align-items:center;">
+      <div class="d-flex gap-1 people-bulk-main" style="align-items:center;">
         <span class="people-bulk-copy">Bulk actions</span>
         <details class="column-picker" id="columnPicker">
           <summary class="btn btn-ghost btn-sm">Columns <span id="visibleColumnCount"></span></summary>
@@ -192,7 +204,7 @@
           </div>
         </details>
       </div>
-      <div class="d-flex gap-1"><button type="button" class="btn btn-ghost btn-sm" id="selectAllAccounts">Select all</button><% if (activeRole === 'student' && moduleFlags.kyc) { %><button type="button" class="btn btn-ghost btn-sm" onclick="toggleAllKycChecks(this)">Select KYC ready</button><button type="submit" form="bulkKycForm" class="btn btn-primary btn-sm" id="bulkKycButton" disabled>Verify KYC</button><% } %><button type="submit" form="bulkArchiveForm" class="btn btn-danger btn-sm" id="bulkArchiveButton" disabled>Archive</button></div>
+      <div class="d-flex gap-1 people-bulk-actions"><button type="button" class="btn btn-ghost btn-sm" id="selectAllAccounts">Select all</button><% if (activeRole === 'student' && moduleFlags.kyc) { %><button type="button" class="btn btn-ghost btn-sm" onclick="toggleAllKycChecks(this)">Select KYC ready</button><button type="submit" form="bulkKycForm" class="btn btn-primary btn-sm" id="bulkKycButton" disabled>Verify KYC</button><% } %><button type="submit" form="bulkArchiveForm" class="btn btn-danger btn-sm" id="bulkArchiveButton" disabled>Archive</button></div>
     </div>
     <div class="people-table-wrap">
       <table class="people-table" id="peopleTable">
@@ -201,6 +213,7 @@
           <th data-column="name">Name</th>
           <th data-column="email">Email</th>
           <th data-column="phone">Phone</th>
+          <% if (showStudentColumns) { %><th data-column="simCode">SIM Code</th><% } %>
           <th data-column="academyId"><%= hasRole ? roleName + ' ID' : 'Academy ID' %></th>
           <% if (!hasRole) { %><th data-column="role">Role</th><% } %>
           <% if (showCourseColumn) { %><th data-column="course">Course Name</th><% } %>
@@ -237,7 +250,7 @@
         <tbody>
       <% users.forEach(u => { %>
         <%
-          const profileHref = u.role === 'student' && u.studentProfile ? `/admin/students/${u.studentProfile._id}` : u.role === 'teacher' ? `/admin/teachers/${u._id}` : u.role === 'counsellor' ? `/admin/counsellors/${u._id}` : `/admin/users/${u._id}/edit`;
+          const profileHref = u.role === 'student' ? (u.studentProfile ? `/admin/students/${u.studentProfile._id}` : `/admin/users/${u._id}/edit`) : u.role === 'teacher' ? `/admin/teachers/${u._id}` : u.role === 'counsellor' ? `/admin/counsellors/${u._id}` : `/admin/users/${u._id}/edit`;
           const statusVal = u.status || (u.isActive ? 'active' : 'inactive');
           const pct = Number.isFinite(Number(u.attendancePct)) ? Number(u.attendancePct) : 100;
           const hasKycDocs = u.idProof && u.fatherName && u.guardianPhone;
@@ -248,11 +261,12 @@
           const feeDue = Math.max(0, Number(u.feeTotal || 0) - Number(u.feePaid || 0));
           const date = value => value ? new Date(value).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—';
         %>
-        <tr data-row-href="<%= profileHref %>" tabindex="0" aria-label="Open <%= u.name %> profile">
+        <tr<% if (profileHref) { %> data-row-href="<%= profileHref %>" tabindex="0" aria-label="Open <%= u.name %> profile"<% } %>>
           <td data-column="select"><% if (u.role !== 'admin') { %><input type="checkbox" class="people-select account-archive-check" name="userIds" value="<%= u._id %>" form="bulkArchiveForm" aria-label="Select <%= u.name %> for archiving"><% } %><% if (moduleFlags.kyc && activeRole === 'student' && student && u.idProof && !u.idVerified) { %><input class="people-select kyc-check" type="checkbox" form="bulkKycForm" name="studentIds" value="<%= student._id %>" aria-label="Select <%= u.name %> for KYC verification"><% } %></td>
           <td data-column="name" class="cell-name"><div class="person-name-cell"><span class="person-mini-avatar" aria-hidden="true"><%= initials %></span><span class="person-name-copy"><%= u.name %></span></div></td>
           <td data-column="email"><%= u.email || '—' %></td>
           <td data-column="phone"><%= u.phone || '—' %></td>
+          <% if (showStudentColumns) { %><td data-column="simCode"><form action="/admin/users/<%= u._id %>/sim-code" method="POST"><input class="directory-sim-code" name="defaultSimCode" value="<%= u.defaultSimCode || '' %>" placeholder="—" maxlength="50" aria-label="SIM code for <%= u.name %>" autocapitalize="characters" oninput="this.value=this.value.toUpperCase()" onchange="this.form.submit()"></form></td><% } %>
           <td data-column="academyId" class="person-id"><%= u.rollNumber || 'Pending' %></td>
           <% if (!hasRole) { %><td data-column="role"><%= u.role %></td><% } %>
           <% if (showCourseColumn) { %><td data-column="course"><span class="directory-course-chip"><%= student?.course?.name || (u.teacherProfile?.courses?.length ? u.teacherProfile.courses.map(course => course.name || course).join(', ') : '—') %></span></td><% } %>
@@ -286,7 +300,7 @@
           <% } %>
           <td data-column="actions"><div class="cell-actions">
             <form action="/admin/users/<%= u._id %>/status" method="POST" class="person-status-form" data-native-submit="true"><details class="person-status-menu"><summary aria-label="Account status for <%= u.name %>"><%= statusVal %></summary><div class="person-status-options"><button type="submit" name="status" value="active" aria-current="<%= statusVal === 'active' %>">Active</button><button type="submit" name="status" value="inactive" aria-current="<%= statusVal === 'inactive' %>">Archived</button><button type="submit" name="status" value="drop" aria-current="<%= statusVal === 'drop' %>">Dropped</button><button type="submit" name="status" value="complete" aria-current="<%= statusVal === 'complete' %>"><%= activeRole === 'student' ? 'Mark course completed' : 'Completed' %></button></div></details></form>
-            <a href="/admin/users/<%= u._id %>/edit" class="btn btn-ghost btn-xs"><%= u.profileIncomplete ? 'Set up account' : 'Edit' %></a>
+            <a href="/admin/users/<%= u._id %>/edit" class="btn btn-ghost btn-xs"><%= u.role === 'student' && !student ? 'Set up profile' : u.profileIncomplete ? 'Set up account' : 'Edit' %></a>
             <% if (!u.profileIncomplete) { %><button type="button" class="btn btn-ghost btn-xs reset-password-btn" data-user-id="<%= u._id %>" data-user-name="<%= u.name %>" data-user-phone="<%= u.phone || '' %>">Reset password</button><% } %>
           </div></td>
         </tr>
@@ -361,11 +375,11 @@
       label: cell.textContent.trim()
     }));
     const defaults = <%- JSON.stringify(activeRole === 'student'
-      ? ['select','name','phone','academyId','course','status','actions']
+      ? ['select','name','phone','simCode','academyId','course','status','actions']
       : ['select','name','email','phone','academyId','role','status','lastActive','actions']) %>;
     const locked = new Set(['name', 'actions']);
     const presets = {
-      essential: ['select', 'name', 'phone', 'academyId', 'course', 'feeDue', 'status', 'actions'],
+      essential: ['select', 'name', 'phone', 'simCode', 'academyId', 'course', 'feeDue', 'status', 'actions'],
       finance: ['select', 'name', 'phone', 'course', 'feeTotal', 'feePaid', 'feeDue', 'status', 'actions'],
       all: columns.map(column => column.key)
     };

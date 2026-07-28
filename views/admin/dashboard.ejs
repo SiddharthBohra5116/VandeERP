@@ -5,13 +5,30 @@
   page = 'dashboard';
 %>
 
+<style>
+  @media (max-width:1100px) {
+    .admin-dashboard-stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width:600px) {
+    .dashboard-quick-actions { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)); width:100%; }
+    .dashboard-quick-actions > *,
+    .dashboard-quick-actions .btn { width:100%; justify-content:center; }
+    .admin-dashboard-stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .admin-dashboard-stats .stat-card { min-height:0; }
+  }
+  @media (max-width:380px) {
+    .dashboard-quick-actions,
+    .admin-dashboard-stats { grid-template-columns:1fr; }
+  }
+</style>
+
 <!-- Greeting Header -->
 <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.25rem;">
   <div>
     <p class="student-kicker" style="margin-bottom:0.35rem;">Academy operations</p>
     <h2 id="dashboardGreeting" class="dashboard-greeting" style="margin:0;">Welcome back!</h2>
   </div>
-  <div class="d-flex gap-1" style="flex-wrap:wrap;">
+  <div class="d-flex gap-1 dashboard-quick-actions" style="flex-wrap:wrap;">
     <% if (modules?.students !== false) { %>
     <a href="/admin/users/create?role=student" class="btn btn-primary btn-sm">Add student</a>
     <% } %>
@@ -38,7 +55,7 @@
     </div>
     <a href="/admin/leads/create" class="btn btn-primary btn-sm">+ Add lead manually</a>
   </div>
-  <div class="stats-grid" style="padding:1.25rem; margin-bottom:0;">
+  <div class="stats-grid admin-dashboard-stats" style="padding:1.25rem; margin-bottom:0;">
     <a href="/admin/leads?status=high_potential" class="stat-card gold"><div class="stat-label">High Potential</div><div class="stat-value"><%= stats.highPotentialLeads %></div><div class="stat-sub">Priority opportunities</div></a>
     <a href="/admin/leads?status=new" class="stat-card orange"><div class="stat-label">New</div><div class="stat-value"><%= stats.newLeads %></div><div class="stat-sub">Not contacted yet</div></a>
     <a href="/admin/leads?status=in_the_loop" class="stat-card blue"><div class="stat-label">In the Loop</div><div class="stat-value"><%= stats.loopLeads %></div><div class="stat-sub">Active follow-up queue</div></a>
@@ -48,7 +65,7 @@
 <% } %>
 
 <% if (modules?.fees !== false || modules?.students !== false) { %>
-<div class="stats-grid" data-dashboard-section="ledgers" style="margin-bottom:1.5rem;">
+<div class="stats-grid admin-dashboard-stats" data-dashboard-section="ledgers" style="margin-bottom:1.5rem;">
   <% if (modules?.students !== false) { %>
   <a href="/admin/students?status=complete" class="stat-card green"><div class="stat-label">Completed Students</div><div class="stat-value"><%= stats.completedStudents %></div><div class="stat-sub">Finished course records</div></a>
   <% } %>
@@ -61,7 +78,7 @@
 <% } %>
 
 <!-- Stats Grid -->
-<div class="stats-grid" data-dashboard-section="today">
+<div class="stats-grid admin-dashboard-stats" data-dashboard-section="today">
   <% if (modules?.fees !== false) { %>
   <a href="/admin/fees" class="stat-card gold">
     <div class="stat-label">Today's Fee Collections</div>

@@ -121,7 +121,7 @@ exports.getStudents = async (req, res) => {
     );
     const fees = feesEnabled ? await Fee.find({ student: { $in: studentProfiles.map(profile => profile._id) } }).select('student totalAmount paidAmount') : [];
     const feeMap = new Map(fees.map(fee => [String(fee.student), fee]));
-    const leads = leadsEnabled ? await Lead.find({ convertedStudent: { $in: studentProfiles.map(profile => profile._id) } }).select('convertedStudent source referredBy') : [];
+    const leads = leadsEnabled ? await Lead.find({ convertedStudent: { $in: studentProfiles.map(profile => profile._id) } }).select('convertedStudent source referredBy defaultSimCode') : [];
     const leadMap = new Map(leads.map(lead => [String(lead.convertedStudent), lead]));
 
     let attendanceMap = new Map();
@@ -183,7 +183,8 @@ exports.getStudents = async (req, res) => {
         feeTotal: fee?.totalAmount ?? profile?.fees_total ?? 0,
         feePaid: fee?.paidAmount ?? profile?.fees_paid ?? 0,
         leadSource: lead?.source || '',
-        referredBy: lead?.referredBy || ''
+        referredBy: lead?.referredBy || '',
+        defaultSimCode: plainUser.defaultSimCode || lead?.defaultSimCode || ''
       };
     });
 
@@ -249,7 +250,7 @@ exports.getStudentProfile = async (req, res) => {
     const progressEnabled = modules.progress !== false;
     const schedulesEnabled = modules.schedules !== false;
     let studentQuery = Student.findById(req.params.id)
-      .populate('user', 'name email phone status profilePic address city dob socialHandle createdAt updatedAt');
+      .populate('user', 'name email phone status profilePic address city dob socialHandle defaultSimCode createdAt updatedAt');
     if (teacherEnabled) studentQuery = studentQuery.populate({ path: 'teacher', populate: { path: 'user', select: 'name email phone' } });
     if (counsellorEnabled) studentQuery = studentQuery.populate({ path: 'counsellor', populate: { path: 'user', select: 'name email phone' } });
     if (coursesEnabled) studentQuery = studentQuery.populate('course', 'name code durationMonths fees requiredClasses');

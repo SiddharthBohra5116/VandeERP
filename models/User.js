@@ -35,6 +35,13 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
 
+  defaultSimCode: {
+    type: String,
+    trim: true,
+    maxlength: 50,
+    default: ''
+  },
+
   profilePic: {
     type: String,
     default: null

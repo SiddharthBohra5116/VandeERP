@@ -24,6 +24,8 @@ assert.match(sidebar, /<span>Academy Modules<\/span>/);
 assert.match(sidebar, /modules\?\.teachers !== false[\s\S]*Manage Teachers[\s\S]*<% \} %>[\s\S]*Manage Counsellors/);
 assert.match(sidebar, /modules\?\.batches !== false[\s\S]*href="\/admin\/batches"/);
 assert.match(dashboard, /admin-dashboard-sections:/);
+assert.match(dashboard, /@media \(max-width:1100px\)[\s\S]*\.admin-dashboard-stats \{ grid-template-columns:repeat\(2, minmax\(0, 1fr\)\); \}/);
+assert.match(dashboard, /@media \(max-width:380px\)[\s\S]*\.admin-dashboard-stats \{ grid-template-columns:1fr; \}/);
 for (const section of ['pipeline', 'ledgers', 'today']) {
   assert.match(dashboard, new RegExp(`data-dashboard-section="${section}"`));
 }
@@ -42,6 +44,8 @@ assert.match(studentController, /if \(course\) profileFilter\.course = course/);
 assert.match(directory, /class="person-status-menu"/);
 assert.doesNotMatch(directory, /class="person-status-select"/);
 assert.match(mainCss, /\.sidebar\.collapsed:not\(:hover\) \.nav-flyout-menu\s*\{\s*display:\s*none\s*!important/);
+assert.match(mainCss, /Phone safety layer shared by admin, counsellor, teacher, and student portals/);
+assert.match(mainCss, /@media \(max-width: 380px\)[\s\S]*\.stats-grid\s*\{\s*grid-template-columns: minmax\(0, 1fr\) !important/);
 
 const sidebarTemplate = fs.readFileSync('views/partials/sidebar.ejs', 'utf8');
 const renderSidebar = role => ejs.render(sidebarTemplate, {

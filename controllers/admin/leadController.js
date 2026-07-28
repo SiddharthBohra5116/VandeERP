@@ -170,6 +170,7 @@ async function createStudentFromImportedLead(lead, course, adminId) {
       phone: lead.phone,
       password: crypto.randomBytes(16).toString('hex'),
       role: 'student',
+      defaultSimCode: lead.defaultSimCode || '',
       status: 'active',
       mustChangePassword: true,
       passwordSetByAdmin: true,
@@ -465,7 +466,7 @@ exports.postCreateLead = async (req, res) => {
       status: validStatus ? status : 'new',
       nextFollowUpAt: followUpDate ? new Date(followUpDate) : null,
       notes: String(notes || '').trim().slice(0, 500),
-      defaultSimCode: String(defaultSimCode || '').trim().slice(0, 50),
+      defaultSimCode: String(defaultSimCode || '').trim().toUpperCase().slice(0, 50),
       customFields: normalizeLeadCustomValues(req.body.customFields, customFieldDefinitions),
       assignedTo: null,
       createdBy: req.user._id
@@ -550,7 +551,7 @@ exports.postEditLead = async (req, res) => {
     lead.status = cleanStatus;
     lead.nextFollowUpAt = followUpDate ? new Date(followUpDate) : null;
     lead.notes = String(notes || '').trim().slice(0, 500);
-    lead.defaultSimCode = String(defaultSimCode || '').trim().slice(0, 50);
+    lead.defaultSimCode = String(defaultSimCode || '').trim().toUpperCase().slice(0, 50);
     lead.customFields = normalizeLeadCustomValues(req.body.customFields, customFieldDefinitions, lead.customFields);
     await lead.save();
 
@@ -1649,6 +1650,7 @@ exports.postConvertLead = async (req, res) => {
       password,
       role: 'student',
       phone: req.body.phone || lead.phone,
+      defaultSimCode: lead.defaultSimCode || '',
       status: 'active',
       mustChangePassword: true,
       passwordSetByAdmin: true,

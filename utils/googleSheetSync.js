@@ -64,7 +64,7 @@ async function syncSheetRow(rawValues, actor = null) {
       notes: valueFor(row, aliases.notes) || '',
       assignedTo: assignedCounsellor?._id || null,
       nextFollowUpAt: followUp && !Number.isNaN(followUp.getTime()) ? followUp : null,
-      defaultSimCode: String(defaultSimCode || '').trim().slice(0, 50),
+      defaultSimCode: String(defaultSimCode || '').trim().toUpperCase().slice(0, 50),
       leadType: 'automation',
       createdBy: actor?._id || null,
       ownershipHistory: assignedCounsellor ? [{
@@ -95,7 +95,7 @@ async function syncSheetRow(rawValues, actor = null) {
   if (valueFor(row, aliases.notes) !== undefined) changes.notes = valueFor(row, aliases.notes);
   if (counsellorValue !== undefined) changes.assignedTo = assignedCounsellor?._id || null;
   if (followUpValue !== undefined) changes.nextFollowUpAt = followUp && !Number.isNaN(followUp.getTime()) ? followUp : null;
-  if (defaultSimCode !== undefined) changes.defaultSimCode = String(defaultSimCode).trim().slice(0, 50);
+  if (defaultSimCode !== undefined) changes.defaultSimCode = String(defaultSimCode).trim().toUpperCase().slice(0, 50);
 
   const changedFields = Object.keys(changes).filter(key => String(lead[key] ?? '') !== String(changes[key] ?? ''));
   if (changedFields.length) {

@@ -333,6 +333,7 @@ exports.postCreateUser = async (req, res) => {
       password: data.password,
       role: data.role,
       phone: data.phone || '',
+      defaultSimCode: String(data.defaultSimCode || '').trim().toUpperCase().slice(0, 50),
       status: data.status || 'active',
       address: data.address || '',
       city: data.city || '',
@@ -575,6 +576,7 @@ exports.postEditUser = async (req, res) => {
 
     targetUser.name = data.name || targetUser.name;
     targetUser.phone = data.phone || '';
+    targetUser.defaultSimCode = String(data.defaultSimCode || '').trim().toUpperCase().slice(0, 50);
     targetUser.status = data.status || targetUser.status;
     targetUser.address = data.address || '';
     targetUser.city = data.city || '';
@@ -776,6 +778,21 @@ exports.setUserStatus = async (req, res) => {
   } catch (err) {
     logger.error('setUserStatus Error', { err: err.message, userId: req.params.id });
     return res.redirect('/admin/users?error=Unable%20to%20update%20status');
+  }
+};
+
+// POST /admin/users/:id/sim-code
+exports.setUserSimCode = async (req, res) => {
+  try {
+    const user = await User.findOne({ _id: req.params.id, role: 'student' });
+    if (!user) return res.redirect('/admin/students?error=Student+not+found');
+
+    user.defaultSimCode = String(req.body.defaultSimCode || '').trim().toUpperCase().slice(0, 50);
+    await user.save();
+    return res.redirect('/admin/students?sim_updated=1');
+  } catch (err) {
+    logger.error('setUserSimCode Error', { err: err.message, userId: req.params.id });
+    return res.redirect('/admin/students?error=Unable+to+update+SIM+code');
   }
 };
 

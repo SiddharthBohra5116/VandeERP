@@ -93,10 +93,17 @@
         </a>
         <div class="nav-flyout-menu" aria-label="Lead pipeline filters">
           <a href="/admin/leads/create" class="nav-flyout-action">+ Add Lead</a>
-          <a href="/admin/leads?status=high_potential">High Potential</a>
-          <a href="/admin/leads?status=new">New</a>
-          <a href="/admin/leads?status=in_the_loop">In the Loop</a>
-          <a href="/admin/leads?status=admission_completed">Converted</a>
+          <% const sidebarLeadStatuses = typeof leadStatuses !== 'undefined' && leadStatuses.length
+            ? leadStatuses
+            : [
+                { key: 'high_potential', label: 'High Potential' },
+                { key: 'new', label: 'New' },
+                { key: 'in_the_loop', label: 'In the Loop' },
+                { key: 'admission_completed', label: 'Converted' }
+              ]; %>
+          <% sidebarLeadStatuses.forEach(status => { %>
+            <a href="/admin/leads?status=<%= encodeURIComponent(status.key) %>"><%= status.label %></a>
+          <% }) %>
           <a href="/admin/leads">All Leads</a>
         </div>
       </div>
@@ -347,7 +354,7 @@
 <style>
   .nav-flyout{position:relative}
   .nav-flyout-arrow{margin-left:auto;font-size:1rem;color:var(--text-muted);transition:transform .18s ease}
-  .nav-flyout-menu{display:none;gap:.15rem;margin:.25rem .7rem .55rem 2.55rem;padding:.4rem;background:var(--bg-card);border:1px solid var(--border);border-radius:10px}
+  .nav-flyout-menu{display:none;gap:.15rem;margin:.25rem .7rem .55rem 2.55rem;padding:.4rem;max-height:min(70vh,24rem);overflow-y:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:10px}
   .nav-flyout:hover .nav-flyout-menu,.nav-flyout:focus-within .nav-flyout-menu{display:grid}
   .nav-flyout:hover .nav-flyout-arrow,.nav-flyout:focus-within .nav-flyout-arrow{transform:rotate(90deg);color:var(--gold)}
   .nav-flyout-menu a{padding:.55rem .65rem;color:var(--text-sub);border-radius:7px;font-size:.78rem;font-weight:650;white-space:nowrap}

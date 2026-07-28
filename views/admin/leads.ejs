@@ -192,6 +192,16 @@
   }
   @media (max-width:760px) {
     .lead-tools-comfort-bar { align-items:stretch; }
+    .lead-tools-comfort-copy { min-width:0; }
+    .lead-tools-comfort-actions,
+    .lead-bulk-actions,
+    #bulkAssignForm { width:100%; }
+    .lead-tools-comfort-actions,
+    .lead-bulk-actions { align-items:stretch !important; }
+    #bulkAssignForm { flex-wrap:wrap; }
+    #bulkAssignForm .form-control { flex:1 1 180px; min-width:0; }
+    .lead-import-undo { grid-template-columns:1fr !important; }
+    .lead-import-undo .btn { width:100%; justify-content:center; }
     .lead-tools-toggle { width:100%; justify-content:center; }
     .lead-status-form { grid-template-columns:1fr; }
     .status-form-full { grid-column: 1; }
@@ -199,6 +209,10 @@
     .lead-badge-swatches { justify-content:start; }
     .status-form-row { flex-direction: column; align-items: stretch; gap: 0.8rem; }
     .status-form-row .btn { width:100%; justify-content:center; }
+    .lead-column-panel { width:min(330px, calc(100vw - 2.5rem)); }
+    #leadTable [data-lead-column="select"],
+    #leadTable [data-lead-column="name"],
+    #leadTable [data-lead-column="actions"] { position:static; }
   }
 </style>
 
@@ -252,7 +266,7 @@
     <h2 class="lead-tools-comfort-title">Lead setup tools</h2>
     <div class="lead-tools-comfort-sub">Import CSV data or manage status labels only when you need them.</div>
   </div>
-  <div style="display:flex; gap:.65rem; align-items:center;">
+  <div class="lead-tools-comfort-actions" style="display:flex; gap:.65rem; align-items:center;">
     <a href="/admin/leads/create" class="btn btn-primary btn-sm">+ Add Lead</a>
     <button type="button" class="btn btn-ghost btn-sm lead-tools-toggle" id="leadToolsToggle" aria-controls="leadToolsPanel" aria-expanded="false">
       <span class="lead-tools-toggle-icon" aria-hidden="true">+</span>
@@ -319,7 +333,7 @@
       </div>
       </form>
       <% if (priorImports && priorImports.length) { %>
-        <form method="POST" action="/admin/leads/import-history/undo" data-native-submit="true" data-confirm="Move the removable leads from the selected import to the Recycle Bin? Admitted students will be kept." data-confirm-title="Remove previous import" data-confirm-label="Remove imported leads" style="display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.65rem; align-items:end; margin-top:1rem; padding:.85rem; border:1px solid rgba(239,68,68,.25); border-radius:9px; background:rgba(239,68,68,.04);">
+        <form method="POST" action="/admin/leads/import-history/undo" class="lead-import-undo" data-native-submit="true" data-confirm="Move the removable leads from the selected import to the Recycle Bin? Admitted students will be kept." data-confirm-title="Remove previous import" data-confirm-label="Remove imported leads" style="display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.65rem; align-items:end; margin-top:1rem; padding:.85rem; border:1px solid rgba(239,68,68,.25); border-radius:9px; background:rgba(239,68,68,.04);">
           <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
           <label style="min-width:0;">
             <span class="form-label">Remove previous sheet import</span>
@@ -529,7 +543,7 @@
           <div class="lead-column-grid" id="leadColumnGrid"></div>
         </div>
       </details>
-      <div style="display:flex; justify-content:flex-end; gap:.5rem; flex-wrap:wrap;">
+      <div class="lead-bulk-actions" style="display:flex; justify-content:flex-end; gap:.5rem; flex-wrap:wrap;">
       <form id="bulkAssignForm" method="POST" action="/admin/leads/assign" style="display:flex; gap:.5rem;">
         <select name="counsellorId" class="form-control" required aria-label="Counsellor for selected leads">
           <option value="">Assign selected to...</option>
@@ -550,6 +564,7 @@
             <th data-lead-column="select" style="width:42px;"><input type="checkbox" id="selectAllLeads" aria-label="Select all deletable leads on this page"></th>
             <th data-lead-column="name">Name</th>
             <th data-lead-column="phone">Phone</th>
+            <th data-lead-column="simCode">SIM Code</th>
             <th data-lead-column="email">Email</th>
             <th data-lead-column="course">Course</th>
             <th data-lead-column="source">Source</th>
@@ -611,6 +626,7 @@
                 </div>
               </td>
               <td data-lead-column="phone"><%= l.phone || '—' %></td>
+              <td data-lead-column="simCode"><%= l.defaultSimCode || '—' %></td>
               <td data-lead-column="email"><%= l.email || '—' %></td>
               <td data-lead-column="course">
                 <span class="badge badge-orange"><%= l.interestedCourse ? l.interestedCourse.name : 'Undecided' %></span>
@@ -757,7 +773,7 @@
     const valid = new Set(columns.map(column => column.key));
     const locked = new Set(['name', 'actions']);
     const presets = {
-      essential: ['select', 'name', 'phone', 'course', 'counsellor', 'status', 'followUp', 'actions'],
+      essential: ['select', 'name', 'phone', 'simCode', 'course', 'counsellor', 'status', 'followUp', 'actions'],
       all: columns.map(column => column.key)
     };
     let saved;

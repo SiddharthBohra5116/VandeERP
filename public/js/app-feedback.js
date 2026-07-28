@@ -73,6 +73,7 @@
   document.addEventListener('click', async event => {
     const trigger = event.target.closest('[data-confirm]');
     if (!trigger || trigger.dataset.confirmApproved === '1') return;
+    if (trigger.matches('form') && !event.target.closest('button[type="submit"], input[type="submit"]')) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     const message = trigger.dataset.confirm || 'Continue with this action?';

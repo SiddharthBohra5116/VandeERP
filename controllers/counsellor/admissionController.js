@@ -413,6 +413,7 @@ exports.postConvertLead = async (req, res) => {
         password: password,
         role: 'student',
         phone: req.body.phone || lead.phone,
+        defaultSimCode: lead.defaultSimCode || '',
         status: 'active',
         mustChangePassword: true,
         passwordSetByAdmin: true,

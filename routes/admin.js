@@ -137,6 +137,8 @@ router.post(
   userDirectoryCtrl.setUserStatus
 );
 
+router.post('/users/:id/sim-code', ...guard, userDirectoryCtrl.setUserSimCode);
+
 router.post('/users/temporary-staff', ...guard, userDirectoryCtrl.postCreateTemporaryStaff);
 
 router.post(

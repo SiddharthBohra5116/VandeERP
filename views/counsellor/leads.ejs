@@ -72,6 +72,7 @@
   #counsellorLeadTable [data-lead-column][hidden] { display:none !important; }
   #counsellorLeadTable [data-lead-column="name"] { position:sticky; left:0; z-index:3; min-width:200px; background:var(--bg-card); border-right:1px solid var(--border); }
   #counsellorLeadTable [data-lead-column="phone"] { min-width:155px; white-space:nowrap; font-family:var(--mono); }
+  #counsellorLeadTable [data-lead-column="simCode"] { min-width:100px; white-space:nowrap; font-family:var(--mono); }
   #counsellorLeadTable [data-lead-column="email"] { min-width:230px; }
   #counsellorLeadTable [data-lead-column="course"] { min-width:170px; }
   #counsellorLeadTable [data-lead-column="status"] { min-width:190px; }
@@ -84,6 +85,7 @@
   #counsellorLeadTable td[data-lead-column="followUp"] form { display:flex; align-items:center; min-height:40px; }
   #counsellorLeadTable td[data-lead-column="followUp"] .date-input-wrap { width:170px; flex:0 0 170px; }
   .lead-select-badge, .lead-inline-date { box-sizing:border-box; height:40px; margin:0; border:1px solid var(--gold-border); border-radius:8px; background:var(--bg-input); color:var(--text); }
+  .lead-inline-sim { box-sizing:border-box; width:76px; height:40px; padding:.35rem .55rem; border:1px solid var(--gold-border); border-radius:8px; background:var(--bg-input); color:var(--text); font:800 .72rem var(--mono); text-transform:uppercase; }
   .lead-select-badge { width:180px; padding:.35rem .55rem; font-weight:700; }
   .lead-inline-date { width:100%; padding:.35rem 2.5rem .35rem .65rem; font:700 .72rem var(--mono); }
 
@@ -207,7 +209,7 @@
     </details>
     <div class="table-wrap">
       <table id="counsellorLeadTable">
-        <thead><tr><th data-lead-column="name">Name</th><th data-lead-column="phone">Phone</th><th data-lead-column="email">Email</th><th data-lead-column="course">Course</th><th data-lead-column="source">Source</th><th data-lead-column="status">Status</th><th data-lead-column="followUp">Next Follow-up</th><th data-lead-column="actions">Actions</th></tr></thead>
+        <thead><tr><th data-lead-column="name">Name</th><th data-lead-column="phone">Phone</th><th data-lead-column="simCode">SIM Code</th><th data-lead-column="email">Email</th><th data-lead-column="course">Course</th><th data-lead-column="source">Source</th><th data-lead-column="status">Status</th><th data-lead-column="followUp">Next Follow-up</th><th data-lead-column="actions">Actions</th></tr></thead>
         <tbody>
       <% leads.forEach(lead => { %>
         <%
@@ -217,6 +219,7 @@
         <tr data-row-href="/counsellor/leads/<%= lead._id %>" tabindex="0">
           <td data-lead-column="name" class="td-name"><a href="/counsellor/leads/<%= lead._id %>"><%= lead.name %></a></td>
           <td data-lead-column="phone"><%= formatPhone(lead.phone) %></td>
+          <td data-lead-column="simCode"><form action="/counsellor/leads/<%= lead._id %>/sim-code" method="POST" style="margin:0;"><input type="hidden" name="returnTo" value="<%= currentListUrl %>"><input class="lead-inline-sim" name="defaultSimCode" value="<%= lead.defaultSimCode || '' %>" placeholder="—" maxlength="50" autocapitalize="characters" aria-label="SIM code for <%= lead.name %>" oninput="this.value=this.value.toUpperCase()" onchange="this.form.submit()"></form></td>
           <td data-lead-column="email"><%= lead.email || '—' %></td>
           <td data-lead-column="course"><%= lead.interestedCourse ? lead.interestedCourse.name : 'Undecided' %></td>
           <td data-lead-column="source"><%= lead.source || '—' %></td>
@@ -262,7 +265,7 @@
     if (!table || !grid || grid.dataset.ready) return;
     const columns = [...table.querySelectorAll('thead [data-lead-column]')].map(cell => ({ key: cell.dataset.leadColumn, label: cell.textContent.trim() }));
     const locked = new Set(['name', 'actions']);
-    const presets = { essential: ['name', 'phone', 'course', 'status', 'followUp', 'actions'], all: columns.map(column => column.key) };
+    const presets = { essential: ['name', 'phone', 'simCode', 'course', 'status', 'followUp', 'actions'], all: columns.map(column => column.key) };
     let saved;
     try { saved = JSON.parse(localStorage.getItem('vande.counsellorLeadColumns.v1')); } catch (_) { saved = null; }
     let visible = new Set(Array.isArray(saved) ? saved : presets.essential);

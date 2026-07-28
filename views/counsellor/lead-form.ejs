@@ -204,7 +204,7 @@
       <div class="form-group" style="margin-top: 1rem;">
         <label class="premium-label" for="defaultSimCode">Default SIM Code (Optional)</label>
         <input type="text" id="defaultSimCode" name="defaultSimCode" class="premium-input" maxlength="50"
-          placeholder="e.g., SIM-1, Airtel Sales"
+          placeholder="e.g., A7 or G2" autocapitalize="characters" oninput="this.value=this.value.toUpperCase()"
           value="<%= isEdit ? (lead.defaultSimCode || '') : '' %>">
         <span class="form-hint">Used to prefill call logs; each call keeps the SIM code actually used.</span>
       </div>

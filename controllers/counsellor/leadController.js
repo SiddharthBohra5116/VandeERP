@@ -164,7 +164,7 @@ exports.postCreateLead = async (req, res) => {
       status: cleanStatus,
       nextFollowUpAt: followUpDate ? new Date(followUpDate) : nextBusinessFollowUpDate(),
       notes: notes || '',
-      defaultSimCode: String(defaultSimCode || '').trim().slice(0, 50),
+      defaultSimCode: String(defaultSimCode || '').trim().toUpperCase().slice(0, 50),
       customFields: normalizeLeadCustomValues(req.body.customFields, customFieldDefinitions),
       assignedTo: req.user.counsellorProfileId,
       createdBy: req.user._id,
@@ -229,6 +229,22 @@ exports.getLeadDetail = async (req, res) => {
   }
 };
 
+exports.postUpdateSimCode = async (req, res) => {
+  try {
+    const lead = await Lead.findById(req.params.id);
+    if (!lead) return res.redirect('/counsellor/leads?error=Lead+not+found');
+
+    lead.defaultSimCode = String(req.body.defaultSimCode || '').trim().toUpperCase().slice(0, 50);
+    await lead.save();
+    return res.redirect(String(req.body.returnTo || '').startsWith('/counsellor/leads')
+      ? req.body.returnTo
+      : '/counsellor/leads?sim_updated=1');
+  } catch (err) {
+    logger.error('Counsellor SIM code update failed', { err: err.message, leadId: req.params.id });
+    return res.redirect('/counsellor/leads?error=Unable+to+update+SIM+code');
+  }
+};
+
 /**
  * GET /counsellor/leads/:id/edit
  * Renders the lead edit form populated with current lead details.
@@ -286,7 +302,7 @@ exports.postEditLead = async (req, res) => {
         referredBy: source === 'Referral' ? String(referredBy || '').trim().slice(0, 100) : '',
         status: cleanStatus,
         notes: notes || '',
-        defaultSimCode: String(defaultSimCode || '').trim().slice(0, 50),
+        defaultSimCode: String(defaultSimCode || '').trim().toUpperCase().slice(0, 50),
         customFields: normalizeLeadCustomValues(req.body.customFields, customFieldDefinitions, currentLead?.customFields),
         nextFollowUpAt: followUpDate ? new Date(followUpDate) : null
       }
@@ -339,7 +355,7 @@ exports.postAddFollowUp = async (req, res) => {
 
     const oldStatus = lead.status;
     const selectedChannel = channel || 'Call';
-    const selectedSimCode = String(simCode || '').trim().slice(0, 50);
+    const selectedSimCode = String(simCode || '').trim().toUpperCase().slice(0, 50);
     if (selectedChannel === 'Call' && !selectedSimCode) {
       return res.redirect(`/counsellor/leads/${req.params.id}?error=SIM+code+is+required+for+calls`);
     }
