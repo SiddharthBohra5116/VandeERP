@@ -13,11 +13,15 @@ const counsellorDashboard = fs.readFileSync('views/counsellor/dashboard.ejs', 'u
 const sidebar = fs.readFileSync('views/partials/sidebar.ejs', 'utf8');
 const reports = fs.readFileSync('controllers/admin/reportController.js', 'utf8');
 const inbox = fs.readFileSync('controllers/authController.js', 'utf8');
+const constants = require('../config/constants');
+const leadStatusOptions = fs.readFileSync('utils/leadStatusOptions.js', 'utf8');
 
 for (const status of ['high_potential', 'new', 'in_the_loop', 'admission_completed']) {
   assert(dashboard.includes(`/admin/leads?status=${status}`));
   assert(counsellorDashboard.includes(`/counsellor/leads?status=${status}`) || status === 'admission_completed');
 }
+for (const status of ['high_potential', 'in_the_loop']) assert(constants.LEAD_STATUSES.includes(status));
+assert.match(leadStatusOptions, /\$set: \{ isSystem: true, isDeleted: false, deletedAt: null \}/);
 assert(dashboard.includes('/admin/leads/create'));
 assert(sidebar.includes('Completed Students'));
 assert(reports.includes('convertedInPeriod'));

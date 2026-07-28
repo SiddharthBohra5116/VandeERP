@@ -2,11 +2,13 @@ const LeadStatus = require('../models/LeadStatus');
 const { LEAD_STATUSES } = require('../config/constants');
 
 const DEFAULT_STATUS_META = {
+  high_potential: { label: 'High Potential', badgeClass: 'badge-gold', sortOrder: 5 },
   new: { label: 'New', badgeClass: 'badge-orange', sortOrder: 10 },
   contacted: { label: 'Contacted', badgeClass: 'badge-blue', sortOrder: 20 },
   mentorship_scheduled: { label: 'Mentorship Scheduled', badgeClass: 'badge-blue', sortOrder: 30 },
   mentorship_attended: { label: 'Mentorship Attended', badgeClass: 'badge-yellow', sortOrder: 40 },
   follow_up: { label: 'Follow Up', badgeClass: 'badge-yellow', sortOrder: 50 },
+  in_the_loop: { label: 'In the Loop', badgeClass: 'badge-blue', sortOrder: 55 },
   joining_interested: { label: 'Joining Interested', badgeClass: 'badge-gold', sortOrder: 60 },
   admission_completed: { label: 'Admission Completed', badgeClass: 'badge-green', isClosed: true, sortOrder: 70 },
   lost: { label: 'Lost', badgeClass: 'badge-red', isClosed: true, sortOrder: 80 }
@@ -27,9 +29,6 @@ function labelFromKey(key) {
 }
 
 async function ensureDefaultLeadStatuses() {
-  const existingStatuses = await LeadStatus.countDocuments();
-  if (existingStatuses > 0) return;
-
   await Promise.all(LEAD_STATUSES.map((key, index) => {
     const meta = DEFAULT_STATUS_META[key] || {};
     return LeadStatus.updateOne(
@@ -40,9 +39,9 @@ async function ensureDefaultLeadStatuses() {
           label: meta.label || labelFromKey(key),
           badgeClass: meta.badgeClass || 'badge-grey',
           isClosed: Boolean(meta.isClosed),
-          isSystem: true,
           sortOrder: meta.sortOrder || ((index + 1) * 10)
-        }
+        },
+        $set: { isSystem: true, isDeleted: false, deletedAt: null }
       },
       { upsert: true }
     );

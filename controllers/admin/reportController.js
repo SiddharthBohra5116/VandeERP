@@ -21,6 +21,8 @@ const { getOpenLeadStatusKeys } = require('../../utils/leadStatusOptions');
 const logger = require('../../utils/logger');
 const { buildTallyMastersXml, buildTallyXml } = require('../../utils/tallyExport');
 
+const formatReportMoney = amount => `₹${Number(amount || 0).toLocaleString('en-IN')}`;
+
 /**
  * Helper to convert array of objects to CSV formatted string.
  */
@@ -260,12 +262,12 @@ exports.getReports = async (req, res) => {
     const overviewStats = {
       activeStudents: { value: activeCount, trend: `▲ ${newThisMonth} in date range`, isPositive: true },
       collection: {
-        value: `₹${(currentPeriodCollection / 100000).toFixed(1)}L`,
+        value: formatReportMoney(currentPeriodCollection),
         trend: collDiffPct >= 0 ? `▲ ${collDiffPct}% vs ${periodLabel}` : `▼ ${Math.abs(collDiffPct)}% vs ${periodLabel}`,
         isPositive: collDiffPct >= 0
       },
       outstanding: {
-        value: `₹${(outstandingAmount / 100000).toFixed(1)}L`,
+        value: formatReportMoney(outstandingAmount),
         trend: `▼ ${outstandingDiffPct}% of total billed`,
         isPositive: outstandingAmount === 0
       },

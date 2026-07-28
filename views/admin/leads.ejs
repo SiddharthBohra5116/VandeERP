@@ -349,7 +349,7 @@
       <% } %>
     </div>
 
-    <div class="lead-tool-panel">
+    <div class="lead-tool-panel" id="lead-pipeline-customization">
       <div class="lead-tool-panel-body">
       <div>
         <h2 class="lead-tool-title">Lead Statuses</h2>
@@ -372,14 +372,9 @@
               <% }) %>
             </div>
           </div>
-          <label class="switch-container" for="statusIsClosed" title="Closed statuses do not appear in active counsellor pipeline counts.">
-            <input type="checkbox" id="statusIsClosed" name="isClosed" class="switch-input">
-            <span class="switch-track"><span class="switch-thumb"></span></span>
-            <span class="switch-label">Closed pipeline</span>
-          </label>
           <span class="status-preview-chip lead-status-chip badge-grey" id="statusPreviewChip">
             <span class="lead-status-chip-dot"></span>
-            <span id="statusPreviewLabel">Preview</span>
+            <span id="statusPreviewLabel">Selected status</span>
           </span>
         </div>
       </form>
@@ -398,10 +393,10 @@
             <% if (isClosedStatus) { %>
               <span style="font-size:9px; opacity:0.65; margin-left:2px;">(Closed)</span>
             <% } %>
-            <form method="POST" action="/admin/leads/statuses/<%= status._id %>/delete" style="display:inline; margin:0;" data-no-soft-nav="true" data-confirm="Delete this status? It will disappear from admin and counsellor status dropdowns. Existing leads keep their saved status value." data-confirm-title="Delete Status" data-confirm-label="Delete">
+            <% if (!status.isSystem) { %><form method="POST" action="/admin/leads/statuses/<%= status._id %>/delete" style="display:inline; margin:0;" data-no-soft-nav="true" data-confirm="Delete this unused status? It will disappear from admin and counsellor status dropdowns." data-confirm-title="Delete Status" data-confirm-label="Delete">
               <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
               <button type="submit" class="lead-status-chip-delete" aria-label="Delete <%= status.label %> status">&times;</button>
-            </form>
+            </form><% } %>
           </span>
         <% }) %>
       </div>
@@ -1138,16 +1133,14 @@
     const badgeInput = document.getElementById('statusBadgeClass');
     const preview = document.getElementById('statusPreviewChip');
     const previewLabel = document.getElementById('statusPreviewLabel');
-    const closedInput = document.getElementById('statusIsClosed');
     const swatches = form.querySelectorAll('.lead-badge-swatch');
     const badgeClasses = ['badge-grey', 'badge-blue', 'badge-yellow', 'badge-orange', 'badge-green', 'badge-red', 'badge-gold'];
 
     const setPreview = () => {
-      const label = (labelInput.value || '').trim() || 'Preview';
+      const label = (labelInput.value || '').trim() || 'Selected status';
       badgeClasses.forEach(className => preview.classList.remove(className));
       preview.classList.add(badgeInput.value || 'badge-grey');
-      preview.classList.toggle('is-closed', closedInput.checked);
-      previewLabel.textContent = closedInput.checked ? `${label} (Closed)` : label;
+      previewLabel.textContent = label;
     };
 
     swatches.forEach(swatch => {
@@ -1164,7 +1157,6 @@
     });
 
     labelInput.addEventListener('input', setPreview);
-    closedInput.addEventListener('change', setPreview);
     setPreview();
     form.dataset.statusReady = '1';
   }

@@ -27,11 +27,13 @@ module.exports = {
   LEAD_CATEGORIES: ['hot', 'warm', 'cold'],
 
   LEAD_STATUSES: [
+    'high_potential',
     'new',
     'contacted',
     'mentorship_scheduled',
     'mentorship_attended',
     'follow_up',
+    'in_the_loop',
     'joining_interested',
     'admission_completed',
     'lost'

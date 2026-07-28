@@ -1151,8 +1151,7 @@ exports.postCreateStatus = async (req, res) => {
     }
 
     const badgeClass = normalizeBadgeClass(req.body.badgeClass);
-    const isClosed = req.body.isClosed === 'on' || req.body.isClosed === 'true';
-    const statusDoc = await findOrCreateLeadStatus(label, { badgeClass, isClosed });
+    const statusDoc = await findOrCreateLeadStatus(label, { badgeClass });
     if (!statusDoc) return res.redirect('/admin/leads?error=Failed+to+create+status');
 
     res.redirect('/admin/leads?statusCreated=1');
@@ -1166,6 +1165,10 @@ exports.postDeleteStatus = async (req, res) => {
   try {
     const status = await LeadStatus.findById(req.params.id);
     if (!status) return res.redirect('/admin/leads?error=Status+not+found');
+    if (status.isSystem) return res.redirect('/admin/leads?error=Core+pipeline+statuses+cannot+be+deleted');
+    if (await Lead.exists({ status: status.key, archivedAt: null })) {
+      return res.redirect('/admin/leads?error=Move+leads+out+of+this+status+before+deleting+it');
+    }
 
     status.isDeleted = true;
     status.deletedAt = new Date();

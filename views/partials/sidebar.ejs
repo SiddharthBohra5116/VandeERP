@@ -105,6 +105,7 @@
             <a href="/admin/leads?status=<%= encodeURIComponent(status.key) %>"><%= status.label %></a>
           <% }) %>
           <a href="/admin/leads">All Leads</a>
+          <a href="/admin/leads#lead-pipeline-customization" class="nav-flyout-action">Customize Pipeline</a>
         </div>
       </div>
       <% } %>
@@ -387,7 +388,8 @@
   .sbc-option.dragging{opacity:.45}
   .sbc-option.drag-over{border-color:var(--gold,#b99100);box-shadow:0 -3px 0 var(--gold,#b99100)}
   .sbc-option.selected{border-color:var(--gold-border,rgba(180,140,0,.35));background:var(--gold-dim,rgba(180,140,0,.1))}
-  .sbc-monogram{display:grid;place-items:center;width:36px;height:36px;flex:0 0 auto;color:var(--gold,#b99100);background:rgba(255,204,0,.1);border:1px solid var(--gold-border,rgba(180,140,0,.3));border-radius:9px;font-size:.72rem;font-weight:850}
+  .sbc-item-icon{display:grid;place-items:center;width:36px;height:36px;flex:0 0 auto;color:var(--gold,#b99100);background:rgba(255,204,0,.1);border:1px solid var(--gold-border,rgba(180,140,0,.3));border-radius:9px;font-size:.72rem;font-weight:850}
+  .sbc-item-icon svg{width:18px;height:18px;stroke:currentColor}
   .sbc-copy{min-width:0;flex:1}
   .sbc-name-input,.sbc-group-name{width:100%;color:var(--text,#161616);background:transparent;border:0;border-bottom:1px solid transparent;outline:none}
   .sbc-name-input{display:block;padding:.15rem 0;font-size:.83rem;font-weight:750}
@@ -397,11 +399,11 @@
   .sbc-order{display:flex;gap:.25rem}
   .sbc-order button{width:27px;height:27px;padding:0;color:var(--text-muted,#777);background:transparent;border:1px solid var(--border,#e8dfc5);border-radius:6px;cursor:pointer}
   .sbc-order button:hover{color:var(--gold,#b99100);border-color:var(--gold-border,rgba(180,140,0,.35))}
-  .sbc-option input{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none}
+  .sbc-option input[type="checkbox"]{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none}
   .sbc-switch{position:relative;width:40px;height:23px;flex:0 0 auto;background:var(--border-light,#d8d1bf);border-radius:999px;transition:background .18s ease}
   .sbc-switch:after{content:'';position:absolute;top:3px;left:3px;width:17px;height:17px;background:#fff;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,.25);transition:transform .18s ease}
-  .sbc-option input:checked+.sbc-switch{background:var(--gold,#d1a900)}
-  .sbc-option input:checked+.sbc-switch:after{transform:translateX(17px)}
+  .sbc-option input[type="checkbox"]:checked+.sbc-switch{background:var(--gold,#d1a900)}
+  .sbc-option input[type="checkbox"]:checked+.sbc-switch:after{transform:translateX(17px)}
   .sbc-actions{display:grid;grid-template-columns:.8fr 1.2fr;gap:.75rem;padding:1rem 1.5rem;background:var(--bg-card,#fff);border-top:1px solid var(--border,#e8dfc5);box-shadow:0 -12px 30px rgba(0,0,0,.08)}
   .sbc-actions button{min-height:42px}
   body.sbc-lock{overflow:hidden}
@@ -542,9 +544,11 @@
         option.draggable = true;
         option.dataset.path = path;
         option.dataset.search = `${group} ${name} ${path}`.toLowerCase();
-        const monogram = document.createElement('span');
-        monogram.className = 'sbc-monogram';
-        monogram.textContent = name.split(/\s+/).map(word => word[0]).join('').slice(0, 2).toUpperCase();
+        const icon = document.createElement('span');
+        icon.className = 'sbc-item-icon';
+        const sidebarIcon = item.querySelector('svg');
+        if (sidebarIcon) icon.appendChild(sidebarIcon.cloneNode(true));
+        else icon.textContent = name.split(/\s+/).map(word => word[0]).join('').slice(0, 2).toUpperCase();
         const copy = document.createElement('span');
         copy.className = 'sbc-copy';
         const strong = document.createElement('input');
@@ -553,9 +557,7 @@
         strong.value = savedNames.items?.[path] || name;
         strong.setAttribute('aria-label', `Rename ${name}`);
         strong.addEventListener('click', event => event.stopPropagation());
-        const small = document.createElement('small');
-        small.textContent = path;
-        copy.append(strong, small);
+        copy.append(strong);
         const input = document.createElement('input');
         input.type = 'checkbox';
         input.value = path;
@@ -563,6 +565,11 @@
         input.addEventListener('change', updateCounts);
         const toggle = document.createElement('span');
         toggle.className = 'sbc-switch';
+        toggle.addEventListener('click', event => {
+          event.preventDefault();
+          input.checked = !input.checked;
+          updateCounts();
+        });
         const orderControls = document.createElement('span');
         orderControls.className = 'sbc-order';
         [['↑', 'Move up', -1], ['↓', 'Move down', 1]].forEach(([text, title, direction]) => {
@@ -579,7 +586,7 @@
           });
           orderControls.appendChild(button);
         });
-        option.append(monogram, copy, orderControls, input, toggle);
+        option.append(icon, copy, orderControls, input, toggle);
         grid.appendChild(option);
       });
       section.append(title, grid);
