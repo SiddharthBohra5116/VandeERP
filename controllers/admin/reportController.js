@@ -152,7 +152,7 @@ exports.getReports = async (req, res) => {
     // Collections & Outstandings calculations
     const fees = feesEnabled ? await Fee.find({ student: { $in: studentIds } }) : [];
     const activeStudentIds = new Set(activeStudents.map(student => String(student._id)));
-    const overviewFees = fees.filter(fee => activeStudentIds.has(String(fee.student)));
+    const overviewFees = fees;
 
 
     let currentPeriodCollection = 0;

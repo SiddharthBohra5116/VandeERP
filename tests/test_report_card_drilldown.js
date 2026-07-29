@@ -19,7 +19,7 @@ assert.match(reports, /overviewFees\.reduce\([\s\S]*totalAmount - \(fee\.discoun
 assert.match(reports, /\.filter\(row => monthInPeriod\(row\.month\)\)/);
 assert.match(reports, /s\.user\.role === 'student'[\s\S]*s\.user\.status === 'active'[\s\S]*s\.user\.isActive !== false[\s\S]*!s\.user\.archivedAt/);
 assert.match(students, /status === 'active'\) userFilter\.isActive = \{ \$ne: false \}/);
-assert.match(reports, /const overviewFees = fees\.filter\(fee => activeStudentIds\.has\(String\(fee\.student\)\)\)/);
+assert.match(reports, /const overviewFees = fees;/);
 assert.match(report, /Collected in selected period/);
 assert.match(reports, /formatReportMoney\(currentPeriodCollection\)/);
 assert.match(report, /Current outstanding/);
